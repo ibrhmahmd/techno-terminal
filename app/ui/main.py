@@ -1,6 +1,6 @@
 import streamlit as st
-from app.ui import state
-from app.ui.components.auth_guard import require_auth
+import state
+from components.auth_guard import require_auth
 
 st.set_page_config(page_title="Techno Kids", layout="wide", page_icon="🤖")
 
