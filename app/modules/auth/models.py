@@ -5,6 +5,7 @@ from sqlmodel import SQLModel, Field
 
 class Employee(SQLModel, table=True):
     __tablename__ = "employees"
+    __table_args__ = {"extend_existing": True}
 
     id: Optional[int] = Field(default=None, primary_key=True)
     full_name: str
@@ -22,6 +23,7 @@ class Employee(SQLModel, table=True):
 
 class User(SQLModel, table=True):
     __tablename__ = "users"
+    __table_args__ = {"extend_existing": True}
 
     id: Optional[int] = Field(default=None, primary_key=True)
     username: str = Field(unique=True)

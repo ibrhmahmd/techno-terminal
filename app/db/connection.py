@@ -25,7 +25,7 @@ def get_engine():
 
 @contextmanager
 def get_session():
-    with Session(get_engine()) as session:
+    with Session(get_engine(), expire_on_commit=False) as session:
         try:
             yield session
             session.commit()
