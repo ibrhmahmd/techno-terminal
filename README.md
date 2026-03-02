@@ -47,7 +47,7 @@ docs/
 4. Run the application:
 
    ```bash
-   streamlit run app/ui/main.py
+   python run_app.py
    ```
 
 ## Development Phases
