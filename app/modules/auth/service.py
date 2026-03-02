@@ -1,11 +1,21 @@
-from passlib.context import CryptContext
+import bcrypt
 from app.db.connection import get_session
 from .models import User
 from . import repository as repo
 
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 MIN_PASSWORD_LENGTH = 6
+
+
+def verify_password(plain: str, hashed: str) -> bool:
+    try:
+        return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
+    except ValueError:
+        return False
+
+
+def hash_password(plain: str) -> str:
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(plain.encode("utf-8"), salt).decode("utf-8")
 
 
 def authenticate(username: str, password: str):
@@ -13,14 +23,10 @@ def authenticate(username: str, password: str):
         user = repo.get_user_by_username(session, username)
         if not user or not user.is_active:
             return None
-        if not _pwd_context.verify(password, user.password_hash):
+        if not verify_password(password, user.password_hash):
             return None
         repo.update_last_login(session, user.id)
         return user
-
-
-def hash_password(plain: str) -> str:
-    return _pwd_context.hash(plain)
 
 
 def change_password(user_id: int, current_password: str, new_password: str) -> bool:
@@ -30,8 +36,8 @@ def change_password(user_id: int, current_password: str, new_password: str) -> b
         user = session.get(User, user_id)
         if not user:
             raise ValueError("User not found.")
-        if not _pwd_context.verify(current_password, user.password_hash):
+        if not verify_password(current_password, user.password_hash):
             raise ValueError("Current password is incorrect.")
-        new_hash = _pwd_context.hash(new_password)
+        new_hash = hash_password(new_password)
         repo.update_password_hash(session, user_id, new_hash)
     return True
