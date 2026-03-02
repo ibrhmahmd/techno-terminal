@@ -8,6 +8,7 @@ from app.modules.auth import service as auth_srv
 # Enforce auth
 require_auth()
 
+st.set_page_config(page_title="Course Management", layout="wide")
 st.title("📚 Course Management")
 st.markdown("Define courses and schedule groups.")
 
