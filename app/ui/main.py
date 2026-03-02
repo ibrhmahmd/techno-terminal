@@ -11,7 +11,7 @@ with st.sidebar:
     st.caption(f"**{user.username}** · {user.role}")
     st.divider()
 
-    st.page_link("pages/dashboard.py", label="Dashboard", icon="🏠")
+    st.page_link("pages/0_Dashboard.py", label="Dashboard", icon="🏠")
 
     st.divider()
 

@@ -5,7 +5,7 @@ import state
 st.set_page_config(page_title="Login — Techno Kids", layout="centered")
 
 if state.is_authenticated():
-    st.switch_page("pages/dashboard.py")
+    st.switch_page("pages/0_Dashboard.py")
 
 st.title("Techno Kids")
 st.subheader("Admin Login")
@@ -19,6 +19,6 @@ if submitted:
     user = auth_service.authenticate(username, password)
     if user:
         state.set_user(user)
-        st.switch_page("pages/dashboard.py")
+        st.switch_page("pages/0_Dashboard.py")
     else:
         st.error("Invalid username or password.")
