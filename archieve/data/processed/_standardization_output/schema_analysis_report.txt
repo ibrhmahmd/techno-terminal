@@ -1,0 +1,494 @@
+SCHEMA ANALYSIS REPORT
+Generated: 2026-02-25T00:06:45.828619
+======================================================================
+
+Total files analyzed      : 201
+Classification rate        : 95.0%
+Unresolved column entries  : 296
+
+DOMAIN DISTRIBUTION
+----------------------------------------
+  CourseAttendance                189 files (94.0%)
+  Unclassified                     10 files (5.0%)
+  StaffAttendance                   1 files (0.5%)
+  CRM_SAT                           1 files (0.5%)
+
+
+TOP SCHEMA PATTERNS (by file count)
+----------------------------------------
+
+  Pattern #1 — 213 files
+  Columns: 
+  Examples:
+    - attendance\tuesday.xlsx::Sheet1
+    - attendance\tuesday.xlsx::Sheet2
+    - attendance\tuesday.xlsx::Sheet3
+
+  Pattern #2 — 133 files
+  Columns: age, fee_paid, grade, mobile, month_paid, name, s2, s3, s4, s5, s_1
+  Examples:
+    - courses 2\Old Courses\Junior Electronics fri 2-4.xlsx::Sheet1
+    - courses 2\Old Courses\spike fri2-4.xlsx::Sheet2
+    - courses 2\Old Courses\AAFFIAT\AAFFIAT December.xlsx::Thu4-6
+
+  Pattern #3 — 53 files
+  Columns: age, fee_paid, grade, mobile, month_paid, name, s2, s3, s4, s_1
+  Examples:
+    - courses 2\Old Courses\AAFFIAT\AAFFIAT December.xlsx::Fri 11-2
+    - courses 2\Old Courses\AAFFIAT\AAFFIAT December.xlsx::Wed 4-6
+    - courses 2\Old Courses\AAFFIAT\AAFFIAT October.xlsx::Fri 11-2
+
+  Pattern #4 — 32 files
+  Columns: age, name, number, paid, s1, s2, s3, s4, s5
+  Examples:
+    - courses 2\Code.org sat 11-2 nada.xlsx::Sheet1
+    - courses 2\Code.org sat 11-2 nada.xlsx::Sheet2
+    - courses 2\LEGO Sat 5-8.xlsx::level1
+
+  Pattern #5 — 19 files
+  Columns: age, fee_paid, grade, mobile, month_paid, name, s2, s3, s4, s5, s6, s_1
+  Examples:
+    - Esraa\8mon\fri8.xlsx::Sheet3
+    - Esraa\8mon\fri8.xlsx::Sheet4
+    - Esraa\8mon\fri8.xlsx::Sheet15
+
+  Pattern #6 — 16 files
+  Columns: name, number, paid, s1, s2, s3, s4, s5, start, teacher, time
+  Examples:
+    - courses 2\Old Courses\April 2024\Ev3 Sat 5-8.xlsx::Sheet1
+    - courses 2\Old Courses\April 2024\Spike fri 5-8.xlsx::Sheet1
+    - courses 2\Old Courses\August 2024\Ev3 fri 5-8.xlsx::Sheet1
+
+  Pattern #7 — 15 files
+  Columns: age, fee_paid, grade, mobile, month_paid, name, s1, s2, s3, s4
+  Examples:
+    - courses 2\Old Courses\Wedo sun 3.30.xlsx::Sheet1
+    - courses 2\Old Courses\Wedo sun 3.30.xlsx::Sheet2
+    - courses 2\Old Courses\Wedo sun 3.30.xlsx::Sheet3
+
+  Pattern #8 — 15 files
+  Columns: age, fee_paid, grade, mobile, month_paid, name, s1, s2, s3, s4, s5
+  Examples:
+    - courses 2\Old Courses\ramadan course sun 8-10.xlsx::Sheet1
+    - courses 2\Old Courses\wedo sat 2-4.xlsx::NOV
+    - courses 2\Old Courses\AAFFIAT\AAFFIAT December.xlsx::Fri 2-5
+
+  Pattern #9 — 15 files
+  Columns: age, fees, name, number, paid, s1, s2, s3, s4
+  Examples:
+    - courses 2\Old Courses\August 2024\ORCE\ORCE August.xlsx::Mon 3-5
+    - courses 2\Old Courses\August 2024\ORCE\ORCE August.xlsx::Mon 12-3
+    - courses 2\Old Courses\August 2024\ORCE\ORCE August.xlsx::Sun 12-3
+
+  Pattern #10 — 13 files
+  Columns: age, birth_date, mobile, name, paid, s1, s2, s3, s4, s5
+  Examples:
+    - courses 2\Old Courses\Biology Fri 6-8.xlsx::Sheet1
+    - courses 2\Old Courses\CSS L2 wed 2-4.xlsx::oct
+    - courses 2\Old Courses\CSS L2 wed 2-4.xlsx::css wed2-4
+
+
+FILE-LEVEL CLASSIFICATIONS
+----------------------------------------
+  [CourseAttendance      ] conf=0.06  → attendance\Afro_Mayo.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.06  → attendance\Friday.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Active
+  [CourseAttendance      ] conf=0.06  → attendance\monday.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Active
+  [CourseAttendance      ] conf=0.06  → attendance\saturday (Recovered).xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Active
+  [CourseAttendance      ] conf=0.06  → attendance\sunday.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Active
+  [CourseAttendance      ] conf=0.06  → attendance\thursday.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Active
+  [Unclassified          ] conf=0.00  → attendance\tuesday.xlsx
+    Recommended: _REORGANIZED/05_Unclassified
+  [CourseAttendance      ] conf=0.06  → attendance\wednesday.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Active
+  [CourseAttendance      ] conf=0.31  → courses 2\AAP Inventor nada sat 3-6.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Active
+  [CourseAttendance      ] conf=0.23  → courses 2\Code.org sat 11-2 nada.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Active
+  [CourseAttendance      ] conf=0.23  → courses 2\Html sat 6-8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Active
+  [CourseAttendance      ] conf=0.23  → courses 2\LEGO Sat 5-8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Active
+  [CourseAttendance      ] conf=0.31  → courses 2\Mobile aap nada  fri 5.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Active
+  [CourseAttendance      ] conf=0.31  → courses 2\SCRATCH FRI REEM 3.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Active
+  [CourseAttendance      ] conf=0.23  → courses 2\SPACE Mon5-8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Active
+  [CourseAttendance      ] conf=0.26  → courses 2\arduino w 2-5.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Active
+  [CourseAttendance      ] conf=0.23  → courses 2\code.org 12-3 mariam.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Active
+  [CourseAttendance      ] conf=0.31  → courses 2\css thu 3-5.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Active
+  [CourseAttendance      ] conf=0.31  → courses 2\html salma w 3-5.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Active
+  [CourseAttendance      ] conf=0.29  → courses 2\Old Courses\Biology Fri 6-8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\CSS L1 Fri 11-2.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.26  → courses 2\Old Courses\CSS L2 wed 2-4.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.26  → courses 2\Old Courses\CSS Mon 12-2.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.26  → courses 2\Old Courses\Digital marketing mon 4-7.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\EV3.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\Electronics sun 6-8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\Electronics wed 6-8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.34  → courses 2\Old Courses\HTML sun 11 30- 1 30.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\ICT MON.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\Java L1 Sat 2-4.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\Java L1 Thu 6-8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.17  → courses 2\Old Courses\Java Thu 1-3.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → courses 2\Old Courses\Junior Electronics fri 2-4.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.26  → courses 2\Old Courses\Junior scratch SAT 2-4.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.26  → courses 2\Old Courses\Junior scratch thu 6-8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.26  → courses 2\Old Courses\Python thu 6-8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\SPACE sat5-8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.26  → courses 2\Old Courses\Steam Park fri 6.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.26  → courses 2\Old Courses\Wedo 2 Fri 6-8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → courses 2\Old Courses\Wedo sun 3.30.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.26  → courses 2\Old Courses\Word 5-7 sat.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\electronecs nada sat 7-9.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\electronecs reem fri 12.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → courses 2\Old Courses\ramadan course sun 8-10.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → courses 2\Old Courses\spike fri2-4.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → courses 2\Old Courses\spike sat 11-2.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → courses 2\Old Courses\wedo sat 2-4.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\winter camp 11-15.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\winter camp 6-10.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\اسكراتش جم 2-4.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → courses 2\Old Courses\AAFFIAT\AAFFIAT December.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → courses 2\Old Courses\AAFFIAT\AAFFIAT NOV.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → courses 2\Old Courses\AAFFIAT\AAFFIAT October.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → courses 2\Old Courses\AAFFIAT\AAFIAT Feb.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → courses 2\Old Courses\AAFFIAT\AAFIAT SOFTWARE.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → courses 2\Old Courses\AAFFIAT\AAFIAT january 2025.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.34  → courses 2\Old Courses\April 2024\Ev3 Sat 5-8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.34  → courses 2\Old Courses\April 2024\HTML sun 11 30- 1 30.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.34  → courses 2\Old Courses\April 2024\Scratch Sun 12-3.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.34  → courses 2\Old Courses\April 2024\Spike fri 5-8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.29  → courses 2\Old Courses\August 2024\CSS L1 Wed 5-8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.29  → courses 2\Old Courses\August 2024\CSS L2 Fri 5-8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.34  → courses 2\Old Courses\August 2024\CSS Thu 12-3.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.34  → courses 2\Old Courses\August 2024\Ev3 Sat 6-8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\August 2024\Ev3 Wed 1-4.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.34  → courses 2\Old Courses\August 2024\Ev3 fri 5-8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\August 2024\HTML Sat 11-2.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.29  → courses 2\Old Courses\August 2024\HTML Sun 5-8 (Nihal).xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [Unclassified          ] conf=0.00  → courses 2\Old Courses\August 2024\HTML Wed 12-3.xlsx
+    Recommended: _REORGANIZED/05_Unclassified/corrupt
+  [CourseAttendance      ] conf=0.17  → courses 2\Old Courses\August 2024\HTML private mon (4-6) wed (6-8).xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [Unclassified          ] conf=0.00  → courses 2\Old Courses\August 2024\Jr Electronics 11-2.xlsx
+    Recommended: _REORGANIZED/05_Unclassified/corrupt
+  [CourseAttendance      ] conf=0.17  → courses 2\Old Courses\August 2024\Junior scratch sat 3-6.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.17  → courses 2\Old Courses\August 2024\Lego sat 3-6.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [Unclassified          ] conf=0.00  → courses 2\Old Courses\August 2024\Robo Electronics Fri 11-2.xlsx
+    Recommended: _REORGANIZED/05_Unclassified/corrupt
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\August 2024\Scratch Wed 4-7.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\August 2024\Spike Sat 11-2.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.34  → courses 2\Old Courses\August 2024\Spike Sat 2-5.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\August 2024\Spike fri 5-8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\August 2024\python mon 3-6.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\August 2024\wedo sat 11-2.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.29  → courses 2\Old Courses\August 2024\wedo thu 12-3.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.26  → courses 2\Old Courses\August 2024\ORCE\ORCE August.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.26  → courses 2\Old Courses\August 2024\ORCE\ORCE July.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.26  → courses 2\Old Courses\August 2024\ORCE\ORCE June.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → courses 2\Old Courses\Codeavour\Codeavour November.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → courses 2\Old Courses\FLL\FLL December 2024.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → courses 2\Old Courses\FLL\FLL January 2025.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → courses 2\Old Courses\FLL\FLL November 2024.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → courses 2\Old Courses\FLL\FLL October 2024.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → courses 2\Old Courses\FLL\FLL September 2024.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → courses 2\Old Courses\FLL\New Microsoft Excel Worksheet.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → courses 2\Old Courses\FLL\fll feb.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → courses 2\Old Courses\FLL\fll march 2025.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\July 2024\Ev3 Wed 2-5.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.34  → courses 2\Old Courses\July 2024\HTML - CSS project mon 4-7.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.34  → courses 2\Old Courses\July 2024\Html Sun 5-8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.29  → courses 2\Old Courses\July 2024\Java mon 1-3.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\July 2024\Junior Scratch Thu 5-8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.17  → courses 2\Old Courses\July 2024\Junior scratch sat 3-6.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\July 2024\Scratch Sun 12-3.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\July 2024\Spike Mon 2-5.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.34  → courses 2\Old Courses\July 2024\Spike Sat 2-5.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.34  → courses 2\Old Courses\July 2024\Spike fri 5-8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.29  → courses 2\Old Courses\July 2024\Wedo Mon 4-7.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.34  → courses 2\Old Courses\June 2024\Electronics fri 2-5.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.34  → courses 2\Old Courses\June 2024\Ev3 Sat 5-8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.34  → courses 2\Old Courses\June 2024\Ev3 fri 5-8 (Mariam).xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.29  → courses 2\Old Courses\June 2024\Junior scratch fri 5-7.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.29  → courses 2\Old Courses\June 2024\Junior scratch sat 11-2.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.34  → courses 2\Old Courses\June 2024\Scratch Sun 12-3.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.51  → courses 2\Old Courses\June 2024\robofest\April.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.51  → courses 2\Old Courses\June 2024\robofest\May.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.51  → courses 2\Old Courses\June 2024\robofest\june.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.49  → courses 2\Old Courses\June 2024\robofest\march.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → courses 2\Old Courses\littel 2025\Littel enistein sat 3-5.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → courses 2\Old Courses\littel 2025\littel enistein sat 3-6.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.29  → courses 2\Old Courses\March 2024\CSS 2 mon 3 - 5.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.40  → courses 2\Old Courses\March 2024\CSS mon 1-4.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [Unclassified          ] conf=0.00  → courses 2\Old Courses\March 2024\CSS sun-3-5.xlsx
+    Recommended: _REORGANIZED/05_Unclassified/corrupt
+  [Unclassified          ] conf=0.00  → courses 2\Old Courses\March 2024\Ev3 fr 2-5.xlsx
+    Recommended: _REORGANIZED/05_Unclassified/corrupt
+  [CourseAttendance      ] conf=0.29  → courses 2\Old Courses\March 2024\Human Body sat 3 to 6.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [Unclassified          ] conf=0.00  → courses 2\Old Courses\March 2024\Human body lv2 Sat 3-6.xlsx
+    Recommended: _REORGANIZED/05_Unclassified/corrupt
+  [CourseAttendance      ] conf=0.29  → courses 2\Old Courses\March 2024\ICT wed 10-12.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.34  → courses 2\Old Courses\March 2024\Wedo 1 fr 3-6.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [Unclassified          ] conf=0.00  → courses 2\Old Courses\March 2024\Wedo Diploma fr 5-8.xlsx
+    Recommended: _REORGANIZED/05_Unclassified/corrupt
+  [CourseAttendance      ] conf=0.29  → courses 2\Old Courses\March 2024\ev3 sat 12-2.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.40  → courses 2\Old Courses\March 2024\lego fr 2-5.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.34  → courses 2\Old Courses\March 2024\spike th 3-5.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.34  → courses 2\Old Courses\March 2024\wedo 2 fr 1-3.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.34  → courses 2\Old Courses\March 2024\wedo 2 sun 3-5.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.34  → courses 2\Old Courses\March 2024\wedo fr 5-8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.34  → courses 2\Old Courses\March 2024\wedo lv1 fr 2-5 (mariam).xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.34  → courses 2\Old Courses\May 2024\Wedo 2 (space) Mariam fr 2 to 5.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.34  → courses 2\Old Courses\May 2024\Wedo 2 fr 3-6.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.34  → courses 2\Old Courses\May 2024\ev3 fr 2-5.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\October 2024\AI fri 6-8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.17  → courses 2\Old Courses\October 2024\CSS L1 Sat 12-2.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\October 2024\CSS L2 Sat 2-4.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.26  → courses 2\Old Courses\October 2024\HTML Mon 12-2.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.26  → courses 2\Old Courses\October 2024\Junior scratch wed 4-6.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\October 2024\Scratch L2 Sat 3-6.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.26  → courses 2\Old Courses\October 2024\Wedo Fri 6-8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\October 2024\python L2 mon 3-6.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.17  → courses 2\Old Courses\September 2024\AAFFIAT.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\September 2024\Arduino Fri 2-5.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\September 2024\Arduino fri 11-2.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.29  → courses 2\Old Courses\September 2024\CSS L1 Sun 5-8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\September 2024\CSS L1 Wed 12-3.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.34  → courses 2\Old Courses\September 2024\CSS L2 Thu 12-3.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.34  → courses 2\Old Courses\September 2024\Ev3 L3 Sat 6-8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.34  → courses 2\Old Courses\September 2024\Ev3 L3 fri 5-8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\September 2024\Ev3 fri 3-6.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\September 2024\HTML Fri 11-2.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.29  → courses 2\Old Courses\September 2024\Java Sat 5-8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\September 2024\Junior Scratch L2 Thu 5-8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\September 2024\Lego fri-3-6.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\September 2024\Scratch L2 Wed 4-7.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\September 2024\Scratch Wed 12-3.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\September 2024\Scratch fri   12-3.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\September 2024\Soccer Mon 5-7.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\September 2024\Soccer Sat 2-5.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.17  → courses 2\Old Courses\September 2024\scratch sat 2-4.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\September 2024\spike mon 12-3.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → courses 2\Old Courses\September 2024\wedo L2 sat 11-2.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → courses 2\Robofest 2025\robofest (1).xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Active
+  [CourseAttendance      ] conf=0.31  → CRM\SAT.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Active
+  [CourseAttendance      ] conf=0.31  → Esraa\New Microsoft Excel Worksheet.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Active
+  [StaffAttendance       ] conf=0.50  → Esraa\Staff Attendance Sheet.xlsx
+    Recommended: _REORGANIZED/03_StaffAttendance
+  [CRM_SAT               ] conf=0.50  → Esraa\sat groups.xlsx
+    Recommended: _REORGANIZED/04_CRM_SAT
+  [Unclassified          ] conf=0.00  → Esraa\8mon\New Microsoft Excel Worksheet.xlsx
+    Recommended: _REORGANIZED/05_Unclassified
+  [CourseAttendance      ] conf=0.31  → Esraa\8mon\fri8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Active
+  [CourseAttendance      ] conf=0.31  → Esraa\8mon\mon.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Active
+  [CourseAttendance      ] conf=0.31  → Esraa\8mon\sat8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Active
+  [CourseAttendance      ] conf=0.31  → Esraa\8mon\sun8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Active
+  [CourseAttendance      ] conf=0.31  → Esraa\8mon\thu8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Active
+  [CourseAttendance      ] conf=0.31  → Esraa\8mon\wed8.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Active
+  [CourseAttendance      ] conf=0.31  → Esraa\fll sheets\fll.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Active
+  [CourseAttendance      ] conf=0.31  → Esraa\ROBOFEST SHEETS\robofest (1) - Copy.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Active
+  [CourseAttendance      ] conf=0.31  → Esraa\ROBOFEST SHEETS\robofest (4-5).xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Active
+  [CourseAttendance      ] conf=0.31  → Esraa\شهر مايو\THU.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → Esraa\شهر مايو\fri.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.23  → Esraa\شهر مايو\online and private course.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → Esraa\شهر مايو\sun.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → Esraa\شهر مايو\mon\mon.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → Esraa\شهر مايو\sat\sat.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → Esraa\شهر مايو\wed\New Microsoft Excel Worksheet.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → Esraa\شهر يونيو\fri6month.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → Esraa\شهر يونيو\mon month 6.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → Esraa\شهر يونيو\sat g 6month.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → Esraa\شهر يونيو\sun month 6.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → Esraa\شهر يونيو\thu 6 month.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → Esraa\شهر يونيو\wed6 month (Autosaved).xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → Esraa\شهر يونيو\wed6 month.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → Esraa\شهر7\fri7.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → Esraa\شهر7\mon 7.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → Esraa\شهر7\sat7.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → Esraa\شهر7\sun7.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [Unclassified          ] conf=0.00  → Esraa\شهر7\thu7 (Autosaved).xlsb
+    Recommended: _REORGANIZED/05_Unclassified/corrupt
+  [CourseAttendance      ] conf=0.31  → Esraa\شهر7\thu7.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → Esraa\شهر7\wed7 (Autosaved).xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive
+  [CourseAttendance      ] conf=0.31  → Esraa\شهر7\wed7.xlsx
+    Recommended: _REORGANIZED/01_CourseAttendance/Archive

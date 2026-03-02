@@ -203,7 +203,7 @@ with st.form("new_guardian_form", clear_on_submit=True):
 - [ ] `app/modules/academics/models.py`
 - [ ] `app/modules/academics/repository.py`
 - [ ] `app/modules/academics/service.py`
-- [ ] `app/ui/pages/1_👥_Guardian_Management.py`
-- [ ] `app/ui/pages/2_🎓_Student_Management.py`
-- [ ] `app/ui/pages/3_📚_Course_Management.py`
+- [ ] `app/ui/pages/1_Guardian_Management.py`
+- [ ] `app/ui/pages/2_Student_Management.py`
+- [ ] `app/ui/pages/3_Course_Management.py`
 - [ ] UI gracefully handles Database Integrity Errors (e.g., duplicate phone numbers).

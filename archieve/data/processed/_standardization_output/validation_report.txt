@@ -1,0 +1,46 @@
+QUALITY VALIDATION REPORT
+Generated: 2026-02-25T00:06:46.493145
+======================================================================
+
+── CLASSIFICATION CHECKS ───────────────────────────────────────────────
+  [PASS ✓] AC-01: Classification rate ≥ 95%
+           Actual: 95.0%  |  Threshold: ≥95.0%
+  [FAIL ✗] AC-07: Unresolved columns ≤ 5.0%
+           Actual: 59.6%  |  Threshold: ≤5.0%
+
+  Domain Distribution:
+    CourseAttendance              189 (94.0%)
+    Unclassified                   10 (5.0%)
+    StaffAttendance                 1 (0.5%)
+    CRM_SAT                         1 (0.5%)
+
+── MIGRATION AUDIT CHECKS ──────────────────────────────────────────────
+  [PASS ✓] AC-02: Migration completeness ≥ 98%
+           Actual: 100.0%  |  Threshold: ≥98.0%
+  [PASS ✓] AC-04: Zero ERROR rows in audit log
+           Actual: 0 errors  |  Threshold: 0 errors
+
+── FILE INTEGRITY CHECKS ───────────────────────────────────────────────
+  [PASS ✓] AC-06a: All migrated files exist at destination
+           Actual: 0 missing  |  Threshold: 0 missing
+  [PASS ✓] AC-06b: All migrated files have non-zero size
+           Actual: 0 zero-size  |  Threshold: 0 zero-size
+  [PASS ✓] AC-05: Lineage completeness = 100%
+           Actual: 100.0%  |  Threshold: 100%
+
+  Audit Summary:
+    Total entries    : 201
+    Successful copies: 201
+    Errors           : 0
+    Skipped          : 0
+
+── SEMANTIC VALIDATION CHECKS ──────────────────────────────────────────
+  [INFO] Semantic checks run against the raw metadata, not migrated rows.
+  [PASS ✓] SEM-01: CourseAttendance files have >0 data rows
+           Actual: 0 empty  |  Threshold: 0 empty
+  [PASS ✓] SEM-02: Competition files have confidence ≥ 0.3
+           Actual: 0 low-confidence  |  Threshold: 0 low-confidence
+
+======================================================================
+  FINAL VERDICT: SOME CHECKS FAILED — Review failures before proceeding
+======================================================================
