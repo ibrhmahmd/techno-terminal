@@ -102,7 +102,7 @@ Phase 2 builds the core data entry systems for the people (Guardians & Students)
 
 **UI Note:** Streamlit automatically orders the sidebar navigation alphabetically by filename. We use numbered prefixes to control the order.
 
-### `app/ui/pages/1_Guardian_Management.py`
+### `app/ui/pages/1_👥_Guardian_Management.py`
 
 **Mission:** Screen to add new parents or search existing ones.
 
@@ -112,7 +112,7 @@ Phase 2 builds the core data entry systems for the people (Guardians & Students)
   - Sidebar or Expander containing the "Add New Guardian" form (`st.form`).
 - **Interactions:** Calls `crm.service.search_guardians()` and `crm.service.register_guardian()`.
 
-### `app/ui/pages/2_Student_Management.py`
+### `app/ui/pages/2_🎓_Student_Management.py`
 
 **Mission:** Central hub for student registration.
 
@@ -123,7 +123,7 @@ Phase 2 builds the core data entry systems for the people (Guardians & Students)
   - "Student Profile" view showing linked guardians and a "Detected Siblings" alert.
 - **Interactions:** Calls `crm.service.register_student()`.
 
-### `app/ui/pages/3_Course_Management.py`
+### `app/ui/pages/3_📚_Course_Management.py`
 
 **Mission:** Admin screen to define courses and schedule physical groups.
 
@@ -203,7 +203,7 @@ with st.form("new_guardian_form", clear_on_submit=True):
 - [ ] `app/modules/academics/models.py`
 - [ ] `app/modules/academics/repository.py`
 - [ ] `app/modules/academics/service.py`
-- [ ] `app/ui/pages/1_Guardian_Management.py`
-- [ ] `app/ui/pages/2_Student_Management.py`
-- [ ] `app/ui/pages/3_Course_Management.py`
+- [ ] `app/ui/pages/1_👥_Guardian_Management.py`
+- [ ] `app/ui/pages/2_🎓_Student_Management.py`
+- [ ] `app/ui/pages/3_📚_Course_Management.py`
 - [ ] UI gracefully handles Database Integrity Errors (e.g., duplicate phone numbers).
