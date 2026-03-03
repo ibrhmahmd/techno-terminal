@@ -75,6 +75,13 @@ def link_guardian(
     return link
 
 
+def get_student_guardians(
+    session: Session, student_id: int
+) -> Sequence[StudentGuardian]:
+    stmt = select(StudentGuardian).where(StudentGuardian.student_id == student_id)
+    return session.exec(stmt).all()
+
+
 from sqlalchemy import text
 
 
