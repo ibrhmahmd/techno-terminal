@@ -4,6 +4,7 @@ from app.modules.crm.repository import get_student_by_id, get_student_guardians
 from app.modules.enrollments.service import get_student_enrollments
 from app.modules.attendance.service import get_attendance_summary
 from app.modules.academics.service import get_group_by_id
+from app.modules.finance import service as fin_srv
 from app.db.connection import get_session
 
 
@@ -75,6 +76,9 @@ def render_student_detail(student_id: int):
             att_summary = get_attendance_summary(e.id)
             att_str = f"✅ {att_summary.get('sessions_attended', 0)}   ❌ {att_summary.get('sessions_missed', 0)}"
 
+            balance_data = fin_srv.get_enrollment_balance(e.id)
+            balance = balance_data["balance"] if balance_data else None
+
             enr_data.append(
                 {
                     "Group": group_name,
@@ -84,12 +88,19 @@ def render_student_detail(student_id: int):
                     "Discount": f"-{e.discount_applied} EGP"
                     if e.discount_applied
                     else "-",
+                    "Balance": f"{balance:.0f} EGP" if balance is not None else "—",
                     "Attendance": att_str,
                     "Enrolled On": str(e.enrolled_at) if e.enrolled_at else "",
                 }
             )
 
         st.dataframe(pd.DataFrame(enr_data), hide_index=True, use_container_width=True)
+
+        # If any enrollment has an outstanding balance, show Pay Now shortcut
+        outstanding = [e for e in enrollments if e.status == "active"]
+        if outstanding:
+            if st.button("💰 Go to Finance — Create Receipt", use_container_width=True):
+                st.switch_page("pages/7_Finance.py")
     else:
         st.info("Student has no enrollment history.")
 

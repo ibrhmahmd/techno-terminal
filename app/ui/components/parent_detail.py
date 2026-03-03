@@ -3,6 +3,8 @@ import pandas as pd
 from app.db.connection import get_session
 from app.modules.crm.models import Guardian
 from app.modules.crm.repository import get_guardian_by_id
+from app.modules.finance import service as fin_srv
+from app.modules.enrollments.service import get_student_enrollments
 
 
 def render_parent_detail(parent_id: int):
@@ -58,8 +60,34 @@ def render_parent_detail(parent_id: int):
             st.dataframe(
                 pd.DataFrame(child_data), hide_index=True, use_container_width=True
             )
-        else:
-            st.warning("No children registered to this parent.")
+
+            # Financial Overview per child
+            st.divider()
+            st.markdown("#### 💳 Financial Overview")
+
+            any_balance = False
+            for c in children:
+                balances = fin_srv.get_student_financial_summary(c.id)
+                active_balances = [b for b in balances if b.get("balance", 0) > 0]
+                if active_balances:
+                    any_balance = True
+                    total_owed = sum(b["balance"] for b in active_balances)
+                    st.markdown(f"**{c.full_name}** — 🔴 Owes **{total_owed:.0f} EGP**")
+                    for b in active_balances:
+                        st.caption(
+                            f"  Enrollment #{b['enrollment_id']} | "
+                            f"Due: {b['net_due']:.0f} | Paid: {b['total_paid']:.0f} | Balance: {b['balance']:.0f} EGP"
+                        )
+                else:
+                    st.markdown(f"**{c.full_name}** — 🟢 No outstanding balance")
+
+            if any_balance:
+                if st.button(
+                    "💰 Create Receipt for this Parent",
+                    type="primary",
+                    use_container_width=True,
+                ):
+                    st.switch_page("pages/7_Finance.py")
 
     with st.expander("➕ Register a New Child"):
         st.markdown(

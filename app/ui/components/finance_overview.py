@@ -234,18 +234,32 @@ def render_finance_overview():
             receipts = fin_srv.get_daily_receipts(sel_date)
             if receipts:
                 df = pd.DataFrame(receipts)
-                disp = ["receipt_number", "guardian_name", "payment_method", "total"]
-                st.dataframe(
-                    df[[c for c in disp if c in df.columns]].rename(
-                        columns={
-                            "receipt_number": "Receipt #",
-                            "guardian_name": "Guardian",
-                            "payment_method": "Method",
-                            "total": "Total (EGP)",
-                        }
-                    ),
+                disp = [
+                    "receipt_number",
+                    "guardian_name",
+                    "payment_method",
+                    "total",
+                    "id",
+                ]
+                df_display = df[[c for c in disp if c in df.columns]].rename(
+                    columns={
+                        "receipt_number": "Receipt #",
+                        "guardian_name": "Guardian",
+                        "payment_method": "Method",
+                        "total": "Total (EGP)",
+                    }
+                )
+                event = st.dataframe(
+                    df_display.drop(columns=["id"], errors="ignore"),
                     hide_index=True,
                     use_container_width=True,
+                    selection_mode="single-row",
+                    on_select="rerun",
                 )
+                if event.selection.rows:
+                    sel_idx = event.selection.rows[0]
+                    receipt_id = receipts[sel_idx]["id"]
+                    st.session_state["selected_receipt_id"] = receipt_id
+                    st.rerun()
             else:
                 st.info("No receipts for this date.")
