@@ -175,7 +175,7 @@ def render_competition_overview():
                     group_opts = {"— Select group to pick students —": None}
                     group_opts.update(
                         {
-                            f"{g['group_name']} ({g['course_name']})": g["group_id"]
+                            f"{g['group_name']} ({g['course_name']})": g["id"]
                             for g in all_groups
                         }
                     )
