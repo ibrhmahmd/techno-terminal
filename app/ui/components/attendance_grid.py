@@ -1,6 +1,4 @@
 import streamlit as st
-import pandas as pd
-from datetime import date
 from app.db.connection import get_session
 from app.modules.crm.models import Student
 from app.modules.attendance import service as att_srv
@@ -62,8 +60,9 @@ def render_attendance_grid(sessions: list, roster: list):
             )
 
     # Build the view grid
-    st.markdown("### Attendance")
+    st.markdown("#### Attendance")
     st.caption("Click a cell to toggle: ◻️ (Unmarked) ➔ ✅ (Present) ➔ ❌ (Absent)")
+    st.caption("Click a student's name to view their profile in Student Management.")
 
     # Construct columns headers
     cols = st.columns([2] + [1] * len(sessions))
@@ -78,7 +77,14 @@ def render_attendance_grid(sessions: list, roster: list):
     for enr in roster:
         sid = enr.student_id
         row_cols = st.columns([2] + [1] * len(sessions))
-        row_cols[0].write(student_map[sid])
+
+        # Clickable student name routing to Student Management target
+        if row_cols[0].button(
+            student_map[sid], key=f"nav_stu_{sid}", help="Go to Student Profile"
+        ):
+            st.session_state["nav_target_student_id"] = sid
+            # Switch page to Student Management
+            st.switch_page("pages/2_Student_Management.py")
 
         for i, sess in enumerate(sessions):
             state = current_state.get((sid, sess.id), None)
