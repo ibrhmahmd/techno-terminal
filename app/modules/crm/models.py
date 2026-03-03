@@ -1,5 +1,21 @@
 from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, List
+from datetime import datetime
+
+
+class StudentGuardian(SQLModel, table=True):
+    __tablename__ = "student_guardians"
+    __table_args__ = {"extend_existing": True}
+
+    student_id: int = Field(foreign_key="students.id", primary_key=True)
+    guardian_id: int = Field(foreign_key="guardians.id", primary_key=True)
+    relationship: Optional[str] = None
+    is_primary: bool = False  # schema: is_primary (not is_primary_contact)
+    created_at: Optional[datetime] = None
+
+    # Link objects directly
+    student: Optional["Student"] = Relationship(back_populates="guardian_links")
+    guardian: Optional["Guardian"] = Relationship()
 
 
 class Guardian(SQLModel, table=True):
@@ -18,7 +34,7 @@ class Guardian(SQLModel, table=True):
 
     # Relationship back to students
     students: List["Student"] = Relationship(
-        back_populates="guardians", link_model=lambda: StudentGuardian
+        back_populates="guardians", link_model=StudentGuardian
     )
 
 
@@ -39,23 +55,8 @@ class Student(SQLModel, table=True):
 
     # Relationship back to guardians
     guardians: List["Guardian"] = Relationship(
-        back_populates="students", link_model=lambda: StudentGuardian
+        back_populates="students", link_model=StudentGuardian
     )
 
     # For fetching the link rows directly
     guardian_links: List["StudentGuardian"] = Relationship(back_populates="student")
-
-
-class StudentGuardian(SQLModel, table=True):
-    __tablename__ = "student_guardians"
-    __table_args__ = {"extend_existing": True}
-
-    student_id: int = Field(foreign_key="students.id", primary_key=True)
-    guardian_id: int = Field(foreign_key="guardians.id", primary_key=True)
-    relationship: Optional[str] = None
-    is_primary: bool = False  # schema: is_primary (not is_primary_contact)
-    created_at: Optional[datetime] = None
-
-    # Link objects directly
-    student: Optional[Student] = Relationship(back_populates="guardian_links")
-    guardian: Optional[Guardian] = Relationship()
