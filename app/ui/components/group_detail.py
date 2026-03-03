@@ -95,8 +95,12 @@ def render_group_detail(group_id: int):
         # Suggest next date for extra session
         next_date = date.today()
         if sessions:
-            last_date_str = max(s.session_date for s in sessions)
-            last_date = date.fromisoformat(last_date_str)
+            last_date_val = max(s.session_date for s in sessions)
+            if isinstance(last_date_val, str):
+                last_date = date.fromisoformat(last_date_val)
+            else:
+                last_date = last_date_val
+
             if group_info.default_day:
                 next_date = _next_weekday(last_date, group_info.default_day)
             else:
