@@ -133,3 +133,21 @@ def find_siblings(student_id: int) -> list[dict]:
     """Returns sibling data for the UI using the v_siblings database view."""
     with get_session() as session:
         return repo.get_siblings(session, student_id)
+
+
+def get_guardian_students(guardian_id: int) -> list[Student]:
+    """Returns all Student objects linked to a given guardian."""
+    from app.modules.crm.models import StudentGuardian
+    from sqlmodel import select as sql_select
+
+    with get_session() as session:
+        stmt = sql_select(StudentGuardian).where(
+            StudentGuardian.guardian_id == guardian_id
+        )
+        links = session.exec(stmt).all()
+        students = []
+        for link in links:
+            s = session.get(Student, link.student_id)
+            if s and s.is_active:
+                students.append(s)
+        return students

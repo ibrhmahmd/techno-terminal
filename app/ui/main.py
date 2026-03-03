@@ -12,6 +12,7 @@ with st.sidebar:
     st.divider()
 
     st.page_link("pages/0_Dashboard.py", label="Dashboard", icon="🏠")
+    st.page_link("pages/7_Finance.py", label="Finance", icon="💳")
 
     st.divider()
 
