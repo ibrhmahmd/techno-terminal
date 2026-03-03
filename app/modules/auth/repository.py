@@ -25,3 +25,8 @@ def update_last_login(session: Session, user_id: int) -> None:
     if user:
         user.last_login = datetime.now(timezone.utc)
         session.add(user)
+
+
+def get_active_employees(session: Session) -> list[Employee]:
+    stmt = select(Employee).where(Employee.is_active == True)
+    return session.exec(stmt).all()

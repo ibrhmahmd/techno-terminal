@@ -6,11 +6,11 @@ from app.modules.crm import service as crm_srv
 # Enforce auth
 require_auth()
 
-st.title("👥 Guardian Management")
-st.markdown("Search existing guardians or register a new one.")
+st.title("👥 Parent Management")
+st.markdown("Search existing parents or register a new one.")
 
 # --- Search Section ---
-st.subheader("Search Guardians")
+st.subheader("Search Parents")
 search_query = st.text_input(
     "Search by Name or Phone (min 2 chars)", placeholder="e.g. 01012345678 or Ahmed"
 )
@@ -30,14 +30,14 @@ if search_query and len(search_query) >= 2:
         ]
         st.dataframe(df[display_cols], use_container_width=True, hide_index=True)
     else:
-        st.info("No guardians found matching your search.")
+        st.info("No parents found matching your search.")
 
 # --- Registration Form ---
 st.divider()
-st.subheader("Add New Guardian")
+st.subheader("Add New Parent")
 
-with st.expander("Register Guardian Form", expanded=False):
-    with st.form("new_guardian_form", clear_on_submit=True):
+with st.expander("Register Parent Form", expanded=False):
+    with st.form("new_parent_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
 
         with col1:
@@ -55,7 +55,7 @@ with st.expander("Register Guardian Form", expanded=False):
             email = st.text_input("Email (Optional)")
             notes = st.text_area("Notes (Optional)", height=68)
 
-        submit_btn = st.form_submit_button("Register Guardian", type="primary")
+        submit_btn = st.form_submit_button("Register Parent", type="primary")
 
         if submit_btn:
             # Prepare data

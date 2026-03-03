@@ -58,6 +58,7 @@ with tab_enroll:
                 sel_group = next((g for g in groups if g.id == selected_group_id), None)
                 # Look up course for default price
                 default_price = 0.0
+
                 if sel_group:
                     courses = acad_srv.get_active_courses()
                     course = next(

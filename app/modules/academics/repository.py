@@ -91,6 +91,31 @@ def get_enriched_groups(session: Session) -> list[dict]:
     return [dict(row._mapping) for row in result.all()]
 
 
+def get_enriched_groups_by_date(session: Session, target_date: str) -> list[dict]:
+    """Returns active groups that have at least one session on the given date."""
+    stmt = text("""
+        SELECT DISTINCT
+            g.id,
+            g.name AS group_name,
+            c.name AS course_name,
+            COALESCE(e.full_name, 'Unassigned') AS instructor_name,
+            g.level_number,
+            g.default_day,
+            g.default_time_start,
+            g.default_time_end,
+            g.max_capacity,
+            g.status
+        FROM groups g
+        JOIN courses c ON g.course_id = c.id
+        LEFT JOIN employees e ON g.instructor_id = e.id
+        JOIN sessions s ON g.id = s.group_id
+        WHERE g.status = 'active' AND s.session_date = :target_date
+        ORDER BY g.id
+    """)
+    result = session.execute(stmt, {"target_date": target_date})
+    return [dict(row._mapping) for row in result.all()]
+
+
 # --- Session (CourseSession) Repository ---
 
 from .session_models import CourseSession

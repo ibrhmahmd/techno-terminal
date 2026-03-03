@@ -41,3 +41,8 @@ def change_password(user_id: int, current_password: str, new_password: str) -> b
         new_hash = hash_password(new_password)
         repo.update_password_hash(session, user_id, new_hash)
     return True
+
+
+def get_active_instructors() -> list[User]:  # Just returning Employees
+    with get_session() as session:
+        return list(repo.get_active_employees(session))

@@ -175,6 +175,12 @@ def get_all_active_groups_enriched() -> list[dict]:
         return repo.get_enriched_groups(session)
 
 
+def get_todays_groups_enriched() -> list[dict]:
+    """Returns active groups that have at least one session scheduled for today."""
+    with get_session() as session:
+        return repo.get_enriched_groups_by_date(session, date.today().isoformat())
+
+
 def get_group_by_id(group_id: int) -> Group | None:
     with get_session() as session:
         return repo.get_group_by_id(session, group_id)
