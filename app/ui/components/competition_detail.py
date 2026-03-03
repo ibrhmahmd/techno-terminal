@@ -33,6 +33,34 @@ def render_competition_detail(competition_id: int):
     if comp.notes:
         st.info(f"**Notes:** {comp.notes}")
 
+    with st.expander("✏️ Edit / Delete Competition"):
+        e1, e2 = st.columns(2)
+        u_name = e1.text_input("Name", value=comp.name, key="uc_name")
+        u_edition = e2.text_input("Edition", value=comp.edition or "", key="uc_edition")
+        e3, e4 = st.columns(2)
+        u_date = e3.date_input(
+            "Date", value=comp.competition_date or None, key="uc_date"
+        )
+        u_location = e4.text_input("Location", value=comp.location or "", key="uc_loc")
+        u_notes = st.text_area("Notes", value=comp.notes or "", key="uc_notes")
+
+        c_save, c_del = st.columns(2)
+        if c_save.button("✅ Save Changes", type="primary", key="uc_save"):
+            comp_srv.update_competition(
+                comp.id,
+                name=u_name,
+                edition=u_edition or None,
+                competition_date=u_date,
+                location=u_location or None,
+                notes=u_notes or None,
+            )
+            st.success("Updated!")
+            st.rerun()
+        if c_del.button("🗑️ Delete Competition", key="uc_del"):
+            comp_srv.delete_competition(comp.id)
+            del st.session_state["selected_competition_id"]
+            st.rerun()
+
     st.divider()
 
     st.markdown("### Categories & Teams")
@@ -45,9 +73,17 @@ def render_competition_detail(competition_id: int):
             cat = cat_data["category"]
             teams = cat_data["teams"]
 
-            st.markdown(f"#### 📂 {cat.category_name}")
-            if cat.notes:
-                st.caption(cat.notes)
+            cat_col, del_cat_col = st.columns([5, 1])
+            with cat_col:
+                st.markdown(f"#### 📂 {cat.category_name}")
+                if cat.notes:
+                    st.caption(cat.notes)
+            with del_cat_col:
+                if st.button(
+                    "🗑️ Delete", key=f"del_cat_{cat.id}", help="Delete Category"
+                ):
+                    comp_srv.delete_category(cat.id)
+                    st.rerun()
 
             if not teams:
                 st.markdown("*No teams registered in this category.*")
@@ -72,9 +108,16 @@ def render_competition_detail(competition_id: int):
                     with st.expander(
                         f"👥 {team.team_name} — {len(members)} members ({paid_count}/{len(members)} fees paid)"
                     ):
-                        st.markdown(
-                            f"**Coach:** {coach_name} | **Fee per student:** {fee}"
-                        )
+                        t_col1, t_col2 = st.columns([3, 1])
+                        with t_col1:
+                            st.markdown(
+                                f"**Coach:** {coach_name} | **Fee per student:** {fee}"
+                            )
+                        with t_col2:
+                            if st.button("🗑️ Delete Team", key=f"del_team_{team.id}"):
+                                comp_srv.delete_team(team.id)
+                                st.rerun()
+
                         if members:
                             from app.modules.crm.models import Student
 
@@ -88,15 +131,62 @@ def render_competition_detail(competition_id: int):
                                         else f"Student #{m.student_id}",
                                         "Fee Paid": "✅ Yes" if m.fee_paid else "❌ No",
                                         "Payment ID": m.payment_id or "—",
+                                        "User ID": m.student_id,
                                     }
                                 )
                             st.dataframe(
-                                pd.DataFrame(member_list),
+                                pd.DataFrame(member_list).drop(columns=["User ID"]),
                                 hide_index=True,
                                 use_container_width=True,
                             )
                         else:
                             st.caption("No members in this team.")
+
+                        # Add member inline form
+                        st.markdown("##### ➕ Add Member")
+                        am_search = st.text_input(
+                            "Search Student by Name", key=f"am_q_{team.id}"
+                        )
+                        if am_search and len(am_search) >= 2:
+                            from app.modules.crm.repository import search_students
+
+                            results = search_students(db, am_search)
+                            if results:
+                                existing_ids = [m.student_id for m in members]
+                                available = [
+                                    s
+                                    for s in results
+                                    if s.id not in existing_ids and s.is_active
+                                ]
+                                if available:
+                                    s_opts = {
+                                        f"{s.full_name} ({s.phone_primary or 'No Phone'})": s.id
+                                        for s in available
+                                    }
+                                    sel_s = st.selectbox(
+                                        "Select Student",
+                                        list(s_opts.keys()),
+                                        key=f"am_sel_{team.id}",
+                                    )
+                                    if st.button(
+                                        "Add to Team",
+                                        key=f"am_btn_{team.id}",
+                                        type="primary",
+                                    ):
+                                        try:
+                                            comp_srv.add_team_member_to_existing(
+                                                team.id, s_opts[sel_s]
+                                            )
+                                            st.success("Member added!")
+                                            st.rerun()
+                                        except Exception as e:
+                                            st.error(f"❌ {e}")
+                                else:
+                                    st.info(
+                                        "All matching active students are already on this team."
+                                    )
+                            else:
+                                st.info("No active students found.")
             st.write("")  # Spacing between categories
 
     st.divider()

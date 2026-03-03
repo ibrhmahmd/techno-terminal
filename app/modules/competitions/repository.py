@@ -42,6 +42,27 @@ def get_competition(db: Session, competition_id: int) -> Competition | None:
     return db.get(Competition, competition_id)
 
 
+def update_competition(
+    db: Session, competition_id: int, **kwargs
+) -> Competition | None:
+    c = db.get(Competition, competition_id)
+    if c:
+        for k, v in kwargs.items():
+            setattr(c, k, v)
+        db.add(c)
+        db.flush()
+    return c
+
+
+def delete_competition(db: Session, competition_id: int) -> bool:
+    c = db.get(Competition, competition_id)
+    if c:
+        db.delete(c)
+        db.flush()
+        return True
+    return False
+
+
 # ── Categories ────────────────────────────────────────────────────────────────
 
 
@@ -70,6 +91,27 @@ def list_categories(db: Session, competition_id: int) -> list[CompetitionCategor
 
 def get_category(db: Session, category_id: int) -> CompetitionCategory | None:
     return db.get(CompetitionCategory, category_id)
+
+
+def update_category(
+    db: Session, category_id: int, **kwargs
+) -> CompetitionCategory | None:
+    cat = db.get(CompetitionCategory, category_id)
+    if cat:
+        for k, v in kwargs.items():
+            setattr(cat, k, v)
+        db.add(cat)
+        db.flush()
+    return cat
+
+
+def delete_category(db: Session, category_id: int) -> bool:
+    cat = db.get(CompetitionCategory, category_id)
+    if cat:
+        db.delete(cat)
+        db.flush()
+        return True
+    return False
 
 
 # ── Teams ─────────────────────────────────────────────────────────────────────
@@ -105,6 +147,25 @@ def get_team(db: Session, team_id: int) -> Team | None:
     return db.get(Team, team_id)
 
 
+def update_team(db: Session, team_id: int, **kwargs) -> Team | None:
+    t = db.get(Team, team_id)
+    if t:
+        for k, v in kwargs.items():
+            setattr(t, k, v)
+        db.add(t)
+        db.flush()
+    return t
+
+
+def delete_team(db: Session, team_id: int) -> bool:
+    t = db.get(Team, team_id)
+    if t:
+        db.delete(t)
+        db.flush()
+        return True
+    return False
+
+
 # ── Team Members ──────────────────────────────────────────────────────────────
 
 
@@ -133,11 +194,21 @@ def list_student_memberships(db: Session, student_id: int) -> list[TeamMember]:
 
 
 def mark_fee_paid(
-    db: Session, team_id: int, student_id: int, payment_id: int
+    db: Session, team_id: int, student_id: int, payment_id: int | None
 ) -> TeamMember | None:
     m = get_team_member(db, team_id, student_id)
     if m:
-        m.fee_paid = True
+        m.fee_paid = payment_id is not None
         m.payment_id = payment_id
         db.add(m)
+        db.flush()
     return m
+
+
+def remove_team_member(db: Session, team_id: int, student_id: int) -> bool:
+    m = get_team_member(db, team_id, student_id)
+    if m:
+        db.delete(m)
+        db.flush()
+        return True
+    return False

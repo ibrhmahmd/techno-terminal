@@ -66,6 +66,16 @@ def list_competitions() -> list[Competition]:
         return repo.list_competitions(db)
 
 
+def update_competition(competition_id: int, **kwargs) -> Competition | None:
+    with get_session() as db:
+        return repo.update_competition(db, competition_id, **kwargs)
+
+
+def delete_competition(competition_id: int) -> bool:
+    with get_session() as db:
+        return repo.delete_competition(db, competition_id)
+
+
 def add_category(
     competition_id: int,
     category_name: str,
@@ -83,6 +93,16 @@ def add_category(
 def list_categories(competition_id: int) -> list[CompetitionCategory]:
     with get_session() as db:
         return repo.list_categories(db, competition_id)
+
+
+def update_category(category_id: int, **kwargs) -> CompetitionCategory | None:
+    with get_session() as db:
+        return repo.update_category(db, category_id, **kwargs)
+
+
+def delete_category(category_id: int) -> bool:
+    with get_session() as db:
+        return repo.delete_category(db, category_id)
 
 
 # ── Teams ─────────────────────────────────────────────────────────────────────
@@ -114,6 +134,13 @@ def register_team(
         if not cat:
             raise ValueError(f"Category {category_id} not found.")
 
+        # Validate team name uniqueness in this category
+        existing_teams = repo.list_teams(db, category_id)
+        if any(t.team_name.lower() == team_name.lower() for t in existing_teams):
+            raise ValueError(
+                f"A team named '{team_name}' already exists in this category."
+            )
+
         # Validate all students are active
         for sid in student_ids:
             s = db.get(Student, sid)
@@ -142,6 +169,44 @@ def register_team(
 def list_teams(category_id: int) -> list[Team]:
     with get_session() as db:
         return repo.list_teams(db, category_id)
+
+
+def update_team(team_id: int, **kwargs) -> Team | None:
+    with get_session() as db:
+        return repo.update_team(db, team_id, **kwargs)
+
+
+def delete_team(team_id: int) -> bool:
+    with get_session() as db:
+        return repo.delete_team(db, team_id)
+
+
+def add_team_member_to_existing(team_id: int, student_id: int) -> dict:
+    from app.modules.crm.models import Student
+
+    with get_session() as db:
+        team = repo.get_team(db, team_id)
+        if not team:
+            raise ValueError(f"Team {team_id} not found.")
+        s = db.get(Student, student_id)
+        if not s or not s.is_active:
+            raise ValueError(f"Student {student_id} not found or inactive.")
+
+        existing = repo.get_team_member(db, team_id, student_id)
+        if existing:
+            raise ValueError(f"Student is already a member of this team.")
+
+        m = repo.add_team_member(db, team_id, student_id)
+        return {
+            "team_member_id": m.id,
+            "student_id": m.student_id,
+            "student_name": s.full_name,
+        }
+
+
+def remove_team_member(team_id: int, student_id: int) -> bool:
+    with get_session() as db:
+        return repo.remove_team_member(db, team_id, student_id)
 
 
 def list_team_members(team_id: int) -> list[dict]:
