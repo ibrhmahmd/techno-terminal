@@ -64,14 +64,58 @@ def render_attendance_grid(sessions: list, roster: list):
     st.caption("Click a cell to toggle: ◻️ (Unmarked) ➔ ✅ (Present) ➔ ❌ (Absent)")
     st.caption("Click a student's name to view their profile in Student Management.")
 
+    # Pre-fetch instructor names
+    from app.modules.auth import service as auth_srv
+
+    instructors = auth_srv.get_active_instructors()
+    inst_map = {i.id: i.full_name for i in instructors}
+
     # Construct columns headers
     cols = st.columns([2] + [1] * len(sessions))
     cols[0].markdown("**Student Name**")
     for i, sess in enumerate(sessions):
+        actual_instructor_name = inst_map.get(sess.actual_instructor_id, "Unassigned")
+        header_html = f"**S{sess.session_number}**<br/><small>{actual_instructor_name}</small><br/><small>{sess.session_date}</small>"
         cols[i + 1].markdown(
-            f"**S{sess.session_number}**<br/><small>{sess.session_date}</small>",
+            header_html,
             unsafe_allow_html=True,
         )
+
+        # Delete logic with confirmation state
+        delete_key = f"del_confirm_{sess.id}"
+        if delete_key not in st.session_state:
+            st.session_state[delete_key] = False
+
+        if not st.session_state[delete_key]:
+            if cols[i + 1].button(
+                "🗑️ Del",
+                key=f"del_init_{sess.id}",
+                use_container_width=True,
+                help="Delete Session",
+            ):
+                st.session_state[delete_key] = True
+                st.rerun()
+        else:
+            if cols[i + 1].button(
+                "Confirm?",
+                key=f"del_yes_{sess.id}",
+                type="primary",
+                use_container_width=True,
+            ):
+                try:
+                    from app.modules.academics import service as acad_srv
+
+                    acad_srv.delete_session(sess.id)
+                    del st.session_state[delete_key]
+                    st.rerun()
+                except Exception as e:
+                    st.error("Clear attendance first")
+                    st.session_state[delete_key] = False
+            if cols[i + 1].button(
+                "Cancel", key=f"del_no_{sess.id}", use_container_width=True
+            ):
+                st.session_state[delete_key] = False
+                st.rerun()
 
     # Render rows
     for enr in roster:

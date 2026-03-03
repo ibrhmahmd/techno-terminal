@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import time
+import datetime
 
 from app.modules.academics import service as acad_srv
 from app.modules.auth import service as auth_srv
@@ -138,17 +139,50 @@ def modal_browse_all_groups(all_groups: list[dict]):
 def render_group_overview():
     col_l, col_r = st.columns([3, 1])
     with col_l:
-        st.subheader("Today's Groups")
+        st.subheader("Groups by Day")
     with col_r:
         if st.button("➕ Create Group", use_container_width=True):
             modal_create_group()
 
+    # 7 day buttons
+    days = [
+        "Saturday",
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+    ]
+
+    if "selected_day_filter" not in st.session_state:
+        # Default to today's day name
+        st.session_state["selected_day_filter"] = datetime.date.today().strftime("%A")
+
+    day_cols = st.columns(7)
+    for i, day in enumerate(days):
+        is_selected = day == st.session_state["selected_day_filter"]
+        if day_cols[i].button(
+            day,
+            use_container_width=True,
+            type="primary" if is_selected else "secondary",
+        ):
+            st.session_state["selected_day_filter"] = day
+            st.rerun()
+
     # Search bar
     search_q = st.text_input(
-        "🔍 Search Groups (name, course, day, time)", help="Filters the list below"
+        "🔍 Search Groups (name, course, time)", help="Filters the list below"
     )
 
-    todays_groups = acad_srv.get_todays_groups_enriched()
+    # Fetch all active groups to filter by standard day
+    # This solves the bug where groups wouldn't show up if their first session was missing or postponed
+    all_groups = acad_srv.get_all_active_groups_enriched()
+    todays_groups = [
+        g
+        for g in all_groups
+        if g["default_day"] == st.session_state["selected_day_filter"]
+    ]
 
     # Filter live based on search_q
     if search_q:
@@ -158,7 +192,6 @@ def render_group_overview():
             for g in todays_groups
             if q in g["group_name"].lower()
             or q in g["course_name"].lower()
-            or q in g["default_day"].lower()
             or q in str(g["default_time_start"]).lower()
         ]
 

@@ -47,46 +47,8 @@ def render_group_detail(group_id: int):
 
     st.divider()
 
-    # 1. Sessions Management panel (Full Width or Centered)
+    # Fetch sessions for attendance grid
     sessions = acad_srv.list_group_sessions(group_id, int(level_filter))
-
-    # Pre-fetch instructor names for sessions
-    instructors = auth_srv.get_active_instructors()
-    inst_map = {i.id: i.full_name for i in instructors}
-
-    st.markdown("#### Sessions")
-    if sessions:
-        for s in sessions:
-            delete_key = f"del_confirm_{s.id}"
-            actual_instructor_name = inst_map.get(s.actual_instructor_id, "Unassigned")
-
-            # Session row
-            sc1, sc2, sc3 = st.columns([4, 2, 1])
-            lbl = f"**S{s.session_number}:** {s.session_date} | Instructor: {actual_instructor_name}"
-            if s.is_extra_session:
-                lbl += " ⭐"
-            sc1.write(lbl)
-
-            # Delete logic with confirmation state
-            if delete_key not in st.session_state:
-                st.session_state[delete_key] = False
-
-            if not st.session_state[delete_key]:
-                if sc3.button("🗑️", key=f"del_init_{s.id}"):
-                    st.session_state[delete_key] = True
-                    st.rerun()
-            else:
-                st.error(f"Delete S{s.session_number}?")
-                cc1, cc2 = sc3.columns(2)
-                if cc1.button("Yes", key=f"del_yes_{s.id}", type="primary"):
-                    acad_srv.delete_session(s.id)
-                    del st.session_state[delete_key]
-                    st.rerun()
-                if cc2.button("No", key=f"del_no_{s.id}"):
-                    st.session_state[delete_key] = False
-                    st.rerun()
-    else:
-        st.info("No sessions yet.")
 
     # Suggest next date for extra session
     next_date = date.today()
