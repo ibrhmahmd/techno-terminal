@@ -11,6 +11,15 @@ The Streamlit UI layer consumes services directly. A future FastAPI layer will u
 modules: crm · academics · enrollments · attendance · finance · competitions
 ```
 
+> **Status as of March 2026:**
+>
+> - ✅ Phase 1 — Core Foundation & Security: **COMPLETE**
+> - ✅ Phase 2 — CRM Core: **COMPLETE**
+> - ✅ Phase 3 — Daily Operations: **COMPLETE** (with full UX overhaul)
+> - ✅ Phase 4 — Financial Ledger: **COMPLETE**
+> - ⏳ Phase 5 — Competitions & Teams: **PENDING**
+> - ⏳ Phase 6 — Reporting & Analytics: **PENDING**
+
 ---
 
 ## Phase 1 — Core Foundation & Security
@@ -102,10 +111,38 @@ modules: crm · academics · enrollments · attendance · finance · competition
 
 ---
 
-## Phase 3 — Daily Operations
+## Phase 3 — Daily Operations ✅ COMPLETE
 
 > **Goal:** The core daily workflow — enrolling students, scheduling sessions, and marking attendance.
 > **Modules touched:** `modules/enrollments/`, `modules/attendance/`, `modules/academics/` (sessions)
+> **Technical plan:** See `07_phase3_technical_plan.md`
+
+### Phase 3 Completion Notes
+
+All backend services and UI pages were implemented. Additionally, a major **UX Overhaul** was performed that restructured **all entity management pages** (Groups, Students, Parents, Courses) into a unified **Overview → Detail** pattern:
+
+- **Overview page:** search/filter bar + summary table → clicking a row sets a session state key and reruns
+- **Detail page:** renders the selected entity with full management controls; Back button clears session state
+
+**Specific Group Management changes:**
+
+- `group_overview.py`: 7-day filter buttons (one per weekday) replace the old "Today's Groups" query. Groups are now filtered by their `default_day` field, not by session date joins — this fixed a bug where newly created groups were invisible.
+- `group_detail.py`: Separate session list was removed. Session delete buttons and instructor names were moved directly into the attendance grid column headers.
+- `attendance_grid.py`: Headers now show: session number + instructor name + session date + delete button. Student name buttons navigate to the Student Detail page.
+
+**Components created:**
+
+- `app/ui/components/group_overview.py`
+- `app/ui/components/group_detail.py`
+- `app/ui/components/attendance_grid.py`
+- `app/ui/components/student_overview.py`
+- `app/ui/components/student_detail.py`
+- `app/ui/components/parent_overview.py`
+- `app/ui/components/parent_detail.py`
+- `app/ui/components/course_overview.py`
+- `app/ui/components/course_detail.py`
+
+---
 
 ### 3.1 Enrollment Management (`modules/enrollments/`)
 
@@ -158,10 +195,30 @@ modules: crm · academics · enrollments · attendance · finance · competition
 
 ---
 
-## Phase 4 — Financial Ledger
+## Phase 4 — Financial Ledger ✅ COMPLETE
 
 > **Goal:** Full accounting at the point of collection — receipts, split payments, balance tracking, and refunds.
 > **Module touched:** `modules/finance/`
+> **Technical plan:** See `08_phase4_technical_plan.md`
+
+### Phase 4 Completion Notes
+
+All backend services, repository functions, and UI pages were implemented.
+
+**Key design decisions:**
+
+- A single receipt can cover multiple children of the same guardian (parent pays for all kids at once)
+- No `total_amount` stored on receipts — always derived from `payments` rows via `v_enrollment_balance` view
+- `transaction_type`: `'payment'` = money in, `'charge'` = obligation, `'refund'` = money out (all amounts positive)
+- Receipt numbers formatted as `TK-YYYY-{id:05d}`
+
+**Cross-module integration added:**
+
+- `student_detail.py` — Balance column added to the enrollment table; Pay Now shortcut button
+- `parent_detail.py` — Financial Overview section shows per-child balance status; Create Receipt button
+- Daily Summary receipt table is clickable and opens the Receipt Detail view
+
+---
 
 ### 4.1 Point of Sale — Receipt Creation
 
