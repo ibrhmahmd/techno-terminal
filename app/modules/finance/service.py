@@ -82,19 +82,22 @@ def finalize_receipt(receipt_id: int) -> dict:
 
 
 def issue_refund(
-    enrollment_id: int,
+    payment_id: int,
     amount: float,
     reason: str,
     received_by_user_id: Optional[int],
 ) -> dict:
-    """Opens a new receipt and adds a refund line for an enrollment."""
+    """Opens a new receipt and adds a refund line based on an original payment."""
     if amount <= 0:
         raise ValueError("Refund amount must be greater than 0.")
     with get_session() as db:
-        enr = db.get(Enrollment, enrollment_id)
-        if not enr:
-            raise ValueError(f"Enrollment {enrollment_id} not found.")
-        student_id = enr.student_id
+        original_payment = db.get(Payment, payment_id)
+        if not original_payment:
+            raise ValueError(f"Original payment {payment_id} not found.")
+
+        student_id = original_payment.student_id
+        enrollment_id = original_payment.enrollment_id
+        payment_type = original_payment.payment_type
 
     # Create refund receipt
     refund_receipt = open_receipt(
@@ -112,9 +115,25 @@ def issue_refund(
             enrollment_id=enrollment_id,
             amount=amount,
             transaction_type="refund",
+            payment_type=payment_type,
             notes=reason,
         )
-        balance_data = repo.get_enrollment_balance(db, enrollment_id)
+
+        # Unmark competition fee if applicable
+        if payment_type == "competition":
+            from app.modules.competitions.models import TeamMember
+            from sqlmodel import select
+
+            stmt = select(TeamMember).where(TeamMember.payment_id == payment_id)
+            for m in db.exec(stmt).all():
+                m.fee_paid = False
+                m.payment_id = None
+                db.add(m)
+
+        balance_data = None
+        if enrollment_id:
+            balance_data = repo.get_enrollment_balance(db, enrollment_id)
+
         return {
             "receipt_number": refund_receipt.receipt_number,
             "refunded_amount": amount,

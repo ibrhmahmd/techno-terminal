@@ -26,19 +26,19 @@ def render_receipt_detail(receipt_id: int):
     total: float = data["total"]
 
     # Header info
-    guardian_name = "—"
-    if r.guardian_id:
-        from app.modules.crm.repository import get_guardian_by_id
+    Parent_name = "—"
+    if r.Parent_id:
+        from app.modules.crm.repository import get_Parent_by_id
         from app.db.connection import get_session
 
         with get_session() as db:
-            g = get_guardian_by_id(db, r.guardian_id)
+            g = get_Parent_by_id(db, r.Parent_id)
             if g:
-                guardian_name = g.full_name
+                Parent_name = g.full_name
 
     st.markdown(
         f"**Receipt #:** `{r.receipt_number or 'N/A'}` | "
-        f"**Guardian:** {guardian_name} | "
+        f"**Parent:** {Parent_name} | "
         f"**Method:** {(r.payment_method or 'N/A').capitalize()} | "
         f"**Date:** {str(r.paid_at)[:10] if r.paid_at else 'N/A'}"
     )
@@ -73,21 +73,19 @@ def render_receipt_detail(receipt_id: int):
 
     # Refund section
     with st.expander("↩️ Issue a Refund"):
-        st.caption("Select an enrollment from this receipt to refund.")
-        enrollment_lines = [
-            p for p in lines if p.enrollment_id and p.transaction_type != "refund"
-        ]
-        if not enrollment_lines:
+        st.caption("Select a payment line from this receipt to refund.")
+        refundable_lines = [p for p in lines if p.transaction_type != "refund"]
+        if not refundable_lines:
             st.info("No refundable lines on this receipt.")
         else:
-            enr_opts = {
-                f"Enrollment #{p.enrollment_id} — Student #{p.student_id} ({p.amount:.0f} EGP)": p.enrollment_id
-                for p in enrollment_lines
+            line_opts = {
+                f"{(p.payment_type or 'Course Level').replace('_', ' ').capitalize()} — Student #{p.student_id} ({p.amount:.0f} EGP)": p.id
+                for p in refundable_lines
             }
-            sel_enr_label = st.selectbox(
-                "Select Enrollment", list(enr_opts.keys()), key="refund_enr"
+            sel_line_label = st.selectbox(
+                "Select Payment Line", list(line_opts.keys()), key="refund_line"
             )
-            sel_enr_id = enr_opts[sel_enr_label]
+            sel_line_id = line_opts[sel_line_label]
             refund_amount = st.number_input(
                 "Refund Amount (EGP)", min_value=1.0, step=50.0, key="refund_amt"
             )
@@ -96,15 +94,21 @@ def render_receipt_detail(receipt_id: int):
             if st.button("Confirm Refund", type="primary"):
                 try:
                     result = fin_srv.issue_refund(
-                        enrollment_id=sel_enr_id,
+                        payment_id=sel_line_id,
                         amount=refund_amount,
                         reason=refund_reason or "Refund",
                         received_by_user_id=None,
                     )
+
+                    bal_str = (
+                        f"| New balance: {result['new_balance']:.0f} EGP"
+                        if result.get("new_balance") is not None
+                        else ""
+                    )
+
                     st.success(
                         f"✅ Refund issued! Receipt: **{result['receipt_number']}** | "
-                        f"Amount: {result['refunded_amount']:.0f} EGP | "
-                        f"New balance: {result.get('new_balance', 'N/A')}"
+                        f"Amount: {result['refunded_amount']:.0f} EGP {bal_str}"
                     )
                 except Exception as e:
                     st.error(f"❌ {e}")

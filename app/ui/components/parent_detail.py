@@ -4,6 +4,7 @@ from app.db.connection import get_session
 from app.modules.crm.models import Guardian
 from app.modules.crm.repository import get_guardian_by_id
 from app.modules.finance import service as fin_srv
+from app.modules.competitions import service as comp_srv
 from app.modules.enrollments.service import get_student_enrollments
 
 
@@ -67,16 +68,40 @@ def render_parent_detail(parent_id: int):
 
             any_balance = False
             for c in children:
+                # 1. Course Enrollments
                 balances = fin_srv.get_student_financial_summary(c.id)
                 active_balances = [b for b in balances if b.get("balance", 0) > 0]
-                if active_balances:
+
+                # 2. Competitions
+                comp_history = comp_srv.get_student_competitions(c.id)
+                unpaid_comps = [
+                    h
+                    for h in comp_history
+                    if not h["membership"].fee_paid
+                    and h["team"].enrollment_fee_per_student
+                    and h["team"].enrollment_fee_per_student > 0
+                ]
+
+                if active_balances or unpaid_comps:
                     any_balance = True
-                    total_owed = sum(b["balance"] for b in active_balances)
+
+                    enr_owed = sum(b["balance"] for b in active_balances)
+                    comp_owed = sum(
+                        h["team"].enrollment_fee_per_student for h in unpaid_comps
+                    )
+                    total_owed = enr_owed + comp_owed
+
                     st.markdown(f"**{c.full_name}** — 🔴 Owes **{total_owed:.0f} EGP**")
+
                     for b in active_balances:
                         st.caption(
                             f"  Enrollment #{b['enrollment_id']} | "
                             f"Due: {b['net_due']:.0f} | Paid: {b['total_paid']:.0f} | Balance: {b['balance']:.0f} EGP"
+                        )
+                    for hc in unpaid_comps:
+                        st.caption(
+                            f"  Competition: {hc['competition'].name if hc['competition'] else 'Unknown'} "
+                            f"({hc['team'].team_name}) | Fee: {hc['team'].enrollment_fee_per_student:.0f} EGP"
                         )
                 else:
                     st.markdown(f"**{c.full_name}** — 🟢 No outstanding balance")
