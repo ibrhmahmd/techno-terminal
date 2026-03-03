@@ -1,7 +1,7 @@
 from typing import Sequence
 from sqlmodel import Session, select
 from sqlalchemy import or_
-from .models import Guardian, Student, StudentGuardian
+from app.modules.crm.models import Guardian, Student, StudentGuardian
 
 
 # --- Guardian Repository ---
@@ -57,6 +57,14 @@ def search_students(session: Session, query: str) -> Sequence[Student]:
     return session.exec(stmt).all()
 
 
+def get_student_guardians(
+    session: Session, student_id: int
+) -> Sequence[StudentGuardian]:
+    """Retrieves the guardian link objects for a given student."""
+    stmt = select(StudentGuardian).where(StudentGuardian.student_id == student_id)
+    return session.exec(stmt).all()
+
+
 def link_guardian(
     session: Session,
     student_id: int,
@@ -73,13 +81,6 @@ def link_guardian(
     session.add(link)
     session.flush()
     return link
-
-
-def get_student_guardians(
-    session: Session, student_id: int
-) -> Sequence[StudentGuardian]:
-    stmt = select(StudentGuardian).where(StudentGuardian.student_id == student_id)
-    return session.exec(stmt).all()
 
 
 from sqlalchemy import text

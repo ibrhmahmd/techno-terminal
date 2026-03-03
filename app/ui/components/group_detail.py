@@ -2,7 +2,6 @@ import streamlit as st
 from datetime import date, timedelta
 from app.modules.academics import service as acad_srv
 from app.modules.enrollments import service as enroll_srv
-from app.modules.auth import service as auth_srv
 from .attendance_grid import render_attendance_grid
 
 WEEKDAYS = [
@@ -50,6 +49,12 @@ def render_group_detail(group_id: int):
     # Fetch sessions for attendance grid
     sessions = acad_srv.list_group_sessions(group_id, int(level_filter))
 
+    # 2. Attendance Grid (Now Full Width below sessions)
+    roster = enroll_srv.get_group_roster(group_id, int(level_filter))
+    render_attendance_grid(sessions, roster)
+
+    st.divider()
+
     # Suggest next date for extra session
     next_date = date.today()
     if sessions:
@@ -78,12 +83,6 @@ def render_group_detail(group_id: int):
         if st.button(f"Advance to Level {level_filter + 1}", type="primary"):
             acad_srv.advance_group_level(group_id)
             st.rerun()
-
-    st.divider()
-
-    # 2. Attendance Grid (Now Full Width below sessions)
-    roster = enroll_srv.get_group_roster(group_id, int(level_filter))
-    render_attendance_grid(sessions, roster)
 
     st.divider()
 

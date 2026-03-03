@@ -1,6 +1,6 @@
 import bcrypt
 from app.db.connection import get_session
-from .models import User
+from app.modules.auth.models import User
 from . import repository as repo
 
 MIN_PASSWORD_LENGTH = 6

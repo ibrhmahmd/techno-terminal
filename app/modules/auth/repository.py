@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from sqlmodel import Session, select
-from .models import User, Employee
+from app.modules.auth.models import User, Employee
 
 
 def get_user_by_username(session: Session, username: str) -> User | None:

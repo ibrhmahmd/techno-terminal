@@ -5,7 +5,7 @@ from app.modules.academics.repository import list_groups_by_course
 from sqlmodel import Session, select
 from app.modules.academics.models import Group
 from app.modules.crm.models import Student
-from .models import Enrollment
+from app.modules.enrollments.models import Enrollment
 from . import repository as repo
 
 

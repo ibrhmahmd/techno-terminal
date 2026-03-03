@@ -40,21 +40,22 @@ def render_student_detail(student_id: int):
     st.divider()
 
     # 1. Parent Info
+    st.markdown("#### Parent/Guardian Details")
+
     with get_session() as db:
         guardians = get_student_guardians(db, student_id)
 
-    st.markdown("#### Parent/Guardian Details")
-    if guardians:
-        # Sort so primary is always first
-        guardians.sort(key=lambda x: not x.is_primary)
-        for g_link in guardians:
-            g = g_link.guardian
-            badge = "🏆 Primary" if g_link.is_primary else "Secondary"
-            st.markdown(
-                f"**{g.full_name}** ({g_link.relationship}) — {badge}  \n📞 {g.phone_primary} | {g.phone_secondary or ''}"
-            )
-    else:
-        st.warning("No parent linked.")
+        if guardians:
+            # Sort so primary is always first
+            guardians.sort(key=lambda x: not x.is_primary)
+            for g_link in guardians:
+                g = g_link.guardian
+                badge = "🏆 Primary" if g_link.is_primary else "Secondary"
+                st.markdown(
+                    f"**{g.full_name}** ({g_link.relationship}) — {badge}  \n📞 {g.phone_primary} | {g.phone_secondary or ''}"
+                )
+        else:
+            st.warning("No parent linked.")
 
     st.divider()
 
@@ -84,7 +85,7 @@ def render_student_detail(student_id: int):
                     if e.discount_applied
                     else "-",
                     "Attendance": att_str,
-                    "Enrolled On": str(e.enrolled_at.date()) if e.enrolled_at else "",
+                    "Enrolled On": str(e.enrolled_at) if e.enrolled_at else "",
                 }
             )
 

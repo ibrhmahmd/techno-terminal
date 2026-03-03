@@ -1,7 +1,7 @@
 from datetime import time, date, timedelta, datetime as dt
 from app.db.connection import get_session
-from .models import Course, Group
-from .session_models import CourseSession
+from app.modules.academics.models import Course, Group
+from app.modules.academics.session_models import CourseSession
 from . import repository as repo
 
 # ── Time constraints ──────────────────────────────────────────────────────────

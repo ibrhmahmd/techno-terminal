@@ -1,6 +1,6 @@
 import re
 from app.db.connection import get_session
-from .models import Guardian, Student
+from app.modules.crm.models import Guardian, Student
 from . import repository as repo
 
 # --- Guardian Service ---

@@ -1,7 +1,7 @@
 from typing import Sequence
 from sqlmodel import Session, select
 from sqlalchemy import text
-from .models import Attendance
+from app.modules.attendance.models import Attendance
 
 
 def upsert_attendance(session: Session, record: Attendance) -> Attendance:

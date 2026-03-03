@@ -1,7 +1,7 @@
 from typing import Sequence
 from sqlmodel import Session, select
 from sqlalchemy import text
-from .models import Course, Group
+from app.modules.academics.models import Course, Group
 
 # --- Course Repository ---
 
@@ -118,7 +118,7 @@ def get_enriched_groups_by_date(session: Session, target_date: str) -> list[dict
 
 # --- Session (CourseSession) Repository ---
 
-from .session_models import CourseSession
+from app.modules.academics.session_models import CourseSession
 
 
 def create_session(session: Session, course_session: CourseSession) -> CourseSession:

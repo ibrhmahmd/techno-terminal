@@ -2,7 +2,7 @@ from app.db.connection import get_session
 from app.modules.enrollments.repository import get_active_enrollment
 from app.modules.academics.session_models import CourseSession
 from sqlmodel import select
-from .models import Attendance
+from app.modules.attendance.models import Attendance
 from . import repository as repo
 
 

@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Sequence
 from sqlmodel import Session, select
-from .models import Enrollment
+from app.modules.enrollments.models import Enrollment
 
 
 def create_enrollment(session: Session, enrollment: Enrollment) -> Enrollment:
