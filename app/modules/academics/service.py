@@ -1,9 +1,49 @@
-from datetime import time
+from datetime import time, date, timedelta, datetime as dt
 from app.db.connection import get_session
 from .models import Course, Group
+from .session_models import CourseSession
 from . import repository as repo
 
-# --- Course Service ---
+# ── Time constraints ──────────────────────────────────────────────────────────
+_EARLIEST = time(11, 0)  # 11:00 AM
+_LATEST = time(21, 0)  # 9:00 PM
+
+WEEKDAYS = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+]
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+
+def _fmt_12h(t: time) -> str:
+    h12 = t.hour % 12 or 12
+    ampm = "PM" if t.hour >= 12 else "AM"
+    return f"{h12}:{t.minute:02d} {ampm}"
+
+
+def _next_weekday(from_date: date, day_name: str) -> date:
+    target = WEEKDAYS.index(day_name)
+    delta = (target - from_date.weekday()) % 7
+    return from_date + timedelta(days=delta)
+
+
+def _validate_times(start_time: time, end_time: time) -> None:
+    if start_time < _EARLIEST or end_time > _LATEST:
+        raise ValueError(
+            f"Groups must be scheduled between 11:00 AM and 9:00 PM. "
+            f"Got {_fmt_12h(start_time)} – {_fmt_12h(end_time)}."
+        )
+    if start_time >= end_time:
+        raise ValueError("End time must be after start time.")
+
+
+# ── Course Service ────────────────────────────────────────────────────────────
 
 
 def add_new_course(data: dict) -> Course:
@@ -27,50 +67,96 @@ def add_new_course(data: dict) -> Course:
         return repo.create_course(session, course)
 
 
+def update_course_price(course_id: int, new_price: float) -> Course:
+    """Updates the price per level for an existing course."""
+    if new_price <= 0:
+        raise ValueError("Price must be greater than 0.")
+    with get_session() as session:
+        course = repo.update_course_price(session, course_id, new_price)
+        if not course:
+            raise ValueError(f"Course {course_id} not found.")
+        return course
+
+
 def get_active_courses() -> list[Course]:
     with get_session() as session:
         return list(repo.list_active_courses(session))
 
 
-# --- Group Service ---
+# ── Group Service ─────────────────────────────────────────────────────────────
 
 
-def schedule_group(data: dict) -> Group:
-    """Validates and schedules a new group.
-    Auto-generates the group name as: '{Day} {StartTime} - {CourseName}'
+def schedule_group(data: dict) -> tuple[Group, list[CourseSession]]:
+    """
+    Creates a group, auto-generates its name, validates time window (11AM-9PM),
+    and immediately generates the first level sessions starting from today.
+    Returns (group, sessions).
     """
     start_time: time = data["default_time_start"]
     end_time: time = data["default_time_end"]
 
-    if start_time >= end_time:
-        raise ValueError("Group end time must be strictly after the start time.")
+    _validate_times(start_time, end_time)
 
     with get_session() as session:
-        # Look up course name for auto-name generation
         course = session.get(Course, data["course_id"])
         if not course:
             raise ValueError(f"Course with ID {data['course_id']} not found.")
 
-        # Format time in 12h: e.g. "2:00 PM"
-        hour = start_time.hour
-        minute = start_time.minute
-        ampm = "PM" if hour >= 12 else "AM"
-        hour_12 = hour % 12 or 12
-        time_str = f"{hour_12}:{minute:02d} {ampm}"
-
-        auto_name = f"{data['default_day']} {time_str} - {course.name}"
+        auto_name = f"{data['default_day']} {_fmt_12h(start_time)} - {course.name}"
 
         group = Group(
             name=auto_name,
             course_id=data["course_id"],
             instructor_id=data["instructor_id"],
-            level_number=data.get("level_number", 1),
+            level_number=1,
             max_capacity=data.get("max_capacity", 15),
             default_day=data["default_day"],
             default_time_start=start_time,
             default_time_end=end_time,
         )
-        return repo.create_group(session, group)
+        created_group = repo.create_group(session, group)
+        group_id = created_group.id
+        sessions_per_level = course.sessions_per_level
+        instructor_id = created_group.instructor_id
+
+    # Auto-generate level 1 sessions in a fresh session so the group is committed
+    start_date = (
+        _next_weekday(date.today(), data["default_day"])
+        if data.get("default_day")
+        else date.today()
+    )
+    sessions = _create_sessions(
+        group_id, 1, start_date, sessions_per_level, start_time, end_time, instructor_id
+    )
+
+    # Refresh group object
+    with get_session() as session:
+        group_obj = repo.get_group_by_id(session, group_id)
+
+    return group_obj, sessions
+
+
+def _create_sessions(
+    group_id, level_number, start_date, count, start_time, end_time, instructor_id
+):
+    created = []
+    session_date = start_date
+    with get_session() as session:
+        for i in range(count):
+            cs = CourseSession(
+                group_id=group_id,
+                level_number=level_number,
+                session_number=i + 1,
+                session_date=session_date.isoformat(),
+                start_time=start_time,
+                end_time=end_time,
+                actual_instructor_id=instructor_id,
+                is_extra_session=False,
+                created_at=dt.utcnow().isoformat(),
+            )
+            created.append(repo.create_session(session, cs))
+            session_date += timedelta(weeks=1)
+    return created
 
 
 def get_groups_by_course(course_id: int) -> list[Group]:
@@ -83,33 +169,18 @@ def get_all_active_groups() -> list[Group]:
         return list(repo.list_all_active_groups(session))
 
 
+def get_all_active_groups_enriched() -> list[dict]:
+    """Returns groups with instructor_name and course_name joined for display."""
+    with get_session() as session:
+        return repo.get_enriched_groups(session)
+
+
 def get_group_by_id(group_id: int) -> Group | None:
     with get_session() as session:
         return repo.get_group_by_id(session, group_id)
 
 
-# --- Session Service ---
-
-from datetime import date, timedelta, datetime as dt
-from .session_models import CourseSession
-
-WEEKDAYS = [
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-    "Sunday",
-]
-
-
-def _next_weekday(from_date: date, day_name: str) -> date:
-    """Returns the next occurrence of a named weekday on or after from_date."""
-    target = WEEKDAYS.index(day_name)
-    current = from_date.weekday()
-    delta = (target - current) % 7
-    return from_date + timedelta(days=delta)
+# ── Session Service ───────────────────────────────────────────────────────────
 
 
 def generate_level_sessions(
@@ -117,60 +188,52 @@ def generate_level_sessions(
 ) -> list[CourseSession]:
     """
     Generates N weekly sessions for a group level.
-    N = course.sessions_per_level. Sessions are spaced 1 week apart on the group's default_day.
-    First session snaps to the next occurrence of default_day on or after start_date.
+    Raises if sessions for this level already exist.
     """
     with get_session() as session:
         group = repo.get_group_by_id(session, group_id)
         if not group:
             raise ValueError(f"Group {group_id} not found.")
-
         course = session.get(Course, group.course_id)
         if not course:
             raise ValueError(f"Course for group {group_id} not found.")
 
-        existing_count = repo.count_sessions(session, group_id, level_number)
-        if existing_count > 0:
+        existing = repo.count_sessions(session, group_id, level_number)
+        if existing > 0:
             raise ValueError(
-                f"Sessions for Level {level_number} already exist ({existing_count} found). "
-                "Delete them first or add extra sessions instead."
+                f"Level {level_number} already has {existing} session(s). "
+                "Remove them first or add extra sessions instead."
             )
 
-        # Snap start date to the correct weekday
-        session_date = (
+        snapped = (
             _next_weekday(start_date, group.default_day)
             if group.default_day
             else start_date
         )
+        instructor_id = group.instructor_id
+        sessions_per_level = course.sessions_per_level
+        start_t = group.default_time_start
+        end_t = group.default_time_end
 
-        created = []
-        for i in range(course.sessions_per_level):
-            cs = CourseSession(
-                group_id=group_id,
-                level_number=level_number,
-                session_number=i + 1,
-                session_date=session_date.isoformat(),
-                start_time=group.default_time_start,
-                end_time=group.default_time_end,
-                actual_instructor_id=group.instructor_id,
-                is_extra_session=False,
-                created_at=dt.utcnow().isoformat(),
-            )
-            created.append(repo.create_session(session, cs))
-            session_date += timedelta(weeks=1)
-
-        return created
+    return _create_sessions(
+        group_id,
+        level_number,
+        snapped,
+        sessions_per_level,
+        start_t,
+        end_t,
+        instructor_id,
+    )
 
 
 def add_extra_session(
     group_id: int, level_number: int, extra_date: date, notes: str | None = None
 ) -> CourseSession:
-    """Adds a one-off extra session for a group level, numbered after the last existing session."""
+    """Adds an extra session numbered after the last existing session."""
     with get_session() as session:
         group = repo.get_group_by_id(session, group_id)
         if not group:
             raise ValueError(f"Group {group_id} not found.")
-
         all_sessions = repo.list_sessions(session, group_id, level_number)
         next_num = max((s.session_number for s in all_sessions), default=0) + 1
 
@@ -189,6 +252,11 @@ def add_extra_session(
         return repo.create_session(session, cs)
 
 
+def delete_session(session_id: int) -> bool:
+    with get_session() as session:
+        return repo.delete_session(session, session_id)
+
+
 def mark_substitute_instructor(session_id: int, instructor_id: int) -> CourseSession:
     with get_session() as session:
         cs = repo.update_session_instructor(session, session_id, instructor_id)
@@ -202,3 +270,25 @@ def list_group_sessions(
 ) -> list[CourseSession]:
     with get_session() as session:
         return list(repo.list_sessions(session, group_id, level_number))
+
+
+def check_level_complete(group_id: int, level_number: int) -> bool:
+    """Returns True if all regular sessions for the level exist (used to trigger level increment)."""
+    with get_session() as session:
+        group = repo.get_group_by_id(session, group_id)
+        if not group:
+            return False
+        course = session.get(Course, group.course_id)
+        if not course:
+            return False
+        count = repo.count_sessions(session, group_id, level_number)
+        return count >= course.sessions_per_level
+
+
+def advance_group_level(group_id: int) -> Group:
+    """Increments group.level_number. Call after a level is confirmed complete."""
+    with get_session() as session:
+        group = repo.increment_group_level(session, group_id)
+        if not group:
+            raise ValueError(f"Group {group_id} not found.")
+        return group
