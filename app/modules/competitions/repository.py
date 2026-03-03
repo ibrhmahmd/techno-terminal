@@ -127,6 +127,11 @@ def list_team_members(db: Session, team_id: int) -> list[TeamMember]:
     return list(db.exec(stmt).all())
 
 
+def list_student_memberships(db: Session, student_id: int) -> list[TeamMember]:
+    stmt = select(TeamMember).where(TeamMember.student_id == student_id)
+    return list(db.exec(stmt).all())
+
+
 def mark_fee_paid(
     db: Session, team_id: int, student_id: int, payment_id: int
 ) -> TeamMember | None:

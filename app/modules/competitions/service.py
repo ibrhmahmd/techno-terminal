@@ -13,6 +13,38 @@ from app.modules.competitions import repository as repo
 # ── Competitions ──────────────────────────────────────────────────────────────
 
 
+def get_student_competitions(student_id: int) -> list[dict]:
+    """Returns all teams a student is in, nested with category and competition info."""
+    with get_session() as db:
+        memberships = repo.list_student_memberships(db, student_id)
+        result = []
+        for m in memberships:
+            team = repo.get_team(db, m.team_id)
+            if not team:
+                continue
+            cat = repo.get_category(db, team.category_id)
+            comp = repo.get_competition(db, cat.competition_id) if cat else None
+
+            result.append(
+                {
+                    "membership": m,
+                    "team": team,
+                    "category": cat,
+                    "competition": comp,
+                }
+            )
+        # Sort by competition date descending
+        result.sort(
+            key=lambda x: (
+                x["competition"].competition_date
+                if x["competition"] and x["competition"].competition_date
+                else date.min
+            ),
+            reverse=True,
+        )
+        return result
+
+
 def create_competition(
     name: str,
     edition: Optional[str] = None,

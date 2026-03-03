@@ -5,6 +5,7 @@ from app.modules.enrollments.service import get_student_enrollments
 from app.modules.attendance.service import get_attendance_summary
 from app.modules.academics.service import get_group_by_id
 from app.modules.finance import service as fin_srv
+from app.modules.competitions import service as comp_srv
 from app.db.connection import get_session
 
 
@@ -111,6 +112,36 @@ def render_student_detail(student_id: int):
         )
         if st.button("Go to Enrollment Page", type="primary"):
             st.switch_page("pages/5_Enrollment.py")
+
+    st.divider()
+
+    # 4. Competition History
+    st.markdown("#### 🏆 Competitions & Teams")
+
+    comp_history = comp_srv.get_student_competitions(student_id)
+    if comp_history:
+        comp_df_data = []
+        for h in comp_history:
+            team = h["team"]
+            comp = h["competition"]
+            cat = h["category"]
+            membership = h["membership"]
+
+            comp_df_data.append(
+                {
+                    "Competition": comp.name if comp else "Unknown",
+                    "Edition": comp.edition if comp and comp.edition else "—",
+                    "Category": cat.category_name if cat else "—",
+                    "Team": team.team_name,
+                    "Role/Fee": "✅ Paid" if membership.fee_paid else "❌ Unpaid Fee",
+                }
+            )
+
+        st.dataframe(
+            pd.DataFrame(comp_df_data), hide_index=True, use_container_width=True
+        )
+    else:
+        st.info("Student is not registered in any competitions.")
 
     st.divider()
 
