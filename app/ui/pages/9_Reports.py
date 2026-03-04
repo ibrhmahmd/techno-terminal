@@ -153,7 +153,7 @@ with tab_acad:
         )
         sel_group = group_opts[sel_label]
 
-        levels = list(range(1, (sel_group.current_level or 1) + 1))
+        levels = list(range(1, (sel_group.level_number or 1) + 1))
         sel_level = st.selectbox(
             "Select Level", levels, index=len(levels) - 1, key="acad_level"
         )
@@ -250,7 +250,7 @@ with tab_heatmap:
         )
         sel_group_h = group_opts_h[sel_label_h]
 
-        levels_h = list(range(1, (sel_group_h.current_level or 1) + 1))
+        levels_h = list(range(1, (sel_group_h.level_number or 1) + 1))
         sel_level_h = st.selectbox(
             "Select Level", levels_h, index=len(levels_h) - 1, key="heat_level"
         )
