@@ -26,19 +26,19 @@ def render_receipt_detail(receipt_id: int):
     total: float = data["total"]
 
     # Header info
-    Parent_name = "—"
-    if r.Parent_id:
-        from app.modules.crm.repository import get_Parent_by_id
+    parent_name = "—"
+    if r.guardian_id:
+        from app.modules.crm.repository import get_guardian_by_id
         from app.db.connection import get_session
 
         with get_session() as db:
-            g = get_Parent_by_id(db, r.Parent_id)
+            g = get_guardian_by_id(db, r.guardian_id)
             if g:
-                Parent_name = g.full_name
+                parent_name = g.full_name
 
     st.markdown(
         f"**Receipt #:** `{r.receipt_number or 'N/A'}` | "
-        f"**Parent:** {Parent_name} | "
+        f"**Parent:** {parent_name} | "
         f"**Method:** {(r.payment_method or 'N/A').capitalize()} | "
         f"**Date:** {str(r.paid_at)[:10] if r.paid_at else 'N/A'}"
     )

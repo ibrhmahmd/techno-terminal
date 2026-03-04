@@ -85,9 +85,9 @@ def render_parent_detail(parent_id: int):
                 if active_balances or unpaid_comps:
                     any_balance = True
 
-                    enr_owed = sum(b["balance"] for b in active_balances)
-                    comp_owed = sum(
-                        h["team"].enrollment_fee_per_student for h in unpaid_comps
+                    enr_owed = float(sum(b["balance"] for b in active_balances))
+                    comp_owed = float(
+                        sum(h["team"].enrollment_fee_per_student for h in unpaid_comps)
                     )
                     total_owed = enr_owed + comp_owed
 

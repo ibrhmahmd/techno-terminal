@@ -273,27 +273,55 @@ def render_competition_overview():
                                 col_status.success("✅ Paid")
                             else:
                                 col_status.warning("❌ Unpaid")
-                                # Guardian search for this student
+                                # Parent search for this student
                                 gkeys = [
                                     k
                                     for k in st.session_state
                                     if k == f"fee_g_{m['student_id']}"
                                 ]
-                                if col_btn.button(
-                                    f"💳 Pay", key=f"pay_{m['student_id']}"
-                                ):
-                                    st.session_state[
-                                        f"fee_paying_{m['student_id']}"
-                                    ] = True
 
-                                if st.session_state.get(
-                                    f"fee_paying_{m['student_id']}"
-                                ):
-                                    with st.container():
-                                        g_q = st.text_input(
-                                            f"Guardian for {m['student_name']} (name/phone)",
-                                            key=f"fee_gq_{m['student_id']}",
-                                        )
+                                # Auto-mark as paid if fee is 0
+                                if fee <= 0:
+                                    if col_btn.button(
+                                        "💳 Grant Access (Free)",
+                                        key=f"pay_{m['student_id']}",
+                                        help="Mark as paid since fee is 0",
+                                    ):
+                                        try:
+                                            # We just mark fee_paid without a real receipt for free teams
+                                            from app.db.connection import get_session
+
+                                            with get_session() as db:
+                                                from app.modules.competitions.repository import (
+                                                    mark_fee_paid,
+                                                )
+
+                                                mark_fee_paid(
+                                                    db,
+                                                    sel_team2.id,
+                                                    m["student_id"],
+                                                    None,
+                                                )
+                                            st.success("✅ Granted!")
+                                            st.rerun()
+                                        except Exception as e:
+                                            st.error(f"❌ {e}")
+                                else:
+                                    if col_btn.button(
+                                        f"💳 Pay", key=f"pay_{m['student_id']}"
+                                    ):
+                                        st.session_state[
+                                            f"fee_paying_{m['student_id']}"
+                                        ] = True
+
+                                    if st.session_state.get(
+                                        f"fee_paying_{m['student_id']}"
+                                    ):
+                                        with st.container():
+                                            g_q = st.text_input(
+                                                f"Parent/Parent for {m['student_name']} (name/phone)",
+                                                key=f"fee_gq_{m['student_id']}",
+                                            )
                                         guardian_id = None
                                         if g_q and len(g_q) >= 2:
                                             gs = crm_srv.search_guardians(g_q)
@@ -303,7 +331,7 @@ def render_competition_overview():
                                                     for g in gs
                                                 }
                                                 sel_g_label = st.selectbox(
-                                                    "Select Guardian",
+                                                    "Select Parent",
                                                     list(g_opts.keys()),
                                                     key=f"fee_gsel_{m['student_id']}",
                                                 )

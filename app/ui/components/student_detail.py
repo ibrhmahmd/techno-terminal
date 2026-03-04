@@ -42,15 +42,15 @@ def render_student_detail(student_id: int):
     st.divider()
 
     # 1. Parent Info
-    st.markdown("#### Parent/Guardian Details")
+    st.markdown("#### Parent/Parent Details")
 
     with get_session() as db:
-        guardians = get_student_guardians(db, student_id)
+        parents = get_student_guardians(db, student_id)
 
-        if guardians:
+        if parents:
             # Sort so primary is always first
-            guardians.sort(key=lambda x: not x.is_primary)
-            for g_link in guardians:
+            parents.sort(key=lambda x: not x.is_primary)
+            for g_link in parents:
                 g = g_link.guardian
                 badge = "🏆 Primary" if g_link.is_primary else "Secondary"
                 st.markdown(

@@ -48,7 +48,7 @@ def modal_register_parent():
 def render_parent_overview():
     col_l, col_r = st.columns([3, 1])
     with col_l:
-        st.subheader("Search Parents")
+        st.subheader("Search parents")
     with col_r:
         if st.button("➕ Register Parent", use_container_width=True):
             modal_register_parent()

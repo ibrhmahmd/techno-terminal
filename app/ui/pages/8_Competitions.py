@@ -1,6 +1,8 @@
 import streamlit as st
 from app.ui.components.auth_guard import require_auth
 
+st.set_page_config(page_title="Competitions - Techno Kids", layout="wide")
+
 require_auth()
 
 if "selected_competition_id" in st.session_state:

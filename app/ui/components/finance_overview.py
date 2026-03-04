@@ -20,38 +20,38 @@ def render_finance_overview():
     with tab_receipt:
         st.subheader("Issue a Payment Receipt")
         st.caption(
-            "Search for a parent/guardian, select payment method, then add payment lines for each enrolled student."
+            "Search for a parent/Parent, select payment method, then add payment lines for each enrolled student."
         )
 
-        # Step 1: Find Guardian
-        guardian_q = st.text_input("🔍 Search Guardian (name or phone)", key="fin_gq")
-        selected_guardian = None
+        # Step 1: Find Parent
+        parent_q = st.text_input("🔍 Search Parent (name or phone)", key="fin_gq")
+        selected_parent = None
 
-        if guardian_q and len(guardian_q) >= 2:
-            guardians = crm_srv.search_guardians(guardian_q)
-            if guardians:
-                g_opts = {f"{g.full_name} ({g.phone_primary})": g for g in guardians}
+        if parent_q and len(parent_q) >= 2:
+            parents = crm_srv.search_guardians(parent_q)
+            if parents:
+                g_opts = {f"{g.full_name} ({g.phone_primary})": g for g in parents}
                 sel_g_label = st.selectbox(
-                    "Select Guardian", list(g_opts.keys()), key="fin_gsel"
+                    "Select Parent", list(g_opts.keys()), key="fin_gsel"
                 )
-                selected_guardian = g_opts[sel_g_label]
+                selected_parent = g_opts[sel_g_label]
             else:
-                st.warning("No guardians found.")
+                st.warning("No parents found.")
 
         # Step 2: Payment method
         method = st.selectbox("Payment Method", PAYMENT_METHODS, key="fin_method")
 
         st.divider()
 
-        # Step 3: Add payment lines for each enrolled student of this guardian
-        if selected_guardian:
-            st.markdown(f"**Guardian:** {selected_guardian.full_name}")
+        # Step 3: Add payment lines for each enrolled student of this Parent
+        if selected_parent:
+            st.markdown(f"**Parent:** {selected_parent.full_name}")
 
-            # Get children of this guardian
-            children = crm_srv.get_guardian_students(selected_guardian.id)
+            # Get children of this Parent
+            children = crm_srv.get_guardian_students(selected_parent.id)
 
             if not children:
-                st.info("No students linked to this guardian.")
+                st.info("No students linked to this Parent.")
             else:
                 st.markdown("#### Add Payment Lines")
                 st.caption("Check each student you want to add a payment line for.")
@@ -132,7 +132,7 @@ def render_finance_overview():
                     ):
                         try:
                             receipt = fin_srv.open_receipt(
-                                guardian_id=selected_guardian.id,
+                                guardian_id=selected_parent.id,
                                 method=method,
                                 received_by_user_id=None,
                             )
@@ -156,7 +156,7 @@ def render_finance_overview():
                         "Check students above and enter amounts to build the receipt."
                     )
         else:
-            st.info("Search for a guardian above to begin.")
+            st.info("Search for a Parent above to begin.")
 
     # ── TAB 2: Balances ───────────────────────────────────────────────────────
     with tab_balance:
@@ -236,7 +236,7 @@ def render_finance_overview():
                 df = pd.DataFrame(receipts)
                 disp = [
                     "receipt_number",
-                    "guardian_name",
+                    "parent_name",
                     "payment_method",
                     "total",
                     "id",
@@ -244,7 +244,7 @@ def render_finance_overview():
                 df_display = df[[c for c in disp if c in df.columns]].rename(
                     columns={
                         "receipt_number": "Receipt #",
-                        "guardian_name": "Guardian",
+                        "parent_name": "Parent",
                         "payment_method": "Method",
                         "total": "Total (EGP)",
                     }
