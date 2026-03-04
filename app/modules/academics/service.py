@@ -164,9 +164,9 @@ def get_groups_by_course(course_id: int) -> list[Group]:
         return list(repo.list_groups_by_course(session, course_id))
 
 
-def get_all_active_groups() -> list[Group]:
+def get_all_active_groups(include_inactive: bool = False) -> list[Group]:
     with get_session() as session:
-        return list(repo.list_all_active_groups(session))
+        return list(repo.list_all_active_groups(session, include_inactive))
 
 
 def get_all_active_groups_enriched() -> list[dict]:

@@ -8,6 +8,11 @@ from app.db.connection import get_session
 from app.modules.analytics import repository as repo
 
 
+def get_active_enrollment_count() -> int:
+    with get_session() as db:
+        return repo.get_active_enrollment_count(db)
+
+
 def get_today_sessions(target_date: Optional[date] = None) -> list[dict]:
     with get_session() as db:
         return repo.get_today_sessions(db, target_date or date.today())

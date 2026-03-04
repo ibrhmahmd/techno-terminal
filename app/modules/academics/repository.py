@@ -50,8 +50,12 @@ def list_groups_by_course(session: Session, course_id: int) -> Sequence[Group]:
     return session.exec(stmt).all()
 
 
-def list_all_active_groups(session: Session) -> Sequence[Group]:
-    stmt = select(Group).where(Group.status == "active")
+def list_all_active_groups(
+    session: Session, include_inactive: bool = False
+) -> Sequence[Group]:
+    stmt = select(Group)
+    if not include_inactive:
+        stmt = stmt.where(Group.status == "active")
     return session.exec(stmt).all()
 
 

@@ -129,7 +129,17 @@ with tab_fin:
                 "total_outstanding": "Owed (EGP)",
             }
         ).drop(columns=["student_id"])
-        st.dataframe(df_debt, hide_index=True, use_container_width=True)
+        event_debt = st.dataframe(
+            df_debt,
+            hide_index=True,
+            use_container_width=True,
+            selection_mode="single-row",
+            on_select="rerun",
+        )
+        if event_debt.selection.rows:
+            sel_idx = event_debt.selection.rows[0]
+            st.session_state["nav_target_student_id"] = debtors[sel_idx]["student_id"]
+            st.switch_page("pages/2_Student_Management.py")
     else:
         st.info("No debtors found.")
 
@@ -143,7 +153,8 @@ with tab_acad:
         "Select a group and level to see the full student roster with attendance % and balance."
     )
 
-    groups = acad_srv.get_all_active_groups()
+    show_inactive = st.checkbox("Show inactive/archived groups", key="acad_inactive")
+    groups = acad_srv.get_all_active_groups(include_inactive=show_inactive)
     if not groups:
         st.info("No groups found.")
     else:
@@ -240,7 +251,8 @@ with tab_heatmap:
     st.subheader("📋 Attendance Heatmap")
     st.caption("See each student's attendance per session in one view.")
 
-    groups_h = acad_srv.get_all_active_groups()
+    show_inactive_h = st.checkbox("Show inactive/archived groups", key="heat_inactive")
+    groups_h = acad_srv.get_all_active_groups(include_inactive=show_inactive_h)
     if not groups_h:
         st.info("No groups found.")
     else:

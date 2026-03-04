@@ -12,6 +12,13 @@ from sqlalchemy import text
 # ── Today's Operations ────────────────────────────────────────────────────────
 
 
+def get_active_enrollment_count(db: Session) -> int:
+    """Total number of active enrollments across all groups and courses."""
+    stmt = text("SELECT COUNT(id) FROM enrollments WHERE status = 'active'")
+    result = db.execute(stmt).scalar()
+    return int(result or 0)
+
+
 def get_today_sessions(db: Session, target_date: Optional[date] = None) -> list[dict]:
     """All sessions on a given date with group, course, instructor, and attendance counts."""
     if target_date is None:

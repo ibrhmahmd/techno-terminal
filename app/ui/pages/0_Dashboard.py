@@ -11,15 +11,21 @@ require_auth()
 today = date.today()
 month_start = today.replace(day=1)
 
-st.title("📊 Operations Dashboard")
-st.caption(f"Showing data for **{today.strftime('%A, %d %B %Y')}**")
+col_t1, col_t2 = st.columns([3, 1])
+with col_t1:
+    st.title("📊 Operations Dashboard")
+with col_t2:
+    selected_date = st.date_input("Filter Date", max_value=date.today())
+
+st.caption(f"Showing operations for **{selected_date.strftime('%A, %d %B %Y')}**")
 st.divider()
 
 # ── Load data ──────────────────────────────────────────────────────────────────
-sessions_today = analytics_srv.get_today_sessions(today)
-unpaid_today = analytics_srv.get_today_unpaid_attendees(today)
+sessions_today = analytics_srv.get_today_sessions(selected_date)
+unpaid_today = analytics_srv.get_today_unpaid_attendees(selected_date)
 revenue_mtd = analytics_srv.get_revenue_by_date(month_start, today)
 revenue_by_method = analytics_srv.get_revenue_by_method(month_start, today)
+active_course_enrollments = analytics_srv.get_active_enrollment_count()
 
 mtd_total = sum(float(r["net_revenue"]) for r in revenue_mtd)
 total_students_today = sum(
@@ -29,8 +35,8 @@ total_present = sum(int(r["present"]) for r in sessions_today)
 total_unmarked = sum(int(r["unmarked"]) for r in sessions_today)
 
 # ── KPI Row ────────────────────────────────────────────────────────────────────
-k1, k2, k3, k4, k5 = st.columns(5)
-k1.metric("📅 Sessions Today", len(sessions_today))
+k1, k2, k3, k4, k5, k6 = st.columns(6)
+k1.metric(f"📅 Daily Sessions", len(sessions_today))
 k2.metric("🎓 Expected Students", total_students_today)
 k3.metric("✅ Present", total_present)
 k4.metric(
@@ -39,7 +45,8 @@ k4.metric(
     delta=None if total_unmarked == 0 else f"{total_unmarked} need marking",
     delta_color="inverse",
 )
-k5.metric("💰 MTD Revenue", f"{mtd_total:,.0f} EGP")
+k5.metric("📈 Active Enrollments", active_course_enrollments)
+k6.metric("💰 MTD Revenue", f"{mtd_total:,.0f} EGP")
 
 st.divider()
 
@@ -88,7 +95,7 @@ with col_left:
             st.session_state["nav_target_group_id"] = row["group_id"]
             st.switch_page("pages/3_Group_Management.py")
     else:
-        st.info("No sessions scheduled for today.")
+        st.info("No sessions scheduled for the selected date.")
 
     if unpaid_today:
         st.markdown("---")
@@ -107,7 +114,13 @@ with col_right:
     if revenue_by_method:
         df_method = pd.DataFrame(revenue_by_method)
         df_method["net_revenue"] = df_method["net_revenue"].apply(float)
-        df_method.columns = ["Method", "Net Revenue (EGP)", "Receipts"]
+        df_method = df_method.rename(
+            columns={
+                "payment_method": "Method",
+                "net_revenue": "Net Revenue (EGP)",
+                "receipt_count": "Receipts",
+            }
+        )
         st.dataframe(df_method, use_container_width=True, hide_index=True)
 
         # Bar chart
