@@ -14,6 +14,7 @@ with st.sidebar:
     st.page_link("pages/0_Dashboard.py", label="Dashboard", icon="🏠")
     st.page_link("pages/7_Finance.py", label="Finance", icon="💳")
     st.page_link("pages/8_Competitions.py", label="Competitions", icon="🏆")
+    st.page_link("pages/9_Reports.py", label="Reports", icon="📊")
 
     st.divider()
 
