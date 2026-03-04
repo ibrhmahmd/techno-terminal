@@ -143,7 +143,7 @@ with tab_acad:
         "Select a group and level to see the full student roster with attendance % and balance."
     )
 
-    groups = acad_srv.list_groups()
+    groups = acad_srv.get_all_active_groups()
     if not groups:
         st.info("No groups found.")
     else:
@@ -240,7 +240,7 @@ with tab_heatmap:
     st.subheader("📋 Attendance Heatmap")
     st.caption("See each student's attendance per session in one view.")
 
-    groups_h = acad_srv.list_groups()
+    groups_h = acad_srv.get_all_active_groups()
     if not groups_h:
         st.info("No groups found.")
     else:
