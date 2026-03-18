@@ -1,6 +1,7 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, Relationship, Column, String
+from app.shared.constants import EnrollmentStatus
 
 
 class Enrollment(SQLModel, table=True):
@@ -14,7 +15,7 @@ class Enrollment(SQLModel, table=True):
     enrolled_at: Optional[datetime] = None
     amount_due: Optional[float] = None  # Custom per-student amount
     discount_applied: float = 0.0
-    status: str = "active"  # active / completed / transferred / dropped
+    status: EnrollmentStatus = Field(default="active", sa_column=Column(String))  # active / completed / transferred / dropped
     transferred_from: Optional[int] = Field(default=None, foreign_key="enrollments.id")
     notes: Optional[str] = None
     created_by: Optional[int] = Field(default=None, foreign_key="users.id")

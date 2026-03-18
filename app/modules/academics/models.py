@@ -1,6 +1,7 @@
 from datetime import datetime, time
 from typing import Optional
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, Column, String
+from app.shared.constants import GroupStatus
 
 
 class Course(SQLModel, table=True):
@@ -33,7 +34,7 @@ class Group(SQLModel, table=True):
     default_day: Optional[str] = None
     default_time_start: Optional[time] = None  # schema: default_time_start
     default_time_end: Optional[time] = None  # schema: default_time_end
-    status: str = "active"
+    status: GroupStatus = Field(default="active", sa_column=Column(String))
     started_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

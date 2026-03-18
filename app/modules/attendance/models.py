@@ -1,6 +1,7 @@
-from datetime import datetime
 from typing import Optional
-from sqlmodel import SQLModel, Field
+from datetime import datetime
+from sqlmodel import SQLModel, Field, Relationship, Column, String
+from app.shared.constants import AttendanceStatus
 
 
 class Attendance(SQLModel, table=True):
@@ -11,6 +12,6 @@ class Attendance(SQLModel, table=True):
     student_id: int = Field(foreign_key="students.id")
     session_id: int = Field(foreign_key="sessions.id")
     enrollment_id: int = Field(foreign_key="enrollments.id")
-    status: str  # CHECK: present / absent / late / excused
+    status: AttendanceStatus = Field(sa_column=Column(String))  # CHECK: present / absent / late / excused
     marked_by: Optional[int] = Field(default=None, foreign_key="users.id")
     marked_at: Optional[datetime] = None

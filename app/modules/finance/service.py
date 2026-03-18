@@ -6,14 +6,14 @@ from app.modules.enrollments.models import Enrollment
 from app.modules.finance import repository as repo
 from app.shared.exceptions import ValidationError, NotFoundError, BusinessRuleError
 from app.shared.validators import validate_positive_amount
-
+from app.shared.constants import PaymentMethod
 
 # ── Receipt Lifecycle ─────────────────────────────────────────────────────────
 
 
 def open_receipt(
     guardian_id: Optional[int],
-    method: str,
+    method: PaymentMethod | str,
     received_by_user_id: Optional[int],
     notes: Optional[str] = None,
 ) -> Receipt:

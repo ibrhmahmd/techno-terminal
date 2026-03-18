@@ -5,8 +5,7 @@ from datetime import date
 from app.modules.crm import service as crm_srv
 from app.modules.enrollments import service as enroll_srv
 from app.modules.finance import service as fin_srv
-
-PAYMENT_METHODS = ["cash", "card", "transfer", "online"]
+from app.shared.constants import PAYMENT_METHODS
 
 
 def render_finance_overview():
