@@ -309,3 +309,17 @@ def get_competition_summary(competition_id: int) -> dict:
                 cat_entry["teams"].append({"team": team, "members": members})
             result["categories"].append(cat_entry)
         return result
+
+
+def unmark_team_fee_for_payment(payment_id: int) -> None:
+    """
+    Revert fee_paid status on all TeamMembers linked to a given payment.
+    Called by finance when a competition payment is refunded.
+    Competitions controls its own data — finance only triggers this via service call.
+    """
+    with get_session() as db:
+        members = repo.get_members_by_payment_id(db, payment_id)
+        for m in members:
+            m.fee_paid = False
+            m.payment_id = None
+            db.add(m)

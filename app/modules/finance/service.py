@@ -119,16 +119,10 @@ def issue_refund(
             notes=reason,
         )
 
-        # Unmark competition fee if applicable
+        # Unmark competition fee if applicable — competitions module owns this logic
         if payment_type == "competition":
-            from app.modules.competitions.models import TeamMember
-            from sqlmodel import select
-
-            stmt = select(TeamMember).where(TeamMember.payment_id == payment_id)
-            for m in db.exec(stmt).all():
-                m.fee_paid = False
-                m.payment_id = None
-                db.add(m)
+            from app.modules.competitions import service as comp_srv
+            comp_srv.unmark_team_fee_for_payment(payment_id)
 
         balance_data = None
         if enrollment_id:

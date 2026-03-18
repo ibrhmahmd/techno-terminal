@@ -214,6 +214,12 @@ def remove_team_member(db: Session, team_id: int, student_id: int) -> bool:
     return False
 
 
+def get_members_by_payment_id(db: Session, payment_id: int) -> list[TeamMember]:
+    """Returns all TeamMembers whose fee was linked to a given payment ID."""
+    stmt = select(TeamMember).where(TeamMember.payment_id == payment_id)
+    return list(db.exec(stmt).all())
+
+
 # ── RepositoryProtocol aliases ────────────────────────────────────────────────
 # Primary entity: Competition
 get_by_id = get_competition
