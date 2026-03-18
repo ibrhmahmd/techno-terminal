@@ -93,7 +93,7 @@ with col_left:
         if event.selection.rows:
             row = sessions_today[event.selection.rows[0]]
             st.session_state["nav_target_group_id"] = row["group_id"]
-            st.switch_page("pages/3_Group_Management.py")
+            st.switch_page("pages/4_Group_Management.py")
     else:
         st.info("No sessions scheduled for the selected date.")
 
