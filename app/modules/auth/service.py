@@ -1,6 +1,7 @@
 import bcrypt
 from app.db.connection import get_session
 from app.modules.auth.models import User
+from app.shared.exceptions import ValidationError, AuthError
 from . import repository as repo
 
 MIN_PASSWORD_LENGTH = 6
@@ -31,13 +32,13 @@ def authenticate(username: str, password: str):
 
 def change_password(user_id: int, current_password: str, new_password: str) -> bool:
     if len(new_password) < MIN_PASSWORD_LENGTH:
-        raise ValueError(f"Password must be at least {MIN_PASSWORD_LENGTH} characters.")
+        raise ValidationError(f"Password must be at least {MIN_PASSWORD_LENGTH} characters.")
     with get_session() as session:
         user = session.get(User, user_id)
         if not user:
-            raise ValueError("User not found.")
+            raise AuthError("User not found.")
         if not verify_password(current_password, user.password_hash):
-            raise ValueError("Current password is incorrect.")
+            raise AuthError("Current password is incorrect.")
         new_hash = hash_password(new_password)
         repo.update_password_hash(session, user_id, new_hash)
     return True

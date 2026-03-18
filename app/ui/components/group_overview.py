@@ -5,6 +5,7 @@ import datetime
 
 from app.modules.academics import service as acad_srv
 from app.modules.auth import service as auth_srv
+from app.shared.exceptions import NotFoundError, BusinessRuleError, ValidationError, ConflictError
 
 ALLOWED_HOURS = list(range(11, 22))
 MINUTES = ["00", "15", "30", "45"]
@@ -77,8 +78,14 @@ def modal_create_group():
                 st.success(f"Group '{group.name}' created.")
                 st.session_state["group_creation_success"] = True
                 st.rerun()
-            except ValueError as e:
-                st.error(str(e))
+            except ValidationError as e:
+                st.error(f"❌ Invalid input: {e.message}")
+            except NotFoundError as e:
+                st.warning(f"⚠️ Not found: {e.message}")
+            except ConflictError as e:
+                st.error(f"❌ Conflict: {e.message}")
+            except Exception as e:
+                st.error(f"❌ Unexpected error: {e}")
 
 
 @st.dialog("Browse All Groups", width="large")

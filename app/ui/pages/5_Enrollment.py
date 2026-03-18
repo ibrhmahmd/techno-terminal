@@ -5,6 +5,7 @@ from app.ui.components.auth_guard import require_auth
 from app.modules.crm import service as crm_srv
 from app.modules.academics import service as acad_srv
 from app.modules.enrollments import service as enroll_srv
+from app.shared.exceptions import NotFoundError, BusinessRuleError, ConflictError, ValidationError
 
 require_auth()
 
@@ -91,8 +92,14 @@ with tab_enroll:
                     )
                     if over_capacity:
                         st.warning("⚠️ Group is over capacity. Admin override applied.")
-                except ValueError as e:
-                    st.error(f"❌ {e}")
+                except NotFoundError as e:
+                    st.warning(f"⚠️ Not found: {e.message}")
+                except ConflictError as e:
+                    st.error(f"❌ Conflict: {e.message}")
+                except BusinessRuleError as e:
+                    st.error(f"❌ Not allowed: {e.message}")
+                except ValidationError as e:
+                    st.error(f"❌ Invalid input: {e.message}")
                 except Exception as e:
                     st.error(f"❌ Unexpected error: {e}")
     else:

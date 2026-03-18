@@ -2,6 +2,7 @@ from datetime import time, date, timedelta, datetime as dt
 from app.db.connection import get_session
 from app.modules.academics.models import Course, Group
 from app.modules.academics.session_models import CourseSession
+from app.shared.exceptions import ValidationError, NotFoundError, BusinessRuleError
 from . import repository as repo
 
 # ── Time constraints ──────────────────────────────────────────────────────────
@@ -35,12 +36,12 @@ def _next_weekday(from_date: date, day_name: str) -> date:
 
 def _validate_times(start_time: time, end_time: time) -> None:
     if start_time < _EARLIEST or end_time > _LATEST:
-        raise ValueError(
+        raise ValidationError(
             f"Groups must be scheduled between 11:00 AM and 9:00 PM. "
             f"Got {_fmt_12h(start_time)} – {_fmt_12h(end_time)}."
         )
     if start_time >= end_time:
-        raise ValueError("End time must be after start time.")
+        raise ValidationError("End time must be after start time.")
 
 
 # ── Course Service ────────────────────────────────────────────────────────────
@@ -49,13 +50,13 @@ def _validate_times(start_time: time, end_time: time) -> None:
 def add_new_course(data: dict) -> Course:
     """Validates and creates a new course."""
     if data.get("price_per_level", 0) <= 0:
-        raise ValueError("Price must be greater than 0.")
+        raise ValidationError("Price must be greater than 0.")
     if data.get("sessions_per_level", 0) <= 0:
-        raise ValueError("Sessions per level must be at least 1.")
+        raise ValidationError("Sessions per level must be at least 1.")
 
     with get_session() as session:
         if repo.get_course_by_name(session, data["name"]):
-            raise ValueError(f"Course '{data['name']}' already exists.")
+            raise ConflictError(f"Course '{data['name']}' already exists.")
 
         course = Course(
             name=data["name"],
@@ -70,11 +71,11 @@ def add_new_course(data: dict) -> Course:
 def update_course_price(course_id: int, new_price: float) -> Course:
     """Updates the price per level for an existing course."""
     if new_price <= 0:
-        raise ValueError("Price must be greater than 0.")
+        raise ValidationError("Price must be greater than 0.")
     with get_session() as session:
         course = repo.update_course_price(session, course_id, new_price)
         if not course:
-            raise ValueError(f"Course {course_id} not found.")
+            raise NotFoundError(f"Course {course_id} not found.")
         return course
 
 
@@ -100,7 +101,7 @@ def schedule_group(data: dict) -> tuple[Group, list[CourseSession]]:
     with get_session() as session:
         course = session.get(Course, data["course_id"])
         if not course:
-            raise ValueError(f"Course with ID {data['course_id']} not found.")
+            raise NotFoundError(f"Course with ID {data['course_id']} not found.")
 
         auto_name = f"{data['default_day']} {_fmt_12h(start_time)} - {course.name}"
 
@@ -199,14 +200,14 @@ def generate_level_sessions(
     with get_session() as session:
         group = repo.get_group_by_id(session, group_id)
         if not group:
-            raise ValueError(f"Group {group_id} not found.")
+            raise NotFoundError(f"Group {group_id} not found.")
         course = session.get(Course, group.course_id)
         if not course:
-            raise ValueError(f"Course for group {group_id} not found.")
+            raise NotFoundError(f"Course for group {group_id} not found.")
 
         existing = repo.count_sessions(session, group_id, level_number)
         if existing > 0:
-            raise ValueError(
+            raise BusinessRuleError(
                 f"Level {level_number} already has {existing} session(s). "
                 "Remove them first or add extra sessions instead."
             )
@@ -239,7 +240,7 @@ def add_extra_session(
     with get_session() as session:
         group = repo.get_group_by_id(session, group_id)
         if not group:
-            raise ValueError(f"Group {group_id} not found.")
+            raise NotFoundError(f"Group {group_id} not found.")
         all_sessions = repo.list_sessions(session, group_id, level_number)
         next_num = max((s.session_number for s in all_sessions), default=0) + 1
 
@@ -267,7 +268,7 @@ def mark_substitute_instructor(session_id: int, instructor_id: int) -> CourseSes
     with get_session() as session:
         cs = repo.update_session_instructor(session, session_id, instructor_id)
         if not cs:
-            raise ValueError(f"Session {session_id} not found.")
+            raise NotFoundError(f"Session {session_id} not found.")
         return cs
 
 
@@ -296,5 +297,5 @@ def advance_group_level(group_id: int) -> Group:
     with get_session() as session:
         group = repo.increment_group_level(session, group_id)
         if not group:
-            raise ValueError(f"Group {group_id} not found.")
+            raise NotFoundError(f"Group {group_id} not found.")
         return group

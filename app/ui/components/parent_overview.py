@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from app.modules.crm import service as crm_srv
+from app.shared.exceptions import NotFoundError, BusinessRuleError, ConflictError, ValidationError
 
 
 @st.dialog("Register New Parent", width="large")
@@ -39,8 +40,12 @@ def modal_register_parent():
                     f"✅ Successfully registered {new_guardian.full_name} (ID: {new_guardian.id})!"
                 )
                 st.rerun()
-            except ValueError as e:
-                st.error(f"❌ {str(e)}")
+            except ConflictError as e:
+                st.error(f"❌ Conflict: {e.message}")
+            except ValidationError as e:
+                st.error(f"❌ Invalid input: {e.message}")
+            except NotFoundError as e:
+                st.warning(f"⚠️ Not found: {e.message}")
             except Exception as e:
                 st.error(f"❌ An unexpected error occurred: {str(e)}")
 

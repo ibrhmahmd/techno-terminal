@@ -6,6 +6,7 @@ from sqlmodel import Session, select
 from app.modules.academics.models import Group
 from app.modules.crm.models import Student
 from app.modules.enrollments.models import Enrollment
+from app.shared.exceptions import NotFoundError, BusinessRuleError, ConflictError
 from . import repository as repo
 
 
@@ -29,29 +30,29 @@ def enroll_student(
     Enrolls a student in a group.
     Returns (enrollment, capacity_exceeded: bool).
     capacity_exceeded=True means the group is over the soft limit — admin chose to proceed.
-    Raises ValueError for hard failures (student inactive, group inactive, already enrolled).
+    Raises typed domain exceptions for hard failures.
     """
     with get_session() as session:
         # 1. Validate student
         student = _get_student(session, student_id)
         if not student:
-            raise ValueError(f"Student ID {student_id} not found.")
+            raise NotFoundError(f"Student ID {student_id} not found.")
         if not student.is_active:
-            raise ValueError(f"Student '{student.full_name}' is not active.")
+            raise BusinessRuleError(f"Student '{student.full_name}' is not active.")
 
         # 2. Validate group
         group = _get_group(session, group_id)
         if not group:
-            raise ValueError(f"Group ID {group_id} not found.")
+            raise NotFoundError(f"Group ID {group_id} not found.")
         if group.status != "active":
-            raise ValueError(
+            raise BusinessRuleError(
                 f"Group '{group.name}' is not active (status: {group.status})."
             )
 
         # 3. Duplicate check
         existing = repo.get_active_enrollment(session, student_id, group_id)
         if existing:
-            raise ValueError(
+            raise ConflictError(
                 f"'{student.full_name}' is already enrolled in this group (Enrollment ID: {existing.id})."
             )
 
@@ -88,9 +89,9 @@ def apply_sibling_discount(
     with get_session() as session:
         enrollment = repo.get_enrollment(session, enrollment_id)
         if not enrollment:
-            raise ValueError(f"Enrollment {enrollment_id} not found.")
+            raise NotFoundError(f"Enrollment {enrollment_id} not found.")
         if enrollment.status != "active":
-            raise ValueError("Can only apply discount to active enrollments.")
+            raise BusinessRuleError("Can only apply discount to active enrollments.")
         updated = repo.update_discount(session, enrollment_id, discount_amount)
         return updated
 
@@ -102,15 +103,15 @@ def transfer_student(
     with get_session() as session:
         source = repo.get_enrollment(session, from_enrollment_id)
         if not source:
-            raise ValueError(f"Source enrollment {from_enrollment_id} not found.")
+            raise NotFoundError(f"Source enrollment {from_enrollment_id} not found.")
         if source.status != "active":
-            raise ValueError("Can only transfer an active enrollment.")
+            raise BusinessRuleError("Can only transfer an active enrollment.")
 
         target_group = _get_group(session, to_group_id)
         if not target_group:
-            raise ValueError(f"Target group {to_group_id} not found.")
+            raise NotFoundError(f"Target group {to_group_id} not found.")
         if target_group.status != "active":
-            raise ValueError(f"Target group '{target_group.name}' is not active.")
+            raise BusinessRuleError(f"Target group '{target_group.name}' is not active.")
 
         # Mark source as transferred
         repo.update_enrollment_status(session, from_enrollment_id, "transferred")
@@ -134,7 +135,7 @@ def drop_enrollment(enrollment_id: int) -> Enrollment:
     with get_session() as session:
         enrollment = repo.get_enrollment(session, enrollment_id)
         if not enrollment:
-            raise ValueError(f"Enrollment {enrollment_id} not found.")
+            raise NotFoundError(f"Enrollment {enrollment_id} not found.")
         return repo.update_enrollment_status(session, enrollment_id, "dropped")
 
 
@@ -142,7 +143,7 @@ def complete_enrollment(enrollment_id: int) -> Enrollment:
     with get_session() as session:
         enrollment = repo.get_enrollment(session, enrollment_id)
         if not enrollment:
-            raise ValueError(f"Enrollment {enrollment_id} not found.")
+            raise NotFoundError(f"Enrollment {enrollment_id} not found.")
         return repo.update_enrollment_status(session, enrollment_id, "completed")
 
 

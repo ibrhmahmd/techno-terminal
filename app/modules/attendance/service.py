@@ -3,6 +3,7 @@ from app.modules.enrollments.repository import get_active_enrollment
 from app.modules.academics.session_models import CourseSession
 from sqlmodel import select
 from app.modules.attendance.models import Attendance
+from app.shared.exceptions import NotFoundError
 from . import repository as repo
 
 
@@ -24,7 +25,7 @@ def mark_session_attendance(
         # Validate session exists and get group/level context
         course_session = session.get(CourseSession, session_id)
         if not course_session:
-            raise ValueError(f"Session ID {session_id} not found.")
+            raise NotFoundError(f"Session ID {session_id} not found.")
 
         group_id = course_session.group_id
         level_number = course_session.level_number

@@ -8,6 +8,7 @@ from app.modules.competitions.models import (
     TeamMember,
 )
 from app.modules.competitions import repository as repo
+from app.shared.exceptions import ValidationError, NotFoundError, BusinessRuleError, ConflictError
 
 
 # ── Competitions ──────────────────────────────────────────────────────────────
@@ -54,7 +55,7 @@ def create_competition(
 ) -> Competition:
     """Validates inputs and creates a new competition."""
     if not name.strip():
-        raise ValueError("Competition name is required.")
+        raise ValidationError("Competition name is required.")
     with get_session() as db:
         return repo.create_competition(
             db, name, edition, competition_date, location, notes
@@ -82,11 +83,11 @@ def add_category(
     notes: Optional[str] = None,
 ) -> CompetitionCategory:
     if not category_name.strip():
-        raise ValueError("Category name is required.")
+        raise ValidationError("Category name is required.")
     with get_session() as db:
         comp = repo.get_competition(db, competition_id)
         if not comp:
-            raise ValueError(f"Competition {competition_id} not found.")
+            raise NotFoundError(f"Competition {competition_id} not found.")
         return repo.add_category(db, competition_id, category_name, notes)
 
 
@@ -124,20 +125,20 @@ def register_team(
     from app.modules.crm.models import Student
 
     if not team_name.strip():
-        raise ValueError("Team name is required.")
+        raise ValidationError("Team name is required.")
     if not student_ids:
-        raise ValueError("At least one student is required.")
+        raise ValidationError("At least one student is required.")
 
     with get_session() as db:
         # Validate category exists
         cat = repo.get_category(db, category_id)
         if not cat:
-            raise ValueError(f"Category {category_id} not found.")
+            raise NotFoundError(f"Category {category_id} not found.")
 
         # Validate team name uniqueness in this category
         existing_teams = repo.list_teams(db, category_id)
         if any(t.team_name.lower() == team_name.lower() for t in existing_teams):
-            raise ValueError(
+            raise ConflictError(
                 f"A team named '{team_name}' already exists in this category."
             )
 
@@ -145,9 +146,9 @@ def register_team(
         for sid in student_ids:
             s = db.get(Student, sid)
             if not s:
-                raise ValueError(f"Student {sid} not found.")
+                raise NotFoundError(f"Student {sid} not found.")
             if not s.is_active:
-                raise ValueError(f"Student '{s.full_name}' is not active.")
+                raise BusinessRuleError(f"Student '{s.full_name}' is not active.")
 
         # Create team
         team = repo.create_team(
@@ -187,14 +188,14 @@ def add_team_member_to_existing(team_id: int, student_id: int) -> dict:
     with get_session() as db:
         team = repo.get_team(db, team_id)
         if not team:
-            raise ValueError(f"Team {team_id} not found.")
+            raise NotFoundError(f"Team {team_id} not found.")
         s = db.get(Student, student_id)
         if not s or not s.is_active:
-            raise ValueError(f"Student {student_id} not found or inactive.")
+            raise NotFoundError(f"Student {student_id} not found or inactive.")
 
         existing = repo.get_team_member(db, team_id, student_id)
         if existing:
-            raise ValueError(f"Student is already a member of this team.")
+            raise ConflictError(f"Student is already a member of this team.")
 
         m = repo.add_team_member(db, team_id, student_id)
         return {
@@ -247,17 +248,17 @@ def pay_competition_fee(
     with get_session() as db:
         team = repo.get_team(db, team_id)
         if not team:
-            raise ValueError(f"Team {team_id} not found.")
+            raise NotFoundError(f"Team {team_id} not found.")
 
         member = repo.get_team_member(db, team_id, student_id)
         if not member:
-            raise ValueError(f"Student {student_id} is not a member of team {team_id}.")
+            raise NotFoundError(f"Student {student_id} is not a member of team {team_id}.")
         if member.fee_paid:
-            raise ValueError("Fee is already paid for this student.")
+            raise BusinessRuleError("Fee is already paid for this student.")
 
         fee = team.enrollment_fee_per_student or 0.0
         if fee <= 0:
-            raise ValueError(
+            raise BusinessRuleError(
                 "Team has no fee set. Set 'enrollment_fee_per_student' on the team first."
             )
 

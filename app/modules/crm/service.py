@@ -1,6 +1,7 @@
 import re
 from app.db.connection import get_session
 from app.modules.crm.models import Guardian, Student
+from app.shared.exceptions import ValidationError, ConflictError, NotFoundError
 from . import repository as repo
 
 # --- Guardian Service ---
@@ -10,23 +11,23 @@ def validate_phone(phone: str) -> str:
     """Strips non-digits. Validates basic length."""
     cleaned = re.sub(r"\D", "", phone)
     if len(cleaned) < 10:
-        raise ValueError(f"Phone number '{phone}' looks invalid (too short).")
+        raise ValidationError(f"Phone number '{phone}' looks invalid (too short).")
     return cleaned
 
 
 def register_guardian(data: dict) -> Guardian:
-    """Registers a new guardian. Raises ValueError if phone already exists."""
+    """Registers a new guardian. Raises ConflictError if phone already exists."""
     required_fields = ["full_name", "phone_primary"]
     for field in required_fields:
         if not data.get(field):
-            raise ValueError(f"Missing required field: {field}")
+            raise ValidationError(f"Missing required field: {field}")
 
     phone_primary = validate_phone(data["phone_primary"])
 
     with get_session() as session:
         existing = repo.get_guardian_by_phone(session, phone_primary)
         if existing:
-            raise ValueError(
+            raise ConflictError(
                 f"A guardian with phone {phone_primary} already exists (ID: {existing.id})."
             )
         guardian = Guardian(
@@ -50,7 +51,7 @@ def find_or_create_guardian(data: dict) -> tuple[Guardian, bool]:
     required_fields = ["full_name", "phone_primary"]
     for field in required_fields:
         if not data.get(field):
-            raise ValueError(f"Missing required field: {field}")
+            raise ValidationError(f"Missing required field: {field}")
 
     phone_primary = validate_phone(data["phone_primary"])
 
@@ -90,12 +91,12 @@ def register_student(
     Returns (student, siblings) so the UI can offer the sibling discount.
     """
     if not student_data.get("full_name"):
-        raise ValueError("Student full name is required.")
+        raise ValidationError("Student full name is required.")
 
     with get_session() as session:
         guardian = repo.get_guardian_by_id(session, guardian_id)
         if not guardian:
-            raise ValueError(f"Guardian with ID {guardian_id} not found.")
+            raise NotFoundError(f"Guardian with ID {guardian_id} not found.")
 
         student = Student(
             full_name=student_data["full_name"],
@@ -119,6 +120,12 @@ def register_student(
     # Sibling detection in a separate session so the committed link is visible
     siblings = find_siblings(student_id)
     return student_obj, siblings
+
+
+def get_student_by_id(student_id: int) -> Student | None:
+    """Returns a student by ID, or None if not found."""
+    with get_session() as session:
+        return repo.get_student_by_id(session, student_id)
 
 
 def search_students(query: str) -> list[Student]:

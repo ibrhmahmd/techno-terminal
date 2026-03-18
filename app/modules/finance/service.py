@@ -4,6 +4,7 @@ from app.db.connection import get_session
 from app.modules.finance.models import Receipt, Payment
 from app.modules.enrollments.models import Enrollment
 from app.modules.finance import repository as repo
+from app.shared.exceptions import ValidationError, NotFoundError, BusinessRuleError
 
 
 # ── Receipt Lifecycle ─────────────────────────────────────────────────────────
@@ -37,15 +38,15 @@ def add_charge_line(
 ) -> Payment:
     """Records a payment received for a student's enrollment."""
     if amount <= 0:
-        raise ValueError("Amount must be greater than 0.")
+        raise ValidationError("Amount must be greater than 0.")
     with get_session() as db:
         # Validate enrollment if provided
         if enrollment_id:
             enr = db.get(Enrollment, enrollment_id)
             if not enr:
-                raise ValueError(f"Enrollment {enrollment_id} not found.")
+                raise NotFoundError(f"Enrollment {enrollment_id} not found.")
             if enr.status != "active":
-                raise ValueError(
+                raise BusinessRuleError(
                     f"Enrollment {enrollment_id} is '{enr.status}', not active."
                 )
         return repo.add_payment_line(
@@ -66,9 +67,9 @@ def finalize_receipt(receipt_id: int) -> dict:
     with get_session() as db:
         data = repo.get_receipt_with_lines(db, receipt_id)
         if not data:
-            raise ValueError(f"Receipt {receipt_id} not found.")
+            raise NotFoundError(f"Receipt {receipt_id} not found.")
         if not data["lines"]:
-            raise ValueError("Cannot finalize a receipt with no payment lines.")
+            raise BusinessRuleError("Cannot finalize a receipt with no payment lines.")
         total = repo.get_receipt_total(db, receipt_id)
         r = data["receipt"]
         return {
@@ -89,11 +90,11 @@ def issue_refund(
 ) -> dict:
     """Opens a new receipt and adds a refund line based on an original payment."""
     if amount <= 0:
-        raise ValueError("Refund amount must be greater than 0.")
+        raise ValidationError("Refund amount must be greater than 0.")
     with get_session() as db:
         original_payment = db.get(Payment, payment_id)
         if not original_payment:
-            raise ValueError(f"Original payment {payment_id} not found.")
+            raise NotFoundError(f"Original payment {payment_id} not found.")
 
         student_id = original_payment.student_id
         enrollment_id = original_payment.enrollment_id
