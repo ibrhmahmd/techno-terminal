@@ -161,3 +161,10 @@ def get_daily_collections(db: Session, target_date: date) -> list[dict]:
     """)
     rows = db.execute(stmt, {"target_date": str(target_date)}).all()
     return [dict(row._mapping) for row in rows]
+
+
+# ── RepositoryProtocol aliases ────────────────────────────────────────────────
+# Primary entity: Receipt
+get_by_id = get_receipt
+create = create_receipt
+list_all = list_receipts_by_date  # Note: requires target_date arg — use functools.partial at call site if needed

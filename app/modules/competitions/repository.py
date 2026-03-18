@@ -212,3 +212,10 @@ def remove_team_member(db: Session, team_id: int, student_id: int) -> bool:
         db.flush()
         return True
     return False
+
+
+# ── RepositoryProtocol aliases ────────────────────────────────────────────────
+# Primary entity: Competition
+get_by_id = get_competition
+create = create_competition
+list_all = list_competitions

@@ -173,3 +173,15 @@ def update_session_instructor(
         cs.is_substitute = True
         session.add(cs)
     return cs
+
+
+def get_course_by_id(session: Session, course_id: int) -> Course | None:
+    """Get a course by primary key — satisfies RepositoryProtocol.get_by_id."""
+    return session.get(Course, course_id)
+
+
+# ── RepositoryProtocol aliases ────────────────────────────────────────────────
+# Primary entity: Course
+get_by_id = get_course_by_id
+create = create_course
+list_all = list_active_courses

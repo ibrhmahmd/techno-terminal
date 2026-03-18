@@ -61,3 +61,9 @@ def update_discount(
         enrollment.discount_applied = discount
         session.add(enrollment)
     return enrollment
+
+
+# ── RepositoryProtocol aliases ────────────────────────────────────────────────
+get_by_id = get_enrollment
+create = create_enrollment
+list_all = list_enrollments

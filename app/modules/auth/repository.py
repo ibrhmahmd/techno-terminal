@@ -30,3 +30,10 @@ def update_last_login(session: Session, user_id: int) -> None:
 def get_active_employees(session: Session) -> list[Employee]:
     stmt = select(Employee).where(Employee.is_active == True)
     return session.exec(stmt).all()
+
+
+# ── RepositoryProtocol aliases ────────────────────────────────────────────────
+# Primary entity: Employee (User is auth-internal)
+get_by_id = get_employee_by_id
+list_all = get_active_employees
+# create is intentionally omitted — users/employees are created via admin scripts only

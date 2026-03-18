@@ -93,3 +93,10 @@ def get_siblings(session: Session, student_id: int) -> list[dict]:
     result = session.execute(stmt, {"student_id": student_id})
     # Check if we have results, mapping to dictionaries
     return [dict(row._mapping) for row in result.all()]
+
+
+# ── RepositoryProtocol aliases ────────────────────────────────────────────────
+# Primary entity: Guardian
+get_by_id = get_guardian_by_id
+create = create_guardian
+list_all = search_guardians  # search_guardians takes (session, query) — closest to list_all

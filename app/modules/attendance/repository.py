@@ -48,3 +48,10 @@ def get_enrollment_attendance(session: Session, enrollment_id: int) -> dict:
         "sessions_attended": 0,
         "sessions_missed": 0,
     }
+
+
+# ── RepositoryProtocol aliases ────────────────────────────────────────────────
+# Note: Attendance is upsert-only (no separate insert/update).
+# get_by_id is not meaningful for attendance (queried by session, not PK).
+create = upsert_attendance
+list_all = get_session_attendance
