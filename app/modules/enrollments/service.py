@@ -2,7 +2,7 @@ from datetime import date, datetime, timezone
 from app.db.connection import get_session
 from app.modules.crm.repository import get_student_by_id
 from app.modules.academics.repository import list_groups_by_course
-from sqlmodel import Session, select
+from sqlmodel import Session
 from app.modules.academics.models import Group
 from app.modules.crm.models import Student
 from app.modules.enrollments.models import Enrollment
@@ -162,5 +162,4 @@ def get_group_roster(
 def get_student_enrollments(student_id: int) -> list[Enrollment]:
     """Returns all enrollments for a student across all groups."""
     with get_session() as session:
-        stmt = select(Enrollment).where(Enrollment.student_id == student_id)
-        return list(session.exec(stmt).all())
+        return repo.get_enrollments_by_student(session, student_id)

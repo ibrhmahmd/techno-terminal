@@ -63,6 +63,14 @@ def update_discount(
     return enrollment
 
 
+def get_enrollments_by_student(
+    session: Session, student_id: int
+) -> list[Enrollment]:
+    """Returns all enrollments for a student across all groups and statuses."""
+    stmt = select(Enrollment).where(Enrollment.student_id == student_id)
+    return list(session.exec(stmt).all())
+
+
 # ── RepositoryProtocol aliases ────────────────────────────────────────────────
 get_by_id = get_enrollment
 create = create_enrollment

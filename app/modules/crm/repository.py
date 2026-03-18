@@ -95,6 +95,25 @@ def get_siblings(session: Session, student_id: int) -> list[dict]:
     return [dict(row._mapping) for row in result.all()]
 
 
+def get_students_by_guardian_id(
+    session: Session, guardian_id: int, active_only: bool = True
+) -> list[Student]:
+    """
+    Returns all Student objects linked to a guardian via StudentGuardian.
+    Uses a single JOIN instead of a loop — avoids the N+1 query anti-pattern.
+    """
+    from app.modules.crm.models import StudentGuardian
+
+    stmt = (
+        select(Student)
+        .join(StudentGuardian, StudentGuardian.student_id == Student.id)
+        .where(StudentGuardian.guardian_id == guardian_id)
+    )
+    if active_only:
+        stmt = stmt.where(Student.is_active == True)
+    return list(session.exec(stmt).all())
+
+
 # ── RepositoryProtocol aliases ────────────────────────────────────────────────
 # Primary entity: Guardian
 get_by_id = get_guardian_by_id
