@@ -2,25 +2,15 @@ import re
 from app.db.connection import get_session
 from app.modules.crm.models import Guardian, Student
 from app.shared.exceptions import ValidationError, ConflictError, NotFoundError
+from app.shared.validators import validate_phone, validate_required_fields
 from . import repository as repo
 
 # --- Guardian Service ---
 
 
-def validate_phone(phone: str) -> str:
-    """Strips non-digits. Validates basic length."""
-    cleaned = re.sub(r"\D", "", phone)
-    if len(cleaned) < 10:
-        raise ValidationError(f"Phone number '{phone}' looks invalid (too short).")
-    return cleaned
-
-
 def register_guardian(data: dict) -> Guardian:
     """Registers a new guardian. Raises ConflictError if phone already exists."""
-    required_fields = ["full_name", "phone_primary"]
-    for field in required_fields:
-        if not data.get(field):
-            raise ValidationError(f"Missing required field: {field}")
+    validate_required_fields(data, ["full_name", "phone_primary"])
 
     phone_primary = validate_phone(data["phone_primary"])
 
@@ -48,10 +38,7 @@ def find_or_create_guardian(data: dict) -> tuple[Guardian, bool]:
     Otherwise create a new one (created=True).
     This is the preferred entry point for the student registration workflow.
     """
-    required_fields = ["full_name", "phone_primary"]
-    for field in required_fields:
-        if not data.get(field):
-            raise ValidationError(f"Missing required field: {field}")
+    validate_required_fields(data, ["full_name", "phone_primary"])
 
     phone_primary = validate_phone(data["phone_primary"])
 
@@ -91,7 +78,7 @@ def register_student(
     Returns (student, siblings) so the UI can offer the sibling discount.
     """
     if not student_data.get("full_name"):
-        raise ValidationError("Student full name is required.")
+        raise ValidationError("'Full Name' is required.")
 
     with get_session() as session:
         guardian = repo.get_guardian_by_id(session, guardian_id)

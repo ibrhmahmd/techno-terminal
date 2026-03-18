@@ -2,7 +2,8 @@ from datetime import time, date, timedelta, datetime as dt
 from app.db.connection import get_session
 from app.modules.academics.models import Course, Group
 from app.modules.academics.session_models import CourseSession
-from app.shared.exceptions import ValidationError, NotFoundError, BusinessRuleError
+from app.shared.exceptions import ValidationError, NotFoundError, BusinessRuleError, ConflictError
+from app.shared.validators import validate_positive_amount
 from . import repository as repo
 
 # ── Time constraints ──────────────────────────────────────────────────────────
@@ -49,8 +50,7 @@ def _validate_times(start_time: time, end_time: time) -> None:
 
 def add_new_course(data: dict) -> Course:
     """Validates and creates a new course."""
-    if data.get("price_per_level", 0) <= 0:
-        raise ValidationError("Price must be greater than 0.")
+    validate_positive_amount(data.get("price_per_level", 0), field="price per level")
     if data.get("sessions_per_level", 0) <= 0:
         raise ValidationError("Sessions per level must be at least 1.")
 
@@ -70,8 +70,7 @@ def add_new_course(data: dict) -> Course:
 
 def update_course_price(course_id: int, new_price: float) -> Course:
     """Updates the price per level for an existing course."""
-    if new_price <= 0:
-        raise ValidationError("Price must be greater than 0.")
+    validate_positive_amount(new_price, field="price")
     with get_session() as session:
         course = repo.update_course_price(session, course_id, new_price)
         if not course:

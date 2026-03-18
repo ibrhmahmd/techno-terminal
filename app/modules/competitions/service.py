@@ -9,6 +9,7 @@ from app.modules.competitions.models import (
 )
 from app.modules.competitions import repository as repo
 from app.shared.exceptions import ValidationError, NotFoundError, BusinessRuleError, ConflictError
+from app.shared.validators import validate_non_empty_string
 
 
 # ── Competitions ──────────────────────────────────────────────────────────────
@@ -54,8 +55,7 @@ def create_competition(
     notes: Optional[str] = None,
 ) -> Competition:
     """Validates inputs and creates a new competition."""
-    if not name.strip():
-        raise ValidationError("Competition name is required.")
+    name = validate_non_empty_string(name, field="competition name")
     with get_session() as db:
         return repo.create_competition(
             db, name, edition, competition_date, location, notes
@@ -82,8 +82,7 @@ def add_category(
     category_name: str,
     notes: Optional[str] = None,
 ) -> CompetitionCategory:
-    if not category_name.strip():
-        raise ValidationError("Category name is required.")
+    category_name = validate_non_empty_string(category_name, field="category name")
     with get_session() as db:
         comp = repo.get_competition(db, competition_id)
         if not comp:
@@ -124,8 +123,7 @@ def register_team(
     """
     from app.modules.crm.models import Student
 
-    if not team_name.strip():
-        raise ValidationError("Team name is required.")
+    team_name = validate_non_empty_string(team_name, field="team name")
     if not student_ids:
         raise ValidationError("At least one student is required.")
 

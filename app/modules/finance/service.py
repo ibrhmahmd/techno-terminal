@@ -5,6 +5,7 @@ from app.modules.finance.models import Receipt, Payment
 from app.modules.enrollments.models import Enrollment
 from app.modules.finance import repository as repo
 from app.shared.exceptions import ValidationError, NotFoundError, BusinessRuleError
+from app.shared.validators import validate_positive_amount
 
 
 # ── Receipt Lifecycle ─────────────────────────────────────────────────────────
@@ -37,8 +38,7 @@ def add_charge_line(
     notes: Optional[str] = None,
 ) -> Payment:
     """Records a payment received for a student's enrollment."""
-    if amount <= 0:
-        raise ValidationError("Amount must be greater than 0.")
+    validate_positive_amount(amount, field="amount")
     with get_session() as db:
         # Validate enrollment if provided
         if enrollment_id:
@@ -89,8 +89,7 @@ def issue_refund(
     received_by_user_id: Optional[int],
 ) -> dict:
     """Opens a new receipt and adds a refund line based on an original payment."""
-    if amount <= 0:
-        raise ValidationError("Refund amount must be greater than 0.")
+    validate_positive_amount(amount, field="refund amount")
     with get_session() as db:
         original_payment = db.get(Payment, payment_id)
         if not original_payment:
