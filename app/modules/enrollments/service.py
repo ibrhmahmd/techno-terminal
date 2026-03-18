@@ -1,21 +1,10 @@
 from datetime import date, datetime, timezone
 from app.db.connection import get_session
-from app.modules.crm.repository import get_student_by_id
-from app.modules.academics.repository import list_groups_by_course
-from sqlmodel import Session
-from app.modules.academics.models import Group
-from app.modules.crm.models import Student
+from app.modules.crm import service as crm_srv
+from app.modules.academics import service as acad_srv
 from app.modules.enrollments.models import Enrollment
 from app.shared.exceptions import NotFoundError, BusinessRuleError, ConflictError
 from . import repository as repo
-
-
-def _get_group(session: Session, group_id: int) -> Group | None:
-    return session.get(Group, group_id)
-
-
-def _get_student(session: Session, student_id: int) -> Student | None:
-    return session.get(Student, student_id)
 
 
 def enroll_student(
@@ -29,34 +18,35 @@ def enroll_student(
     """
     Enrolls a student in a group.
     Returns (enrollment, capacity_exceeded: bool).
-    capacity_exceeded=True means the group is over the soft limit — admin chose to proceed.
-    Raises typed domain exceptions for hard failures.
+    Cross-module validation is done via service calls (each opens its own read session).
+    Enrollment data is written in a separate session.
     """
+    # 1. Validate student — via CRM service (no shared session)
+    student = crm_srv.get_student_by_id(student_id)
+    if not student:
+        raise NotFoundError(f"Student ID {student_id} not found.")
+    if not student.is_active:
+        raise BusinessRuleError(f"Student '{student.full_name}' is not active.")
+
+    # 2. Validate group — via Academics service (no shared session)
+    group = acad_srv.get_group_by_id(group_id)
+    if not group:
+        raise NotFoundError(f"Group ID {group_id} not found.")
+    if group.status != "active":
+        raise BusinessRuleError(
+            f"Group '{group.name}' is not active (status: {group.status})."
+        )
+
+    # 3. Enrollment-specific logic in its own session
     with get_session() as session:
-        # 1. Validate student
-        student = _get_student(session, student_id)
-        if not student:
-            raise NotFoundError(f"Student ID {student_id} not found.")
-        if not student.is_active:
-            raise BusinessRuleError(f"Student '{student.full_name}' is not active.")
-
-        # 2. Validate group
-        group = _get_group(session, group_id)
-        if not group:
-            raise NotFoundError(f"Group ID {group_id} not found.")
-        if group.status != "active":
-            raise BusinessRuleError(
-                f"Group '{group.name}' is not active (status: {group.status})."
-            )
-
-        # 3. Duplicate check
+        # Duplicate check
         existing = repo.get_active_enrollment(session, student_id, group_id)
         if existing:
             raise ConflictError(
                 f"'{student.full_name}' is already enrolled in this group (Enrollment ID: {existing.id})."
             )
 
-        # 4. Soft capacity check
+        # Soft capacity check
         active_enrollments = repo.list_enrollments(
             session, group_id=group_id, status="active"
         )
@@ -65,11 +55,11 @@ def enroll_student(
             and len(active_enrollments) >= group.max_capacity
         )
 
-        # 5. Create enrollment — snapshot level from group
+        # Create enrollment — snapshot level from group
         enrollment = Enrollment(
             student_id=student_id,
             group_id=group_id,
-            level_number=group.level_number,  # Snapshot
+            level_number=group.level_number,  # Snapshot at enrollment time
             enrolled_at=datetime.now(timezone.utc),
             amount_due=amount_due,
             discount_applied=discount,
@@ -77,7 +67,6 @@ def enroll_student(
             created_by=created_by,
             created_at=datetime.now(timezone.utc),
         )
-
         created = repo.create_enrollment(session, enrollment)
         return created, capacity_exceeded
 
@@ -100,6 +89,13 @@ def transfer_student(
     from_enrollment_id: int, to_group_id: int, created_by: int | None = None
 ) -> Enrollment:
     """Marks the old enrollment as 'transferred' and creates a new one in the target group."""
+    # Validate target group via Academics service first
+    target_group = acad_srv.get_group_by_id(to_group_id)
+    if not target_group:
+        raise NotFoundError(f"Target group {to_group_id} not found.")
+    if target_group.status != "active":
+        raise BusinessRuleError(f"Target group '{target_group.name}' is not active.")
+
     with get_session() as session:
         source = repo.get_enrollment(session, from_enrollment_id)
         if not source:
@@ -107,16 +103,10 @@ def transfer_student(
         if source.status != "active":
             raise BusinessRuleError("Can only transfer an active enrollment.")
 
-        target_group = _get_group(session, to_group_id)
-        if not target_group:
-            raise NotFoundError(f"Target group {to_group_id} not found.")
-        if target_group.status != "active":
-            raise BusinessRuleError(f"Target group '{target_group.name}' is not active.")
-
         # Mark source as transferred
         repo.update_enrollment_status(session, from_enrollment_id, "transferred")
 
-        # Create new enrollment
+        # Create new enrollment in target group
         new_enrollment = Enrollment(
             student_id=source.student_id,
             group_id=to_group_id,
