@@ -28,6 +28,23 @@ def open_receipt(
         return r
 
 
+def _open_receipt_in_session(
+    db,
+    guardian_id: Optional[int],
+    method: PaymentMethod | str,
+    received_by_user_id: Optional[int],
+    notes: Optional[str] = None,
+) -> Receipt:
+    """
+    Internal variant — creates a receipt header within an existing session.
+    Does NOT commit. Used by issue_refund() so receipt + refund line are atomic.
+    """
+    r = repo.create_receipt(db, guardian_id, method, received_by_user_id, notes=notes)
+    repo.set_receipt_number(db, r.id)
+    db.refresh(r)
+    return r
+
+
 def add_charge_line(
     receipt_id: int,
     student_id: int,
@@ -88,26 +105,31 @@ def issue_refund(
     reason: str,
     received_by_user_id: Optional[int],
 ) -> dict:
-    """Opens a new receipt and adds a refund line based on an original payment."""
+    """
+    Opens a new receipt and adds a refund line based on an original payment.
+    ATOMIC — receipt header + refund line + competition fee unmark all commit
+    together, or not at all. If any step fails, no orphaned receipt is left.
+    """
     validate_positive_amount(amount, field="refund amount")
+
+    # Step 1: short read session — just fetch original payment metadata
     with get_session() as db:
-        original_payment = db.get(Payment, payment_id)
-        if not original_payment:
+        original = db.get(Payment, payment_id)
+        if not original:
             raise NotFoundError(f"Original payment {payment_id} not found.")
+        student_id = original.student_id
+        enrollment_id = original.enrollment_id
+        payment_type = original.payment_type
 
-        student_id = original_payment.student_id
-        enrollment_id = original_payment.enrollment_id
-        payment_type = original_payment.payment_type
-
-    # Create refund receipt
-    refund_receipt = open_receipt(
-        guardian_id=None,
-        method="cash",  # default; UI can override
-        received_by_user_id=received_by_user_id,
-        notes=f"Refund: {reason}",
-    )
-
+    # Step 2: atomic write session — receipt + refund line + fee unmark together
     with get_session() as db:
+        refund_receipt = _open_receipt_in_session(
+            db,
+            guardian_id=None,
+            method="cash",
+            received_by_user_id=received_by_user_id,
+            notes=f"Refund: {reason}",
+        )
         repo.add_payment_line(
             db,
             receipt_id=refund_receipt.id,
@@ -119,10 +141,16 @@ def issue_refund(
             notes=reason,
         )
 
-        # Unmark competition fee if applicable — competitions module owns this logic
+        # Unmark competition fee within the SAME session for atomicity
+        # NOTE: competitions repo called directly here (not via service) so that
+        # the fee unmark and the refund line share one commit boundary.
         if payment_type == "competition":
-            from app.modules.competitions import service as comp_srv
-            comp_srv.unmark_team_fee_for_payment(payment_id)
+            from app.modules.competitions.repository import get_members_by_payment_id
+            members = get_members_by_payment_id(db, payment_id)
+            for m in members:
+                m.fee_paid = False
+                m.payment_id = None
+                db.add(m)
 
         balance_data = None
         if enrollment_id:
@@ -133,6 +161,7 @@ def issue_refund(
             "refunded_amount": amount,
             "new_balance": balance_data["balance"] if balance_data else None,
         }
+    # ← SINGLE COMMIT — receipt + refund line + fee unmark or nothing
 
 
 # ── Balance & Reporting ───────────────────────────────────────────────────────

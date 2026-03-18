@@ -1,4 +1,5 @@
 from datetime import time, date, timedelta, datetime as dt
+from sqlmodel import Session
 from app.db.connection import get_session
 from app.modules.academics.models import Course, Group
 from app.modules.academics.session_models import CourseSession
@@ -86,24 +87,59 @@ def get_active_courses() -> list[Course]:
 # ── Group Service ─────────────────────────────────────────────────────────────
 
 
+def _create_sessions_in_session(
+    session: Session,
+    group_id: int,
+    level_number: int,
+    start_date: date,
+    count: int,
+    start_time: time,
+    end_time: time,
+    instructor_id: int,
+) -> list[CourseSession]:
+    """
+    Creates CourseSession records within an existing session — does NOT commit.
+    Called by schedule_group() and generate_level_sessions() to stay atomic.
+    """
+    created = []
+    d = start_date
+    for i in range(count):
+        cs = CourseSession(
+            group_id=group_id,
+            level_number=level_number,
+            session_number=i + 1,
+            session_date=d.isoformat(),
+            start_time=start_time,
+            end_time=end_time,
+            actual_instructor_id=instructor_id,
+            is_extra_session=False,
+            created_at=dt.utcnow().isoformat(),
+        )
+        session.add(cs)
+        session.flush()
+        created.append(cs)
+        d += timedelta(weeks=1)
+    return created
+
+
 def schedule_group(data: dict) -> tuple[Group, list[CourseSession]]:
     """
     Creates a group, auto-generates its name, validates time window (11AM-9PM),
     and immediately generates the first level sessions starting from today.
     Returns (group, sessions).
+    ATOMIC — group + sessions commit together or not at all.
     """
-    start_time: time = data["default_time_start"]
-    end_time: time = data["default_time_end"]
+    _validate_times(data["default_time_start"], data["default_time_end"])
 
-    _validate_times(start_time, end_time)
-
-    with get_session() as session:
+    with get_session() as session:                          # ← ONE session
         course = session.get(Course, data["course_id"])
         if not course:
             raise NotFoundError(f"Course with ID {data['course_id']} not found.")
 
-        auto_name = f"{data['default_day']} {_fmt_12h(start_time)} - {course.name}"
-
+        auto_name = (
+            f"{data['default_day']} "
+            f"{_fmt_12h(data['default_time_start'])} - {course.name}"
+        )
         group = Group(
             name=auto_name,
             course_id=data["course_id"],
@@ -111,52 +147,24 @@ def schedule_group(data: dict) -> tuple[Group, list[CourseSession]]:
             level_number=1,
             max_capacity=data.get("max_capacity", 15),
             default_day=data["default_day"],
-            default_time_start=start_time,
-            default_time_end=end_time,
+            default_time_start=data["default_time_start"],
+            default_time_end=data["default_time_end"],
         )
-        created_group = repo.create_group(session, group)
-        group_id = created_group.id
-        sessions_per_level = course.sessions_per_level
-        instructor_id = created_group.instructor_id
+        session.add(group)
+        session.flush()                                     # get group.id without commit
 
-    # Auto-generate level 1 sessions in a fresh session so the group is committed
-    start_date = (
-        _next_weekday(date.today(), data["default_day"])
-        if data.get("default_day")
-        else date.today()
-    )
-    sessions = _create_sessions(
-        group_id, 1, start_date, sessions_per_level, start_time, end_time, instructor_id
-    )
-
-    # Refresh group object
-    with get_session() as session:
-        group_obj = repo.get_group_by_id(session, group_id)
-
-    return group_obj, sessions
-
-
-def _create_sessions(
-    group_id, level_number, start_date, count, start_time, end_time, instructor_id
-):
-    created = []
-    session_date = start_date
-    with get_session() as session:
-        for i in range(count):
-            cs = CourseSession(
-                group_id=group_id,
-                level_number=level_number,
-                session_number=i + 1,
-                session_date=session_date.isoformat(),
-                start_time=start_time,
-                end_time=end_time,
-                actual_instructor_id=instructor_id,
-                is_extra_session=False,
-                created_at=dt.utcnow().isoformat(),
-            )
-            created.append(repo.create_session(session, cs))
-            session_date += timedelta(weeks=1)
-    return created
+        start_date = (
+            _next_weekday(date.today(), data["default_day"])
+            if data.get("default_day") else date.today()
+        )
+        sessions = _create_sessions_in_session(            # ← SAME session
+            session, group.id, 1, start_date,
+            course.sessions_per_level,
+            data["default_time_start"], data["default_time_end"],
+            group.instructor_id,
+        )
+        return group, sessions
+    # ← SINGLE COMMIT — group + sessions or nothing
 
 
 def get_groups_by_course(course_id: int) -> list[Group]:
@@ -195,8 +203,9 @@ def generate_level_sessions(
     """
     Generates N weekly sessions for a group level.
     Raises if sessions for this level already exist.
+    ATOMIC — validation + session creation in one transaction.
     """
-    with get_session() as session:
+    with get_session() as session:                          # ← ONE session
         group = repo.get_group_by_id(session, group_id)
         if not group:
             raise NotFoundError(f"Group {group_id} not found.")
@@ -213,23 +222,15 @@ def generate_level_sessions(
 
         snapped = (
             _next_weekday(start_date, group.default_day)
-            if group.default_day
-            else start_date
+            if group.default_day else start_date
         )
-        instructor_id = group.instructor_id
-        sessions_per_level = course.sessions_per_level
-        start_t = group.default_time_start
-        end_t = group.default_time_end
-
-    return _create_sessions(
-        group_id,
-        level_number,
-        snapped,
-        sessions_per_level,
-        start_t,
-        end_t,
-        instructor_id,
-    )
+        return _create_sessions_in_session(                # ← SAME session
+            session, group_id, level_number, snapped,
+            course.sessions_per_level,
+            group.default_time_start, group.default_time_end,
+            group.instructor_id,
+        )
+    # ← SINGLE COMMIT — validation + sessions or nothing
 
 
 def add_extra_session(
