@@ -83,16 +83,33 @@ def link_guardian(
     return link
 
 
-from sqlalchemy import text
-
-
 def get_siblings(session: Session, student_id: int) -> list[dict]:
-    stmt = text(
-        "SELECT sibling_id, sibling_name FROM v_siblings WHERE student_id = :student_id"
-    )
-    result = session.execute(stmt, {"student_id": student_id})
-    # Check if we have results, mapping to dictionaries
-    return [dict(row._mapping) for row in result.all()]
+    """
+    Returns sibling data via ORM joins on StudentGuardian.
+    Two-query approach: find shared guardians, then find their other students.
+    (Replaces raw SQL against v_siblings view — ORM is mockable in tests.)
+    """
+    # Step 1: find all guardians linked to this student
+    guardian_links = session.exec(
+        select(StudentGuardian).where(StudentGuardian.student_id == student_id)
+    ).all()
+    guardian_ids = [link.guardian_id for link in guardian_links]
+    if not guardian_ids:
+        return []
+
+    # Step 2: find all other students sharing those guardians
+    sibling_links = session.exec(
+        select(StudentGuardian)
+        .where(StudentGuardian.guardian_id.in_(guardian_ids))
+        .where(StudentGuardian.student_id != student_id)
+    ).all()
+    sibling_ids = {link.student_id for link in sibling_links}
+
+    return [
+        {"sibling_id": s.id, "sibling_name": s.full_name}
+        for sid in sibling_ids
+        if (s := session.get(Student, sid))
+    ]
 
 
 def get_students_by_guardian_id(
