@@ -20,6 +20,12 @@ from .competition_service import (
     unmark_team_fee_for_payment,
 )
 from .competition_models import Competition, CompetitionCategory, Team, TeamMember
+from .competition_schemas import (
+    CreateCompetitionInput,
+    AddCategoryInput,
+    RegisterTeamInput,
+    PayCompetitionFeeInput,
+)
 
 __all__ = [
     "get_student_competitions",
@@ -45,4 +51,9 @@ __all__ = [
     "CompetitionCategory",
     "Team",
     "TeamMember",
+    # DTOs
+    "CreateCompetitionInput",
+    "AddCategoryInput",
+    "RegisterTeamInput",
+    "PayCompetitionFeeInput",
 ]

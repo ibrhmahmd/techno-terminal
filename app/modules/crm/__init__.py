@@ -9,6 +9,7 @@ from .crm_service import (
     get_guardian_students,
 )
 from .crm_models import Guardian, Student, StudentGuardian
+from .crm_schemas import RegisterGuardianInput, RegisterStudentInput
 
 __all__ = [
     "register_guardian",
@@ -22,4 +23,7 @@ __all__ = [
     "Guardian",
     "Student",
     "StudentGuardian",
+    # DTOs
+    "RegisterGuardianInput",
+    "RegisterStudentInput",
 ]

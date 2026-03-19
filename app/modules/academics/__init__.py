@@ -18,6 +18,12 @@ from .academics_service import (
 )
 from .academics_models import Course, Group
 from .academics_session_models import CourseSession
+from .academics_schemas import (
+    AddNewCourseInput,
+    ScheduleGroupInput,
+    AddExtraSessionInput,
+    GenerateLevelSessionsInput,
+)
 
 __all__ = [
     "add_new_course",
@@ -39,4 +45,9 @@ __all__ = [
     "Course",
     "Group",
     "CourseSession",
+    # DTOs
+    "AddNewCourseInput",
+    "ScheduleGroupInput",
+    "AddExtraSessionInput",
+    "GenerateLevelSessionsInput",
 ]

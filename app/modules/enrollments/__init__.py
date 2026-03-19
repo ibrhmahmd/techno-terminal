@@ -8,6 +8,7 @@ from .enrollment_service import (
     get_student_enrollments,
 )
 from .enrollment_models import Enrollment
+from .enrollment_schemas import EnrollStudentInput, TransferStudentInput
 
 __all__ = [
     "enroll_student",
@@ -18,4 +19,7 @@ __all__ = [
     "get_group_roster",
     "get_student_enrollments",
     "Enrollment",
+    # DTOs
+    "EnrollStudentInput",
+    "TransferStudentInput",
 ]

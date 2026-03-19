@@ -3,6 +3,7 @@ from sqlmodel import Session
 from app.db.connection import get_session
 from app.modules.academics.academics_models import Course, Group
 from app.modules.academics.academics_session_models import CourseSession
+from app.modules.academics.academics_schemas import AddNewCourseInput, ScheduleGroupInput
 from app.shared.exceptions import ValidationError, NotFoundError, BusinessRuleError, ConflictError
 from app.shared.validators import validate_positive_amount
 from . import academics_repository as repo
@@ -49,22 +50,21 @@ def _validate_times(start_time: time, end_time: time) -> None:
 # ── Course Service ────────────────────────────────────────────────────────────
 
 
-def add_new_course(data: dict) -> Course:
-    """Validates and creates a new course."""
-    validate_positive_amount(data.get("price_per_level", 0), field="price per level")
-    if data.get("sessions_per_level", 0) <= 0:
-        raise ValidationError("Sessions per level must be at least 1.")
+def add_new_course(data: AddNewCourseInput | dict) -> Course:
+    """Validates and creates a new course. Accepts AddNewCourseInput or a plain dict."""
+    if isinstance(data, dict):
+        data = AddNewCourseInput.model_validate(data)
 
     with get_session() as session:
-        if repo.get_course_by_name(session, data["name"]):
-            raise ConflictError(f"Course '{data['name']}' already exists.")
+        if repo.get_course_by_name(session, data.name):
+            raise ConflictError(f"Course '{data.name}' already exists.")
 
         course = Course(
-            name=data["name"],
-            category=data.get("category"),
-            description=data.get("description"),
-            price_per_level=data["price_per_level"],
-            sessions_per_level=data["sessions_per_level"],
+            name=data.name,
+            category=data.category,
+            description=data.description,
+            price_per_level=data.price_per_level,
+            sessions_per_level=data.sessions_per_level,
         )
         return repo.create_course(session, course)
 
@@ -122,45 +122,50 @@ def _create_sessions_in_session(
     return created
 
 
-def schedule_group(data: dict) -> tuple[Group, list[CourseSession]]:
+def schedule_group(data: ScheduleGroupInput | dict) -> tuple[Group, list[CourseSession]]:
     """
     Creates a group, auto-generates its name, validates time window (11AM-9PM),
     and immediately generates the first level sessions starting from today.
     Returns (group, sessions).
     ATOMIC — group + sessions commit together or not at all.
+    Accepts ScheduleGroupInput or a plain dict (backward compat with UI call sites).
     """
-    _validate_times(data["default_time_start"], data["default_time_end"])
+    if isinstance(data, dict):
+        data = ScheduleGroupInput.model_validate(data)
+    # _validate_times already called by ScheduleGroupInput.validate_time_window
+    # but called again here for plain-dict paths that bypass the model
+    _validate_times(data.default_time_start, data.default_time_end)
 
     with get_session() as session:                          # ← ONE session
-        course = session.get(Course, data["course_id"])
+        course = session.get(Course, data.course_id)
         if not course:
-            raise NotFoundError(f"Course with ID {data['course_id']} not found.")
+            raise NotFoundError(f"Course with ID {data.course_id} not found.")
 
         auto_name = (
-            f"{data['default_day']} "
-            f"{_fmt_12h(data['default_time_start'])} - {course.name}"
+            f"{data.default_day} "
+            f"{_fmt_12h(data.default_time_start)} - {course.name}"
         )
         group = Group(
             name=auto_name,
-            course_id=data["course_id"],
-            instructor_id=data["instructor_id"],
+            course_id=data.course_id,
+            instructor_id=data.instructor_id,
             level_number=1,
-            max_capacity=data.get("max_capacity", 15),
-            default_day=data["default_day"],
-            default_time_start=data["default_time_start"],
-            default_time_end=data["default_time_end"],
+            max_capacity=data.max_capacity,
+            default_day=data.default_day,
+            default_time_start=data.default_time_start,
+            default_time_end=data.default_time_end,
         )
         session.add(group)
         session.flush()                                     # get group.id without commit
 
         start_date = (
-            _next_weekday(date.today(), data["default_day"])
-            if data.get("default_day") else date.today()
+            _next_weekday(date.today(), data.default_day)
+            if data.default_day else date.today()
         )
         sessions = _create_sessions_in_session(            # ← SAME session
             session, group.id, 1, start_date,
             course.sessions_per_level,
-            data["default_time_start"], data["default_time_end"],
+            data.default_time_start, data.default_time_end,
             group.instructor_id,
         )
         return group, sessions

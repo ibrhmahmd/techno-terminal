@@ -10,6 +10,7 @@ from .finance_service import (
     get_enrollment_balance,
 )
 from .finance_models import Receipt, Payment
+from .finance_schemas import OpenReceiptInput, AddChargeLineInput, IssueRefundInput
 
 __all__ = [
     "open_receipt",
@@ -23,4 +24,8 @@ __all__ = [
     "get_enrollment_balance",
     "Receipt",
     "Payment",
+    # DTOs
+    "OpenReceiptInput",
+    "AddChargeLineInput",
+    "IssueRefundInput",
 ]

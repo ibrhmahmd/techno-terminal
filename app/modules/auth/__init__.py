@@ -6,6 +6,7 @@ from .auth_service import (
     get_active_instructors,
 )
 from .auth_models import Employee, User
+from .auth_schemas import AuthenticateInput, ChangePasswordInput
 
 __all__ = [
     "verify_password",
@@ -15,4 +16,7 @@ __all__ = [
     "get_active_instructors",
     "Employee",
     "User",
+    # DTOs
+    "AuthenticateInput",
+    "ChangePasswordInput",
 ]

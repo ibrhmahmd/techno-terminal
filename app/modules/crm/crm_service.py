@@ -1,6 +1,7 @@
 import re
 from app.db.connection import get_session
 from app.modules.crm.crm_models import Guardian, Student
+from app.modules.crm.crm_schemas import RegisterGuardianInput, RegisterStudentInput
 from app.shared.exceptions import ValidationError, ConflictError, NotFoundError
 from app.shared.validators import validate_phone, validate_required_fields
 from . import crm_repository as repo
@@ -8,52 +9,52 @@ from . import crm_repository as repo
 # --- Guardian Service ---
 
 
-def register_guardian(data: dict) -> Guardian:
+def register_guardian(data: RegisterGuardianInput | dict) -> Guardian:
     """Registers a new guardian. Raises ConflictError if phone already exists."""
-    validate_required_fields(data, ["full_name", "phone_primary"])
-
-    phone_primary = validate_phone(data["phone_primary"])
+    if isinstance(data, dict):
+        validate_required_fields(data, ["full_name", "phone_primary"])
+        data = RegisterGuardianInput.model_validate(data)
 
     with get_session() as session:
-        existing = repo.get_guardian_by_phone(session, phone_primary)
+        existing = repo.get_guardian_by_phone(session, data.phone_primary)
         if existing:
             raise ConflictError(
-                f"A guardian with phone {phone_primary} already exists (ID: {existing.id})."
+                f"A guardian with phone {data.phone_primary} already exists (ID: {existing.id})."
             )
         guardian = Guardian(
-            full_name=data["full_name"],
-            phone_primary=phone_primary,
-            phone_secondary=data.get("phone_secondary"),
-            email=data.get("email"),
-            relation=data.get("relation"),
-            notes=data.get("notes"),
+            full_name=data.full_name,
+            phone_primary=data.phone_primary,
+            phone_secondary=data.phone_secondary,
+            email=data.email,
+            relation=data.relation,
+            notes=data.notes,
         )
         return repo.create_guardian(session, guardian)
 
 
-def find_or_create_guardian(data: dict) -> tuple[Guardian, bool]:
+def find_or_create_guardian(data: RegisterGuardianInput | dict) -> tuple[Guardian, bool]:
     """
     Returns (guardian, created: bool).
     If a guardian with the same primary phone already exists, return it (created=False).
     Otherwise create a new one (created=True).
     This is the preferred entry point for the student registration workflow.
     """
-    validate_required_fields(data, ["full_name", "phone_primary"])
-
-    phone_primary = validate_phone(data["phone_primary"])
+    if isinstance(data, dict):
+        validate_required_fields(data, ["full_name", "phone_primary"])
+        data = RegisterGuardianInput.model_validate(data)
 
     with get_session() as session:
-        existing = repo.get_guardian_by_phone(session, phone_primary)
+        existing = repo.get_guardian_by_phone(session, data.phone_primary)
         if existing:
             return existing, False
 
         guardian = Guardian(
-            full_name=data["full_name"],
-            phone_primary=phone_primary,
-            phone_secondary=data.get("phone_secondary"),
-            email=data.get("email"),
-            relation=data.get("relation"),
-            notes=data.get("notes"),
+            full_name=data.full_name,
+            phone_primary=data.phone_primary,
+            phone_secondary=data.phone_secondary,
+            email=data.email,
+            relation=data.relation,
+            notes=data.notes,
         )
         created = repo.create_guardian(session, guardian)
         return created, True
@@ -71,14 +72,19 @@ def search_guardians(query: str) -> list[Guardian]:
 
 
 def register_student(
-    student_data: dict, guardian_id: int, relationship: str | None = None
+    student_data: RegisterStudentInput | dict,
+    guardian_id: int,
+    relationship: str | None = None,
 ) -> tuple[Student, list[dict]]:
     """
     Registers a student and links them to an existing guardian as primary contact.
     Returns (student, siblings) so the UI can offer the sibling discount.
+    Accepts RegisterStudentInput or a plain dict (backward compat).
     """
-    if not student_data.get("full_name"):
-        raise ValidationError("'Full Name' is required.")
+    if isinstance(student_data, dict):
+        if not student_data.get("full_name"):
+            raise ValidationError("'Full Name' is required.")
+        student_data = RegisterStudentInput.model_validate(student_data)
 
     with get_session() as session:
         guardian = repo.get_guardian_by_id(session, guardian_id)
@@ -86,11 +92,11 @@ def register_student(
             raise NotFoundError(f"Guardian with ID {guardian_id} not found.")
 
         student = Student(
-            full_name=student_data["full_name"],
-            date_of_birth=student_data.get("date_of_birth"),
-            gender=student_data.get("gender"),
-            phone=student_data.get("phone"),
-            notes=student_data.get("notes"),
+            full_name=student_data.full_name,
+            date_of_birth=student_data.date_of_birth,
+            gender=student_data.gender,
+            phone=student_data.phone,
+            notes=student_data.notes,
         )
         created_student = repo.create_student(session, student)
         repo.link_guardian(
