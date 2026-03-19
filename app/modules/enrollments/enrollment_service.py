@@ -1,4 +1,5 @@
 from datetime import date, datetime, timezone
+from sqlalchemy.exc import IntegrityError
 from app.db.connection import get_session
 from app.modules.crm import crm_service as crm_srv
 from app.modules.academics import academics_service as acad_srv
@@ -38,37 +39,47 @@ def enroll_student(
         )
 
     # 3. Enrollment-specific logic in its own session
-    with get_session() as session:
-        # Duplicate check
-        existing = repo.get_active_enrollment(session, student_id, group_id)
-        if existing:
-            raise ConflictError(
-                f"'{student.full_name}' is already enrolled in this group (Enrollment ID: {existing.id})."
+    try:
+        with get_session() as session:
+            # Duplicate check (application-level fast path)
+            existing = repo.get_active_enrollment(session, student_id, group_id)
+            if existing:
+                raise ConflictError(
+                    f"'{student.full_name}' is already enrolled in this group (Enrollment ID: {existing.id})."
+                )
+
+            # Soft capacity check
+            active_enrollments = repo.list_enrollments(
+                session, group_id=group_id, status="active"
+            )
+            capacity_exceeded = (
+                group.max_capacity is not None
+                and len(active_enrollments) >= group.max_capacity
             )
 
-        # Soft capacity check
-        active_enrollments = repo.list_enrollments(
-            session, group_id=group_id, status="active"
+            # Create enrollment — snapshot level from group
+            enrollment = Enrollment(
+                student_id=student_id,
+                group_id=group_id,
+                level_number=group.level_number,  # Snapshot at enrollment time
+                enrolled_at=datetime.now(timezone.utc),
+                amount_due=amount_due,
+                discount_applied=discount,
+                notes=notes,
+                created_by=created_by,
+                created_at=datetime.now(timezone.utc),
+            )
+            created = repo.create_enrollment(session, enrollment)
+            return created, capacity_exceeded
+    except IntegrityError:
+        # The partial unique index on (student_id, group_id) WHERE status='active'
+        # caught a race condition — another request committed first.
+        # Requires: CREATE UNIQUE INDEX uq_enrollment_active
+        #           ON enrollments (student_id, group_id) WHERE status = 'active';
+        raise ConflictError(
+            f"'{student.full_name}' was just enrolled in this group by another request. "
+            "Please refresh and try again."
         )
-        capacity_exceeded = (
-            group.max_capacity is not None
-            and len(active_enrollments) >= group.max_capacity
-        )
-
-        # Create enrollment — snapshot level from group
-        enrollment = Enrollment(
-            student_id=student_id,
-            group_id=group_id,
-            level_number=group.level_number,  # Snapshot at enrollment time
-            enrolled_at=datetime.now(timezone.utc),
-            amount_due=amount_due,
-            discount_applied=discount,
-            notes=notes,
-            created_by=created_by,
-            created_at=datetime.now(timezone.utc),
-        )
-        created = repo.create_enrollment(session, enrollment)
-        return created, capacity_exceeded
 
 
 def apply_sibling_discount(

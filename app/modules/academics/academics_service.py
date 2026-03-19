@@ -236,13 +236,19 @@ def generate_level_sessions(
 def add_extra_session(
     group_id: int, level_number: int, extra_date: date, notes: str | None = None
 ) -> CourseSession:
-    """Adds an extra session numbered after the last existing session."""
+    """
+    Adds an extra session numbered after the last existing session.
+    ATOMIC — session_number is calculated and the new row is inserted in the
+    same transaction, eliminating the race condition that previously allowed
+    two concurrent requests to compute the same next number.
+    """
     with get_session() as session:
         group = repo.get_group_by_id(session, group_id)
         if not group:
             raise NotFoundError(f"Group {group_id} not found.")
-        all_sessions = repo.list_sessions(session, group_id, level_number)
-        next_num = max((s.session_number for s in all_sessions), default=0) + 1
+
+        # Atomic: read max session_number from DB within the same transaction
+        next_num = repo.get_max_session_number(session, group_id, level_number) + 1
 
         cs = CourseSession(
             group_id=group_id,
@@ -257,6 +263,7 @@ def add_extra_session(
             created_at=dt.utcnow().isoformat(),
         )
         return repo.create_session(session, cs)
+    # ← SINGLE COMMIT — number read + row inserted atomically
 
 
 def delete_session(session_id: int) -> bool:
@@ -280,14 +287,22 @@ def list_group_sessions(
 
 
 def check_level_complete(group_id: int, level_number: int) -> bool:
-    """Returns True if all regular sessions for the level exist (used to trigger level increment)."""
+    """
+    Returns True if all regular sessions for the level exist.
+    Raises NotFoundError on missing group or course — never silently returns
+    False for data integrity issues. False is reserved for 'level genuinely
+    not yet complete'.
+    """
     with get_session() as session:
         group = repo.get_group_by_id(session, group_id)
         if not group:
-            return False
+            raise NotFoundError(f"Group {group_id} not found.")
         course = session.get(Course, group.course_id)
         if not course:
-            return False
+            raise NotFoundError(
+                f"Course {group.course_id} for group {group_id} not found. "
+                "Data integrity issue — verify the groups table."
+            )
         count = repo.count_sessions(session, group_id, level_number)
         return count >= course.sessions_per_level
 

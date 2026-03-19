@@ -4,7 +4,12 @@ from app.modules.auth.auth_models import User
 from app.shared.exceptions import ValidationError, AuthError
 from . import auth_repository as repo
 
-MIN_PASSWORD_LENGTH = 6
+MIN_PASSWORD_LENGTH = 12
+
+# Module-level constant: used as a fallback hash to ensure verify_password()
+# is always called — even for unknown usernames — preventing timing-based
+# username enumeration.
+_DUMMY_HASH: str = ""  # populated lazily on first authenticate() call
 
 
 def verify_password(plain: str, hashed: str) -> bool:
@@ -20,14 +25,31 @@ def hash_password(plain: str) -> str:
 
 
 def authenticate(username: str, password: str):
+    """
+    Authenticates a user. Always calls verify_password() regardless of whether the
+    username exists — this ensures constant response time and prevents timing-based
+    username enumeration attacks.
+    """
+    global _DUMMY_HASH
+    if not _DUMMY_HASH:
+        # Lazily initialize once — avoids paying bcrypt cost at import time
+        _DUMMY_HASH = hash_password("_dummy_unused_protect_timing_")
+
     with get_session() as session:
         user = repo.get_user_by_username(session, username)
-        if not user or not user.is_active:
-            return None
-        if not verify_password(password, user.password_hash):
-            return None
+
+    # Always hash — constant-time path for valid and invalid usernames alike
+    candidate_hash = user.password_hash if user else _DUMMY_HASH
+    if not verify_password(password, candidate_hash):
+        return None
+    if not user or not user.is_active:
+        return None
+
+    # Update last login in a separate session (no read+write lock conflict)
+    with get_session() as session:
         repo.update_last_login(session, user.id)
-        return user
+
+    return user
 
 
 def change_password(user_id: int, current_password: str, new_password: str) -> bool:

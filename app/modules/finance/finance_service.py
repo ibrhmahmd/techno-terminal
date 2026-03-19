@@ -104,11 +104,16 @@ def issue_refund(
     amount: float,
     reason: str,
     received_by_user_id: Optional[int],
+    method: PaymentMethod | str = "cash",
 ) -> dict:
     """
     Opens a new receipt and adds a refund line based on an original payment.
     ATOMIC — receipt header + refund line + competition fee unmark all commit
     together, or not at all. If any step fails, no orphaned receipt is left.
+
+    Args:
+        method: Payment method for the refund receipt. Defaults to 'cash'.
+                Pass explicitly for bank transfers, etc. for accurate audit records.
     """
     validate_positive_amount(amount, field="refund amount")
 
@@ -126,7 +131,7 @@ def issue_refund(
         refund_receipt = _open_receipt_in_session(
             db,
             guardian_id=None,
-            method="cash",
+            method=method,
             received_by_user_id=received_by_user_id,
             notes=f"Refund: {reason}",
         )

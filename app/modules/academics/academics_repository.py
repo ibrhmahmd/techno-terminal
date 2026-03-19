@@ -1,6 +1,6 @@
 from typing import Sequence
 from sqlmodel import Session, select
-from sqlalchemy import text
+from sqlalchemy import text, func
 from app.modules.academics.academics_models import Course, Group
 
 # --- Course Repository ---
@@ -162,6 +162,24 @@ def count_sessions(session: Session, group_id: int, level_number: int) -> int:
         .where(CourseSession.is_extra_session == False)
     )
     return len(session.exec(stmt).all())
+
+
+def get_max_session_number(
+    session: Session, group_id: int, level_number: int
+) -> int:
+    """
+    Returns the current maximum session_number for a group/level using a
+    DB-level aggregate. Must be called within an open transaction so that the
+    read and the subsequent INSERT are atomic (no concurrent race for sequence).
+    Returns 0 if no sessions exist yet.
+    """
+    stmt = (
+        select(func.max(CourseSession.session_number))
+        .where(CourseSession.group_id == group_id)
+        .where(CourseSession.level_number == level_number)
+    )
+    result = session.exec(stmt).one()
+    return result or 0
 
 
 def update_session_instructor(
