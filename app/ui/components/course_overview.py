@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from app.modules.academics import service as acad_srv
+from app.modules.academics import academics_service as acad_srv
 
 
 @st.dialog("Create New Course")

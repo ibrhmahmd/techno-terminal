@@ -1,11 +1,11 @@
 from datetime import time, date, timedelta, datetime as dt
 from sqlmodel import Session
 from app.db.connection import get_session
-from app.modules.academics.models import Course, Group
-from app.modules.academics.session_models import CourseSession
+from app.modules.academics.academics_models import Course, Group
+from app.modules.academics.academics_session_models import CourseSession
 from app.shared.exceptions import ValidationError, NotFoundError, BusinessRuleError, ConflictError
 from app.shared.validators import validate_positive_amount
-from . import repository as repo
+from . import academics_repository as repo
 
 # ── Time constraints ──────────────────────────────────────────────────────────
 _EARLIEST = time(11, 0)  # 11:00 AM

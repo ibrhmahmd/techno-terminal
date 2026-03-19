@@ -1,9 +1,9 @@
 from datetime import datetime, date
 from typing import Optional
 from app.db.connection import get_session
-from app.modules.finance.models import Receipt, Payment
-from app.modules.enrollments.models import Enrollment
-from app.modules.finance import repository as repo
+from app.modules.finance.finance_models import Receipt, Payment
+from app.modules.enrollments.enrollment_models import Enrollment
+from app.modules.finance import finance_repository as repo
 from app.shared.exceptions import ValidationError, NotFoundError, BusinessRuleError
 from app.shared.validators import validate_positive_amount
 from app.shared.constants import PaymentMethod
@@ -145,7 +145,7 @@ def issue_refund(
         # NOTE: competitions repo called directly here (not via service) so that
         # the fee unmark and the refund line share one commit boundary.
         if payment_type == "competition":
-            from app.modules.competitions.repository import get_members_by_payment_id
+            from app.modules.competitions.competition_repository import get_members_by_payment_id
             members = get_members_by_payment_id(db, payment_id)
             for m in members:
                 m.fee_paid = False

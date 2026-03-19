@@ -1,10 +1,10 @@
 import streamlit as st
 import pandas as pd
 from app.db.connection import get_session
-from app.modules.academics.models import Course
-from app.modules.academics.repository import list_groups_by_course
-from app.modules.academics import service as acad_srv
-from app.modules.auth.service import get_active_instructors
+from app.modules.academics.academics_models import Course
+from app.modules.academics.academics_repository import list_groups_by_course
+from app.modules.academics import academics_service as acad_srv
+from app.modules.auth import get_active_instructors
 
 
 def render_course_detail(course_id: int):

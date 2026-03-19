@@ -1,8 +1,8 @@
 import bcrypt
 from app.db.connection import get_session
-from app.modules.auth.models import User
+from app.modules.auth.auth_models import User
 from app.shared.exceptions import ValidationError, AuthError
-from . import repository as repo
+from . import auth_repository as repo
 
 MIN_PASSWORD_LENGTH = 6
 

@@ -2,7 +2,7 @@ from datetime import datetime, date
 from typing import Sequence, Optional
 from sqlmodel import Session, select
 from sqlalchemy import text
-from app.modules.finance.models import Receipt, Payment
+from app.modules.finance.finance_models import Receipt, Payment
 
 
 # ── Receipt ──────────────────────────────────────────────────────────────────

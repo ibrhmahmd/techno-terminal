@@ -1,10 +1,10 @@
 from app.db.connection import get_session
-from app.modules.enrollments.repository import get_active_enrollment
-from app.modules.academics.session_models import CourseSession
+from app.modules.enrollments.enrollment_repository import get_active_enrollment
+from app.modules.academics.academics_session_models import CourseSession
 from sqlmodel import select
-from app.modules.attendance.models import Attendance
+from app.modules.attendance.attendance_models import Attendance
 from app.shared.exceptions import NotFoundError
-from . import repository as repo
+from . import attendance_repository as repo
 
 
 def mark_session_attendance(

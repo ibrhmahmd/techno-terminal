@@ -1,7 +1,7 @@
 import streamlit as st
 from app.db.connection import get_session
-from app.modules.crm.models import Student
-from app.modules.attendance import service as att_srv
+from app.modules.crm.crm_models import Student
+from app.modules.attendance import attendance_service as att_srv
 
 # Toggle cycle: unset -> present -> absent -> unset
 NEXT_STATE = {
@@ -65,7 +65,7 @@ def render_attendance_grid(sessions: list, roster: list):
     st.caption("Click a student's name to view their profile in Student Management.")
 
     # Pre-fetch instructor names
-    from app.modules.auth import service as auth_srv
+    from app.modules.auth import auth_service as auth_srv
 
     instructors = auth_srv.get_active_instructors()
     inst_map = {i.id: i.full_name for i in instructors}
@@ -103,7 +103,7 @@ def render_attendance_grid(sessions: list, roster: list):
                 use_container_width=True,
             ):
                 try:
-                    from app.modules.academics import service as acad_srv
+                    from app.modules.academics import academics_service as acad_srv
 
                     acad_srv.delete_session(sess.id)
                     del st.session_state[delete_key]

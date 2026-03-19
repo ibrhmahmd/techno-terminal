@@ -1,3 +1,42 @@
-from app.modules.academics import models, repository, service
+from .academics_service import (
+    add_new_course,
+    update_course_price,
+    get_active_courses,
+    schedule_group,
+    get_groups_by_course,
+    get_all_active_groups,
+    get_all_active_groups_enriched,
+    get_todays_groups_enriched,
+    get_group_by_id,
+    generate_level_sessions,
+    add_extra_session,
+    delete_session,
+    mark_substitute_instructor,
+    list_group_sessions,
+    check_level_complete,
+    advance_group_level,
+)
+from .academics_models import Course, Group
+from .academics_session_models import CourseSession
 
-__all__ = ["models", "repository", "service"]
+__all__ = [
+    "add_new_course",
+    "update_course_price",
+    "get_active_courses",
+    "schedule_group",
+    "get_groups_by_course",
+    "get_all_active_groups",
+    "get_all_active_groups_enriched",
+    "get_todays_groups_enriched",
+    "get_group_by_id",
+    "generate_level_sessions",
+    "add_extra_session",
+    "delete_session",
+    "mark_substitute_instructor",
+    "list_group_sessions",
+    "check_level_complete",
+    "advance_group_level",
+    "Course",
+    "Group",
+    "CourseSession",
+]

@@ -1,7 +1,7 @@
 from typing import Sequence
 from sqlmodel import Session, select
 from sqlalchemy import or_
-from app.modules.crm.models import Guardian, Student, StudentGuardian
+from app.modules.crm.crm_models import Guardian, Student, StudentGuardian
 
 
 # --- Guardian Repository ---
@@ -119,7 +119,7 @@ def get_students_by_guardian_id(
     Returns all Student objects linked to a guardian via StudentGuardian.
     Uses a single JOIN instead of a loop — avoids the N+1 query anti-pattern.
     """
-    from app.modules.crm.models import StudentGuardian
+    from app.modules.crm.crm_models import StudentGuardian
 
     stmt = (
         select(Student)

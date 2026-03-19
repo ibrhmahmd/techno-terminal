@@ -2,9 +2,9 @@ import streamlit as st
 import pandas as pd
 from datetime import date
 from app.ui.components.auth_guard import require_auth
-from app.modules.crm import service as crm_srv
-from app.modules.academics import service as acad_srv
-from app.modules.enrollments import service as enroll_srv
+from app.modules.crm import crm_service as crm_srv
+from app.modules.academics import academics_service as acad_srv
+from app.modules.enrollments import enrollment_service as enroll_srv
 from app.shared.exceptions import NotFoundError, BusinessRuleError, ConflictError, ValidationError
 
 require_auth()

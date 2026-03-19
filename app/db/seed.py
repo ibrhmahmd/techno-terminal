@@ -1,7 +1,7 @@
 from sqlmodel import select
 from app.db.connection import get_session
-from app.modules.auth.models import User
-from app.modules.auth.service import hash_password
+from app.modules.auth.auth_models import User
+from app.modules.auth import hash_password
 
 
 def seed_admin_account():
@@ -10,7 +10,7 @@ def seed_admin_account():
         admin_user = session.exec(statement).first()
 
         if not admin_user:
-            print("🌱 Seeding default 'admin' account...")
+            print("Seeding default 'admin' account...")
             new_admin = User(
                 username="admin",
                 password_hash=hash_password("admin123"),

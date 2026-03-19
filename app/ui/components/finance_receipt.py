@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
 
-from app.modules.finance import service as fin_srv
-from app.modules.crm import service as crm_srv
+from app.modules.finance import finance_service as fin_srv
+from app.modules.crm import crm_service as crm_srv
 
 
 def render_receipt_detail(receipt_id: int):
@@ -28,7 +28,7 @@ def render_receipt_detail(receipt_id: int):
     # Header info
     parent_name = "—"
     if r.guardian_id:
-        from app.modules.crm.repository import get_guardian_by_id
+        from app.modules.crm.crm_repository import get_guardian_by_id
         from app.db.connection import get_session
 
         with get_session() as db:

@@ -1,11 +1,11 @@
 import streamlit as st
 import pandas as pd
-from app.modules.crm.repository import get_student_by_id, get_student_guardians
-from app.modules.enrollments.service import get_student_enrollments
-from app.modules.attendance.service import get_attendance_summary
-from app.modules.academics.service import get_group_by_id
-from app.modules.finance import service as fin_srv
-from app.modules.competitions import service as comp_srv
+from app.modules.crm.crm_repository import get_student_by_id, get_student_guardians
+from app.modules.enrollments import get_student_enrollments
+from app.modules.attendance import get_attendance_summary
+from app.modules.academics import get_group_by_id
+from app.modules.finance import finance_service as fin_srv
+from app.modules.competitions import competition_service as comp_srv
 from app.db.connection import get_session
 
 

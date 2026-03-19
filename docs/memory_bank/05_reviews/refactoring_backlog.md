@@ -18,6 +18,7 @@ FastAPI Router ──→  app/modules/*/service.py  ──→  repository  ─�
 ```
 
 Services must be callable from both transports with **zero modification**. This means:
+
 - Services **never** import `streamlit` (they don't — currently clean ✅)
 - Services receive **plain Python types** (int, str, dict) not HTTP request objects
 - Services return **ORM objects or dicts** — the router layer handles serialization
@@ -472,6 +473,7 @@ class RepositoryProtocol(Protocol[T]):
 ```
 
 Each repo adds `get_by_id` as an alias — no inheritance required:
+
 ```python
 # enrollments/repository.py
 get_by_id = get_enrollment          # backward-compat alias
@@ -1195,6 +1197,7 @@ With Option A, the API route gets a guarantee: either the group AND its sessions
 ## Problem
 
 Identical filenames across all 8 modules:
+
 - Stack traces say `service.py line 45` — zero domain context
 - IDE tab bar: three `service.py` tabs open simultaneously
 - `grep "def create_"` returns 20+ results from all modules
@@ -1205,7 +1208,7 @@ Additionally, modules have no declared **public API surface** — callers import
 
 ## Solution
 
-### Option A — `__init__.py` Re-exports Only ✅ Recommended for now
+### Option A — `__init__.py` Re-exports Only
 
 Declare what each module publicly exposes. No file renaming.
 
@@ -1232,6 +1235,7 @@ __all__ = [
 ```
 
 API routers then import cleanly:
+
 ```python
 # app/api/routers/students.py
 from app.modules.crm import search_students, get_student_by_id, Student
@@ -1242,7 +1246,7 @@ from app.modules.crm import search_students, get_student_by_id, Student
 
 ---
 
-### Option B — Domain-Prefix File Renaming
+### Option B — Domain-Prefix File Renaming ✅ Recommended Option
 
 | Old | New |
 |---|---|

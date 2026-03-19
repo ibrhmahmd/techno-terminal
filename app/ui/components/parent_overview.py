@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from app.modules.crm import service as crm_srv
+from app.modules.crm import crm_service as crm_srv
 from app.shared.exceptions import NotFoundError, BusinessRuleError, ConflictError, ValidationError
 
 

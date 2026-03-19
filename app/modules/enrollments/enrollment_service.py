@@ -1,10 +1,10 @@
 from datetime import date, datetime, timezone
 from app.db.connection import get_session
-from app.modules.crm import service as crm_srv
-from app.modules.academics import service as acad_srv
-from app.modules.enrollments.models import Enrollment
+from app.modules.crm import crm_service as crm_srv
+from app.modules.academics import academics_service as acad_srv
+from app.modules.enrollments.enrollment_models import Enrollment
 from app.shared.exceptions import NotFoundError, BusinessRuleError, ConflictError
-from . import repository as repo
+from . import enrollment_repository as repo
 
 
 def enroll_student(

@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import date, timedelta
 
 from app.ui.components.auth_guard import require_auth
-from app.modules.analytics import service as analytics_srv
+from app.modules.analytics import analytics_service as analytics_srv
 
 st.set_page_config(page_title="Dashboard - Techno Kids", layout="wide")
 require_auth()

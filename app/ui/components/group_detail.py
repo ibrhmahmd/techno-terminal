@@ -1,7 +1,7 @@
 import streamlit as st
 from datetime import date, timedelta
-from app.modules.academics import service as acad_srv
-from app.modules.enrollments import service as enroll_srv
+from app.modules.academics import academics_service as acad_srv
+from app.modules.enrollments import enrollment_service as enroll_srv
 from .attendance_grid import render_attendance_grid
 
 WEEKDAYS = [

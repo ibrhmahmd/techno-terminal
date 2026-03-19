@@ -3,8 +3,8 @@ import pandas as pd
 from datetime import time
 import datetime
 
-from app.modules.academics import service as acad_srv
-from app.modules.auth import service as auth_srv
+from app.modules.academics import academics_service as acad_srv
+from app.modules.auth import auth_service as auth_srv
 from app.shared.exceptions import NotFoundError, BusinessRuleError, ValidationError, ConflictError
 
 ALLOWED_HOURS = list(range(11, 22))

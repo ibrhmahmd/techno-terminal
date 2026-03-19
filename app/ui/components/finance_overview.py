@@ -2,9 +2,9 @@ import streamlit as st
 import pandas as pd
 from datetime import date
 
-from app.modules.crm import service as crm_srv
-from app.modules.enrollments import service as enroll_srv
-from app.modules.finance import service as fin_srv
+from app.modules.crm import crm_service as crm_srv
+from app.modules.enrollments import enrollment_service as enroll_srv
+from app.modules.finance import finance_service as fin_srv
 from app.shared.constants import PAYMENT_METHODS
 
 

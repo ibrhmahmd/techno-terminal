@@ -1,13 +1,13 @@
 from datetime import date, datetime
 from typing import Optional
 from app.db.connection import get_session
-from app.modules.competitions.models import (
+from app.modules.competitions.competition_models import (
     Competition,
     CompetitionCategory,
     Team,
     TeamMember,
 )
-from app.modules.competitions import repository as repo
+from app.modules.competitions import competition_repository as repo
 from app.shared.exceptions import ValidationError, NotFoundError, BusinessRuleError, ConflictError
 from app.shared.validators import validate_non_empty_string
 
@@ -121,7 +121,7 @@ def register_team(
     Validates that all students are active before inserting anything.
     Returns {'team': Team, 'members_added': int}.
     """
-    from app.modules.crm.models import Student
+    from app.modules.crm.crm_models import Student
 
     team_name = validate_non_empty_string(team_name, field="team name")
     if not student_ids:
@@ -181,7 +181,7 @@ def delete_team(team_id: int) -> bool:
 
 
 def add_team_member_to_existing(team_id: int, student_id: int) -> dict:
-    from app.modules.crm.models import Student
+    from app.modules.crm.crm_models import Student
 
     with get_session() as db:
         team = repo.get_team(db, team_id)
@@ -210,7 +210,7 @@ def remove_team_member(team_id: int, student_id: int) -> bool:
 
 def list_team_members(team_id: int) -> list[dict]:
     """Returns team members enriched with student name and fee status."""
-    from app.modules.crm.models import Student
+    from app.modules.crm.crm_models import Student
 
     with get_session() as db:
         members = repo.list_team_members(db, team_id)
@@ -241,7 +241,7 @@ def pay_competition_fee(
     then marks team_members.fee_paid = True.
     Returns {'receipt_number': str, 'payment_id': int}.
     """
-    from app.modules.finance import service as fin_srv
+    from app.modules.finance import finance_service as fin_srv
 
     with get_session() as db:
         team = repo.get_team(db, team_id)

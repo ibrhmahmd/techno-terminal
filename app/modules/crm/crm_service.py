@@ -1,9 +1,9 @@
 import re
 from app.db.connection import get_session
-from app.modules.crm.models import Guardian, Student
+from app.modules.crm.crm_models import Guardian, Student
 from app.shared.exceptions import ValidationError, ConflictError, NotFoundError
 from app.shared.validators import validate_phone, validate_required_fields
-from . import repository as repo
+from . import crm_repository as repo
 
 # --- Guardian Service ---
 

@@ -1,11 +1,11 @@
 import streamlit as st
 import pandas as pd
 from app.db.connection import get_session
-from app.modules.crm.models import Guardian
-from app.modules.crm.repository import get_guardian_by_id
-from app.modules.finance import service as fin_srv
-from app.modules.competitions import service as comp_srv
-from app.modules.enrollments.service import get_student_enrollments
+from app.modules.crm.crm_models import Guardian
+from app.modules.crm.crm_repository import get_guardian_by_id
+from app.modules.finance import finance_service as fin_srv
+from app.modules.competitions import competition_service as comp_srv
+from app.modules.enrollments import get_student_enrollments
 
 
 def render_parent_detail(parent_id: int):

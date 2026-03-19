@@ -1,5 +1,5 @@
 import streamlit as st
-from app.modules.auth import service as auth_service
+from app.modules.auth import auth_service as auth_service
 import state
 
 st.set_page_config(page_title="Login — Techno Kids", layout="centered")

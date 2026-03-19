@@ -2,10 +2,10 @@ import streamlit as st
 import pandas as pd
 from datetime import date
 
-from app.modules.competitions import service as comp_srv
-from app.modules.auth import service as auth_srv
-from app.modules.crm import service as crm_srv
-from app.modules.enrollments import service as enroll_srv
+from app.modules.competitions import competition_service as comp_srv
+from app.modules.auth import auth_service as auth_srv
+from app.modules.crm import crm_service as crm_srv
+from app.modules.enrollments import enrollment_service as enroll_srv
 
 
 def render_competition_overview():
@@ -169,7 +169,7 @@ def render_competition_overview():
                     t_coach_id = inst_opts[t_coach_label]
 
                     # Link to a group roster (optional, for student selection)
-                    from app.modules.academics import service as acad_srv
+                    from app.modules.academics import academics_service as acad_srv
 
                     all_groups = acad_srv.get_all_active_groups_enriched()
                     group_opts = {"— Select group to pick students —": None}
@@ -190,7 +190,7 @@ def render_competition_overview():
                     if t_group_id:
                         roster = enroll_srv.get_group_roster(t_group_id, None)
                         if roster:
-                            from app.modules.crm.models import Student
+                            from app.modules.crm.crm_models import Student
                             from app.db.connection import get_session
 
                             student_opts = {}
@@ -292,7 +292,7 @@ def render_competition_overview():
                                             from app.db.connection import get_session
 
                                             with get_session() as db:
-                                                from app.modules.competitions.repository import (
+                                                from app.modules.competitions.competition_repository import (
                                                     mark_fee_paid,
                                                 )
 

@@ -1,7 +1,7 @@
 from datetime import datetime, date
 from typing import Optional
 from sqlmodel import Session, select
-from app.modules.competitions.models import (
+from app.modules.competitions.competition_models import (
     Competition,
     CompetitionCategory,
     Team,

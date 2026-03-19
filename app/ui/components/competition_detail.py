@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
-from app.modules.competitions import service as comp_srv
-from app.modules.auth.repository import get_employee_by_id
+from app.modules.competitions import competition_service as comp_srv
+from app.modules.auth.auth_repository import get_employee_by_id
 from app.db.connection import get_session
 
 
@@ -119,7 +119,7 @@ def render_competition_detail(competition_id: int):
                                 st.rerun()
 
                         if members:
-                            from app.modules.crm.models import Student
+                            from app.modules.crm.crm_models import Student
 
                             member_list = []
                             for m in members:
@@ -148,7 +148,7 @@ def render_competition_detail(competition_id: int):
                             "Search Student by Name", key=f"am_q_{team.id}"
                         )
                         if am_search and len(am_search) >= 2:
-                            from app.modules.crm.repository import search_students
+                            from app.modules.crm.crm_repository import search_students
 
                             results = search_students(db, am_search)
                             if results:

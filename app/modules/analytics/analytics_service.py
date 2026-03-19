@@ -5,7 +5,7 @@ analytics/service.py — Thin service wrappers over the analytics repository.
 from datetime import date
 from typing import Optional
 from app.db.connection import get_session
-from app.modules.analytics import repository as repo
+from app.modules.analytics import analytics_repository as repo
 
 
 def get_active_enrollment_count() -> int:
