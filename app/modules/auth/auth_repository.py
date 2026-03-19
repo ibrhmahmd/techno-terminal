@@ -32,8 +32,38 @@ def get_active_employees(session: Session) -> list[Employee]:
     return session.exec(stmt).all()
 
 
+# ── Employee Management ───────────────────────────────────────────────────────
+
+def create_employee_and_user(session: Session, emp_data: dict, user_data: dict) -> tuple[Employee, User]:
+    emp = Employee(**emp_data)
+    session.add(emp)
+    session.flush()
+
+    user_data["employee_id"] = emp.id
+    user = User(**user_data)
+    session.add(user)
+    session.flush()
+    return emp, user
+
+
+def get_all_users_with_employees(session: Session) -> list[tuple[User, Employee]]:
+    stmt = select(User, Employee).join(Employee, User.employee_id == Employee.id)
+    return session.exec(stmt).all()
+
+
+def update_user_and_employee(session: Session, user_id: int, is_active: bool, role: str) -> None:
+    user = session.get(User, user_id)
+    if user:
+        user.is_active = is_active
+        user.role = role
+        if user.employee_id:
+            emp = session.get(Employee, user.employee_id)
+            if emp:
+                emp.is_active = is_active
+                session.add(emp)
+        session.add(user)
+
 # ── RepositoryProtocol aliases ────────────────────────────────────────────────
 # Primary entity: Employee (User is auth-internal)
 get_by_id = get_employee_by_id
 list_all = get_active_employees
-# create is intentionally omitted — users/employees are created via admin scripts only

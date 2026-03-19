@@ -79,6 +79,20 @@ def update_course_price(course_id: int, new_price: float) -> Course:
         return course
 
 
+def update_course(course_id: int, data: dict) -> Course:
+    with get_session() as session:
+        course = session.get(Course, course_id)
+        if not course:
+            raise NotFoundError(f"Course {course_id} not found.")
+        for k, v in data.items():
+            if hasattr(course, k) and k != "id":
+                setattr(course, k, v)
+        session.add(course)
+        session.commit()
+        session.refresh(course)
+        return course
+
+
 def get_active_courses() -> list[Course]:
     with get_session() as session:
         return list(repo.list_active_courses(session))
@@ -197,6 +211,20 @@ def get_todays_groups_enriched() -> list[dict]:
 def get_group_by_id(group_id: int) -> Group | None:
     with get_session() as session:
         return repo.get_group_by_id(session, group_id)
+
+
+def update_group(group_id: int, data: dict) -> Group:
+    with get_session() as session:
+        group = repo.get_group_by_id(session, group_id)
+        if not group:
+            raise NotFoundError(f"Group {group_id} not found.")
+        for k, v in data.items():
+            if hasattr(group, k) and k != "id":
+                setattr(group, k, v)
+        session.add(group)
+        session.commit()
+        session.refresh(group)
+        return group
 
 
 # ── Session Service ───────────────────────────────────────────────────────────

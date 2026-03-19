@@ -1,0 +1,80 @@
+import streamlit as st
+from app.modules.crm import crm_service as crm_srv
+from app.shared.exceptions import ValidationError, ConflictError
+
+def render_quick_register():
+    st.subheader("⚡ Quick Registration")
+    st.markdown("Register a new student and parent in one simple step.")
+    
+    with st.container(border=True):
+        with st.form("quick_register_form", clear_on_submit=True):
+            col_p, col_s = st.columns(2)
+            
+            with col_p:
+                st.markdown("##### 👩‍👦 Parent Details")
+                p_phone = st.text_input("Phone Number (Primary)*", placeholder="01xxxxxxxxx")
+                p_name = st.text_input("Full Name*", placeholder="Parent's Name")
+                p_relation = st.selectbox("Relationship", ["Father", "Mother", "Guardian", "Other"])
+            
+            with col_s:
+                st.markdown("##### 🎓 Student Details")
+                s_name = st.text_input("Student Full Name*", placeholder="Student's Name")
+                s_notes = st.text_area("Notes (Optional)", height=68, placeholder="Medical info, allergies, etc.")
+                
+            with st.expander("➕ Optional Details (Email, DOB, Secondary Phone)"):
+                opt_p, opt_s = st.columns(2)
+                with opt_p:
+                    p_phone_sec = st.text_input("Parent Secondary Phone", placeholder="01xxxxxxxxx")
+                    p_email = st.text_input("Parent Email")
+                    p_notes = st.text_input("Parent Notes")
+                with opt_s:
+                    s_dob = st.date_input("Student Date of Birth", value=None)
+                    s_gender = st.selectbox("Student Gender", [None, "male", "female"], format_func=lambda x: "—" if not x else x.capitalize())
+                    s_phone = st.text_input("Student Personal Phone")
+
+            st.markdown("---")
+            submit = st.form_submit_button("Create Profiles & Link", type="primary", use_container_width=True)
+            
+            if submit:
+                if not p_phone or not p_name or not s_name:
+                    st.error("Please fill all required fields (*)")
+                    return
+                
+                try:
+                    # 1. Find or create guardian
+                    guardian, created = crm_srv.find_or_create_guardian({
+                        "full_name": p_name.strip(),
+                        "phone_primary": p_phone.strip(),
+                        "phone_secondary": p_phone_sec.strip() if p_phone_sec else None,
+                        "email": p_email.strip() if p_email else None,
+                        "relation": p_relation,
+                        "notes": p_notes.strip() if p_notes else None
+                    })
+                    
+                    # 2. Register student and link to guardian
+                    student, siblings = crm_srv.register_student(
+                        student_data={
+                            "full_name": s_name.strip(),
+                            "date_of_birth": str(s_dob) if s_dob else None,
+                            "gender": s_gender,
+                            "phone": s_phone.strip() if s_phone else None,
+                            "notes": s_notes.strip() if s_notes else None
+                        },
+                        guardian_id=guardian.id,
+                        relationship=p_relation
+                    )
+                    
+                    if created:
+                        st.success(f"✅ Created new Parent: **{guardian.full_name}** and Student: **{student.full_name}**")
+                    else:
+                        st.success(f"✅ Added Student: **{student.full_name}** to existing Parent: **{guardian.full_name}**")
+                    
+                    if siblings:
+                        st.info(f"💡 Note: This student has {len(siblings)} sibling(s) registered under this parent.")
+                        
+                except ValidationError as e:
+                    st.error(f"❌ Invalid Input: {e.message}")
+                except ConflictError as e:
+                    st.error(f"❌ Conflict: {e.message}")
+                except Exception as e:
+                    st.error(f"❌ Unexpected Error: {e}")

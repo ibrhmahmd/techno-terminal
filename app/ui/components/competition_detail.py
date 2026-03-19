@@ -159,13 +159,10 @@ def render_competition_detail(competition_id: int):
                                     if s.id not in existing_ids and s.is_active
                                 ]
                                 if available:
-                                    s_opts = {
-                                        f"{s.full_name} ({s.phone_primary or 'No Phone'})": s.id
-                                        for s in available
-                                    }
                                     sel_s = st.selectbox(
                                         "Select Student",
-                                        list(s_opts.keys()),
+                                        options=available,
+                                        format_func=lambda s: f"{s.full_name} ({s.phone_primary or 'No Phone'})",
                                         key=f"am_sel_{team.id}",
                                     )
                                     if st.button(
@@ -175,7 +172,7 @@ def render_competition_detail(competition_id: int):
                                     ):
                                         try:
                                             comp_srv.add_team_member_to_existing(
-                                                team.id, s_opts[sel_s]
+                                                team.id, sel_s.id
                                             )
                                             st.success("Member added!")
                                             st.rerun()

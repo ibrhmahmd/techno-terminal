@@ -60,12 +60,35 @@ def find_or_create_guardian(data: RegisterGuardianInput | dict) -> tuple[Guardia
         return created, True
 
 
+def update_guardian(guardian_id: int, data: dict) -> Guardian:
+    """Updates an existing guardian's fields."""
+    with get_session() as session:
+        guardian = repo.get_guardian_by_id(session, guardian_id)
+        if not guardian:
+            raise NotFoundError(f"Guardian with ID {guardian_id} not found.")
+        
+        for key, value in data.items():
+            if hasattr(guardian, key) and key != "id":
+                setattr(guardian, key, value)
+        
+        session.add(guardian)
+        session.commit()
+        session.refresh(guardian)
+        return guardian
+
+
 def search_guardians(query: str) -> list[Guardian]:
     """Search guardians by name or phone."""
     if not query or len(query.strip()) < 2:
         return []
     with get_session() as session:
         return list(repo.search_guardians(session, query.strip()))
+
+
+def list_all_guardians(skip: int = 0, limit: int = 200) -> list[Guardian]:
+    """Return a paginated list of all guardians."""
+    with get_session() as session:
+        return list(repo.get_all_guardians(session, skip, limit))
 
 
 # --- Student Service ---
@@ -127,6 +150,29 @@ def search_students(query: str) -> list[Student]:
         return []
     with get_session() as session:
         return list(repo.search_students(session, query.strip()))
+
+
+def list_all_students(skip: int = 0, limit: int = 200) -> list[Student]:
+    """Return a paginated list of all students."""
+    with get_session() as session:
+        return list(repo.get_all_students(session, skip, limit))
+
+
+def update_student(student_id: int, data: dict) -> Student:
+    """Updates an existing student's fields."""
+    with get_session() as session:
+        student = repo.get_student_by_id(session, student_id)
+        if not student:
+            raise NotFoundError(f"Student with ID {student_id} not found.")
+        
+        for key, value in data.items():
+            if hasattr(student, key) and key != "id":
+                setattr(student, key, value)
+                
+        session.add(student)
+        session.commit()
+        session.refresh(student)
+        return student
 
 
 def find_siblings(student_id: int) -> list[dict]:

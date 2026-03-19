@@ -13,8 +13,8 @@ require_auth()
 st.title("📊 Reports & Analytics")
 st.divider()
 
-tab_fin, tab_acad, tab_comp, tab_heatmap = st.tabs(
-    ["💰 Financial", "🎓 Academic", "🏆 Competitions", "📋 Attendance Heatmap"]
+tab_fin, tab_acad, tab_comp, tab_heatmap, tab_bi = st.tabs(
+    ["💰 Financial", "🎓 Academic", "🏆 Competitions", "📋 Attendance Heatmap", "📈 Business Intelligence"]
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -139,7 +139,7 @@ with tab_fin:
         if event_debt.selection.rows:
             sel_idx = event_debt.selection.rows[0]
             st.session_state["nav_target_student_id"] = debtors[sel_idx]["student_id"]
-            st.switch_page("pages/2_Student_Management.py")
+            st.switch_page("pages/1_Directory.py")
     else:
         st.info("No debtors found.")
 
@@ -158,11 +158,12 @@ with tab_acad:
     if not groups:
         st.info("No groups found.")
     else:
-        group_opts = {f"{g.name} (ID:{g.id})": g for g in groups}
-        sel_label = st.selectbox(
-            "Select Group", list(group_opts.keys()), key="acad_group"
+        sel_group = st.selectbox(
+            "Select Group", 
+            options=groups, 
+            format_func=lambda g: f"{g.name} (ID:{g.id})",
+            key="acad_group"
         )
-        sel_group = group_opts[sel_label]
 
         levels = list(range(1, (sel_group.level_number or 1) + 1))
         sel_level = st.selectbox(
@@ -256,11 +257,12 @@ with tab_heatmap:
     if not groups_h:
         st.info("No groups found.")
     else:
-        group_opts_h = {f"{g.name} (ID:{g.id})": g for g in groups_h}
-        sel_label_h = st.selectbox(
-            "Select Group", list(group_opts_h.keys()), key="heat_group"
+        sel_group_h = st.selectbox(
+            "Select Group", 
+            options=groups_h, 
+            format_func=lambda g: f"{g.name} (ID:{g.id})",
+            key="heat_group"
         )
-        sel_group_h = group_opts_h[sel_label_h]
 
         levels_h = list(range(1, (sel_group_h.level_number or 1) + 1))
         sel_level_h = st.selectbox(
@@ -310,5 +312,75 @@ with tab_heatmap:
                 f"attendance_heatmap_{sel_group_h.id}_level{sel_level_h}.csv",
                 "text/csv",
             )
-        else:
             st.info("No sessions or enrollments found for this group and level.")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TAB 5 — BUSINESS INTELLIGENCE
+# ─────────────────────────────────────────────────────────────────────────────
+with tab_bi:
+    st.subheader("📈 Business Intelligence")
+    st.caption("Deep analytics on growth, retention, and instructor performance.")
+
+    bi_col1, bi_col2 = st.columns(2, gap="large")
+
+    with bi_col1:
+        st.markdown("#### 🌱 Enrollment Growth")
+        days = st.slider("Timeframe (Days)", min_value=7, max_value=365, value=30, step=7)
+        cutoff = date.today() - timedelta(days=days)
+        growth_data = analytics_srv.get_new_enrollments_trend(cutoff)
+        
+        if growth_data:
+            df_growth = pd.DataFrame(growth_data)
+            df_growth = df_growth.set_index("day")
+            st.bar_chart(df_growth)
+            
+            total_new = df_growth["new_enrollments"].sum()
+            st.metric(f"New Enrollments (Last {days} days)", total_new)
+        else:
+            st.info("No new enrollments in this timeframe.")
+
+    with bi_col2:
+        st.markdown("#### 🎯 Course Retention rates")
+        retention = analytics_srv.get_retention_metrics()
+        
+        if retention:
+            df_ret = pd.DataFrame(retention)
+            df_ret["retention_rate"] = df_ret.apply(
+                lambda row: (row["active_count"] / row["total_enrollments"]) * 100 if row["total_enrollments"] > 0 else 0, 
+                axis=1
+            )
+            df_ret = df_ret.sort_values(by="retention_rate", ascending=False)
+            
+            st.dataframe(
+                df_ret[["course_name", "active_count", "dropped_count", "retention_rate"]].rename(
+                    columns={
+                        "course_name": "Course",
+                        "active_count": "Active",
+                        "dropped_count": "Dropped",
+                        "retention_rate": "Retention (%)"
+                    }
+                ).style.format({"Retention (%)": "{:.1f}%"}),
+                hide_index=True,
+                use_container_width=True
+            )
+        else:
+            st.info("No retention data.")
+
+    st.divider()
+    
+    st.markdown("#### 👨‍🏫 Instructor Performance Metrics")
+    perf = analytics_srv.get_instructor_performance()
+    
+    if perf:
+        df_perf = pd.DataFrame(perf)
+        df_perf = df_perf.rename(
+            columns={
+                "instructor_name": "Instructor",
+                "active_groups": "Active Groups",
+                "active_students": "Total Active Students"
+            }
+        )
+        st.dataframe(df_perf, hide_index=True, use_container_width=True)
+    else:
+        st.info("No active instructors data.")

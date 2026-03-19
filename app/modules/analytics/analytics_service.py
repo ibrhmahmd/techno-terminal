@@ -56,3 +56,18 @@ def get_attendance_heatmap(group_id: int, level_number: int) -> list[dict]:
 def get_competition_fee_summary() -> list[dict]:
     with get_session() as db:
         return repo.get_competition_fee_summary(db)
+
+
+def get_new_enrollments_trend(cutoff_date: date) -> list[dict]:
+    with get_session() as db:
+        return repo.get_new_enrollments_trend(db, cutoff_date)
+
+
+def get_retention_metrics() -> list[dict]:
+    with get_session() as db:
+        return repo.get_retention_metrics(db)
+
+
+def get_instructor_performance() -> list[dict]:
+    with get_session() as db:
+        return repo.get_instructor_performance(db)

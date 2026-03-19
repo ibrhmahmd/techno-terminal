@@ -29,11 +29,8 @@ def modal_create_group():
         return
 
     with st.form("new_group_form"):
-        course_opts = {c.name: c.id for c in courses}
-        sel_course = st.selectbox("Course *", list(course_opts.keys()))
-
-        inst_opts = {i.full_name: i.id for i in instructors}
-        sel_inst = st.selectbox("Instructor *", list(inst_opts.keys()))
+        sel_course = st.selectbox("Course *", options=courses, format_func=lambda c: c.name)
+        sel_inst = st.selectbox("Instructor *", options=instructors, format_func=lambda i: i.full_name)
 
         max_cap = st.number_input("Max Capacity", min_value=1, value=12)
         day = st.selectbox(
@@ -67,8 +64,8 @@ def modal_create_group():
             try:
                 group, _ = acad_srv.schedule_group(
                     {
-                        "course_id": course_opts[sel_course],
-                        "instructor_id": inst_opts[sel_inst],
+                        "course_id": sel_course.id,
+                        "instructor_id": sel_inst.id,
                         "max_capacity": int(max_cap),
                         "default_day": day,
                         "default_time_start": to_time(st_h, st_m, st_p),

@@ -22,6 +22,11 @@ def get_guardian_by_phone(session: Session, phone: str) -> Guardian | None:
     return session.exec(stmt).first()
 
 
+def get_all_guardians(session: Session, skip: int = 0, limit: int = 200) -> Sequence[Guardian]:
+    stmt = select(Guardian).offset(skip).limit(limit)
+    return session.exec(stmt).all()
+
+
 def search_guardians(session: Session, query: str) -> Sequence[Guardian]:
     search_term = f"%{query}%"
     stmt = (
@@ -49,6 +54,11 @@ def create_student(session: Session, student: Student) -> Student:
 
 def get_student_by_id(session: Session, student_id: int) -> Student | None:
     return session.get(Student, student_id)
+
+
+def get_all_students(session: Session, skip: int = 0, limit: int = 200) -> Sequence[Student]:
+    stmt = select(Student).offset(skip).limit(limit)
+    return session.exec(stmt).all()
 
 
 def search_students(session: Session, query: str) -> Sequence[Student]:

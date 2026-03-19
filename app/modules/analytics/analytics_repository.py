@@ -245,3 +245,56 @@ def get_competition_fee_summary(db: Session) -> list[dict]:
     """)
     rows = db.execute(stmt).all()
     return [dict(r._mapping) for r in rows]
+
+
+# ── BI & Business Metrics ─────────────────────────────────────────────────────
+
+
+def get_new_enrollments_trend(db: Session, cutoff_date: date) -> list[dict]:
+    """Daily count of new enrollments since a given date."""
+    stmt = text("""
+        SELECT date(enrolled_at) as day, COUNT(id) as new_enrollments
+        FROM enrollments
+        WHERE date(enrolled_at) >= :cutoff
+        GROUP BY day
+        ORDER BY day
+    """)
+    rows = db.execute(stmt, {"cutoff": str(cutoff_date)}).all()
+    return [dict(r._mapping) for r in rows]
+
+
+def get_retention_metrics(db: Session) -> list[dict]:
+    """Count of active vs dropped enrollments per course."""
+    stmt = text("""
+        SELECT 
+            c.name as course_name,
+            COUNT(e.id) FILTER (WHERE e.status = 'active') as active_count,
+            COUNT(e.id) FILTER (WHERE e.status = 'dropped') as dropped_count,
+            COUNT(e.id) as total_enrollments
+        FROM courses c
+        JOIN groups g ON c.id = g.course_id
+        JOIN enrollments e ON g.id = e.group_id
+        GROUP BY c.id, c.name
+        ORDER BY total_enrollments DESC
+    """)
+    rows = db.execute(stmt).all()
+    return [dict(r._mapping) for r in rows]
+
+
+def get_instructor_performance(db: Session) -> list[dict]:
+    """Active groups and enrollment counts by instructor."""
+    stmt = text("""
+        SELECT 
+            emp.full_name as instructor_name,
+            COUNT(DISTINCT g.id) as active_groups,
+            COUNT(DISTINCT en.id) as active_students
+        FROM employees emp
+        JOIN users u ON u.employee_id = emp.id
+        LEFT JOIN groups g ON emp.id = g.instructor_id AND g.status = 'active'
+        LEFT JOIN enrollments en ON g.id = en.group_id AND en.status = 'active'
+        WHERE u.role = 'instructor'
+        GROUP BY emp.id, emp.full_name
+        ORDER BY active_students DESC
+    """)
+    rows = db.execute(stmt).all()
+    return [dict(r._mapping) for r in rows]

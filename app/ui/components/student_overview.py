@@ -98,13 +98,62 @@ def modal_register_student():
             "Please search and select a Parent above to enable the student registration form."
         )
 
+@st.dialog("Browse All Students", width="large")
+def modal_browse_all_students():
+    students = crm_srv.list_all_students(limit=1000)
+    if not students:
+        st.info("No students found.")
+        return
+
+    PAGE_SIZE = 15
+    if "bs_page" not in st.session_state:
+        st.session_state["bs_page"] = 0
+
+    total_pages = (len(students) - 1) // PAGE_SIZE + 1
+    start_idx = st.session_state["bs_page"] * PAGE_SIZE
+    end_idx = start_idx + PAGE_SIZE
+    page_data = students[start_idx:end_idx]
+
+    df = pd.DataFrame([s.model_dump() for s in page_data])
+    display_cols = ["id", "full_name", "date_of_birth", "gender", "phone", "is_active"]
+    
+    st.markdown("Select a row to view the student profile:")
+    event = st.dataframe(
+        df[display_cols],
+        hide_index=True,
+        use_container_width=True,
+        selection_mode="single-row",
+        on_select="rerun",
+    )
+
+    if event.selection.rows:
+        sel_idx = event.selection.rows[0]
+        st.session_state["nav_target_student_id"] = page_data[sel_idx].id
+        st.session_state["bs_page"] = 0
+        st.rerun()
+
+    c1, c2, c3 = st.columns([1, 2, 1])
+    if c1.button("⬅️ Prev", disabled=(st.session_state["bs_page"] == 0), key="bs_prev"):
+        st.session_state["bs_page"] -= 1
+        st.rerun()
+    c2.markdown(
+        f"<div style='text-align: center'>Page {st.session_state['bs_page'] + 1} of {total_pages}</div>",
+        unsafe_allow_html=True,
+    )
+    if c3.button("Next ➡️", disabled=(st.session_state["bs_page"] >= total_pages - 1), key="bs_next"):
+        st.session_state["bs_page"] += 1
+        st.rerun()
+
 
 def render_student_overview():
-    col_l, col_r = st.columns([3, 1])
+    col_l, col_btn1, col_btn2 = st.columns([2, 1, 1])
     with col_l:
         st.subheader("Search Students")
-    with col_r:
-        if st.button("➕ Register Student", use_container_width=True):
+    with col_btn1:
+        if st.button("📋 Browse All", key="btn_browse_students", use_container_width=True):
+            modal_browse_all_students()
+    with col_btn2:
+        if st.button("➕ Register Student", key="btn_register_student", use_container_width=True):
             modal_register_student()
 
     student_search = st.text_input(

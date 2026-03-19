@@ -49,13 +49,62 @@ def modal_register_parent():
             except Exception as e:
                 st.error(f"❌ An unexpected error occurred: {str(e)}")
 
+@st.dialog("Browse All Families", width="large")
+def modal_browse_all_parents():
+    parents = crm_srv.list_all_guardians(limit=1000)
+    if not parents:
+        st.info("No parents found.")
+        return
+
+    PAGE_SIZE = 15
+    if "bp_page" not in st.session_state:
+        st.session_state["bp_page"] = 0
+
+    total_pages = (len(parents) - 1) // PAGE_SIZE + 1
+    start_idx = st.session_state["bp_page"] * PAGE_SIZE
+    end_idx = start_idx + PAGE_SIZE
+    page_data = parents[start_idx:end_idx]
+
+    df = pd.DataFrame([p.model_dump() for p in page_data])
+    display_cols = ["id", "full_name", "phone_primary", "relation", "email"]
+    
+    st.markdown("Select a row to view the family profile:")
+    event = st.dataframe(
+        df[display_cols],
+        hide_index=True,
+        use_container_width=True,
+        selection_mode="single-row",
+        on_select="rerun",
+    )
+
+    if event.selection.rows:
+        sel_idx = event.selection.rows[0]
+        st.session_state["nav_target_parent_id"] = page_data[sel_idx].id
+        st.session_state["bp_page"] = 0
+        st.rerun()
+
+    c1, c2, c3 = st.columns([1, 2, 1])
+    if c1.button("⬅️ Prev", disabled=(st.session_state["bp_page"] == 0), key="bp_prev"):
+        st.session_state["bp_page"] -= 1
+        st.rerun()
+    c2.markdown(
+        f"<div style='text-align: center'>Page {st.session_state['bp_page'] + 1} of {total_pages}</div>",
+        unsafe_allow_html=True,
+    )
+    if c3.button("Next ➡️", disabled=(st.session_state["bp_page"] >= total_pages - 1), key="bp_next"):
+        st.session_state["bp_page"] += 1
+        st.rerun()
+
 
 def render_parent_overview():
-    col_l, col_r = st.columns([3, 1])
+    col_l, col_btn1, col_btn2 = st.columns([2, 1, 1])
     with col_l:
         st.subheader("Search parents")
-    with col_r:
-        if st.button("➕ Register Parent", use_container_width=True):
+    with col_btn1:
+        if st.button("📋 Browse All", key="btn_browse_parents", use_container_width=True):
+            modal_browse_all_parents()
+    with col_btn2:
+        if st.button("➕ Register Parent", key="btn_register_parent", use_container_width=True):
             modal_register_parent()
 
     search_query = st.text_input(

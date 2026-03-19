@@ -127,8 +127,7 @@ def render_attendance_grid(sessions: list, roster: list):
             student_map[sid], key=f"nav_stu_{sid}", help="Go to Student Profile"
         ):
             st.session_state["nav_target_student_id"] = sid
-            # Switch page to Student Management
-            st.switch_page("pages/2_Student_Management.py")
+            st.switch_page("pages/1_Directory.py")
 
         for i, sess in enumerate(sessions):
             state = current_state.get((sid, sess.id), None)

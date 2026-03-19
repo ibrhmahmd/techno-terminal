@@ -84,11 +84,12 @@ def render_competition_overview():
         if not competitions:
             st.info("No competitions yet. Create one in the Competitions tab.")
         else:
-            comp_opts = {f"{c.name} ({c.edition or c.id})": c for c in competitions}
-            sel_comp_label = st.selectbox(
-                "Select Competition", list(comp_opts.keys()), key="team_comp"
+            sel_comp = st.selectbox(
+                "Select Competition", 
+                options=competitions, 
+                format_func=lambda c: f"{c.name} ({c.edition or c.id})",
+                key="team_comp"
             )
-            sel_comp = comp_opts[sel_comp_label]
             categories = comp_srv.list_categories(sel_comp.id)
 
             c_left, c_right = st.columns([2, 1])
@@ -161,30 +162,25 @@ def render_competition_overview():
 
                     # Coach selection
                     instructors = auth_srv.get_active_instructors()
-                    inst_opts = {"— None —": None}
-                    inst_opts.update({i.full_name: i.id for i in instructors})
-                    t_coach_label = st.selectbox(
-                        "Coach (optional)", list(inst_opts.keys()), key="t_coach"
+                    t_coach = st.selectbox(
+                        "Coach (optional)", 
+                        options=[None] + instructors, 
+                        format_func=lambda i: "— None —" if i is None else i.full_name,
+                        key="t_coach"
                     )
-                    t_coach_id = inst_opts[t_coach_label]
+                    t_coach_id = t_coach.id if t_coach else None
 
                     # Link to a group roster (optional, for student selection)
                     from app.modules.academics import academics_service as acad_srv
 
                     all_groups = acad_srv.get_all_active_groups_enriched()
-                    group_opts = {"— Select group to pick students —": None}
-                    group_opts.update(
-                        {
-                            f"{g['group_name']} ({g['course_name']})": g["id"]
-                            for g in all_groups
-                        }
-                    )
-                    t_group_label = st.selectbox(
+                    t_group = st.selectbox(
                         "Source Group (optional)",
-                        list(group_opts.keys()),
+                        options=[None] + all_groups,
+                        format_func=lambda g: "— Select group to pick students —" if g is None else f"{g['group_name']} ({g['course_name']})",
                         key="t_group",
                     )
-                    t_group_id = group_opts[t_group_label]
+                    t_group_id = t_group["id"] if t_group else None
 
                     selected_student_ids = []
                     if t_group_id:
@@ -230,12 +226,12 @@ def render_competition_overview():
         if not competitions:
             st.info("No competitions yet.")
         else:
-            comp_opts2 = {f"{c.name} ({c.edition or c.id})": c for c in competitions}
-            sel_comp2 = comp_opts2[
-                st.selectbox(
-                    "Select Competition", list(comp_opts2.keys()), key="fee_comp"
-                )
-            ]
+            sel_comp2 = st.selectbox(
+                "Select Competition", 
+                options=competitions, 
+                format_func=lambda c: f"{c.name} ({c.edition or c.id})",
+                key="fee_comp"
+            )
             categories2 = comp_srv.list_categories(sel_comp2.id)
 
             if not categories2:
@@ -326,16 +322,13 @@ def render_competition_overview():
                                         if g_q and len(g_q) >= 2:
                                             gs = crm_srv.search_guardians(g_q)
                                             if gs:
-                                                g_opts = {
-                                                    f"{g.full_name} ({g.phone_primary})": g.id
-                                                    for g in gs
-                                                }
-                                                sel_g_label = st.selectbox(
+                                                sel_g = st.selectbox(
                                                     "Select Parent",
-                                                    list(g_opts.keys()),
+                                                    options=gs,
+                                                    format_func=lambda g: f"{g.full_name} ({g.phone_primary})",
                                                     key=f"fee_gsel_{m['student_id']}",
                                                 )
-                                                guardian_id = g_opts[sel_g_label]
+                                                guardian_id = sel_g.id
 
                                         fc1, fc2 = st.columns(2)
                                         if fc1.button(
