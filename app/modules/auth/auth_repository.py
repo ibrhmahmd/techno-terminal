@@ -63,6 +63,25 @@ def update_user_and_employee(session: Session, user_id: int, is_active: bool, ro
                 session.add(emp)
         session.add(user)
 
+def get_all_employees(session: Session) -> list[Employee]:
+    stmt = select(Employee)
+    return session.exec(stmt).all()
+
+def create_employee(session: Session, emp_data: dict) -> Employee:
+    emp = Employee(**emp_data)
+    session.add(emp)
+    session.flush()
+    return emp
+
+def update_employee(session: Session, employee_id: int, data: dict) -> Employee | None:
+    emp = session.get(Employee, employee_id)
+    if not emp: return None
+    for k, v in data.items():
+        if hasattr(emp, k) and k != 'id':
+            setattr(emp, k, v)
+    session.add(emp)
+    return emp
+
 # ── RepositoryProtocol aliases ────────────────────────────────────────────────
 # Primary entity: Employee (User is auth-internal)
 get_by_id = get_employee_by_id

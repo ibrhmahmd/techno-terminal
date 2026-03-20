@@ -129,3 +129,52 @@ def force_reset_password(user_id: int, new_password: str) -> bool:
         repo.update_password_hash(session, user_id, hash_password(new_password))
         session.commit()
     return True
+
+# ── Pure Employee Endpoints ──────────────────────────────────────────────────
+
+def list_all_employees() -> list[dict]:
+    with get_session() as session:
+        return list(repo.get_all_employees(session))
+
+def get_employee_by_id(emp_id: int):
+    with get_session() as session:
+        from app.shared.exceptions import NotFoundError
+        emp = repo.get_employee_by_id(session, emp_id)
+        if not emp: raise NotFoundError(f"Employee {emp_id} not found.")
+        return emp
+
+def create_employee_only(data: dict):
+    with get_session() as session:
+        emp = repo.create_employee(session, data)
+        session.commit()
+        session.refresh(emp)
+        return emp
+
+def update_employee_only(emp_id: int, data: dict):
+    from app.shared.exceptions import NotFoundError
+    with get_session() as session:
+        emp = repo.update_employee(session, emp_id, data)
+        if not emp: raise NotFoundError(f"Employee {emp_id} not found.")
+        session.commit()
+        session.refresh(emp)
+        return emp
+
+def get_users_for_employee(emp_id: int) -> list[dict]:
+    with get_session() as session:
+        from sqlmodel import select
+        from app.modules.auth.auth_models import User
+        stmt = select(User).where(User.employee_id == emp_id)
+        return session.exec(stmt).all()
+        
+def link_employee_to_new_user(emp_id: int, username: str, plain_password: str, role: str):
+    if len(plain_password) < MIN_PASSWORD_LENGTH:
+        raise ValidationError(f"Password must be >= {MIN_PASSWORD_LENGTH} chars.")
+    with get_session() as session:
+        existing = repo.get_user_by_username(session, username)
+        if existing: raise ConflictError("Username taken.")
+        from app.modules.auth.auth_models import User
+        user = User(username=username, password_hash=hash_password(plain_password), role=role, employee_id=emp_id)
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+        return user
