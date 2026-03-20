@@ -71,3 +71,19 @@ def get_retention_metrics() -> list[dict]:
 def get_instructor_performance() -> list[dict]:
     with get_session() as db:
         return repo.get_instructor_performance(db)
+
+def get_level_retention_funnel() -> list[dict]:
+    with get_session() as db:
+        return repo.get_level_retention_funnel(db)
+
+def get_instructor_value_matrix() -> list[dict]:
+    with get_session() as db:
+        return repo.get_instructor_value_matrix(db)
+
+def get_schedule_utilization() -> list[dict]:
+    with get_session() as db:
+        return repo.get_schedule_utilization(db)
+
+def get_flight_risk_students() -> list[dict]:
+    with get_session() as db:
+        return repo.get_flight_risk_students(db)

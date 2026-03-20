@@ -44,37 +44,12 @@ def render_group_detail(group_id: int):
         "View Level", min_value=1, value=int(group_info.level_number), key="gdtl_level"
     )
 
-    with st.expander("✏️ Edit Group Settings"):
-        with st.form(f"edit_group_{group_info.id}"):
-            c1, c2 = st.columns(2)
-            with c1:
-                eg_name = st.text_input("Group Name *", value=group_info.name)
-                eg_cap = st.number_input("Max Capacity", value=group_info.max_capacity, min_value=1)
-                
-                from app.modules.auth.auth_service import get_active_instructors
-                instructors = get_active_instructors()
-                cur_inst_idx = next((i for i, inst in enumerate(instructors) if inst.id == group_info.instructor_id), 0) if instructors else 0
-                eg_inst = st.selectbox("Instructor", options=instructors, format_func=lambda x: x.full_name, index=cur_inst_idx) if instructors else None
-                
-            with c2:
-                eg_day = st.selectbox("Default Day", WEEKDAYS, index=WEEKDAYS.index(group_info.default_day) if group_info.default_day in WEEKDAYS else 0)
-                eg_start = st.time_input("Start Time", value=group_info.default_time_start)
-                eg_end = st.time_input("End Time", value=group_info.default_time_end)
-
-            if st.form_submit_button("Save Changes", type="primary"):
-                try:
-                    acad_srv.update_group(group_info.id, {
-                        "name": eg_name.strip(),
-                        "max_capacity": eg_cap,
-                        "instructor_id": eg_inst.id if eg_inst else group_info.instructor_id,
-                        "default_day": eg_day,
-                        "default_time_start": eg_start,
-                        "default_time_end": eg_end
-                    })
-                    st.success("Group settings updated!")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Failed to update: {e}")
+    from app.ui.components.forms.edit_group_form import render_edit_group_form
+    from app.modules.auth.auth_service import get_active_instructors
+    from app.modules.academics.academics_service import get_active_courses
+    instructors = get_active_instructors()
+    courses = get_active_courses()
+    render_edit_group_form(group_info, instructors, courses)
 
     st.divider()
 

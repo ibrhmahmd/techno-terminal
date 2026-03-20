@@ -298,3 +298,92 @@ def get_instructor_performance(db: Session) -> list[dict]:
     """)
     rows = db.execute(stmt).all()
     return [dict(r._mapping) for r in rows]
+
+def get_level_retention_funnel(db: Session) -> list[dict]:
+    """How many students survive from Level 1 onwards in each course."""
+    stmt = text("""
+        SELECT c.name as course_name, 
+               e.level_number, 
+               COUNT(e.id) as student_count
+        FROM enrollments e
+        JOIN groups g ON e.group_id = g.id
+        JOIN courses c ON g.course_id = c.id
+        WHERE e.status != 'dropped'
+        GROUP BY c.name, e.level_number
+        ORDER BY c.name, e.level_number
+    """)
+    rows = db.execute(stmt).all()
+    return [dict(r._mapping) for r in rows]
+
+def get_instructor_value_matrix(db: Session) -> list[dict]:
+    """Instructor Revenue vs Average Attendance (Retention marker)."""
+    stmt = text("""
+        WITH InstructorRev AS (
+            SELECT g.instructor_id,
+                   SUM(vb.total_paid) as generated_revenue
+            FROM v_enrollment_balance vb
+            JOIN groups g ON vb.group_id = g.id
+            GROUP BY g.instructor_id
+        ),
+        InstructorAtt AS (
+            SELECT g.instructor_id,
+                   AVG(CASE WHEN vgs.total_sessions > 0
+                       THEN 100.0 * COALESCE(att.sessions_attended, 0) / vgs.total_sessions
+                       ELSE 0 END) as avg_attendance_pct
+            FROM enrollments en
+            JOIN groups g ON en.group_id = g.id
+            LEFT JOIN v_enrollment_attendance att ON att.enrollment_id = en.id
+            LEFT JOIN v_group_session_count vgs ON vgs.group_id = en.group_id AND vgs.level_number = en.level_number
+            GROUP BY g.instructor_id
+        )
+        SELECT e.full_name as instructor_name,
+               COALESCE(r.generated_revenue, 0) as total_revenue,
+               ROUND(COALESCE(a.avg_attendance_pct, 0), 1) as avg_attendance_pct
+        FROM employees e
+        JOIN users u ON u.employee_id = e.id
+        LEFT JOIN InstructorRev r ON r.instructor_id = e.id
+        LEFT JOIN InstructorAtt a ON a.instructor_id = e.id
+        WHERE u.role = 'instructor'
+    """)
+    rows = db.execute(stmt).all()
+    return [dict(r._mapping) for r in rows]
+
+def get_schedule_utilization(db: Session) -> list[dict]:
+    """Slot heatmaps showing filled vs max capacity."""
+    stmt = text("""
+        SELECT
+            g.default_day as day,
+            CAST(g.default_time_start AS TEXT) as time_start,
+            COUNT(e.id) as total_enrolled,
+            COALESCE(SUM(g.max_capacity), 1) as total_capacity,
+            ROUND(100.0 * COUNT(e.id) / NULLIF(SUM(g.max_capacity), 0), 1) as utilization_pct
+        FROM groups g
+        LEFT JOIN enrollments e ON e.group_id = g.id AND e.status = 'active'
+        WHERE g.status = 'active' AND g.default_day IS NOT NULL AND g.default_time_start IS NOT NULL
+        GROUP BY g.default_day, g.default_time_start
+        ORDER BY g.default_day, g.default_time_start
+    """)
+    rows = db.execute(stmt).all()
+    return [dict(r._mapping) for r in rows]
+
+def get_flight_risk_students(db: Session) -> list[dict]:
+    """Students who both owe money AND have missed multiple sessions."""
+    stmt = text("""
+        SELECT
+            st.full_name as student_name,
+            c.name as course_name,
+            vb.balance as amount_owed,
+            att.sessions_missed
+        FROM enrollments en
+        JOIN students st ON en.student_id = st.id
+        JOIN groups g ON en.group_id = g.id
+        JOIN courses c ON g.course_id = c.id
+        JOIN v_enrollment_balance vb ON vb.enrollment_id = en.id
+        JOIN v_enrollment_attendance att ON att.enrollment_id = en.id
+        WHERE en.status = 'active'
+          AND vb.balance > 0
+          AND att.sessions_missed > 0
+        ORDER BY att.sessions_missed DESC, vb.balance DESC
+    """)
+    rows = db.execute(stmt).all()
+    return [dict(r._mapping) for r in rows]

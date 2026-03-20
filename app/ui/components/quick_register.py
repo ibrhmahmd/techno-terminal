@@ -21,15 +21,22 @@ def render_quick_register():
                 s_name = st.text_input("Student Full Name*", placeholder="Student's Name")
                 s_notes = st.text_area("Notes (Optional)", height=68, placeholder="Medical info, allergies, etc.")
                 
-            with st.expander("➕ Optional Details (Email, DOB, Secondary Phone)"):
+            with st.expander("➕ Optional Details (Address, School, Medical, etc.)"):
                 opt_p, opt_s = st.columns(2)
                 with opt_p:
                     p_phone_sec = st.text_input("Parent Secondary Phone", placeholder="01xxxxxxxxx")
                     p_email = st.text_input("Parent Email")
-                    p_notes = st.text_input("Parent Notes")
+                    p_job = st.text_input("Job Title")
+                    p_nid = st.text_input("National ID")
+                    p_address = st.text_area("Home Address", height=68)
+                    p_notes = st.text_area("Parent Notes (Other)", height=68)
                 with opt_s:
                     s_dob = st.date_input("Student Date of Birth", value=None)
                     s_gender = st.selectbox("Student Gender", [None, "male", "female"], format_func=lambda x: "—" if not x else x.capitalize())
+                    s_school = st.text_input("School Name")
+                    s_grade = st.text_input("Grade Level")
+                    s_emerg = st.text_input("Emergency Contact (Name/Phone)")
+                    s_med = st.text_area("Medical Notes / Allergies", height=68)
                     s_phone = st.text_input("Student Personal Phone")
 
             st.markdown("---")
@@ -40,6 +47,22 @@ def render_quick_register():
                     st.error("Please fill all required fields (*)")
                     return
                 
+                # Format extended metadata into notes columns safely
+                p_meta = []
+                if p_job: p_meta.append(f"Job: {p_job.strip()}")
+                if p_nid: p_meta.append(f"NID: {p_nid.strip()}")
+                if p_address: p_meta.append(f"Address: {p_address.strip()}")
+                if p_notes: p_meta.append(f"Notes: {p_notes.strip()}")
+                final_p_notes = " | ".join(p_meta) if p_meta else None
+
+                s_meta = []
+                if s_school: s_meta.append(f"School: {s_school.strip()}")
+                if s_grade: s_meta.append(f"Grade: {s_grade.strip()}")
+                if s_emerg: s_meta.append(f"Emergency Contact: {s_emerg.strip()}")
+                if s_med: s_meta.append(f"Medical: {s_med.strip()}")
+                if s_notes: s_meta.append(f"Notes: {s_notes.strip()}")
+                final_s_notes = " | ".join(s_meta) if s_meta else None
+                
                 try:
                     # 1. Find or create guardian
                     guardian, created = crm_srv.find_or_create_guardian({
@@ -48,7 +71,7 @@ def render_quick_register():
                         "phone_secondary": p_phone_sec.strip() if p_phone_sec else None,
                         "email": p_email.strip() if p_email else None,
                         "relation": p_relation,
-                        "notes": p_notes.strip() if p_notes else None
+                        "notes": final_p_notes
                     })
                     
                     # 2. Register student and link to guardian
@@ -58,7 +81,7 @@ def render_quick_register():
                             "date_of_birth": str(s_dob) if s_dob else None,
                             "gender": s_gender,
                             "phone": s_phone.strip() if s_phone else None,
-                            "notes": s_notes.strip() if s_notes else None
+                            "notes": final_s_notes
                         },
                         guardian_id=guardian.id,
                         relationship=p_relation

@@ -67,3 +67,23 @@ class GenerateLevelSessionsInput(BaseModel):
     group_id: int
     level_number: int
     start_date: date
+
+class UpdateGroupDTO(BaseModel):
+    name: Optional[str] = None
+    course_id: Optional[int] = None
+    level_number: Optional[int] = None
+    max_capacity: Optional[int] = None
+    instructor_id: Optional[int] = None
+    default_day: Optional[str] = None
+    default_time_start: Optional[time] = None
+    default_time_end: Optional[time] = None
+    status: Optional[str] = None
+
+class UpdateSessionDTO(BaseModel):
+    session_date: Optional[str] = None
+    start_time: Optional[time] = None
+    end_time: Optional[time] = None
+    actual_instructor_id: Optional[int] = None
+    is_substitute: Optional[bool] = None
+    notes: Optional[str] = None
+    status: Optional[str] = None

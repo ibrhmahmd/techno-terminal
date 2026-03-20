@@ -37,24 +37,8 @@ def render_course_detail(course_id: int):
     if course.description:
         st.info(f"**Description:** {course.description}")
 
-    with st.expander("✏️ Edit Course Information"):
-        with st.form(f"edit_course_{course.id}"):
-            ec_name = st.text_input("Course Name *", value=course.name)
-            cat_opts = ["programming", "robotics", "design", "other"]
-            ec_cat = st.selectbox("Category", cat_opts, index=cat_opts.index(course.category) if course.category in cat_opts else 3)
-            ec_desc = st.text_area("Description", value=course.description or "")
-            
-            if st.form_submit_button("Save Changes", type="primary"):
-                try:
-                    acad_srv.update_course(course.id, {
-                        "name": ec_name.strip(),
-                        "category": ec_cat,
-                        "description": ec_desc.strip() or None
-                    })
-                    st.success("Course details updated!")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Failed to update: {e}")
+    from app.ui.components.forms.edit_course_form import render_edit_course_form
+    render_edit_course_form(course)
 
     st.divider()
 

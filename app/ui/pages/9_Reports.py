@@ -61,10 +61,6 @@ with tab_fin:
             df_m["net_revenue"] = df_m["net_revenue"].apply(float)
             total = df_m["net_revenue"].sum()
             st.metric("Total Collected", f"{total:,.0f} EGP")
-            chart = df_m.set_index("payment_method")[["net_revenue"]]
-            chart.index.name = "Method"
-            chart.columns = ["Revenue (EGP)"]
-            st.bar_chart(chart)
             st.dataframe(
                 df_m.rename(
                     columns={
@@ -321,66 +317,21 @@ with tab_heatmap:
 with tab_bi:
     st.subheader("📈 Business Intelligence")
     st.caption("Deep analytics on growth, retention, and instructor performance.")
+    
+    from app.ui.components.charts.retention_funnel import render_retention_funnel
+    from app.ui.components.charts.instructor_matrix import render_instructor_matrix
+    from app.ui.components.charts.schedule_utilization import render_schedule_utilization
+    from app.ui.components.charts.financial_risk import render_financial_risk
 
     bi_col1, bi_col2 = st.columns(2, gap="large")
 
     with bi_col1:
-        st.markdown("#### 🌱 Enrollment Growth")
-        days = st.slider("Timeframe (Days)", min_value=7, max_value=365, value=30, step=7)
-        cutoff = date.today() - timedelta(days=days)
-        growth_data = analytics_srv.get_new_enrollments_trend(cutoff)
+        render_retention_funnel()
+        st.divider()
+        render_schedule_utilization()
         
-        if growth_data:
-            df_growth = pd.DataFrame(growth_data)
-            df_growth = df_growth.set_index("day")
-            st.bar_chart(df_growth)
-            
-            total_new = df_growth["new_enrollments"].sum()
-            st.metric(f"New Enrollments (Last {days} days)", total_new)
-        else:
-            st.info("No new enrollments in this timeframe.")
 
     with bi_col2:
-        st.markdown("#### 🎯 Course Retention rates")
-        retention = analytics_srv.get_retention_metrics()
-        
-        if retention:
-            df_ret = pd.DataFrame(retention)
-            df_ret["retention_rate"] = df_ret.apply(
-                lambda row: (row["active_count"] / row["total_enrollments"]) * 100 if row["total_enrollments"] > 0 else 0, 
-                axis=1
-            )
-            df_ret = df_ret.sort_values(by="retention_rate", ascending=False)
-            
-            st.dataframe(
-                df_ret[["course_name", "active_count", "dropped_count", "retention_rate"]].rename(
-                    columns={
-                        "course_name": "Course",
-                        "active_count": "Active",
-                        "dropped_count": "Dropped",
-                        "retention_rate": "Retention (%)"
-                    }
-                ).style.format({"Retention (%)": "{:.1f}%"}),
-                hide_index=True,
-                use_container_width=True
-            )
-        else:
-            st.info("No retention data.")
-
-    st.divider()
-    
-    st.markdown("#### 👨‍🏫 Instructor Performance Metrics")
-    perf = analytics_srv.get_instructor_performance()
-    
-    if perf:
-        df_perf = pd.DataFrame(perf)
-        df_perf = df_perf.rename(
-            columns={
-                "instructor_name": "Instructor",
-                "active_groups": "Active Groups",
-                "active_students": "Total Active Students"
-            }
-        )
-        st.dataframe(df_perf, hide_index=True, use_container_width=True)
-    else:
-        st.info("No active instructors data.")
+        render_instructor_matrix()
+        st.divider()
+        render_financial_risk()

@@ -299,6 +299,20 @@ def add_extra_session(
     # ← SINGLE COMMIT — number read + row inserted atomically
 
 
+def update_session(session_id: int, data: dict) -> CourseSession:
+    with get_session() as session:
+        cs = session.get(CourseSession, session_id)
+        if not cs:
+            raise NotFoundError(f"Session {session_id} not found.")
+        for k, v in data.items():
+            if hasattr(cs, k) and k != "id":
+                setattr(cs, k, v)
+        session.add(cs)
+        session.commit()
+        session.refresh(cs)
+        return cs
+
+
 def delete_session(session_id: int) -> bool:
     with get_session() as session:
         return repo.delete_session(session, session_id)
