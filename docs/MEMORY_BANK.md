@@ -2,7 +2,7 @@
 > **Purpose:** Complete architectural and code-level reference for AI agent handoff.  
 > **Last updated:** 2026-03-18  
 > **Schema version:** v3.2 (15 tables, 5 views)  
-> **Framework:** Streamlit + SQLModel + PostgreSQL
+> **Framework:** Streamlit + FastAPI + SQLModel + PostgreSQL
 
 ---
 
@@ -462,3 +462,4 @@ psql $DATABASE_URL -f db/schema.sql
 | 5 | Competitions module (teams, categories, fees); parent profile shows competition fees |
 | 5 Polish | Inline edit/delete for competitions; "Guardian" -> "Parent" UI rename; wide layout |
 | 6 | Analytics module; live Dashboard; 4-tab Reports page (Financial/Academic/Competitions/Heatmap); CSV export; historical date filter; active enrollments KPI; debtor cross-link |
+| 7 (Phase E) | **API Layer Integration**: FastAPI routing, JWT Auth, SQLModel Split schemas (`Read`, `Create`), and `run_api.py` bootloader. |
