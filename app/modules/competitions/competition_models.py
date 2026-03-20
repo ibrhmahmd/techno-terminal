@@ -9,48 +9,91 @@ import app.modules.academics.academics_models
 import app.modules.auth.auth_models
 import app.modules.enrollments.enrollment_models
 
-class Competition(SQLModel, table=True):
-    __tablename__ = "competitions"
-    __table_args__ = {"extend_existing": True}
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+# --- Competition Schemas ---
+
+class CompetitionBase(SQLModel):
     name: str
     edition: Optional[str] = None
     competition_date: Optional[date] = None
     location: Optional[str] = None
     notes: Optional[str] = None
-    created_at: Optional[datetime] = None
 
-
-class CompetitionCategory(SQLModel, table=True):
-    __tablename__ = "competition_categories"
+class Competition(CompetitionBase, table=True):
+    __tablename__ = "competitions"
     __table_args__ = {"extend_existing": True}
 
     id: Optional[int] = Field(default=None, primary_key=True)
+    created_at: Optional[datetime] = None
+
+class CompetitionCreate(CompetitionBase):
+    pass
+
+class CompetitionRead(CompetitionBase):
+    id: int
+    created_at: Optional[datetime] = None
+
+
+# --- Competition Category Schemas ---
+
+class CompetitionCategoryBase(SQLModel):
     competition_id: int = Field(foreign_key="competitions.id")
     category_name: str
     notes: Optional[str] = None
 
-
-class Team(SQLModel, table=True):
-    __tablename__ = "teams"
+class CompetitionCategory(CompetitionCategoryBase, table=True):
+    __tablename__ = "competition_categories"
     __table_args__ = {"extend_existing": True}
 
     id: Optional[int] = Field(default=None, primary_key=True)
+
+class CompetitionCategoryCreate(CompetitionCategoryBase):
+    pass
+
+class CompetitionCategoryRead(CompetitionCategoryBase):
+    id: int
+
+
+# --- Team Schemas ---
+
+class TeamBase(SQLModel):
     category_id: int = Field(foreign_key="competition_categories.id")
     group_id: Optional[int] = Field(default=None, foreign_key="groups.id")
     team_name: str
     coach_id: Optional[int] = Field(default=None, foreign_key="employees.id")
     enrollment_fee_per_student: Optional[float] = None
-    created_at: Optional[datetime] = None
 
-
-class TeamMember(SQLModel, table=True):
-    __tablename__ = "team_members"
+class Team(TeamBase, table=True):
+    __tablename__ = "teams"
     __table_args__ = {"extend_existing": True}
 
     id: Optional[int] = Field(default=None, primary_key=True)
+    created_at: Optional[datetime] = None
+
+class TeamCreate(TeamBase):
+    pass
+
+class TeamRead(TeamBase):
+    id: int
+    created_at: Optional[datetime] = None
+
+
+# --- Team Member Schemas ---
+
+class TeamMemberBase(SQLModel):
     team_id: int = Field(foreign_key="teams.id")
     student_id: int = Field(foreign_key="students.id")
     fee_paid: bool = False
     payment_id: Optional[int] = Field(default=None, foreign_key="payments.id")
+
+class TeamMember(TeamMemberBase, table=True):
+    __tablename__ = "team_members"
+    __table_args__ = {"extend_existing": True}
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+
+class TeamMemberCreate(TeamMemberBase):
+    pass
+
+class TeamMemberRead(TeamMemberBase):
+    id: int

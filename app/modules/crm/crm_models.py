@@ -2,18 +2,21 @@ from datetime import datetime
 from typing import Optional, List
 from sqlmodel import SQLModel, Field, Relationship
 
+# --- Guardian Schemas ---
 
-class Guardian(SQLModel, table=True):
-    __tablename__ = "guardians"
-    __table_args__ = {"extend_existing": True}
-
-    id: Optional[int] = Field(default=None, primary_key=True)
+class GuardianBase(SQLModel):
     full_name: str
     phone_primary: Optional[str] = None  # unique enforced at DB level
     phone_secondary: Optional[str] = None
     email: Optional[str] = None
     relation: Optional[str] = None
     notes: Optional[str] = None
+
+class Guardian(GuardianBase, table=True):
+    __tablename__ = "guardians"
+    __table_args__ = {"extend_existing": True}
+
+    id: Optional[int] = Field(default=None, primary_key=True)
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -22,18 +25,30 @@ class Guardian(SQLModel, table=True):
         back_populates="guardian"
     )
 
+class GuardianCreate(GuardianBase):
+    pass
 
-class Student(SQLModel, table=True):
-    __tablename__ = "students"
-    __table_args__ = {"extend_existing": True}
+class GuardianRead(GuardianBase):
+    id: int
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+
+# --- Student Schemas ---
+
+class StudentBase(SQLModel):
     full_name: str
     date_of_birth: Optional[datetime] = None  # schema: date_of_birth (DATE)
     gender: Optional[str] = None  # schema CHECK: 'male' / 'female' lowercase
     phone: Optional[str] = None
     notes: Optional[str] = None
     is_active: bool = True
+
+class Student(StudentBase, table=True):
+    __tablename__ = "students"
+    __table_args__ = {"extend_existing": True}
+
+    id: Optional[int] = Field(default=None, primary_key=True)
     created_by: Optional[int] = Field(default=None, foreign_key="users.id")
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -43,6 +58,17 @@ class Student(SQLModel, table=True):
         back_populates="student"
     )
 
+class StudentCreate(StudentBase):
+    pass
+
+class StudentRead(StudentBase):
+    id: int
+    is_active: bool
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
+# --- Junction Schemas ---
 
 class StudentGuardian(SQLModel, table=True):
     __tablename__ = "student_guardians"

@@ -2,14 +2,9 @@ from datetime import time
 from typing import Optional
 from sqlmodel import SQLModel, Field
 
+# --- CourseSession Schemas ---
 
-class CourseSession(SQLModel, table=True):
-    """Maps to the 'sessions' table. Named CourseSession to avoid clashing with SQLModel's Session."""
-
-    __tablename__ = "sessions"
-    __table_args__ = {"extend_existing": True}
-
-    id: Optional[int] = Field(default=None, primary_key=True)
+class CourseSessionBase(SQLModel):
     group_id: int = Field(foreign_key="groups.id")
     level_number: int
     session_number: int
@@ -24,4 +19,18 @@ class CourseSession(SQLModel, table=True):
     is_substitute: bool = False
     is_extra_session: bool = False
     notes: Optional[str] = None
+
+class CourseSession(CourseSessionBase, table=True):
+    """Maps to the 'sessions' table. Named CourseSession to avoid clashing with SQLModel's Session."""
+    __tablename__ = "sessions"
+    __table_args__ = {"extend_existing": True}
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    created_at: Optional[str] = None
+
+class CourseSessionCreate(CourseSessionBase):
+    pass
+
+class CourseSessionRead(CourseSessionBase):
+    id: int
     created_at: Optional[str] = None
