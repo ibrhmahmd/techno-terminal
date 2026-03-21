@@ -1,5 +1,6 @@
--- Techno Kids — PostgreSQL Schema v3.2
+-- Techno Kids — PostgreSQL Schema v3.3
 -- 15 tables, 5 views, 23 indexes
+-- v3.3: users — Supabase auth (supabase_uid), roles admin/instructor/system_admin; seed via app (see db/README.md)
 -- CHANGES FROM v3.2:
 --   [T1]  Changed `sessions.group_id` ON DELETE CASCADE to RESTRICT
 --   [T2]  Changed `payments.receipt_id` ON DELETE CASCADE to RESTRICT
@@ -57,10 +58,12 @@ CREATE TABLE employees (
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     username TEXT UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,
+    supabase_uid TEXT UNIQUE NOT NULL,
     employee_id INTEGER REFERENCES employees(id) ON DELETE
     SET NULL,
-        role TEXT NOT NULL CHECK (role IN ('admin', 'system_admin')),
+        role TEXT NOT NULL CHECK (
+            role IN ('admin', 'instructor', 'system_admin')
+        ),
         is_active BOOLEAN DEFAULT TRUE,
         last_login TIMESTAMPTZ,
         created_at TIMESTAMPTZ
@@ -275,6 +278,7 @@ CREATE INDEX idx_comp_categories_comp ON competition_categories(competition_id);
 CREATE INDEX idx_teams_category ON teams(category_id);
 CREATE INDEX idx_team_members_team ON team_members(team_id);
 CREATE INDEX idx_team_members_student ON team_members(student_id);
+CREATE UNIQUE INDEX idx_users_supabase_uid ON users(supabase_uid);
 -- Views
 CREATE OR REPLACE VIEW v_students AS
 SELECT s.id,
@@ -368,7 +372,7 @@ SELECT group_id,
 FROM sessions
 GROUP BY group_id,
     level_number;
--- Seed
+-- Seed (optional local employee row). Login users are created in Supabase and mapped via app/db/seed.py.
 INSERT INTO employees (
         full_name,
         job_title,
@@ -376,22 +380,8 @@ INSERT INTO employees (
         created_at
     )
 VALUES (
-        'System Administrator',
+        'Admin',
         'admin',
         'part_time',
-        NOW()
-    );
-INSERT INTO users (
-        username,
-        password_hash,
-        employee_id,
-        role,
-        created_at
-    )
-VALUES (
-        'admin',
-        'CHANGE_ME_ON_FIRST_LOGIN',
-        1,
-        'admin',
         NOW()
     );

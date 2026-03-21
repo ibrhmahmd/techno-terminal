@@ -4,7 +4,7 @@ from datetime import time
 import datetime
 
 from app.modules.academics import academics_service as acad_srv
-from app.modules.auth import auth_service as auth_srv
+from app.modules.hr import hr_service as hr_srv
 from app.shared.exceptions import NotFoundError, BusinessRuleError, ValidationError, ConflictError
 
 ALLOWED_HOURS = list(range(11, 22))
@@ -19,7 +19,7 @@ def to_time(hour: int, minute_str: str, ampm: str) -> time:
 @st.dialog("Create New Group")
 def modal_create_group():
     courses = acad_srv.get_active_courses()
-    instructors = auth_srv.get_active_instructors()
+    instructors = hr_srv.get_active_instructors()
 
     if not courses:
         st.warning("No active courses.")

@@ -1,5 +1,8 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import Any, List, Optional
+
+from sqlalchemy import Column
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import SQLModel, Field, Relationship
 
 # --- Guardian Schemas ---
@@ -52,6 +55,10 @@ class Student(StudentBase, table=True):
     created_by: Optional[int] = Field(default=None, foreign_key="users.id")
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    profile_metadata: Optional[dict[str, Any]] = Field(
+        default=None,
+        sa_column=Column("metadata", JSONB),
+    )
 
     # Relationship
     guardian_links: List["StudentGuardian"] = Relationship(

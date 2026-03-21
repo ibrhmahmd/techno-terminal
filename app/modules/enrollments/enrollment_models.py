@@ -1,5 +1,8 @@
 from datetime import date, datetime
-from typing import Optional
+from typing import Any, Optional
+
+from sqlalchemy import Column as SAColumn
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import SQLModel, Field, Relationship, Column, String
 from app.shared.constants import EnrollmentStatus
 
@@ -24,6 +27,10 @@ class Enrollment(EnrollmentBase, table=True):
     created_by: Optional[int] = Field(default=None, foreign_key="users.id")
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    enrollment_metadata: Optional[dict[str, Any]] = Field(
+        default=None,
+        sa_column=SAColumn("metadata", JSONB),
+    )
 
 class EnrollmentCreate(EnrollmentBase):
     pass

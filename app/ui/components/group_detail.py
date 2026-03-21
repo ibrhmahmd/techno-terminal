@@ -45,7 +45,7 @@ def render_group_detail(group_id: int):
     )
 
     from app.ui.components.forms.edit_group_form import render_edit_group_form
-    from app.modules.auth.auth_service import get_active_instructors
+    from app.modules.hr.hr_service import get_active_instructors
     from app.modules.academics.academics_service import get_active_courses
     instructors = get_active_instructors()
     courses = get_active_courses()

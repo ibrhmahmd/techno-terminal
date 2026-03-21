@@ -65,9 +65,9 @@ def render_attendance_grid(sessions: list, roster: list):
     st.caption("Click a student's name to view their profile in Student Management.")
 
     # Pre-fetch instructor names
-    from app.modules.auth import auth_service as auth_srv
+    from app.modules.hr import hr_service as hr_srv
 
-    instructors = auth_srv.get_active_instructors()
+    instructors = hr_srv.get_active_instructors()
     inst_map = {i.id: i.full_name for i in instructors}
 
     # Construct columns headers

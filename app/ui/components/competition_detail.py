@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from app.modules.competitions import competition_service as comp_srv
-from app.modules.auth.auth_repository import get_employee_by_id
+from app.modules.hr.hr_service import get_employee_by_id
 from app.db.connection import get_session
 
 

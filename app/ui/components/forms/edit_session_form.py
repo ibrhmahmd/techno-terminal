@@ -3,7 +3,7 @@ from datetime import datetime
 from app.modules.academics import academics_service as acad_srv
 from app.db.connection import get_session
 from app.modules.academics.academics_session_models import CourseSession
-from app.modules.auth.auth_service import get_active_instructors
+from app.modules.hr.hr_service import get_active_instructors
 
 @st.dialog("✏️ Edit Session Details")
 def render_edit_session_form(session_id: int):

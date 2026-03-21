@@ -1,5 +1,8 @@
 from datetime import datetime, time
-from typing import Optional
+from typing import Any, Optional
+
+from sqlalchemy import Column as SAColumn
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import SQLModel, Field, Column, String
 from app.shared.constants import GroupStatus
 
@@ -50,6 +53,10 @@ class Group(GroupBase, table=True):
     started_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    group_metadata: Optional[dict[str, Any]] = Field(
+        default=None,
+        sa_column=SAColumn("metadata", JSONB),
+    )
 
 class GroupCreate(GroupBase):
     pass

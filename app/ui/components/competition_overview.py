@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import date
 
 from app.modules.competitions import competition_service as comp_srv
-from app.modules.auth import auth_service as auth_srv
+from app.modules.hr import hr_service as hr_srv
 from app.modules.crm import crm_service as crm_srv
 from app.modules.enrollments import enrollment_service as enroll_srv
 
@@ -161,7 +161,7 @@ def render_competition_overview():
                     )
 
                     # Coach selection
-                    instructors = auth_srv.get_active_instructors()
+                    instructors = hr_srv.get_active_instructors()
                     t_coach = st.selectbox(
                         "Coach (optional)", 
                         options=[None] + instructors, 

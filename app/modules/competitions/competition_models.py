@@ -1,5 +1,8 @@
-from datetime import datetime, date
-from typing import Optional
+from datetime import date, datetime
+from typing import Any, Optional
+
+from sqlalchemy import Column as SAColumn
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import SQLModel, Field
 
 # Ensure related models are loaded so SQLAlchemy can resolve foreign keys
@@ -69,6 +72,10 @@ class Team(TeamBase, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     created_at: Optional[datetime] = None
+    team_metadata: Optional[dict[str, Any]] = Field(
+        default=None,
+        sa_column=SAColumn("metadata", JSONB),
+    )
 
 class TeamCreate(TeamBase):
     pass

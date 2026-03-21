@@ -14,6 +14,9 @@ from typing import Literal, TypeAlias
 # Shared type alias for database IDs to make intent clear in signatures
 ID: TypeAlias = int
 
+# Supabase-backed accounts (staff provisioning, password reset)
+MIN_PASSWORD_LENGTH: int = 12
+
 # ── Finance ───────────────────────────────────────────────────────────────────
 
 PaymentMethod: TypeAlias = Literal["cash", "card", "transfer", "online"]

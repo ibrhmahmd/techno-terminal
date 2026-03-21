@@ -1,19 +1,14 @@
 """
-app/modules/auth/auth_schemas.py
-──────────────────────────────────
-Typed input DTOs for the Auth service layer.
+Request/response DTOs for auth HTTP endpoints (extend as routes are added).
+Service-layer operations use shared exceptions; these are for JSON bodies only.
 """
-from pydantic import BaseModel
+
+from pydantic import BaseModel, Field
+
+from app.shared.constants import MIN_PASSWORD_LENGTH
 
 
-class AuthenticateInput(BaseModel):
-    """Input for auth_service.authenticate()."""
-    username: str
-    password: str
+class PasswordResetBody(BaseModel):
+    """Example body for a future admin password-reset route."""
 
-
-class ChangePasswordInput(BaseModel):
-    """Input for auth_service.change_password()."""
-    user_id: int
-    current_password: str
-    new_password: str
+    new_password: str = Field(..., min_length=MIN_PASSWORD_LENGTH)

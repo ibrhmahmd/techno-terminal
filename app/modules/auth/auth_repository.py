@@ -1,24 +1,26 @@
 from datetime import datetime, timezone
 from sqlmodel import Session, select
-from app.modules.auth.auth_models import User, Employee
-
+from app.modules.auth.auth_models import User
+from app.modules.hr.hr_models import Employee
 
 def get_user_by_username(session: Session, username: str) -> User | None:
     stmt = select(User).where(User.username == username)
     return session.exec(stmt).first()
 
+def get_user_by_supabase_uid(session: Session, uid: str) -> User | None:
+    stmt = select(User).where(User.supabase_uid == uid)
+    return session.exec(stmt).first()
 
-def get_employee_by_id(session: Session, employee_id: int) -> Employee | None:
-    return session.get(Employee, employee_id)
 
+def get_users_by_employee_id(session: Session, employee_id: int) -> list[User]:
+    stmt = select(User).where(User.employee_id == employee_id)
+    return list(session.exec(stmt).all())
 
-def update_password_hash(session: Session, user_id: int, new_hash: str) -> None:
-    user = session.get(User, user_id)
-    if user:
-        user.password_hash = new_hash
-        user.updated_at = datetime.now(timezone.utc)
-        session.add(user)
-
+def create_user(session: Session, user_data: dict) -> User:
+    user = User(**user_data)
+    session.add(user)
+    session.flush()
+    return user
 
 def update_last_login(session: Session, user_id: int) -> None:
     user = session.get(User, user_id)
@@ -26,63 +28,17 @@ def update_last_login(session: Session, user_id: int) -> None:
         user.last_login = datetime.now(timezone.utc)
         session.add(user)
 
-
-def get_active_employees(session: Session) -> list[Employee]:
-    stmt = select(Employee).where(Employee.is_active == True)
-    return session.exec(stmt).all()
-
-
-# ── Employee Management ───────────────────────────────────────────────────────
-
-def create_employee_and_user(session: Session, emp_data: dict, user_data: dict) -> tuple[Employee, User]:
-    emp = Employee(**emp_data)
-    session.add(emp)
-    session.flush()
-
-    user_data["employee_id"] = emp.id
-    user = User(**user_data)
-    session.add(user)
-    session.flush()
-    return emp, user
-
-
-def get_all_users_with_employees(session: Session) -> list[tuple[User, Employee]]:
-    stmt = select(User, Employee).join(Employee, User.employee_id == Employee.id)
-    return session.exec(stmt).all()
-
-
-def update_user_and_employee(session: Session, user_id: int, is_active: bool, role: str) -> None:
+def update_user(session: Session, user_id: int, user_data: dict) -> User | None:
     user = session.get(User, user_id)
-    if user:
-        user.is_active = is_active
-        user.role = role
-        if user.employee_id:
-            emp = session.get(Employee, user.employee_id)
-            if emp:
-                emp.is_active = is_active
-                session.add(emp)
-        session.add(user)
-
-def get_all_employees(session: Session) -> list[Employee]:
-    stmt = select(Employee)
-    return session.exec(stmt).all()
-
-def create_employee(session: Session, emp_data: dict) -> Employee:
-    emp = Employee(**emp_data)
-    session.add(emp)
-    session.flush()
-    return emp
-
-def update_employee(session: Session, employee_id: int, data: dict) -> Employee | None:
-    emp = session.get(Employee, employee_id)
-    if not emp: return None
-    for k, v in data.items():
-        if hasattr(emp, k) and k != 'id':
-            setattr(emp, k, v)
-    session.add(emp)
-    return emp
+    if not user:
+        return None
+    for k, v in user_data.items():
+        if hasattr(user, k) and k != 'id':
+            setattr(user, k, v)
+    session.add(user)
+    return user
 
 # ── RepositoryProtocol aliases ────────────────────────────────────────────────
-# Primary entity: Employee (User is auth-internal)
-get_by_id = get_employee_by_id
-list_all = get_active_employees
+# Currently pure auth repository. User cannot be simply retrieved by list_all typically
+def get_user_by_id(session: Session, user_id: int) -> User | None:
+    return session.get(User, user_id)
