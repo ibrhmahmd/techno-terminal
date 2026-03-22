@@ -106,7 +106,7 @@ get_session()     # @contextmanager — yields Session, auto-commit on exit, rol
 | Table | Purpose | Key Constraints |
 |---|---|---|
 | `guardians` | Parent/guardian contact records | phone_primary indexed |
-| `employees` | Staff (instructors, admin) | `employment_type IN ('part_time','contract')` — see `app/modules/hr/` |
+| `employees` | Staff (instructors, admin) | `employment_type IN ('full_time','part_time','contract')` — see `app/modules/hr/` |
 | `users` | Login accounts | roles: `admin`, `instructor`, `system_admin`; `supabase_uid` UNIQUE NOT NULL; optional `employee_id` → `employees` |
 | `students` | Student profiles | `is_active` flag; no guardian FK — uses junction table |
 | `student_guardians` | M:M student–guardian with primary flag | `UNIQUE(student_id, guardian_id)` |

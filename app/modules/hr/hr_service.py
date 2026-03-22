@@ -7,8 +7,30 @@ from app.modules.auth.auth_models import User, UserCreate
 from app.modules.auth.role_types import is_valid_role
 from app.modules.hr import hr_repository as hr_repo
 from app.modules.auth import auth_repository as auth_repo
-from app.shared.constants import MIN_PASSWORD_LENGTH
+from app.shared.constants import EMPLOYMENT_TYPES, MIN_PASSWORD_LENGTH
 from app.shared.exceptions import ValidationError, ConflictError, NotFoundError
+
+_ALLOWED_EMPLOYMENT = frozenset(EMPLOYMENT_TYPES)
+
+
+def _normalize_employee_payload(data: dict, *, partial: bool) -> dict:
+    """
+    Enforce DB-allowed employment_type values and contract_percentage only for contract.
+    Mutates data in place; returns data for chaining.
+    """
+    if partial and "employment_type" not in data:
+        return data
+    et = data.get("employment_type")
+    if et is not None and et not in _ALLOWED_EMPLOYMENT:
+        raise ValidationError(
+            f"Invalid employment_type {et!r}. "
+            f"Allowed: {', '.join(sorted(_ALLOWED_EMPLOYMENT))}."
+        )
+    if et != "contract":
+        data["contract_percentage"] = None
+    elif data.get("contract_percentage") is None:
+        data["contract_percentage"] = 25.0
+    return data
 
 def list_all_employees() -> List[Employee]:
     with get_session() as session:
@@ -35,7 +57,8 @@ def get_active_instructors() -> List[Employee]:
 
 def create_employee_only(emp_in: EmployeeCreate) -> Employee:
     with get_session() as session:
-        emp = hr_repo.create_employee(session, emp_in.model_dump())
+        payload = _normalize_employee_payload(emp_in.model_dump(), partial=False)
+        emp = hr_repo.create_employee(session, payload)
         session.commit()
         session.refresh(emp)
         return emp
@@ -44,7 +67,10 @@ def create_employee_only(emp_in: EmployeeCreate) -> Employee:
 
 def update_employee_only(emp_id: int, emp_in: EmployeeCreate) -> Employee:
     with get_session() as session:
-        emp = hr_repo.update_employee(session, emp_id, emp_in.model_dump(exclude_unset=True))
+        payload = _normalize_employee_payload(
+            emp_in.model_dump(exclude_unset=True), partial=True
+        )
+        emp = hr_repo.update_employee(session, emp_id, payload)
         if not emp:
             raise NotFoundError(f"Employee {emp_id} not found.")
         session.commit()
@@ -86,7 +112,7 @@ def create_staff_account(emp_in: EmployeeCreate, user_in: UserCreate, raw_passwo
             raise ConflictError(f"Supabase Gateway Error: {str(e)}")
             
         # 2. Map the identity back strictly via `supabase_uid`
-        emp_data = emp_in.model_dump()
+        emp_data = _normalize_employee_payload(emp_in.model_dump(), partial=False)
         user_data = user_in.model_dump(exclude={"password", "supabase_uid"})
         user_data["supabase_uid"] = native_uid
         

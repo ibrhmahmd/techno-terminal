@@ -8,6 +8,7 @@ Ordered, hand-written SQL for production-style upgrades. Use when you need expli
 |------|---------|
 | [supabase_auth_patch.sql](supabase_auth_patch.sql) | **Legacy** — drops `password_hash`, adds `supabase_uid` for DBs that still had local passwords. Skip if you already use `db/schema.sql` v3.3+ for greenfield installs. |
 | [002_users_supabase_roles_v33.sql](002_users_supabase_roles_v33.sql) | Expands `users.role` CHECK and finishes `users` shape for v3.3 (requires every user row to have `supabase_uid` set). |
+| [003_employees_employment_full_time.sql](003_employees_employment_full_time.sql) | Extends `employees.employment_type` CHECK to include `full_time`. |
 
 ## Relationship to Alembic
 

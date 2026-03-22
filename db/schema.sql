@@ -46,7 +46,9 @@ CREATE TABLE employees (
     phone TEXT,
     email TEXT,
     job_title TEXT,
-    employment_type TEXT CHECK (employment_type IN ('part_time', 'contract')),
+    employment_type TEXT CHECK (
+        employment_type IN ('full_time', 'part_time', 'contract')
+    ),
     monthly_salary DECIMAL(10, 2),
     contract_percentage DECIMAL(5, 2) DEFAULT 25.00,
     is_active BOOLEAN DEFAULT TRUE,

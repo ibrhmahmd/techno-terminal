@@ -1,9 +1,11 @@
 from datetime import datetime
 from typing import Any, Optional
 
-from sqlalchemy import Column
+from sqlalchemy import Column, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import SQLModel, Field
+
+from app.shared.constants import EmploymentType
 
 # --- Employee Schemas ---
 
@@ -12,9 +14,9 @@ class EmployeeBase(SQLModel):
     phone: Optional[str] = None
     email: Optional[str] = None
     job_title: Optional[str] = None
-    employment_type: Optional[str] = None
+    employment_type: Optional[EmploymentType] = Field(default=None, sa_column=Column(String))
     monthly_salary: Optional[float] = None
-    contract_percentage: Optional[float] = 25.00
+    contract_percentage: Optional[float] = None
     is_active: bool = True
 
 class Employee(EmployeeBase, table=True):

@@ -40,3 +40,14 @@ ATTENDANCE_STATUSES: list[AttendanceStatus] = ["present", "absent", "late", "exc
 
 GroupStatus: TypeAlias = Literal["active", "inactive", "completed"]
 GROUP_STATUSES: list[GroupStatus] = ["active", "inactive", "completed"]
+
+# ── HR / Employees ────────────────────────────────────────────────────────────
+
+EmploymentType: TypeAlias = Literal["full_time", "part_time", "contract"]
+EMPLOYMENT_TYPES: list[EmploymentType] = ["full_time", "part_time", "contract"]
+
+_EMPLOYMENT_TYPE_SET = frozenset(EMPLOYMENT_TYPES)
+
+
+def is_valid_employment_type(value: str | None) -> bool:
+    return value is None or value in _EMPLOYMENT_TYPE_SET

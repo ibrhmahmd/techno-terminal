@@ -4,8 +4,15 @@ from app.modules.auth.auth_models import UserCreate
 from app.modules.auth.role_types import UserRole
 from app.modules.hr import hr_service
 from app.modules.hr.hr_models import EmployeeCreate
+from app.shared.constants import EMPLOYMENT_TYPES, EmploymentType
 
 _ROLE_OPTIONS = list(UserRole)
+
+_EMPLOYMENT_LABELS: dict[EmploymentType, str] = {
+    "full_time": "Full-time",
+    "part_time": "Part-time",
+    "contract": "Contract",
+}
 
 
 def render_edit_employee_form(emp):
@@ -40,6 +47,21 @@ def render_add_employee_form():
             n_phone = st.text_input("Phone")
         with c2:
             n_title = st.text_input("Job Title (e.g. Instructor, Robot Builder)")
+            n_emp_type = st.selectbox(
+                "Employment type *",
+                EMPLOYMENT_TYPES,
+                index=1,
+                format_func=lambda x: _EMPLOYMENT_LABELS[x],
+            )
+        n_contract_pct = None
+        if n_emp_type == "contract":
+            n_contract_pct = st.number_input(
+                "Contract percentage (%)",
+                min_value=0.0,
+                max_value=100.0,
+                value=25.0,
+                step=0.5,
+            )
 
         create_login = st.checkbox("Create System Login Account?")
 
@@ -63,6 +85,8 @@ def render_add_employee_form():
                         full_name=n_name.strip(),
                         phone=n_phone.strip() or None,
                         job_title=n_title.strip() or None,
+                        employment_type=n_emp_type,
+                        contract_percentage=n_contract_pct,
                         is_active=True,
                     )
                     user_in = UserCreate(username=l_user.strip(), role=l_role)
@@ -74,6 +98,8 @@ def render_add_employee_form():
                             full_name=n_name.strip(),
                             phone=n_phone.strip() or None,
                             job_title=n_title.strip() or None,
+                            employment_type=n_emp_type,
+                            contract_percentage=n_contract_pct,
                             is_active=True,
                         )
                     )

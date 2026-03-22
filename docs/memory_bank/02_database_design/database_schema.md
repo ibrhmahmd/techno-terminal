@@ -112,7 +112,7 @@ BALANCE (per enrollment):
 
 | Table | Constraint |
 |---|---|
-| `employees` | `employment_type IN ('part_time', 'contract')` |
+| `employees` | `employment_type IN ('full_time', 'part_time', 'contract')` |
 | `users` | `role IN ('admin', 'system_admin')` |
 | `students` | `gender IN ('male', 'female')` |
 | `courses` | `category IN (...)`, `price > 0`, `sessions > 0` |

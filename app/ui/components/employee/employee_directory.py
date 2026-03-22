@@ -3,6 +3,13 @@ import streamlit as st
 
 from app.modules.auth.auth_service import get_users_for_employee
 from app.modules.hr import hr_service
+from app.shared.constants import EMPLOYMENT_TYPES
+
+_EMPLOYMENT_LABELS = {
+    "full_time": "Full-time",
+    "part_time": "Part-time",
+    "contract": "Contract",
+}
 
 
 def render_employee_directory():
@@ -17,11 +24,14 @@ def render_employee_directory():
         users = get_users_for_employee(e.id)
         role = users[0].role if users else "None"
         username = users[0].username if users else "None"
+        et = e.employment_type
+        et_label = _EMPLOYMENT_LABELS.get(et) or (et or "-")
         data.append(
             {
                 "id": e.id,
                 "Name": e.full_name,
                 "Job Title": e.job_title or "-",
+                "Employment": et_label,
                 "Phone": e.phone or "-",
                 "Sys Role": role,
                 "Username": username,
@@ -30,7 +40,9 @@ def render_employee_directory():
         )
 
     df = pd.DataFrame(data)
-    disp_df = df[["Name", "Job Title", "Phone", "Sys Role", "Username", "Active"]]
+    disp_df = df[
+        ["Name", "Job Title", "Employment", "Phone", "Sys Role", "Username", "Active"]
+    ]
 
     st.dataframe(
         disp_df,
