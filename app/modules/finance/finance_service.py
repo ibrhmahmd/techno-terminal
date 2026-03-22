@@ -7,8 +7,69 @@ from app.modules.finance import finance_repository as repo
 from app.shared.exceptions import ValidationError, NotFoundError, BusinessRuleError
 from app.shared.validators import validate_positive_amount
 from app.shared.constants import PaymentMethod
+from app.modules.finance.finance_schemas import ReceiptLineInput
 
 # ── Receipt Lifecycle ─────────────────────────────────────────────────────────
+
+
+def create_receipt_with_charge_lines(
+    guardian_id: Optional[int],
+    method: PaymentMethod | str,
+    received_by_user_id: Optional[int],
+    lines: list[ReceiptLineInput],
+    notes: Optional[str] = None,
+) -> dict:
+    """
+    Single transaction: receipt header, persisted receipt number, and all payment lines.
+    Preferred for Financial Desk and any flow that must not leave a header without lines
+    or a half-visible receipt number across session boundaries (Sprint 1 / B2).
+    """
+    if not lines:
+        raise BusinessRuleError("Cannot create a receipt with no payment lines.")
+    with get_session() as db:
+        r = repo.create_receipt(
+            db, guardian_id, method, received_by_user_id, notes=notes
+        )
+        repo.set_receipt_number(db, r.id)
+        db.refresh(r)
+        if not r.receipt_number:
+            raise BusinessRuleError(
+                "Receipt number was not persisted. Check receipts.receipt_number column and migrations."
+            )
+        payment_ids: list[int] = []
+        for spec in lines:
+            ld = spec.model_dump()
+            enrollment_id = ld.get("enrollment_id")
+            if enrollment_id:
+                enr = db.get(Enrollment, enrollment_id)
+                if not enr:
+                    raise NotFoundError(f"Enrollment {enrollment_id} not found.")
+                if enr.status != "active":
+                    raise BusinessRuleError(
+                        f"Enrollment {enrollment_id} is '{enr.status}', not active."
+                    )
+            p = repo.add_payment_line(
+                db,
+                receipt_id=r.id,
+                student_id=ld["student_id"],
+                enrollment_id=enrollment_id,
+                amount=ld["amount"],
+                transaction_type="payment",
+                payment_type=ld.get("payment_type") or "course_level",
+                discount=ld.get("discount") or 0.0,
+                notes=ld.get("notes"),
+            )
+            payment_ids.append(p.id)
+        total = repo.get_receipt_total(db, r.id)
+        return {
+            "receipt_id": r.id,
+            "receipt_number": r.receipt_number,
+            "payment_method": r.payment_method,
+            "paid_at": r.paid_at,
+            "lines": len(lines),
+            "total": total,
+            "payment_ids": payment_ids,
+        }
 
 
 def open_receipt(

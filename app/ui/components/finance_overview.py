@@ -3,6 +3,7 @@ import pandas as pd
 from app.modules.crm import crm_service as crm_srv
 from app.modules.enrollments import enrollment_service as enroll_srv
 from app.modules.finance import finance_service as fin_srv
+from app.modules.finance.finance_schemas import ReceiptLineInput
 from app.shared.constants import PAYMENT_METHODS
 
 def render_finance_overview():
@@ -111,25 +112,26 @@ def render_finance_overview():
         
         if st.button("✅ Confirm Payment & Print Receipt", type="primary", use_container_width=True):
             try:
-                receipt = fin_srv.open_receipt(
-                    guardian_id=selected_parent.id, 
-                    method=method,
-                    received_by_user_id=st.session_state.get("user_id")
-                )
-                for line in lines:
-                    fin_srv.add_charge_line(
-                        receipt_id=receipt.id,
+                line_specs = [
+                    ReceiptLineInput(
                         student_id=line["student_id"],
                         enrollment_id=line["enrollment_id"],
-                        amount=line["amount"]
+                        amount=line["amount"],
                     )
-                summary = fin_srv.finalize_receipt(receipt.id)
+                    for line in lines
+                ]
+                summary = fin_srv.create_receipt_with_charge_lines(
+                    guardian_id=selected_parent.id,
+                    method=method,
+                    received_by_user_id=st.session_state.get("user_id"),
+                    lines=line_specs,
+                )
                 st.success(f"✅ Receipt **{summary['receipt_number']}** finalized strictly!")
                 
                 # Clear lines from state
                 st.session_state["fd_lines"] = {}
                 # Set target receipt to show the print view
-                st.session_state["selected_receipt_id"] = receipt.id
+                st.session_state["selected_receipt_id"] = summary["receipt_id"]
                 st.rerun()
                 
             except Exception as e:

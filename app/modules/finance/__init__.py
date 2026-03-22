@@ -1,4 +1,5 @@
 from .finance_service import (
+    create_receipt_with_charge_lines,
     open_receipt,
     add_charge_line,
     finalize_receipt,
@@ -10,9 +11,15 @@ from .finance_service import (
     get_enrollment_balance,
 )
 from .finance_models import Receipt, Payment
-from .finance_schemas import OpenReceiptInput, AddChargeLineInput, IssueRefundInput
+from .finance_schemas import (
+    OpenReceiptInput,
+    AddChargeLineInput,
+    IssueRefundInput,
+    ReceiptLineInput,
+)
 
 __all__ = [
+    "create_receipt_with_charge_lines",
     "open_receipt",
     "add_charge_line",
     "finalize_receipt",
@@ -28,4 +35,5 @@ __all__ = [
     "OpenReceiptInput",
     "AddChargeLineInput",
     "IssueRefundInput",
+    "ReceiptLineInput",
 ]

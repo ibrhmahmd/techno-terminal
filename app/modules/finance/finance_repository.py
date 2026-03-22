@@ -36,6 +36,7 @@ def set_receipt_number(db: Session, receipt_id: int) -> Receipt:
         year = r.created_at.year if r.created_at else utc_now().year
         r.receipt_number = f"TK-{year}-{receipt_id:05d}"
         db.add(r)
+        db.flush()
     return r
 
 

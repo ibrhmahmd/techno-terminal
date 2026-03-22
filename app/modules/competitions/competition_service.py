@@ -242,6 +242,7 @@ def pay_competition_fee(
     Returns {'receipt_number': str, 'payment_id': int}.
     """
     from app.modules.finance import finance_service as fin_srv
+    from app.modules.finance.finance_schemas import ReceiptLineInput
 
     with get_session() as db:
         team = repo.get_team(db, team_id)
@@ -260,29 +261,28 @@ def pay_competition_fee(
                 "Team has no fee set. Set 'enrollment_fee_per_student' on the team first."
             )
 
-    # Create receipt and payment line via Finance service
-    receipt = fin_srv.open_receipt(
+    summary = fin_srv.create_receipt_with_charge_lines(
         guardian_id=guardian_id,
         method="cash",
         received_by_user_id=received_by_user_id,
+        lines=[
+            ReceiptLineInput(
+                student_id=student_id,
+                enrollment_id=None,
+                amount=fee,
+                payment_type="competition",
+            )
+        ],
         notes=f"Competition fee — Team #{team_id}",
     )
+    payment_id = summary["payment_ids"][0]
 
-    payment = fin_srv.add_charge_line(
-        receipt_id=receipt.id,
-        student_id=student_id,
-        enrollment_id=None,  # Not tied to a course enrollment
-        amount=fee,
-        payment_type="competition",
-    )
-
-    # Mark the fee as paid
     with get_session() as db:
-        repo.mark_fee_paid(db, team_id, student_id, payment.id)
+        repo.mark_fee_paid(db, team_id, student_id, payment_id)
 
     return {
-        "receipt_number": receipt.receipt_number,
-        "payment_id": payment.id,
+        "receipt_number": summary["receipt_number"],
+        "payment_id": payment_id,
         "amount": fee,
     }
 

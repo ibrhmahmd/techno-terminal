@@ -19,7 +19,7 @@ def render_parent_detail(parent_id: int):
         return
 
     # Extract children (students mapped to this guardian)
-    children = [link.student for link in parent.student_links]
+    children = crm_service.get_guardian_students(parent_id)
 
     # Header section
     col1, col2 = st.columns([1, 4])

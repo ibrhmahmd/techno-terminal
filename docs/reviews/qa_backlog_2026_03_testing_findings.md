@@ -135,6 +135,7 @@ Testing surfaced gaps in **staff data quality** (duplicates, missing employment 
 
 ## 7. References
 
+- [sprint_roadmap_post_qa_2026.md](./sprint_roadmap_post_qa_2026.md) — Ordered sprints for team execution.  
 - `app/ui/components/finance_overview.py` — Financial Desk flow, `open_receipt` / `finalize_receipt`.  
 - `app/ui/components/finance_receipt.py` — Receipt # display.  
 - `app/modules/finance/finance_service.py` — Receipt lifecycle.  

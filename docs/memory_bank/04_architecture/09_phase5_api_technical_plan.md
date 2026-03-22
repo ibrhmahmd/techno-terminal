@@ -1,5 +1,7 @@
 # Phase 5: API Layer Integration
 
+**Execution roadmap (sprints, acceptance, current vs planned):** [phase5_api_execution_roadmap_2026.md](../../reviews/phase5_api_execution_roadmap_2026.md)
+
 This document serves as the architectural blueprint for converting the Techno Kids CRM backend from a direct-consumption Streamlit application into a highly scalable, stateless REST API using **FastAPI**.
 
 ## 1. Context & Motivation
@@ -15,7 +17,7 @@ Phases A-D successfully decoupled the monolithic Streamlit logic into strict Dom
 ### 2.2 Framework & Libraries
 - `fastapi` (Routing & Dependency Injection)
 - `uvicorn` (Asynchronous ASGI server)
-- `python-jose` (Required for mathematically signing JWT Authentication tokens)
+- `python-jose` (Available for JWT utilities; **primary tokens are issued by Supabase**, not a local signing route)
 - `pydantic` v2 (Native serialization)
 
 ### 2.3 Dependency Injection (DI) & Stateful Mechanics
@@ -39,11 +41,11 @@ We have chosen **Option A: Shared DTOs** for development speed, meaning these Cr
 
 ## 4. Execution Roadmap (The Map Sequence)
 
-1.  **Phase 5.1: Scaffold & Auth**
-    - Create `app/api/main.py` configuring CORS to `["*"]`.
+1.  **Phase 5.1: Scaffold & Auth** *(largely implemented)*
+    - Create `app/api/main.py` configuring CORS to `["*"]` (dev).
     - Create `app/api/dependencies.py` providing `get_db` and `get_current_user`.
-    - Create `app/api/exceptions.py` trapping `NotFoundError` and returning `HTTP 404`.
-    - Route the `POST /api/v1/auth/token` JWT dispenser.
+    - Create `app/api/exceptions.py` mapping domain errors to HTTP status codes.
+    - **Auth:** validate **Supabase-issued** Bearer JWTs and expose **`GET /api/v1/auth/me`** returning a safe **`UserPublic`** DTO — *not* a local `POST /auth/token` issuer (see execution roadmap §3).
 2.  **Phase 5.2: CRM Endpoints**
     - `POST /guardians`, `GET /students`.
 3.  **Phase 5.3: Academic Endpoints**

@@ -159,7 +159,10 @@ def get_student_by_id(student_id: int) -> Student | None:
 def get_student_guardians(student_id: int) -> list:
     """Returns all guardian links for a student."""
     with get_session() as session:
-        return list(repo.get_student_guardians(session, student_id))
+        links = list(repo.get_student_guardians(session, student_id))
+        for link in links:
+            _ = link.guardian  # force lazy load inside session
+        return links
 
 
 def search_students(query: str) -> list[Student]:

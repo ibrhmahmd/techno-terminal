@@ -1,6 +1,6 @@
 # Techno Kids CRM — Memory Bank
 > **Purpose:** Complete architectural and code-level reference for AI agent handoff.  
-> **Last updated:** 2026-03-22  
+> **Last updated:** 2026-03-23  
 > **Schema version:** v3.3 (15 tables, 5 views) — see `db/schema.sql` header  
 > **Framework:** Streamlit + FastAPI + SQLModel + PostgreSQL + Supabase Auth  
 
@@ -20,7 +20,7 @@
 
 **Transports (dual path):**
 - **Streamlit** (`app/ui/`) is the primary internal UI. Pages call **`app/modules/*/service.py` directly** (same process, no HTTP to self for domain data).
-- **FastAPI** (`app/api/`) exposes a growing **REST API** (JSON). It reuses the same services and `get_session`-backed repositories. **Routers are not yet mounted for most domains** — `GET /api/v1/auth/me` is the main wired surface today. Streamlit stores `access_token` in session state after Supabase login for **Bearer** API calls.
+- **FastAPI** (`app/api/`) exposes a growing **REST API** (JSON). It reuses the same services and `get_session`-backed repositories. **Phase 5.1 (scaffold + auth) is in place:** `GET /api/v1/auth/me`, `GET /health`, global exception handlers, `get_db`. **Domain routers** (CRM, academics, finance, …) are **not mounted** yet — see [phase5_api_execution_roadmap_2026.md](reviews/phase5_api_execution_roadmap_2026.md) for the ordered rollout. Streamlit stores `access_token` in session state after Supabase login for **Bearer** API calls.
 
 **Authentication:** End-user credentials are verified by **Supabase** (`sign_in_with_password` in Streamlit; JWT verification via Supabase SDK in FastAPI). Local Postgres `users` rows map identities with `supabase_uid`. After successful Streamlit login, **`update_last_login`** updates `users.last_login`.
 
@@ -46,10 +46,12 @@ project_root/
 │   └── migrations/
 │       ├── README.md             # Order of hand-written SQL upgrades
 │       ├── supabase_auth_patch.sql   # Legacy: password_hash → supabase_uid
-│       └── 002_users_supabase_roles_v33.sql  # Role CHECK + column alignment for old DBs
+│       ├── 002_users_supabase_roles_v33.sql  # Role CHECK + column alignment for old DBs
+│       └── 003_employees_employment_full_time.sql  # employees.employment_type includes full_time
 ├── docs/
 │   ├── MEMORY_BANK.md            # THIS FILE (handoff summary)
 │   ├── plans/                    # Short summaries of completed engineering plans (see §12)
+│   ├── reviews/                  # QA backlog, sprint roadmap, Phase 5 API execution roadmap
 │   └── memory_bank/              # Deeper specs, ADRs, reviews, ETL history (see §12)
 └── app/
     ├── core/
@@ -77,7 +79,8 @@ project_root/
     │   └── analytics/
     ├── shared/
     │   ├── base_repository.py    # RepositoryProtocol (structural typing)
-    │   ├── constants.py          # MIN_PASSWORD_LENGTH, domain literals
+    │   ├── constants.py          # MIN_PASSWORD_LENGTH, domain literals (e.g. EmploymentType)
+    │   ├── datetime_utils.py     # utc_now, utc_now_iso, date_at_utc_midnight (UTC consistency)
     │   ├── validators.py
     │   └── exceptions.py
     └── ui/
@@ -251,9 +254,9 @@ The UI imports **only from `service.py`**, not from `repository.py`.
 **Models:** `Receipt`, `Payment`  
 **transaction_type:** `payment`, `charge`, `refund`  
 **payment_type:** `course_level`, `competition`, `other`  
-**Auto receipt_number format:** `REC-{year}-{zero-padded-id}`
+**Auto receipt_number format:** `TK-{year}-{id:05d}` (assigned in `finance_repository.set_receipt_number`)
 
-**service.py:** `open_receipt`, `add_charge_line`, `finalize_receipt`, `refund_receipt`, `get_receipt_with_lines`, `get_student_balance`, `get_guardian_receipts`, `search_receipts`, …
+**service.py:** `create_receipt_with_charge_lines` (single transaction — Financial Desk + competition fee), `open_receipt`, `add_charge_line`, `finalize_receipt`, `issue_refund`, `get_receipt_detail`, `get_student_financial_summary`, `get_daily_collections`, `get_enrollment_balance`, …
 
 ---
 
@@ -350,7 +353,7 @@ if "nav_target_student_id" in st.session_state:
 - **`get_db`** — yields a `Session` scoped to the request (uses `get_session()` context manager pattern).
 - **Exception handlers:** `app/api/exceptions.py`
 
-Further domain routers are **planned** (see `docs/memory_bank/04_architecture/09_phase5_api_technical_plan.md`); commented placeholders may exist in `main.py`.
+**Phase 5 status:** **5.1** (scaffold + Supabase JWT + `/me`) is implemented. **5.2–5.5** (CRM, academics, transactions, analytics routers) are **planned** — detailed order, acceptance criteria, and security checklist: [docs/reviews/phase5_api_execution_roadmap_2026.md](reviews/phase5_api_execution_roadmap_2026.md). Architectural blueprint: [docs/memory_bank/04_architecture/09_phase5_api_technical_plan.md](memory_bank/04_architecture/09_phase5_api_technical_plan.md). Commented `include_router` placeholders live in `main.py`.
 
 ---
 
@@ -377,11 +380,14 @@ Further domain routers are **planned** (see `docs/memory_bank/04_architecture/09
 
 ### Finance Flow
 ```
+Preferred (one commit): create_receipt_with_charge_lines(guardian_id, method, user_id, lines) -> dict summary + payment_ids
+
+Legacy / granular:
 1. open_receipt(guardian_id, method, user_id)        -> Receipt
 2. add_charge_line(receipt_id, student_id, ...)      -> Payment (repeat per student)
 3. finalize_receipt(receipt_id)                      -> dict summary
-4. (Competition) mark_team_fee_paid(team_id, ...)
-5. (Refund) refund_receipt(receipt_id, reason)       -> mirror rows, no deletion
+4. (Competition) pay_competition_fee(...)            -> receipt + mark_fee_paid
+5. (Refund) issue_refund(payment_id, ...)            -> new receipt + refund line
 ```
 
 ### Enrollment Flow
@@ -468,6 +474,11 @@ alembic stamp 001_baseline_v33
 | 8 | Auth hardening: `UserRole`, `UserPublic`, `HTTPBearer`, lazy Supabase clients; schema v3.3; JSONB metadata on models; `db/migrations/002`, Alembic baseline; employee UI wired to services |
 
 **Completed plan write-ups:** `docs/plans/` ([README](plans/README.md)) — memory-bank refresh summary, auth/DB alignment task list.
+
+**Active planning (product + API rollout):**
+- `docs/reviews/qa_backlog_2026_03_testing_findings.md` — QA findings, story points, product decisions **P1–P9**
+- `docs/reviews/sprint_roadmap_post_qa_2026.md` — ordered product/engineering sprints after QA
+- `docs/reviews/phase5_api_execution_roadmap_2026.md` — Phase 5.1–5.5 API delivery plan
 
 **See also (longer-form, may predate code):**
 - `docs/plans/` — archived summaries of completed engineering plans  

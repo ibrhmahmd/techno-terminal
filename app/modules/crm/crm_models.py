@@ -24,7 +24,7 @@ class Guardian(GuardianBase, table=True):
     updated_at: Optional[datetime] = None
 
     # Relationship
-    student_links: List["StudentGuardian"] = Relationship(
+    student_links: List["app.modules.crm.crm_models.StudentGuardian"] = Relationship(
         back_populates="guardian"
     )
 
@@ -61,7 +61,7 @@ class Student(StudentBase, table=True):
     )
 
     # Relationship
-    guardian_links: List["StudentGuardian"] = Relationship(
+    guardian_links: List["app.modules.crm.crm_models.StudentGuardian"] = Relationship(
         back_populates="student"
     )
 
