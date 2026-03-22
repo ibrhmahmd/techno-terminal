@@ -11,6 +11,7 @@ Ordered, hand-written SQL for production-style upgrades. Use when you need expli
 | [003_employees_employment_full_time.sql](003_employees_employment_full_time.sql) | Extends `employees.employment_type` CHECK to include `full_time`. |
 | [004_employees_sprint2_identity.sql](004_employees_sprint2_identity.sql) | Sprint 2: `national_id`, education columns, `employment_type` NOT NULL, phone/email/national_id uniqueness, D5 contract-% CHECK. |
 | [005_audit_d4_timestamps.sql](005_audit_d4_timestamps.sql) | Sprint 3 (D4): backfill NULL audit timestamps, `DEFAULT CURRENT_TIMESTAMP`, `tf_set_updated_at` triggers on core tables. |
+| [006_receipts_paid_at_index.sql](006_receipts_paid_at_index.sql) | Sprint 4 (B9): `idx_receipts_paid_at` for receipt discovery by `paid_at` range. |
 
 ## Relationship to Alembic
 

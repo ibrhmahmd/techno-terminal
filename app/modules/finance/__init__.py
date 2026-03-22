@@ -7,6 +7,7 @@ from .finance_service import (
     get_student_financial_summary,
     get_daily_collections,
     get_daily_receipts,
+    search_receipts,
     get_receipt_detail,
     get_enrollment_balance,
 )
@@ -27,6 +28,7 @@ __all__ = [
     "get_student_financial_summary",
     "get_daily_collections",
     "get_daily_receipts",
+    "search_receipts",
     "get_receipt_detail",
     "get_enrollment_balance",
     "Receipt",

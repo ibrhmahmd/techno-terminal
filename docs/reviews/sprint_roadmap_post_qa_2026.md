@@ -119,6 +119,8 @@ This roadmap turns the QA backlog into **ordered sprints** with clear goals, bac
 
 **Dependency:** **Sprint 1** strongly recommended first.
 
+**Implementation note (2026-03-21):** **`finance_repository.search_receipts`** + **`finance_service.search_receipts`** — date range using UTC half-open bounds on **`paid_at`**, optional guardian / student (via `EXISTS` on **`payments`**) / receipt-number **`ILIKE`**, `ORDER BY paid_at DESC`, **`LIMIT` 200**. **`db/migrations/006_receipts_paid_at_index.sql`** and greenfield **`db/schema.sql`** add **`idx_receipts_paid_at`**. Dashboard **Financial Desk** uses tabs **Browse receipts** (`dashboard_receipts.render_receipt_browser`) vs **Record payment** (`finance_overview`); row selection sets **`selected_receipt_id`** and reuses **`finance_receipt.render_receipt_detail`**.
+
 ---
 
 ### Sprint 5 — Spike + Sprint 6 — Finance: balance model & Financial Desk (**epic**)
@@ -191,6 +193,7 @@ This roadmap turns the QA backlog into **ordered sprints** with clear goals, bac
 | 1.1 | 2026-03-21 | Engineering | Sprint 1: atomic `create_receipt_with_charge_lines` + repo flush in `set_receipt_number` (B2/U3). |
 | 1.2 | 2026-03-21 | Engineering | Sprint 2: employees schema + migration 004, HR service/repo/UI (D1/D2/D5/D6/B1/B4/U1/U4). |
 | 1.3 | 2026-03-21 | Engineering | Sprint 3 (D4): `audit_utils`, migration 005 + schema defaults/triggers, CRM/enrollment/UI actor threading. |
+| 1.4 | 2026-03-21 | Engineering | Sprint 4 (B9/U8): `search_receipts`, migration 006 + index, Dashboard receipt browser + tabs. |
 
 ---
 

@@ -82,12 +82,16 @@ with tab_schedule:
 with tab_finance:
     from app.ui.components.finance_overview import render_finance_overview
     from app.ui.components.finance_receipt import render_receipt_detail
-    
-    # Inline routing for receipt viewing
+    from app.ui.components.dashboard_receipts import render_receipt_browser
+
     if "selected_receipt_id" in st.session_state:
         render_receipt_detail(st.session_state["selected_receipt_id"])
     else:
-        render_finance_overview()
+        sub_browse, sub_record = st.tabs(["📋 Browse receipts", "➕ Record payment"])
+        with sub_browse:
+            render_receipt_browser()
+        with sub_record:
+            render_finance_overview()
 
 with tab_register:
     from app.ui.components.quick_register import render_quick_register

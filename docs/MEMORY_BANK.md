@@ -52,6 +52,7 @@ project_root/
 │       ├── 003_employees_employment_full_time.sql  # employees.employment_type includes full_time
 │       ├── 004_employees_sprint2_identity.sql      # national_id, education fields, uniqueness (Sprint 2)
 │       └── 005_audit_d4_timestamps.sql             # D4: audit backfill, DEFAULTs, updated_at triggers
+│       └── 006_receipts_paid_at_index.sql          # B9: idx_receipts_paid_at (Sprint 4)
 ├── docs/
 │   ├── MEMORY_BANK.md            # THIS FILE (handoff summary)
 │   ├── plans/                    # Short summaries of completed engineering plans (see §12)
@@ -267,7 +268,9 @@ The UI imports **only from `service.py`**, not from `repository.py`.
 **payment_type:** `course_level`, `competition`, `other`  
 **Auto receipt_number format:** `TK-{year}-{id:05d}` (assigned in `finance_repository.set_receipt_number`)
 
-**service.py:** `create_receipt_with_charge_lines` (single transaction — Financial Desk + competition fee), `open_receipt`, `add_charge_line`, `finalize_receipt`, `issue_refund`, `get_receipt_detail`, `get_student_financial_summary`, `get_daily_collections`, `get_enrollment_balance`, …
+**service.py:** `create_receipt_with_charge_lines` (single transaction — Financial Desk + competition fee), `open_receipt`, `add_charge_line`, `finalize_receipt`, `issue_refund`, `get_receipt_detail`, `get_daily_receipts`, **`search_receipts`** (date range on **`paid_at`**, optional guardian / student / receipt #), `get_student_financial_summary`, `get_daily_collections`, `get_enrollment_balance`, …
+
+**Dashboard (Sprint 4):** **`dashboard_receipts.render_receipt_browser`** on **`0_Dashboard.py`** → Financial Desk sub-tab; DB index **`idx_receipts_paid_at`** (`006` + **`schema.sql`**).
 
 ---
 
@@ -323,6 +326,7 @@ if "nav_target_student_id" in st.session_state:
 | `nav_target_group_id` | Group-focused flows (legacy naming; some pages use `selected_group_id` from Dashboard) |
 | `nav_target_course_id` | Course detail |
 | `selected_receipt_id` | Finance receipt detail inside Dashboard tab |
+| `dash_rcpt_last_search` | Last receipt browser query params (Browse receipts tab) |
 | `user` | Auth session — set after successful login |
 | `access_token` | Supabase JWT — stored for future API calls |
 
@@ -330,7 +334,7 @@ if "nav_target_student_id" in st.session_state:
 
 | File | Role | How reached |
 |---|---|---|
-| `0_Dashboard.py` | KPIs, today's sessions → group navigation, **Financial Desk** tab (`finance_overview` / receipts), **Quick Registration** | Sidebar |
+| `0_Dashboard.py` | KPIs, today's sessions → group navigation, **Financial Desk** tab (**Browse receipts** / **Record payment** + receipt detail), **Quick Registration** | Sidebar |
 | `1_Directory.py` | Tabs: Parents, Students; detail views via `nav_target_*` | Sidebar |
 | `3_Course_Management.py` | Courses | Multipage / in-app |
 | `4_Group_Management.py` | Groups, sessions, attendance | From Dashboard session row, course detail, etc. |
@@ -347,7 +351,7 @@ if "nav_target_student_id" in st.session_state:
 | Auth | `auth_guard.py` — `require_auth()` |
 | CRM / profiles | `parent_overview.py`, `parent_detail.py`, `student_overview.py`, `student_detail.py` |
 | Academics | `course_overview.py`, `course_detail.py`, `group_overview.py`, `group_detail.py`, `attendance_grid.py` |
-| Finance | `finance_overview.py`, `finance_receipt.py` |
+| Finance | `finance_overview.py`, `finance_receipt.py`, `dashboard_receipts.py` |
 | Competitions | `competition_overview.py`, `competition_detail.py` |
 | Staff | `employee/employee_directory.py`, `employee_detail.py`, `employee_form.py` — use `hr_service` + `auth_service` (`get_users_for_employee`, `create_staff_account`, `update_staff_account`, `force_reset_password`, `link_employee_to_new_user`); roles from `UserRole` |
 | Dashboard | `quick_register.py` |

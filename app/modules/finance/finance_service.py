@@ -255,6 +255,30 @@ def get_daily_receipts(target_date: Optional[date] = None) -> list[dict]:
         return repo.list_receipts_by_date(db, target_date)
 
 
+def search_receipts(
+    from_date: date,
+    to_date: date,
+    *,
+    guardian_id: Optional[int] = None,
+    student_id: Optional[int] = None,
+    receipt_number_contains: Optional[str] = None,
+    limit: int = 200,
+) -> list[dict]:
+    """Filtered receipt list for Dashboard / ops search (B9)."""
+    if to_date < from_date:
+        raise ValidationError("End date must be on or after start date.")
+    with get_session() as db:
+        return repo.search_receipts(
+            db,
+            from_date,
+            to_date,
+            guardian_id=guardian_id,
+            student_id=student_id,
+            receipt_number_contains=receipt_number_contains,
+            limit=limit,
+        )
+
+
 def get_receipt_detail(receipt_id: int) -> dict | None:
     """Returns a receipt with its payment lines and computed total."""
     with get_session() as db:

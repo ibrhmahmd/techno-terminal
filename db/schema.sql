@@ -287,6 +287,7 @@ CREATE INDEX idx_attendance_enrollment ON attendance(enrollment_id);
 CREATE INDEX idx_payments_student ON payments(student_id);
 CREATE INDEX idx_payments_enrollment ON payments(enrollment_id);
 CREATE INDEX idx_payments_receipt ON payments(receipt_id);
+CREATE INDEX idx_receipts_paid_at ON receipts(paid_at DESC);
 CREATE INDEX idx_comp_categories_comp ON competition_categories(competition_id);
 CREATE INDEX idx_teams_category ON teams(category_id);
 CREATE INDEX idx_team_members_team ON team_members(team_id);
