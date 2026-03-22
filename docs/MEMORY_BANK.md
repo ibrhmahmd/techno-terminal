@@ -47,7 +47,8 @@ project_root/
 │       ├── README.md             # Order of hand-written SQL upgrades
 │       ├── supabase_auth_patch.sql   # Legacy: password_hash → supabase_uid
 │       ├── 002_users_supabase_roles_v33.sql  # Role CHECK + column alignment for old DBs
-│       └── 003_employees_employment_full_time.sql  # employees.employment_type includes full_time
+│       ├── 003_employees_employment_full_time.sql  # employees.employment_type includes full_time
+│       └── 004_employees_sprint2_identity.sql      # national_id, education fields, uniqueness (Sprint 2)
 ├── docs/
 │   ├── MEMORY_BANK.md            # THIS FILE (handoff summary)
 │   ├── plans/                    # Short summaries of completed engineering plans (see §12)
@@ -109,7 +110,7 @@ get_session()     # @contextmanager — yields Session, auto-commit on exit, rol
 | Table | Purpose | Key Constraints |
 |---|---|---|
 | `guardians` | Parent/guardian contact records | phone_primary indexed |
-| `employees` | Staff (instructors, admin) | `employment_type IN ('full_time','part_time','contract')` — see `app/modules/hr/` |
+| `employees` | Staff (instructors, admin) | `national_id` UNIQUE NOT NULL; `phone` NOT NULL UNIQUE; `email` UNIQUE (nullable); `university`, `major`, `is_graduate` NOT NULL; `employment_type` NOT NULL; D5 CHECK on `contract_percentage`; see `db/migrations/004_employees_sprint2_identity.sql` |
 | `users` | Login accounts | roles: `admin`, `instructor`, `system_admin`; `supabase_uid` UNIQUE NOT NULL; optional `employee_id` → `employees` |
 | `students` | Student profiles | `is_active` flag; no guardian FK — uses junction table |
 | `student_guardians` | M:M student–guardian with primary flag | `UNIQUE(student_id, guardian_id)` |

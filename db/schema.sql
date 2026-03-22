@@ -43,19 +43,30 @@ CREATE TABLE guardians (
 CREATE TABLE employees (
     id SERIAL PRIMARY KEY,
     full_name TEXT NOT NULL,
-    phone TEXT,
+    phone TEXT NOT NULL,
     email TEXT,
+    national_id TEXT NOT NULL,
+    university TEXT NOT NULL,
+    major TEXT NOT NULL,
+    is_graduate BOOLEAN NOT NULL DEFAULT FALSE,
     job_title TEXT,
-    employment_type TEXT CHECK (
+    employment_type TEXT NOT NULL CHECK (
         employment_type IN ('full_time', 'part_time', 'contract')
     ),
     monthly_salary DECIMAL(10, 2),
-    contract_percentage DECIMAL(5, 2) DEFAULT 25.00,
+    contract_percentage DECIMAL(5, 2),
     is_active BOOLEAN DEFAULT TRUE,
     hired_at DATE,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ,
-    metadata JSONB DEFAULT '{}'
+    metadata JSONB DEFAULT '{}',
+    CONSTRAINT employees_contract_pct_check CHECK (
+        (employment_type != 'contract' AND contract_percentage IS NULL)
+        OR (employment_type = 'contract')
+    ),
+    CONSTRAINT uq_employees_national_id UNIQUE (national_id),
+    CONSTRAINT uq_employees_phone UNIQUE (phone),
+    CONSTRAINT uq_employees_email UNIQUE (email)
 );
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
@@ -377,13 +388,25 @@ GROUP BY group_id,
 -- Seed (optional local employee row). Login users are created in Supabase and mapped via app/db/seed.py.
 INSERT INTO employees (
         full_name,
+        phone,
+        national_id,
+        university,
+        major,
+        is_graduate,
         job_title,
         employment_type,
+        contract_percentage,
         created_at
     )
 VALUES (
         'Admin',
+        '0000000000',
+        '00000000000000',
+        'Unassigned',
+        'Unassigned',
+        FALSE,
         'admin',
         'part_time',
+        NULL,
         NOW()
     );

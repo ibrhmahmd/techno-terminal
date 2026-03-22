@@ -26,10 +26,12 @@ def render_employee_directory():
         username = users[0].username if users else "None"
         et = e.employment_type
         et_label = _EMPLOYMENT_LABELS.get(et) or (et or "-")
+        nid = getattr(e, "national_id", None) or "-"
         data.append(
             {
                 "id": e.id,
                 "Name": e.full_name,
+                "National ID": nid,
                 "Job Title": e.job_title or "-",
                 "Employment": et_label,
                 "Phone": e.phone or "-",
@@ -41,7 +43,16 @@ def render_employee_directory():
 
     df = pd.DataFrame(data)
     disp_df = df[
-        ["Name", "Job Title", "Employment", "Phone", "Sys Role", "Username", "Active"]
+        [
+            "Name",
+            "National ID",
+            "Job Title",
+            "Employment",
+            "Phone",
+            "Sys Role",
+            "Username",
+            "Active",
+        ]
     ]
 
     st.dataframe(

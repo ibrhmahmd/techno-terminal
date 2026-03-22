@@ -25,8 +25,9 @@ def render_employee_detail(emp_id: int):
         return
 
     st.header(f"🧑‍🏫 {emp.full_name}")
+    nid = getattr(emp, "national_id", None) or "—"
     st.caption(
-        f"Job Title: {emp.job_title or 'Unspecified'} | Status: "
+        f"National ID: {nid} | Job Title: {emp.job_title or 'Unspecified'} | Status: "
         f"{'🟢 Active' if emp.is_active else '🔴 Inactive'}"
     )
 

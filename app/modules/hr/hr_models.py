@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Any, Optional
 
+from pydantic import field_validator
 from sqlalchemy import Column, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import SQLModel, Field
@@ -9,15 +10,21 @@ from app.shared.constants import EmploymentType
 
 # --- Employee Schemas ---
 
+
 class EmployeeBase(SQLModel):
     full_name: str
-    phone: Optional[str] = None
+    phone: str
     email: Optional[str] = None
+    national_id: str
+    university: str
+    major: str
+    is_graduate: bool = False
     job_title: Optional[str] = None
-    employment_type: Optional[EmploymentType] = Field(default=None, sa_column=Column(String))
+    employment_type: EmploymentType = Field(sa_column=Column(String))
     monthly_salary: Optional[float] = None
     contract_percentage: Optional[float] = None
     is_active: bool = True
+
 
 class Employee(EmployeeBase, table=True):
     __tablename__ = "employees"
@@ -32,8 +39,29 @@ class Employee(EmployeeBase, table=True):
         sa_column=Column("metadata", JSONB),
     )
 
+
 class EmployeeCreate(EmployeeBase):
-    pass
+    @field_validator("phone", "national_id", "university", "major", mode="before")
+    @classmethod
+    def strip_strings(cls, v):
+        if isinstance(v, str):
+            return v.strip()
+        return v
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def empty_email_none(cls, v):
+        if v is None or (isinstance(v, str) and not v.strip()):
+            return None
+        return v.strip()
+
+    @field_validator("national_id")
+    @classmethod
+    def national_id_len(cls, v: str) -> str:
+        if len(v) < 10:
+            raise ValueError("National ID must be at least 10 characters.")
+        return v
+
 
 class EmployeeRead(EmployeeBase):
     id: int

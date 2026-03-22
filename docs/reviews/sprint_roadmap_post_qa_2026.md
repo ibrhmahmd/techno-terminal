@@ -63,6 +63,8 @@ This roadmap turns the QA backlog into **ordered sprints** with clear goals, bac
 
 **Theme:** Align **P1–P3** (national ID required; unique phone/email; mandatory education + employment fields) across **DB, services, and UI**.
 
+**Implementation note (2026-03):** **`db/schema.sql`** and **`db/migrations/004_employees_sprint2_identity.sql`** add **`national_id`**, **`university`**, **`major`**, **`is_graduate`**, NOT NULL **`employment_type`** and **`phone`**, UNIQUE constraints, and D5 **`contract_percentage`** CHECK. **`hr_models.EmployeeCreate`**, **`hr_repository`** duplicate lookups, **`hr_service`** `ConflictError` + merge-on-update (preserves **`monthly_salary`** when omitted). **`employee_form`** / **`employee_directory`** updated for **U1/U4**.
+
 | Backlog | Work summary |
 |---------|----------------|
 | **D6** | Add `national_id` (unique, NOT NULL after backfill strategy). |
@@ -185,6 +187,7 @@ This roadmap turns the QA backlog into **ordered sprints** with clear goals, bac
 |---------|------|--------|---------|
 | 1.0 | 2026-03 | Product/engineering | Initial roadmap from QA backlog MoSCoW and dependencies |
 | 1.1 | 2026-03-21 | Engineering | Sprint 1: atomic `create_receipt_with_charge_lines` + repo flush in `set_receipt_number` (B2/U3). |
+| 1.2 | 2026-03-21 | Engineering | Sprint 2: employees schema + migration 004, HR service/repo/UI (D1/D2/D5/D6/B1/B4/U1/U4). |
 
 ---
 
