@@ -44,8 +44,8 @@ def seed_admin_account():
                             break
                             
                     if not uid:
-                         print("❌ Could not find the existing admin user in Supabase. Returning.")
-                         return
+                        print("❌ Could not find the existing admin user in Supabase. Returning.")
+                        return
                     print(f"✅ Found existing Supabase identity with UID {uid}. Proceeding with mapping.")
 
                 # Map the created Supabase identity to our local PostgreSQL database

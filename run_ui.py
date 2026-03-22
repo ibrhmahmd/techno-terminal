@@ -9,8 +9,14 @@ if __name__ == "__main__":
         project_root + os.pathsep + os.environ.get("PYTHONPATH", "")
     )
 
-    # Run the database seeding process
+    # Ensure analytics SQL views exist (ORM create_all does not create them)
+    from app.db.init_db import apply_analytics_views
     from app.db.seed import seed_admin_account
+
+    try:
+        apply_analytics_views()
+    except Exception as e:
+        print(f"⚠️ Could not apply analytics views (is DATABASE_URL correct and DB up?): {e}")
 
     seed_admin_account()
 

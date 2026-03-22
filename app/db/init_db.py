@@ -20,6 +20,16 @@ from app.modules.competitions.competition_models import Competition, Competition
 
 from app.db.seed import seed_admin_account
 
+# ORM/table drift: older DBs may lack JSONB metadata columns referenced by views.
+ENSURE_METADATA_COLUMNS_SQL = """
+ALTER TABLE students ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
+ALTER TABLE groups ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
+ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
+ALTER TABLE teams ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
+"""
+
 RAW_VIEWS_SQL = """
 CREATE OR REPLACE VIEW v_students AS
 SELECT s.id,
@@ -82,6 +92,25 @@ FROM sessions
 GROUP BY group_id, level_number;
 """
 
+
+def _run_sql_statements(conn, sql_blob: str) -> None:
+    for chunk in sql_blob.split(";"):
+        chunk = chunk.strip()
+        if chunk:
+            conn.execute(text(chunk + ";"))
+
+
+def apply_analytics_views() -> None:
+    """
+    Ensure JSONB metadata columns exist, then CREATE OR REPLACE analytics views
+    (v_students, v_enrollment_balance, …). Idempotent — safe on every app start.
+    """
+    engine = get_engine()
+    with engine.begin() as conn:
+        _run_sql_statements(conn, ENSURE_METADATA_COLUMNS_SQL)
+        _run_sql_statements(conn, RAW_VIEWS_SQL)
+
+
 def init_db():
     engine = get_engine()
     
@@ -92,8 +121,7 @@ def init_db():
     SQLModel.metadata.create_all(engine)
     
     print("Re-attaching native PostgreSQL Analytics Views...")
-    with engine.begin() as conn:
-        conn.execute(text(RAW_VIEWS_SQL))
+    apply_analytics_views()
         
     print("Executing Supabase Identity Seeder...")
     seed_admin_account()
