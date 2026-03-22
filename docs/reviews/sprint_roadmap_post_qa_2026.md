@@ -90,6 +90,8 @@ This roadmap turns the QA backlog into **ordered sprints** with clear goals, bac
 
 **Theme:** `created_at`, `updated_at`, `created_by` (and analogous fields) populated consistently — comparable to attendance **`marked_by`**.
 
+**Implementation note (2026-03):** **`app/shared/audit_utils.py`** (`apply_create_audit` / `apply_update_audit`) stamps CRM creates/updates, **`student_guardians`** links, and enrollment creates/status/discount changes. **`db/migrations/005_audit_d4_timestamps.sql`** backfills NULLs, sets **`DEFAULT CURRENT_TIMESTAMP`**, and adds **`tf_set_updated_at`** triggers (also in greenfield **`db/schema.sql`**). Streamlit passes **`state.get_current_user_id()`** into enroll/transfer, student registration, and Financial Desk receipts (fixes reliance on a non-existent `session_state["user_id"]`).
+
 | Backlog | Work summary |
 |---------|----------------|
 | **D4** | Inventory tables with NULL audit columns; choose **DB defaults**, triggers, and/or **service-layer** writes; align Streamlit and FastAPI call paths. |
@@ -188,6 +190,7 @@ This roadmap turns the QA backlog into **ordered sprints** with clear goals, bac
 | 1.0 | 2026-03 | Product/engineering | Initial roadmap from QA backlog MoSCoW and dependencies |
 | 1.1 | 2026-03-21 | Engineering | Sprint 1: atomic `create_receipt_with_charge_lines` + repo flush in `set_receipt_number` (B2/U3). |
 | 1.2 | 2026-03-21 | Engineering | Sprint 2: employees schema + migration 004, HR service/repo/UI (D1/D2/D5/D6/B1/B4/U1/U4). |
+| 1.3 | 2026-03-21 | Engineering | Sprint 3 (D4): `audit_utils`, migration 005 + schema defaults/triggers, CRM/enrollment/UI actor threading. |
 
 ---
 

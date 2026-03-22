@@ -5,6 +5,7 @@ from app.db.connection import get_session
 from app.shared.datetime_utils import date_at_utc_midnight
 from app.modules.crm.crm_models import Guardian, Student
 from app.modules.crm.crm_schemas import RegisterGuardianInput, RegisterStudentInput
+from app.shared.audit_utils import apply_create_audit, apply_update_audit
 from app.shared.exceptions import ValidationError, ConflictError, NotFoundError
 from app.shared.validators import validate_phone, validate_required_fields
 from . import crm_repository as repo
@@ -37,6 +38,7 @@ def register_guardian(data: RegisterGuardianInput | dict) -> Guardian:
             relation=data.relation,
             notes=data.notes,
         )
+        apply_create_audit(guardian)
         return repo.create_guardian(session, guardian)
 
 
@@ -64,6 +66,7 @@ def find_or_create_guardian(data: RegisterGuardianInput | dict) -> tuple[Guardia
             relation=data.relation,
             notes=data.notes,
         )
+        apply_create_audit(guardian)
         created = repo.create_guardian(session, guardian)
         return created, True
 
@@ -78,7 +81,7 @@ def update_guardian(guardian_id: int, data: dict) -> Guardian:
         for key, value in data.items():
             if hasattr(guardian, key) and key != "id":
                 setattr(guardian, key, value)
-        
+        apply_update_audit(guardian)
         session.add(guardian)
         session.commit()
         session.refresh(guardian)
@@ -106,6 +109,7 @@ def register_student(
     student_data: RegisterStudentInput | dict,
     guardian_id: int,
     relationship: str | None = None,
+    created_by_user_id: int | None = None,
 ) -> tuple[Student, list[dict]]:
     """
     Registers a student and links them to an existing guardian as primary contact.
@@ -133,6 +137,7 @@ def register_student(
             phone=student_data.phone,
             notes=student_data.notes,
         )
+        apply_create_audit(student, user_id=created_by_user_id)
         created_student = repo.create_student(session, student)
         repo.link_guardian(
             session=session,
@@ -189,7 +194,7 @@ def update_student(student_id: int, data: dict) -> Student:
         for key, value in data.items():
             if hasattr(student, key) and key != "id":
                 setattr(student, key, value)
-                
+        apply_update_audit(student)
         session.add(student)
         session.commit()
         session.refresh(student)

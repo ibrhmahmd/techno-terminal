@@ -1,7 +1,8 @@
 from datetime import time, date, timedelta
 from sqlmodel import Session
 from app.db.connection import get_session
-from app.shared.datetime_utils import utc_now_iso
+from app.shared.audit_utils import apply_update_audit
+from app.shared.datetime_utils import utc_now
 from app.modules.academics.academics_models import Course, Group
 from app.modules.academics.academics_session_models import CourseSession
 from app.modules.academics.academics_schemas import AddNewCourseInput, ScheduleGroupInput, UpdateCourseDTO, UpdateGroupDTO, UpdateSessionDTO
@@ -88,6 +89,7 @@ def update_course(course_id: int, data: UpdateCourseDTO) -> Course:
         for k, v in data.model_dump(exclude_unset=True).items():
             if hasattr(course, k) and k != "id":
                 setattr(course, k, v)
+        apply_update_audit(course)
         session.add(course)
         session.commit()
         session.refresh(course)
@@ -123,12 +125,12 @@ def _create_sessions_in_session(
             group_id=group_id,
             level_number=level_number,
             session_number=i + 1,
-            session_date=d.isoformat(),
+            session_date=d,
             start_time=start_time,
             end_time=end_time,
             actual_instructor_id=instructor_id,
             is_extra_session=False,
-            created_at=utc_now_iso(),
+            created_at=utc_now(),
         )
         session.add(cs)
         session.flush()
@@ -222,6 +224,7 @@ def update_group(group_id: int, data: UpdateGroupDTO) -> Group:
         for k, v in data.model_dump(exclude_unset=True).items():
             if hasattr(group, k) and k != "id":
                 setattr(group, k, v)
+        apply_update_audit(group)
         session.add(group)
         session.commit()
         session.refresh(group)
@@ -288,13 +291,13 @@ def add_extra_session(
             group_id=group_id,
             level_number=level_number,
             session_number=next_num,
-            session_date=extra_date.isoformat(),
+            session_date=extra_date,
             start_time=group.default_time_start,
             end_time=group.default_time_end,
             actual_instructor_id=group.instructor_id,
             is_extra_session=True,
             notes=notes,
-            created_at=utc_now_iso(),
+            created_at=utc_now(),
         )
         return repo.create_session(session, cs)
     # ← SINGLE COMMIT — number read + row inserted atomically
@@ -308,6 +311,7 @@ def update_session(session_id: int, data: UpdateSessionDTO) -> CourseSession:
         for k, v in data.model_dump(exclude_unset=True).items():
             if hasattr(cs, k) and k != "id":
                 setattr(cs, k, v)
+        apply_update_audit(cs)
         session.add(cs)
         session.commit()
         session.refresh(cs)

@@ -37,8 +37,8 @@ CREATE TABLE guardians (
     email TEXT,
     relation TEXT,
     notes TEXT,
-    created_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE employees (
     id SERIAL PRIMARY KEY,
@@ -57,8 +57,8 @@ CREATE TABLE employees (
     contract_percentage DECIMAL(5, 2),
     is_active BOOLEAN DEFAULT TRUE,
     hired_at DATE,
-    created_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     metadata JSONB DEFAULT '{}',
     CONSTRAINT employees_contract_pct_check CHECK (
         (employment_type != 'contract' AND contract_percentage IS NULL)
@@ -79,7 +79,7 @@ CREATE TABLE users (
         ),
         is_active BOOLEAN DEFAULT TRUE,
         last_login TIMESTAMPTZ,
-        created_at TIMESTAMPTZ
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE students (
     id SERIAL PRIMARY KEY,
@@ -91,8 +91,8 @@ CREATE TABLE students (
     is_active BOOLEAN DEFAULT TRUE,
     created_by INTEGER REFERENCES users(id) ON DELETE
     SET NULL,
-        created_at TIMESTAMPTZ,
-        updated_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         metadata JSONB DEFAULT '{}'
 );
 CREATE TABLE student_guardians (
@@ -101,7 +101,7 @@ CREATE TABLE student_guardians (
     relationship TEXT,
     -- 'father', 'mother', etc.
     is_primary BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (student_id, guardian_id)
 );
 CREATE TABLE courses (
@@ -114,8 +114,8 @@ CREATE TABLE courses (
     sessions_per_level INTEGER DEFAULT 5 CHECK (sessions_per_level > 0),
     description TEXT,
     is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE groups (
     id SERIAL PRIMARY KEY,
@@ -130,8 +130,8 @@ CREATE TABLE groups (
         max_capacity INTEGER CHECK (max_capacity > 0),
         status TEXT DEFAULT 'active' CHECK (status IN ('active', 'completed', 'cancelled')),
         started_at DATE,
-        created_at TIMESTAMPTZ,
-        updated_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         metadata JSONB DEFAULT '{}',
         CHECK (
             default_time_start IS NULL
@@ -152,7 +152,7 @@ CREATE TABLE sessions (
         is_substitute BOOLEAN DEFAULT FALSE,
         is_extra_session BOOLEAN DEFAULT FALSE,
         notes TEXT,
-        created_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         CHECK (
             start_time IS NULL
             OR end_time IS NULL
@@ -175,8 +175,8 @@ CREATE TABLE enrollments (
         notes TEXT,
         created_by INTEGER REFERENCES users(id) ON DELETE
     SET NULL,
-        created_at TIMESTAMPTZ,
-        updated_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         metadata JSONB DEFAULT '{}'
 );
 CREATE UNIQUE INDEX idx_enrollments_active_unique ON enrollments(student_id, group_id)
@@ -206,7 +206,7 @@ CREATE TABLE receipts (
         receipt_number TEXT UNIQUE,
         notes TEXT,
         paid_at TIMESTAMPTZ,
-        created_at TIMESTAMPTZ
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE payments (
     id SERIAL PRIMARY KEY,
@@ -223,7 +223,7 @@ CREATE TABLE payments (
         ),
         discount_amount DECIMAL(10, 2) DEFAULT 0 CHECK (discount_amount >= 0),
         notes TEXT,
-        created_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         metadata JSONB DEFAULT '{}'
 );
 CREATE TABLE competitions (
@@ -233,7 +233,7 @@ CREATE TABLE competitions (
     competition_date DATE,
     location TEXT,
     notes TEXT,
-    created_at TIMESTAMPTZ
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE competition_categories (
     id SERIAL PRIMARY KEY,
@@ -250,7 +250,7 @@ CREATE TABLE teams (
         coach_id INTEGER REFERENCES employees(id) ON DELETE
     SET NULL,
         enrollment_fee_per_student DECIMAL(10, 2) CHECK (enrollment_fee_per_student > 0),
-        created_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         metadata JSONB DEFAULT '{}'
 );
 CREATE TABLE team_members (
@@ -292,6 +292,32 @@ CREATE INDEX idx_teams_category ON teams(category_id);
 CREATE INDEX idx_team_members_team ON team_members(team_id);
 CREATE INDEX idx_team_members_student ON team_members(student_id);
 CREATE UNIQUE INDEX idx_users_supabase_uid ON users(supabase_uid);
+-- Audit (D4): bump updated_at on UPDATE (mirrors db/migrations/005_audit_d4_timestamps.sql)
+CREATE OR REPLACE FUNCTION tf_set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER trg_guardians_updated_at
+    BEFORE UPDATE ON guardians
+    FOR EACH ROW EXECUTE PROCEDURE tf_set_updated_at();
+CREATE TRIGGER trg_employees_updated_at
+    BEFORE UPDATE ON employees
+    FOR EACH ROW EXECUTE PROCEDURE tf_set_updated_at();
+CREATE TRIGGER trg_students_updated_at
+    BEFORE UPDATE ON students
+    FOR EACH ROW EXECUTE PROCEDURE tf_set_updated_at();
+CREATE TRIGGER trg_courses_updated_at
+    BEFORE UPDATE ON courses
+    FOR EACH ROW EXECUTE PROCEDURE tf_set_updated_at();
+CREATE TRIGGER trg_groups_updated_at
+    BEFORE UPDATE ON groups
+    FOR EACH ROW EXECUTE PROCEDURE tf_set_updated_at();
+CREATE TRIGGER trg_enrollments_updated_at
+    BEFORE UPDATE ON enrollments
+    FOR EACH ROW EXECUTE PROCEDURE tf_set_updated_at();
 -- Views
 CREATE OR REPLACE VIEW v_students AS
 SELECT s.id,

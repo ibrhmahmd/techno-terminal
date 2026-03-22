@@ -24,6 +24,7 @@ def get_user_by_username(username: str) -> Optional[User]:
 def update_last_login(user_id: int) -> None:
     with get_session() as session:
         repo.update_last_login(session, user_id)
+        session.commit()
 
 
 def get_users_for_employee(employee_id: int) -> List[User]:

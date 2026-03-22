@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+from app.ui import state
 from app.ui.components.auth_guard import require_auth
 from app.modules.crm import crm_service as crm_srv
 from app.modules.academics import academics_service as acad_srv
@@ -91,6 +92,7 @@ with tab_enroll:
                         amount_due=amount_due,
                         discount=discount,
                         notes=notes.strip() if notes else None,
+                        created_by=state.get_current_user_id(),
                     )
                     st.success(f"✅ Enrolled successfully! Enrollment ID: {enrollment.id}")
                     if over_capacity:
@@ -169,7 +171,11 @@ with tab_manage:
                             )
                             if st.button("Confirm Transfer", type="primary"):
                                 try:
-                                    new_enr = enroll_srv.transfer_student(sel_enr.id, t_sel.id)
+                                    new_enr = enroll_srv.transfer_student(
+                                        sel_enr.id,
+                                        t_sel.id,
+                                        created_by=state.get_current_user_id(),
+                                    )
                                     st.success(f"Transferred! New ID: #{new_enr.id}")
                                     st.rerun()
                                 except Exception as e: st.error(f"❌ {e}")

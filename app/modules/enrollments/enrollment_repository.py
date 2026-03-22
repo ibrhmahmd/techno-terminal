@@ -2,6 +2,7 @@ from datetime import date
 from typing import Sequence
 from sqlmodel import Session, select
 from app.modules.enrollments.enrollment_models import Enrollment
+from app.shared.audit_utils import apply_update_audit
 
 
 def create_enrollment(session: Session, enrollment: Enrollment) -> Enrollment:
@@ -49,6 +50,7 @@ def update_enrollment_status(
     enrollment = session.get(Enrollment, enrollment_id)
     if enrollment:
         enrollment.status = status
+        apply_update_audit(enrollment)
         session.add(enrollment)
     return enrollment
 
@@ -59,6 +61,7 @@ def update_discount(
     enrollment = session.get(Enrollment, enrollment_id)
     if enrollment:
         enrollment.discount_applied = discount
+        apply_update_audit(enrollment)
         session.add(enrollment)
     return enrollment
 

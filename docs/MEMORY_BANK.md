@@ -1,6 +1,6 @@
 # Techno Kids CRM — Memory Bank
 > **Purpose:** Complete architectural and code-level reference for AI agent handoff.  
-> **Last updated:** 2026-03-23  
+> **Last updated:** 2026-03-21  
 > **Schema version:** v3.3 (15 tables, 5 views) — see `db/schema.sql` header  
 > **Framework:** Streamlit + FastAPI + SQLModel + PostgreSQL + Supabase Auth  
 
@@ -22,7 +22,9 @@
 - **Streamlit** (`app/ui/`) is the primary internal UI. Pages call **`app/modules/*/service.py` directly** (same process, no HTTP to self for domain data).
 - **FastAPI** (`app/api/`) exposes a growing **REST API** (JSON). It reuses the same services and `get_session`-backed repositories. **Phase 5.1 (scaffold + auth) is in place:** `GET /api/v1/auth/me`, `GET /health`, global exception handlers, `get_db`. **Domain routers** (CRM, academics, finance, …) are **not mounted** yet — see [phase5_api_execution_roadmap_2026.md](reviews/phase5_api_execution_roadmap_2026.md) for the ordered rollout. Streamlit stores `access_token` in session state after Supabase login for **Bearer** API calls.
 
-**Authentication:** End-user credentials are verified by **Supabase** (`sign_in_with_password` in Streamlit; JWT verification via Supabase SDK in FastAPI). Local Postgres `users` rows map identities with `supabase_uid`. After successful Streamlit login, **`update_last_login`** updates `users.last_login`.
+**Authentication:** End-user credentials are verified by **Supabase** (`sign_in_with_password` in Streamlit; JWT verification via Supabase SDK in FastAPI). Local Postgres `users` rows map identities with `supabase_uid`. After successful Streamlit login, **`update_last_login`** updates `users.last_login` (explicit `session.commit()` in service; `get_session()` also commits on exit).
+
+**Audit (D4):** `app/shared/audit_utils.py` stamps `created_at` / `updated_at` / optional `created_by` on CRM, enrollments, and academics mutating paths where applicable. **`db/migrations/005_audit_d4_timestamps.sql`** backfills NULLs, sets `DEFAULT CURRENT_TIMESTAMP`, normalizes legacy TEXT `sessions.created_at` / `session_date`, and adds `tf_set_updated_at` triggers (mirrored in greenfield `db/schema.sql`). Streamlit uses **`state.get_current_user_id()`** for `created_by` / `received_by`. See `docs/reviews/sprint_roadmap_post_qa_2026.md` Sprint 3.
 
 ---
 
@@ -48,7 +50,8 @@ project_root/
 │       ├── supabase_auth_patch.sql   # Legacy: password_hash → supabase_uid
 │       ├── 002_users_supabase_roles_v33.sql  # Role CHECK + column alignment for old DBs
 │       ├── 003_employees_employment_full_time.sql  # employees.employment_type includes full_time
-│       └── 004_employees_sprint2_identity.sql      # national_id, education fields, uniqueness (Sprint 2)
+│       ├── 004_employees_sprint2_identity.sql      # national_id, education fields, uniqueness (Sprint 2)
+│       └── 005_audit_d4_timestamps.sql             # D4: audit backfill, DEFAULTs, updated_at triggers
 ├── docs/
 │   ├── MEMORY_BANK.md            # THIS FILE (handoff summary)
 │   ├── plans/                    # Short summaries of completed engineering plans (see §12)
@@ -82,11 +85,12 @@ project_root/
     │   ├── base_repository.py    # RepositoryProtocol (structural typing)
     │   ├── constants.py          # MIN_PASSWORD_LENGTH, domain literals (e.g. EmploymentType)
     │   ├── datetime_utils.py     # utc_now, utc_now_iso, date_at_utc_midnight (UTC consistency)
+    │   ├── audit_utils.py        # apply_create_audit / apply_update_audit (D4 created_at / updated_at / created_by)
     │   ├── validators.py
     │   └── exceptions.py
     └── ui/
         ├── main.py               # Sidebar page_link entries + auth guard
-        ├── state.py              # Session state helpers
+        ├── state.py              # Session state helpers; `get_current_user_id()` → local `users.id` for audit columns
         ├── pages/                # Streamlit numbered pages
         └── components/           # Reusable UI fragments (incl. employee/, forms/, charts/)
 ```
@@ -116,7 +120,7 @@ get_session()     # @contextmanager — yields Session, auto-commit on exit, rol
 | `student_guardians` | M:M student–guardian with primary flag | `UNIQUE(student_id, guardian_id)` |
 | `courses` | Course catalog | `category IN ('software','hardware','steam','other')` |
 | `groups` | Scheduling groups per course | `level_number` tracks current level; `status IN ('active','completed','cancelled')` |
-| `sessions` | Individual class sessions | `ON DELETE RESTRICT` on `group_id` — cannot delete group with sessions |
+| `sessions` | Individual class sessions | `session_date` DATE, `created_at` TIMESTAMPTZ (ORM: `CourseSession` uses `date` / `datetime` — avoid legacy TEXT columns); `ON DELETE RESTRICT` on `group_id` |
 | `enrollments` | Student enrolled in a group level | Partial UNIQUE: one active enrollment per (student, group); `status IN ('active','completed','transferred','dropped')` |
 | `attendance` | Attendance per session | `UNIQUE(student_id, session_id)`; `enrollment_id` NOT NULL |
 | `receipts` | Payment receipt header | `payment_method IN ('cash','card','transfer','online')` |
@@ -158,6 +162,12 @@ Several tables use a PostgreSQL column named **`metadata`**. SQLAlchemy reserves
 | `payments` | `payment_metadata` | `finance_models` |
 | `teams` | `team_metadata` | `competition_models` |
 
+### 3.6 Audit timestamps (Sprint 3 / D4)
+
+- **App:** `apply_create_audit` / `apply_update_audit` in `app/shared/audit_utils.py`; used by CRM, enrollment repo, academics `update_course` / `update_group` / `update_session`, etc.
+- **DB:** Run `db/migrations/005_audit_d4_timestamps.sql` on existing databases after 004 (see `db/migrations/README.md`). If a statement fails inside the script’s `BEGIN` … `COMMIT`, run **`ROLLBACK;`** (or a new connection) before re-running the **entire** file — otherwise SQLSTATE **25P02**.
+- **Greenfield:** `db/schema.sql` includes matching `DEFAULT CURRENT_TIMESTAMP` and `tf_set_updated_at` triggers on core tables.
+
 ---
 
 ## 4. Module Architecture
@@ -189,7 +199,7 @@ The UI imports **only from `service.py`**, not from `repository.py`.
 
 **`auth_repository.py`:** `get_user_by_username`, `get_user_by_supabase_uid`, `get_users_by_employee_id`, `get_user_by_id`, `create_user`, `update_last_login`, `update_user`, …
 
-**`auth_service.py`:** `get_user_by_supabase_uid`, `get_user_by_username`, `update_last_login`, `get_users_for_employee`, `force_reset_password` (Supabase admin), `link_employee_to_new_user` (Supabase admin + local `User` row).
+**`auth_service.py`:** `get_user_by_supabase_uid`, `get_user_by_username`, `update_last_login` (commits after repo touch), `get_users_for_employee`, `force_reset_password` (Supabase admin), `link_employee_to_new_user` (Supabase admin + local `User` row).
 
 **`auth_schemas.py`:** Placeholder Pydantic bodies for future routes (e.g. `PasswordResetBody`).
 
@@ -416,6 +426,7 @@ Legacy / granular:
 10. **Analytics DataFrames** — rename columns by **name**, not by positional index.
 11. **`db/schema.sql` v3.3** — `users` matches ORM for Supabase auth; use `db/migrations/` for older DBs (§3.4).
 12. **Refactoring backlog doc** — `docs/memory_bank/05_reviews/refactoring_backlog.md` predates the populated `app/api/` tree; use this MEMORY_BANK + code for current layout.
+13. **Failed SQL migration in a transaction** — after any error in a `BEGIN` … `COMMIT` script (e.g. `005_audit_d4_timestamps.sql`), run **`ROLLBACK;`** or use a fresh session; partial re-runs yield **25P02** until then (see header in that file and `db/migrations/README.md`).
 
 ---
 
@@ -440,6 +451,7 @@ alembic stamp 001_baseline_v33
 # Upgrading legacy DBs (see db/migrations/README.md):
 # psql $DATABASE_URL -f db/migrations/supabase_auth_patch.sql
 # psql $DATABASE_URL -f db/migrations/002_users_supabase_roles_v33.sql
+# psql $DATABASE_URL -f db/migrations/005_audit_d4_timestamps.sql   # D4 audit defaults + triggers (after 003/004 as ordered)
 
 # Windows venv
 .venv\Scripts\activate
@@ -473,6 +485,7 @@ alembic stamp 001_baseline_v33
 | 6 | Analytics; Dashboard; Reports tabs; exports |
 | 7 | FastAPI scaffold, Supabase JWT deps, `run_api`, auth `/me`, HR + staff UI, Directory consolidation |
 | 8 | Auth hardening: `UserRole`, `UserPublic`, `HTTPBearer`, lazy Supabase clients; schema v3.3; JSONB metadata on models; `db/migrations/002`, Alembic baseline; employee UI wired to services |
+| 9 | Sprint 3 (D4): `audit_utils`, migration `005` + schema audit defaults/triggers; CRM/enrollment/UI actor threading; `CourseSession` DATE/TIMESTAMPTZ ORM alignment; academics update DTOs + `apply_update_audit`; `state.get_current_user_id()` |
 
 **Completed plan write-ups:** `docs/plans/` ([README](plans/README.md)) — memory-bank refresh summary, auth/DB alignment task list.
 

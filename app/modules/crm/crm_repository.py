@@ -2,6 +2,7 @@ from typing import Sequence
 from sqlmodel import Session, select
 from sqlalchemy import or_
 from app.modules.crm.crm_models import Guardian, Student, StudentGuardian
+from app.shared.audit_utils import apply_create_audit
 
 
 # --- Guardian Repository ---
@@ -88,6 +89,7 @@ def link_guardian(
         relationship=relationship,
         is_primary=is_primary,
     )
+    apply_create_audit(link)
     session.add(link)
     session.flush()
     return link

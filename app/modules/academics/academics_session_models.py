@@ -1,4 +1,4 @@
-from datetime import time
+from datetime import date, datetime, time
 from typing import Optional
 from sqlmodel import SQLModel, Field
 
@@ -8,9 +8,7 @@ class CourseSessionBase(SQLModel):
     group_id: int = Field(foreign_key="groups.id")
     level_number: int
     session_number: int
-    session_date: Optional[str] = (
-        None  # Stored as DATE; we handle as string for simplicity
-    )
+    session_date: Optional[date] = None  # DB: DATE (align with db/schema.sql)
     start_time: Optional[time] = None
     end_time: Optional[time] = None
     actual_instructor_id: Optional[int] = Field(
@@ -26,11 +24,11 @@ class CourseSession(CourseSessionBase, table=True):
     __table_args__ = {"extend_existing": True}
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    created_at: Optional[str] = None
+    created_at: Optional[datetime] = None  # DB: TIMESTAMPTZ
 
 class CourseSessionCreate(CourseSessionBase):
     pass
 
 class CourseSessionRead(CourseSessionBase):
     id: int
-    created_at: Optional[str] = None
+    created_at: Optional[datetime] = None

@@ -27,5 +27,11 @@ def has_role(role: str) -> bool:
     return get_role() == role
 
 
+def get_current_user_id() -> Optional[int]:
+    """Local `users.id` for audit columns (created_by, received_by, etc.)."""
+    u = get_user()
+    return u.id if u is not None else None
+
+
 def clear_session() -> None:
     st.session_state.clear()

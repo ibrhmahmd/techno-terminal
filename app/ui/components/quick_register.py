@@ -1,4 +1,5 @@
 import streamlit as st
+from app.ui import state
 from app.modules.crm import crm_service as crm_srv
 from app.shared.exceptions import ValidationError, ConflictError
 
@@ -84,7 +85,8 @@ def render_quick_register():
                             "notes": final_s_notes
                         },
                         guardian_id=guardian.id,
-                        relationship=p_relation
+                        relationship=p_relation,
+                        created_by_user_id=state.get_current_user_id(),
                     )
                     
                     if created:

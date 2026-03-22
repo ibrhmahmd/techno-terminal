@@ -1,6 +1,7 @@
 from datetime import date
 from sqlalchemy.exc import IntegrityError
 from app.db.connection import get_session
+from app.shared.audit_utils import apply_create_audit
 from app.shared.datetime_utils import utc_now
 from app.modules.crm import crm_service as crm_srv
 from app.modules.academics import academics_service as acad_srv
@@ -128,8 +129,8 @@ def transfer_student(
             discount_applied=source.discount_applied,
             transferred_from=from_enrollment_id,
             created_by=created_by,
-            created_at=utc_now(),
         )
+        apply_create_audit(new_enrollment)
         return repo.create_enrollment(session, new_enrollment)
 
 

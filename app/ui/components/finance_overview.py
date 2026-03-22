@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+from app.ui import state
 from app.modules.crm import crm_service as crm_srv
 from app.modules.enrollments import enrollment_service as enroll_srv
 from app.modules.finance import finance_service as fin_srv
@@ -123,7 +124,7 @@ def render_finance_overview():
                 summary = fin_srv.create_receipt_with_charge_lines(
                     guardian_id=selected_parent.id,
                     method=method,
-                    received_by_user_id=st.session_state.get("user_id"),
+                    received_by_user_id=state.get_current_user_id(),
                     lines=line_specs,
                 )
                 st.success(f"✅ Receipt **{summary['receipt_number']}** finalized strictly!")

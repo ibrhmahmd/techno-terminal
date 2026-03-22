@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 
+from app.ui import state
 from app.modules.crm import crm_service as crm_srv
 from app.shared.exceptions import NotFoundError, BusinessRuleError, ValidationError
 
@@ -68,7 +69,10 @@ def modal_register_student():
                     }
                     try:
                         new_student, siblings = crm_srv.register_student(
-                            data, guardian_id=selected_parent_id, relationship="Child"
+                            data,
+                            guardian_id=selected_parent_id,
+                            relationship="Child",
+                            created_by_user_id=state.get_current_user_id(),
                         )
                         st.success(
                             f"✅ Successfully registered {new_student.full_name} (ID: {new_student.id})!"

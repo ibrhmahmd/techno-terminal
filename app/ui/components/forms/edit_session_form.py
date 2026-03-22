@@ -1,5 +1,5 @@
 import streamlit as st
-from datetime import datetime
+from datetime import date, datetime
 from app.modules.academics import academics_service as acad_srv
 from app.db.connection import get_session
 from app.modules.academics.academics_session_models import CourseSession
@@ -16,7 +16,7 @@ def render_edit_session_form(session_id: int):
         
     instructors = get_active_instructors()
         
-    s_date = st.date_input("Date", value=datetime.fromisoformat(str(cs.session_date)).date() if cs.session_date else None)
+    s_date = st.date_input("Date", value=_coerce_session_date(cs.session_date))
     
     col1, col2 = st.columns(2)
     with col1:
@@ -33,7 +33,7 @@ def render_edit_session_form(session_id: int):
         from app.modules.academics.academics_schemas import UpdateSessionDTO
         try:
             acad_srv.update_session(cs.id, UpdateSessionDTO(
-                session_date=s_date.isoformat(),
+                session_date=s_date,
                 start_time=s_start,
                 end_time=s_end,
                 actual_instructor_id=s_inst.id if s_inst else cs.actual_instructor_id,
