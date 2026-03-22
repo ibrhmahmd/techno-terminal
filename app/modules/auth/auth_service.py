@@ -40,9 +40,12 @@ def force_reset_password(user_id: int, new_password: str) -> None:
         user = repo.get_user_by_id(session, user_id)
         if not user:
             raise NotFoundError(f"User {user_id} not found.")
+        # Read identity while session is open; detached User may lazy-load after close.
+        supabase_uid = user.supabase_uid
+
     admin = get_supabase_admin()
     admin.auth.admin.update_user_by_id(
-        user.supabase_uid, {"password": new_password}
+        supabase_uid, {"password": new_password}
     )
 
 
