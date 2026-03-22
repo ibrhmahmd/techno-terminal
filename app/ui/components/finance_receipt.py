@@ -28,13 +28,11 @@ def render_receipt_detail(receipt_id: int):
     # Header info
     parent_name = "—"
     if r.guardian_id:
-        from app.modules.crm.crm_repository import get_guardian_by_id
-        from app.db.connection import get_session
+        from app.modules.crm.crm_service import get_guardian_by_id
 
-        with get_session() as db:
-            g = get_guardian_by_id(db, r.guardian_id)
-            if g:
-                parent_name = g.full_name
+        g = get_guardian_by_id(r.guardian_id)
+        if g:
+            parent_name = g.full_name
 
     st.markdown(
         f"**Receipt #:** `{r.receipt_number or 'N/A'}` | "

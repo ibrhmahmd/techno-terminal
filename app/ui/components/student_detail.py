@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from app.modules.crm.crm_repository import get_student_by_id, get_student_guardians
+from app.modules.crm import crm_service
 from app.modules.enrollments import get_student_enrollments
 from app.modules.attendance import get_attendance_summary
 from app.modules.academics import get_group_by_id
@@ -10,8 +10,7 @@ from app.db.connection import get_session
 
 
 def render_student_detail(student_id: int):
-    with get_session() as db:
-        student = get_student_by_id(db, student_id)
+    student = crm_service.get_student_by_id(student_id)
 
     if not student:
         st.error("Student not found.")
@@ -47,20 +46,19 @@ def render_student_detail(student_id: int):
     # 1. Parent Info
     st.markdown("#### Parent/Parent Details")
 
-    with get_session() as db:
-        parents = get_student_guardians(db, student_id)
+    parents = crm_service.get_student_guardians(student_id)
 
-        if parents:
-            # Sort so primary is always first
-            parents.sort(key=lambda x: not x.is_primary)
-            for g_link in parents:
-                g = g_link.guardian
-                badge = "🏆 Primary" if g_link.is_primary else "Secondary"
-                st.markdown(
-                    f"**{g.full_name}** ({g_link.relationship}) — {badge}  \n📞 {g.phone_primary} | {g.phone_secondary or ''}"
-                )
-        else:
-            st.warning("No parent linked.")
+    if parents:
+        # Sort so primary is always first
+        parents.sort(key=lambda x: not x.is_primary)
+        for g_link in parents:
+            g = g_link.guardian
+            badge = "🏆 Primary" if g_link.is_primary else "Secondary"
+            st.markdown(
+                f"**{g.full_name}** ({g_link.relationship}) — {badge}  \n📞 {g.phone_primary} | {g.phone_secondary or ''}"
+            )
+    else:
+        st.warning("No parent linked.")
 
     st.divider()
 

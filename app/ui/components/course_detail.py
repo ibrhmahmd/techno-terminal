@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 from app.db.connection import get_session
 from app.modules.academics.academics_models import Course
-from app.modules.academics.academics_repository import list_groups_by_course
 from app.modules.academics import academics_service as acad_srv
 from app.modules.hr.hr_service import get_active_instructors
 
@@ -11,14 +10,14 @@ def render_course_detail(course_id: int):
     with get_session() as db:
         course = db.get(Course, course_id)
 
-        if not course:
-            st.error("Course not found.")
-            if st.button("⬅️ Back"):
-                del st.session_state["nav_target_course_id"]
-                st.rerun()
-            return
+    if not course:
+        st.error("Course not found.")
+        if st.button("⬅️ Back"):
+            del st.session_state["nav_target_course_id"]
+            st.rerun()
+        return
 
-        groups = list_groups_by_course(db, course_id)
+    groups = acad_srv.get_groups_by_course(course_id)
 
     # Header section
     col1, col2 = st.columns([1, 4])

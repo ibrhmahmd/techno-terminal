@@ -17,14 +17,15 @@ def render_edit_course_form(course):
             ec_desc = st.text_area("Description", value=course.description or "")
             
             if st.form_submit_button("Save Changes", type="primary"):
+                from app.modules.academics.academics_schemas import UpdateCourseDTO
                 try:
-                    acad_srv.update_course(course.id, {
-                        "name": ec_name.strip(),
-                        "category": ec_cat,
-                        "description": ec_desc.strip() or None,
-                        "sessions_per_level": ec_sess,
-                        "is_active": es_active
-                    })
+                    acad_srv.update_course(course.id, UpdateCourseDTO(
+                        name=ec_name.strip(),
+                        category=ec_cat,
+                        description=ec_desc.strip() or None,
+                        sessions_per_level=ec_sess,
+                        is_active=es_active
+                    ))
                     st.success("Course details updated!")
                     st.rerun()
                 except Exception as e:

@@ -94,7 +94,7 @@ def render_competition_detail(competition_id: int):
 
                     coach_name = "—"
                     if team.coach_id:
-                        coach = get_employee_by_id(db, team.coach_id)
+                        coach = get_employee_by_id(team.coach_id)
                         if coach:
                             coach_name = coach.full_name
 
@@ -148,9 +148,9 @@ def render_competition_detail(competition_id: int):
                             "Search Student by Name", key=f"am_q_{team.id}"
                         )
                         if am_search and len(am_search) >= 2:
-                            from app.modules.crm.crm_repository import search_students
+                            from app.modules.crm.crm_service import search_students
 
-                            results = search_students(db, am_search)
+                            results = search_students(am_search)
                             if results:
                                 existing_ids = [m.student_id for m in members]
                                 available = [

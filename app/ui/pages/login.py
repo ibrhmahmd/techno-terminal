@@ -1,6 +1,6 @@
 import streamlit as st
 from app.core.supabase_clients import get_supabase_anon
-from app.modules.auth.auth_service import get_user_by_supabase_uid
+from app.modules.auth.auth_service import get_user_by_supabase_uid, update_last_login
 
 import state
 
