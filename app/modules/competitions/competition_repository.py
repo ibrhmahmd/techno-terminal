@@ -1,6 +1,7 @@
-from datetime import datetime, date
+from datetime import date
 from typing import Optional
 from sqlmodel import Session, select
+from app.shared.datetime_utils import utc_now
 from app.modules.competitions.competition_models import (
     Competition,
     CompetitionCategory,
@@ -26,7 +27,7 @@ def create_competition(
         competition_date=competition_date,
         location=location,
         notes=notes,
-        created_at=datetime.utcnow(),
+        created_at=utc_now(),
     )
     db.add(c)
     db.flush()
@@ -131,7 +132,7 @@ def create_team(
         team_name=team_name,
         coach_id=coach_id,
         enrollment_fee_per_student=fee_per_student,
-        created_at=datetime.utcnow(),
+        created_at=utc_now(),
     )
     db.add(t)
     db.flush()

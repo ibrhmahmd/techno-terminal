@@ -1,5 +1,5 @@
-from datetime import datetime, timezone
 from sqlmodel import Session, select
+from app.shared.datetime_utils import utc_now
 from app.modules.auth.auth_models import User
 from app.modules.hr.hr_models import Employee
 
@@ -28,7 +28,7 @@ def update_employee(session: Session, employee_id: int, data: dict) -> Employee 
     for k, v in data.items():
         if hasattr(emp, k) and k != 'id':
             setattr(emp, k, v)
-    emp.updated_at = datetime.now(timezone.utc)
+    emp.updated_at = utc_now()
     session.add(emp)
     return emp
 

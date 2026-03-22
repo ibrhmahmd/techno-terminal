@@ -1,5 +1,8 @@
 import re
+from datetime import date, datetime
+
 from app.db.connection import get_session
+from app.shared.datetime_utils import date_at_utc_midnight
 from app.modules.crm.crm_models import Guardian, Student
 from app.modules.crm.crm_schemas import RegisterGuardianInput, RegisterStudentInput
 from app.shared.exceptions import ValidationError, ConflictError, NotFoundError
@@ -7,6 +10,11 @@ from app.shared.validators import validate_phone, validate_required_fields
 from . import crm_repository as repo
 
 # --- Guardian Service ---
+
+
+def get_guardian_by_id(guardian_id: int) -> Guardian | None:
+    with get_session() as session:
+        return repo.get_guardian_by_id(session, guardian_id)
 
 
 def register_guardian(data: RegisterGuardianInput | dict) -> Guardian:
@@ -114,9 +122,13 @@ def register_student(
         if not guardian:
             raise NotFoundError(f"Guardian with ID {guardian_id} not found.")
 
+        dob = student_data.date_of_birth
+        if dob is not None and isinstance(dob, date) and not isinstance(dob, datetime):
+            dob = date_at_utc_midnight(dob)
+
         student = Student(
             full_name=student_data.full_name,
-            date_of_birth=student_data.date_of_birth,
+            date_of_birth=dob,
             gender=student_data.gender,
             phone=student_data.phone,
             notes=student_data.notes,
@@ -142,6 +154,12 @@ def get_student_by_id(student_id: int) -> Student | None:
     """Returns a student by ID, or None if not found."""
     with get_session() as session:
         return repo.get_student_by_id(session, student_id)
+
+
+def get_student_guardians(student_id: int) -> list:
+    """Returns all guardian links for a student."""
+    with get_session() as session:
+        return list(repo.get_student_guardians(session, student_id))
 
 
 def search_students(query: str) -> list[Student]:

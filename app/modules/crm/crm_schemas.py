@@ -11,7 +11,9 @@ Usage in FastAPI:
     @router.post("/guardians")
     async def create_guardian(data: RegisterGuardianInput): ...
 """
+from datetime import date
 from typing import Optional
+
 from pydantic import BaseModel, field_validator
 from app.shared.validators import validate_phone
 
@@ -34,8 +36,10 @@ class RegisterGuardianInput(BaseModel):
 
 class RegisterStudentInput(BaseModel):
     """Input for crm_service.register_student()."""
+
     full_name: str
-    date_of_birth: Optional[str] = None
+    # Streamlit date_input returns datetime.date; APIs may send ISO date strings.
+    date_of_birth: Optional[date] = None
     gender: Optional[str] = None
     phone: Optional[str] = None
     notes: Optional[str] = None

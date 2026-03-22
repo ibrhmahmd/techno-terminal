@@ -68,6 +68,29 @@ class GenerateLevelSessionsInput(BaseModel):
     level_number: int
     start_date: date
 
+class UpdateCourseDTO(BaseModel):
+    name: Optional[str] = None
+    category: Optional[str] = None
+    description: Optional[str] = None
+    price_per_level: Optional[float] = None
+    sessions_per_level: Optional[int] = None
+    is_active: Optional[bool] = None
+
+    @field_validator("price_per_level")
+    @classmethod
+    def price_positive(cls, v: Optional[float]) -> Optional[float]:
+        if v is not None:
+            validate_positive_amount(v, field="price per level")
+        return v
+    
+    @field_validator("sessions_per_level")
+    @classmethod
+    def sessions_positive(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v <= 0:
+            from app.shared.exceptions import ValidationError
+            raise ValidationError("Sessions per level must be at least 1.")
+        return v
+
 class UpdateGroupDTO(BaseModel):
     name: Optional[str] = None
     course_id: Optional[int] = None

@@ -1,5 +1,5 @@
-from datetime import datetime, timezone
 from sqlmodel import Session, select
+from app.shared.datetime_utils import utc_now
 from app.modules.auth.auth_models import User
 from app.modules.hr.hr_models import Employee
 
@@ -25,7 +25,7 @@ def create_user(session: Session, user_data: dict) -> User:
 def update_last_login(session: Session, user_id: int) -> None:
     user = session.get(User, user_id)
     if user:
-        user.last_login = datetime.now(timezone.utc)
+        user.last_login = utc_now()
         session.add(user)
 
 def update_user(session: Session, user_id: int, user_data: dict) -> User | None:

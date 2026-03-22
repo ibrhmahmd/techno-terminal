@@ -1,8 +1,9 @@
-from datetime import datetime, date
+from datetime import date, datetime
 from typing import Sequence, Optional
 from sqlmodel import Session, select
 from sqlalchemy import text
 from app.modules.finance.finance_models import Receipt, Payment
+from app.shared.datetime_utils import utc_now
 
 
 # ── Receipt ──────────────────────────────────────────────────────────────────
@@ -20,9 +21,9 @@ def create_receipt(
         guardian_id=guardian_id,
         payment_method=method,
         received_by=received_by,
-        paid_at=paid_at or datetime.utcnow(),
+        paid_at=paid_at or utc_now(),
         notes=notes,
-        created_at=datetime.utcnow(),
+        created_at=utc_now(),
     )
     db.add(r)
     db.flush()
@@ -32,7 +33,7 @@ def create_receipt(
 def set_receipt_number(db: Session, receipt_id: int) -> Receipt:
     r = db.get(Receipt, receipt_id)
     if r:
-        year = r.created_at.year if r.created_at else datetime.utcnow().year
+        year = r.created_at.year if r.created_at else utc_now().year
         r.receipt_number = f"TK-{year}-{receipt_id:05d}"
         db.add(r)
     return r
@@ -106,7 +107,7 @@ def add_payment_line(
         payment_type=payment_type,
         discount_amount=discount,
         notes=notes,
-        created_at=datetime.utcnow(),
+        created_at=utc_now(),
     )
     db.add(p)
     db.flush()

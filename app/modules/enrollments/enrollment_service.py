@@ -1,6 +1,7 @@
-from datetime import date, datetime, timezone
+from datetime import date
 from sqlalchemy.exc import IntegrityError
 from app.db.connection import get_session
+from app.shared.datetime_utils import utc_now
 from app.modules.crm import crm_service as crm_srv
 from app.modules.academics import academics_service as acad_srv
 from app.modules.enrollments.enrollment_models import Enrollment
@@ -62,12 +63,12 @@ def enroll_student(
                 student_id=student_id,
                 group_id=group_id,
                 level_number=group.level_number,  # Snapshot at enrollment time
-                enrolled_at=datetime.now(timezone.utc),
+                enrolled_at=utc_now(),
                 amount_due=amount_due,
                 discount_applied=discount,
                 notes=notes,
                 created_by=created_by,
-                created_at=datetime.now(timezone.utc),
+                created_at=utc_now(),
             )
             created = repo.create_enrollment(session, enrollment)
             return created, capacity_exceeded
@@ -122,12 +123,12 @@ def transfer_student(
             student_id=source.student_id,
             group_id=to_group_id,
             level_number=target_group.level_number,
-            enrolled_at=datetime.now(timezone.utc),
+            enrolled_at=utc_now(),
             amount_due=source.amount_due,
             discount_applied=source.discount_applied,
             transferred_from=from_enrollment_id,
             created_by=created_by,
-            created_at=datetime.now(timezone.utc),
+            created_at=utc_now(),
         )
         return repo.create_enrollment(session, new_enrollment)
 

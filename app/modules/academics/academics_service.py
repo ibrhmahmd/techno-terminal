@@ -1,9 +1,10 @@
-from datetime import time, date, timedelta, datetime as dt
+from datetime import time, date, timedelta
 from sqlmodel import Session
 from app.db.connection import get_session
+from app.shared.datetime_utils import utc_now_iso
 from app.modules.academics.academics_models import Course, Group
 from app.modules.academics.academics_session_models import CourseSession
-from app.modules.academics.academics_schemas import AddNewCourseInput, ScheduleGroupInput
+from app.modules.academics.academics_schemas import AddNewCourseInput, ScheduleGroupInput, UpdateCourseDTO, UpdateGroupDTO, UpdateSessionDTO
 from app.shared.exceptions import ValidationError, NotFoundError, BusinessRuleError, ConflictError
 from app.shared.validators import validate_positive_amount
 from . import academics_repository as repo
@@ -79,12 +80,12 @@ def update_course_price(course_id: int, new_price: float) -> Course:
         return course
 
 
-def update_course(course_id: int, data: dict) -> Course:
+def update_course(course_id: int, data: UpdateCourseDTO) -> Course:
     with get_session() as session:
         course = session.get(Course, course_id)
         if not course:
             raise NotFoundError(f"Course {course_id} not found.")
-        for k, v in data.items():
+        for k, v in data.model_dump(exclude_unset=True).items():
             if hasattr(course, k) and k != "id":
                 setattr(course, k, v)
         session.add(course)
@@ -127,7 +128,7 @@ def _create_sessions_in_session(
             end_time=end_time,
             actual_instructor_id=instructor_id,
             is_extra_session=False,
-            created_at=dt.utcnow().isoformat(),
+            created_at=utc_now_iso(),
         )
         session.add(cs)
         session.flush()
@@ -213,12 +214,12 @@ def get_group_by_id(group_id: int) -> Group | None:
         return repo.get_group_by_id(session, group_id)
 
 
-def update_group(group_id: int, data: dict) -> Group:
+def update_group(group_id: int, data: UpdateGroupDTO) -> Group:
     with get_session() as session:
         group = repo.get_group_by_id(session, group_id)
         if not group:
             raise NotFoundError(f"Group {group_id} not found.")
-        for k, v in data.items():
+        for k, v in data.model_dump(exclude_unset=True).items():
             if hasattr(group, k) and k != "id":
                 setattr(group, k, v)
         session.add(group)
@@ -293,18 +294,18 @@ def add_extra_session(
             actual_instructor_id=group.instructor_id,
             is_extra_session=True,
             notes=notes,
-            created_at=dt.utcnow().isoformat(),
+            created_at=utc_now_iso(),
         )
         return repo.create_session(session, cs)
     # ← SINGLE COMMIT — number read + row inserted atomically
 
 
-def update_session(session_id: int, data: dict) -> CourseSession:
+def update_session(session_id: int, data: UpdateSessionDTO) -> CourseSession:
     with get_session() as session:
         cs = session.get(CourseSession, session_id)
         if not cs:
             raise NotFoundError(f"Session {session_id} not found.")
-        for k, v in data.items():
+        for k, v in data.model_dump(exclude_unset=True).items():
             if hasattr(cs, k) and k != "id":
                 setattr(cs, k, v)
         session.add(cs)
