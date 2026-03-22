@@ -23,11 +23,11 @@ def get_db() -> Generator[Session, None, None]:
     with get_session() as session:
         yield session
 
-async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(http_bearer),
-) -> User:
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(http_bearer),) -> User:
+    """
+    Validates the Bearer JWT with Supabase and returns the mapped local `User`.
+    """
     token = credentials.credentials
-    """Intercepts the Bearer JWT token, validates it against Supabase Cloud, and injects the User object."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials with Supabase",
