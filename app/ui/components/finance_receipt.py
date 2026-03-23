@@ -99,7 +99,7 @@ def render_receipt_detail(receipt_id: int):
                     )
 
                     bal_str = (
-                        f"| New balance: {result['new_balance']:.0f} EGP"
+                        f"| New account balance: {result['new_balance']:.0f} EGP"
                         if result.get("new_balance") is not None
                         else ""
                     )

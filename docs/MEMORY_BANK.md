@@ -51,8 +51,9 @@ project_root/
 │       ├── 002_users_supabase_roles_v33.sql  # Role CHECK + column alignment for old DBs
 │       ├── 003_employees_employment_full_time.sql  # employees.employment_type includes full_time
 │       ├── 004_employees_sprint2_identity.sql      # national_id, education fields, uniqueness (Sprint 2)
-│       └── 005_audit_d4_timestamps.sql             # D4: audit backfill, DEFAULTs, updated_at triggers
-│       └── 006_receipts_paid_at_index.sql          # B9: idx_receipts_paid_at (Sprint 4)
+│       ├── 005_audit_d4_timestamps.sql             # D4: audit backfill, DEFAULTs, updated_at triggers
+│       ├── 006_receipts_paid_at_index.sql          # B9: idx_receipts_paid_at (Sprint 4)
+│       └── 007_p6_enrollment_balance.sql           # B8/P6: account balance sign convention
 ├── docs/
 │   ├── MEMORY_BANK.md            # THIS FILE (handoff summary)
 │   ├── plans/                    # Short summaries of completed engineering plans (see §12)
@@ -271,6 +272,8 @@ The UI imports **only from `service.py`**, not from `repository.py`.
 **service.py:** `create_receipt_with_charge_lines` (single transaction — Financial Desk + competition fee), `open_receipt`, `add_charge_line`, `finalize_receipt`, `issue_refund`, `get_receipt_detail`, `get_daily_receipts`, **`search_receipts`** (date range on **`paid_at`**, optional guardian / student / receipt #), `get_student_financial_summary`, `get_daily_collections`, `get_enrollment_balance`, …
 
 **Dashboard (Sprint 4):** **`dashboard_receipts.render_receipt_browser`** on **`0_Dashboard.py`** → Financial Desk sub-tab; DB index **`idx_receipts_paid_at`** (`006` + **`schema.sql`**).
+
+**Balance (P6 / B8):** View **`v_enrollment_balance.balance`** = **`total_paid − net_due`** — **negative** = debt, **zero** = settled, **positive** = credit. Migration **`007_p6_enrollment_balance.sql`**; analytics and Financial Desk use **debt** predicates (**`balance < 0`**). Sprint 6 follow-up: U2/U9/B3, **P8** credit application.
 
 ---
 

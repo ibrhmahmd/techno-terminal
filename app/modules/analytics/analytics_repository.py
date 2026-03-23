@@ -58,7 +58,7 @@ def get_today_sessions(db: Session, target_date: Optional[date] = None) -> list[
 def get_today_unpaid_attendees(
     db: Session, target_date: Optional[date] = None
 ) -> list[dict]:
-    """Students who attended today but have an outstanding balance on any enrollment."""
+    """Students who attended today but have debt (P6: account balance < 0) on any enrollment."""
     if target_date is None:
         target_date = date.today()
     stmt = text("""
@@ -67,7 +67,8 @@ def get_today_unpaid_attendees(
             st.full_name AS student_name,
             g.full_name AS guardian_name,
             g.phone_primary,
-            SUM(vb.balance) OVER (PARTITION BY st.id) AS total_balance
+            SUM(CASE WHEN vb.balance < 0 THEN -vb.balance ELSE 0 END)
+                OVER (PARTITION BY st.id) AS total_balance
         FROM attendance a
         JOIN sessions s ON a.session_id = s.id
         JOIN students st ON a.student_id = st.id
@@ -76,7 +77,7 @@ def get_today_unpaid_attendees(
         LEFT JOIN guardians g ON g.id = sg.guardian_id
         WHERE s.session_date = :target_date
           AND a.status IN ('present', 'late')
-          AND vb.balance > 0
+          AND vb.balance < 0
         ORDER BY total_balance DESC
     """)
     rows = db.execute(stmt, {"target_date": str(target_date)}).all()
@@ -122,18 +123,18 @@ def get_revenue_by_method(db: Session, start: date, end: date) -> list[dict]:
 
 
 def get_outstanding_by_group(db: Session) -> list[dict]:
-    """Sum of unpaid balances per active group."""
+    """Sum of debt (EGP) per active group — P6: balance < 0 means owes."""
     stmt = text("""
         SELECT
             g.id AS group_id,
             g.name AS group_name,
             c.name AS course_name,
             COUNT(DISTINCT vb.student_id) AS students_with_balance,
-            SUM(vb.balance) AS total_outstanding
+            SUM(CASE WHEN vb.balance < 0 THEN -vb.balance ELSE 0 END) AS total_outstanding
         FROM v_enrollment_balance vb
         JOIN groups g ON vb.group_id = g.id
         JOIN courses c ON g.course_id = c.id
-        WHERE vb.balance > 0 AND g.status = 'active'
+        WHERE vb.balance < 0 AND g.status = 'active'
         GROUP BY g.id, g.name, c.name
         ORDER BY total_outstanding DESC
     """)
@@ -142,19 +143,19 @@ def get_outstanding_by_group(db: Session) -> list[dict]:
 
 
 def get_top_debtors(db: Session, limit: int = 10) -> list[dict]:
-    """Students with the highest combined outstanding balances."""
+    """Students with the highest combined debt (P6: positive EGP owed)."""
     stmt = text("""
         SELECT
             st.id AS student_id,
             st.full_name AS student_name,
             g.full_name AS guardian_name,
             g.phone_primary,
-            SUM(vb.balance) AS total_outstanding
+            SUM(CASE WHEN vb.balance < 0 THEN -vb.balance ELSE 0 END) AS total_outstanding
         FROM v_enrollment_balance vb
         JOIN students st ON vb.student_id = st.id
         LEFT JOIN student_guardians sg ON sg.student_id = st.id AND sg.is_primary = TRUE
         LEFT JOIN guardians g ON g.id = sg.guardian_id
-        WHERE vb.balance > 0
+        WHERE vb.balance < 0
         GROUP BY st.id, st.full_name, g.full_name, g.phone_primary
         ORDER BY total_outstanding DESC
         LIMIT :limit
@@ -372,7 +373,7 @@ def get_flight_risk_students(db: Session) -> list[dict]:
         SELECT
             st.full_name as student_name,
             c.name as course_name,
-            vb.balance as amount_owed,
+            -vb.balance AS amount_owed,
             att.sessions_missed
         FROM enrollments en
         JOIN students st ON en.student_id = st.id
@@ -381,9 +382,9 @@ def get_flight_risk_students(db: Session) -> list[dict]:
         JOIN v_enrollment_balance vb ON vb.enrollment_id = en.id
         JOIN v_enrollment_attendance att ON att.enrollment_id = en.id
         WHERE en.status = 'active'
-          AND vb.balance > 0
+          AND vb.balance < 0
           AND att.sessions_missed > 0
-        ORDER BY att.sessions_missed DESC, vb.balance DESC
+        ORDER BY att.sessions_missed DESC, amount_owed DESC
     """)
     rows = db.execute(stmt).all()
     return [dict(r._mapping) for r in rows]

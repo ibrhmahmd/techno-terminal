@@ -198,7 +198,7 @@ def list_unpaid_enrollments(db: Session, group_id: int) -> list[dict]:
         SELECT vb.enrollment_id, vb.student_id, s.full_name AS student_name, vb.balance
         FROM v_enrollment_balance vb
         JOIN students s ON vb.student_id = s.id
-        WHERE vb.group_id = :gid AND vb.balance > 0
+        WHERE vb.group_id = :gid AND vb.balance < 0
         ORDER BY s.full_name
     """)
     rows = db.execute(stmt, {"gid": group_id}).all()

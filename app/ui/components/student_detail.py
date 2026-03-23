@@ -70,6 +70,7 @@ def render_student_detail(student_id: int):
     if enrollments:
         # Build enriched view for enrollments
         enr_data = []
+        has_debt = False
         for e in enrollments:
             g = get_group_by_id(e.group_id)
             group_name = g.name if g else f"Group #{e.group_id}"
@@ -80,6 +81,8 @@ def render_student_detail(student_id: int):
 
             balance_data = fin_srv.get_enrollment_balance(e.id)
             balance = balance_data["balance"] if balance_data else None
+            if e.status == "active" and balance is not None and balance < 0:
+                has_debt = True
 
             enr_data.append(
                 {
@@ -90,17 +93,16 @@ def render_student_detail(student_id: int):
                     "Discount": f"-{e.discount_applied} EGP"
                     if e.discount_applied
                     else "-",
-                    "Balance": f"{balance:.0f} EGP" if balance is not None else "—",
+                    "Acct balance": f"{balance:.0f} EGP" if balance is not None else "—",
                     "Attendance": att_str,
                     "Enrolled On": str(e.enrolled_at) if e.enrolled_at else "",
                 }
             )
 
+        st.caption("Account balance: negative = debt owed, positive = credit (P6).")
         st.dataframe(pd.DataFrame(enr_data), hide_index=True, use_container_width=True)
 
-        # If any enrollment has an outstanding balance, show Pay Now shortcut
-        outstanding = [e for e in enrollments if e.status == "active"]
-        if outstanding:
+        if has_debt:
             if st.button("💰 Go to Finance — Create Receipt", use_container_width=True):
                 st.switch_page("pages/0_Dashboard.py")
     else:

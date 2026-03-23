@@ -127,6 +127,8 @@ This roadmap turns the QA backlog into **ordered sprints** with clear goals, bac
 
 **Theme:** Implement product semantics **P5–P8** (debt negative, credit positive, guardian total, “owed only” list, overpayment warn → confirm).
 
+**Sprint 5 deliverable (design only):** [sprint_5_b8_balance_design_spike.md](./sprint_5_b8_balance_design_spike.md) — consumer inventory, P6 vs current formula, options A/B/C, migration order, open questions, Sprint 6 handoff.
+
 | Phase | Backlog | Work summary |
 |-------|---------|----------------|
 | **Sprint 5 (spike, ~3–5 days)** | **B8** (design) | Document target: replace or extend `v_enrollment_balance` (e.g. `account_balance = total_paid - net_due` vs rename `balance`); migration order; list every consumer (finance UI, analytics SQL, services). |
@@ -141,6 +143,8 @@ This roadmap turns the QA backlog into **ordered sprints** with clear goals, bac
 **Risks:** Analytics queries (**e.g.** `get_flight_risk_students`) assume current `balance` meaning — must be updated in the same release or flagged.
 
 **Dependency:** Spike (**Sprint 5**) gate before full build (**Sprint 6**).
+
+**Implementation note (2026-03-21):** **B8 / P6** applied — `v_enrollment_balance.balance` = **`total_paid - net_due`** in **`db/schema.sql`**, **`app/db/init_db.py`**, **`db/migrations/007_p6_enrollment_balance.sql`**. Finance UI + analytics predicates updated (debt = **`balance < 0`**). Remaining Sprint 6 items: **U2** (student search / debt filter), **U9** (overpayment warn), **B3** (desk eligibility), **P8** credit consumption rules.
 
 ---
 
@@ -194,6 +198,8 @@ This roadmap turns the QA backlog into **ordered sprints** with clear goals, bac
 | 1.2 | 2026-03-21 | Engineering | Sprint 2: employees schema + migration 004, HR service/repo/UI (D1/D2/D5/D6/B1/B4/U1/U4). |
 | 1.3 | 2026-03-21 | Engineering | Sprint 3 (D4): `audit_utils`, migration 005 + schema defaults/triggers, CRM/enrollment/UI actor threading. |
 | 1.4 | 2026-03-21 | Engineering | Sprint 4 (B9/U8): `search_receipts`, migration 006 + index, Dashboard receipt browser + tabs. |
+| 1.5 | 2026-03-21 | Engineering | Sprint 5 (B8 spike): linked `sprint_5_b8_balance_design_spike.md` (consumer inventory + migration plan). |
+| 1.6 | 2026-03-21 | Engineering | Sprint 6 (partial): P6 `v_enrollment_balance` + migration `007`; UI/analytics aligned — U2/U9/B3/P8 credit still open. |
 
 ---
 

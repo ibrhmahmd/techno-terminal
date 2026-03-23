@@ -72,7 +72,7 @@ def render_parent_detail(parent_id: int):
         for c in children:
             # 1. Course Enrollments
             balances = fin_srv.get_student_financial_summary(c.id)
-            active_balances = [b for b in balances if b.get("balance", 0) > 0]
+            active_balances = [b for b in balances if b.get("balance", 0) < 0]
 
             # 2. Competitions
             comp_history = comp_srv.get_student_competitions(c.id)
@@ -87,7 +87,7 @@ def render_parent_detail(parent_id: int):
             if active_balances or unpaid_comps:
                 any_balance = True
 
-                enr_owed = float(sum(b["balance"] for b in active_balances))
+                enr_owed = float(sum(-b["balance"] for b in active_balances))
                 comp_owed = float(
                     sum(h["team"].enrollment_fee_per_student for h in unpaid_comps)
                 )
@@ -98,7 +98,8 @@ def render_parent_detail(parent_id: int):
                 for b in active_balances:
                     st.caption(
                         f"  Enrollment #{b['enrollment_id']} | "
-                        f"Due: {b['net_due']:.0f} | Paid: {b['total_paid']:.0f} | Balance: {b['balance']:.0f} EGP"
+                        f"Due: {b['net_due']:.0f} | Paid: {b['total_paid']:.0f} | "
+                        f"Acct balance: {b['balance']:.0f} EGP (negative = debt)"
                     )
                 for hc in unpaid_comps:
                     st.caption(

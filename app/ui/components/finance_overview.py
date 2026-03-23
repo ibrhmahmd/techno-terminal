@@ -66,28 +66,31 @@ def render_finance_overview():
                 balance_data = fin_srv.get_enrollment_balance(enr.id)
                 balance = balance_data["balance"] if balance_data else 0.0
                 net_due = balance_data["net_due"] if balance_data else (enr.amount_due or 0.0)
-                
+                # P6: negative balance = debt, positive = credit; default pay = amount owed
+                debt_egp = max(-balance, 0.0)
+
                 col_chk, col_amt, col_info = st.columns([1, 1.5, 3])
                 line_key = f"fd_line_{enr.id}"
-                
+
                 checked = col_chk.checkbox(
-                    f"Enr #{enr.id}", 
-                    key=f"fd_chk_{enr.id}", 
-                    value=line_key in st.session_state["fd_lines"]
+                    f"Enr #{enr.id}",
+                    key=f"fd_chk_{enr.id}",
+                    value=line_key in st.session_state["fd_lines"],
                 )
-                
+
                 amount = col_amt.number_input(
-                    "Amount (EGP)", 
-                    min_value=0.0, 
-                    value=float(max(balance, 0.0)), 
-                    step=50.0, 
+                    "Amount (EGP)",
+                    min_value=0.0,
+                    value=float(debt_egp),
+                    step=50.0,
                     key=f"fd_amt_{enr.id}",
-                    label_visibility="collapsed"
+                    label_visibility="collapsed",
                 )
-                
+
                 col_info.markdown(
                     f"**Group:** {enr.group_id} L{enr.level_number} | "
-                    f"**Net Due:** {net_due:.0f} | **Balance:** {balance:.0f} EGP"
+                    f"**Net Due:** {net_due:.0f} | **Account balance:** {balance:.0f} EGP "
+                    f"(negative = debt)"
                 )
 
                 if checked and amount > 0:

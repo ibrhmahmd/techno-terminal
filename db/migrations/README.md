@@ -12,6 +12,7 @@ Ordered, hand-written SQL for production-style upgrades. Use when you need expli
 | [004_employees_sprint2_identity.sql](004_employees_sprint2_identity.sql) | Sprint 2: `national_id`, education columns, `employment_type` NOT NULL, phone/email/national_id uniqueness, D5 contract-% CHECK. |
 | [005_audit_d4_timestamps.sql](005_audit_d4_timestamps.sql) | Sprint 3 (D4): backfill NULL audit timestamps, `DEFAULT CURRENT_TIMESTAMP`, `tf_set_updated_at` triggers on core tables. |
 | [006_receipts_paid_at_index.sql](006_receipts_paid_at_index.sql) | Sprint 4 (B9): `idx_receipts_paid_at` for receipt discovery by `paid_at` range. |
+| [007_p6_enrollment_balance.sql](007_p6_enrollment_balance.sql) | Sprint 6 (B8 / P6): `v_enrollment_balance.balance` = `total_paid - net_due` (negative = debt). |
 
 ## Relationship to Alembic
 

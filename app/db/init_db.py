@@ -58,7 +58,7 @@ SELECT e.id AS enrollment_id,
     e.discount_applied,
     (e.amount_due - e.discount_applied) AS net_due,
     COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type IN ('payment', 'charge')), 0) - COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type = 'refund'), 0) AS total_paid,
-    (e.amount_due - e.discount_applied) - (COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type IN ('payment', 'charge')), 0) - COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type = 'refund'), 0)) AS balance
+    (COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type IN ('payment', 'charge')), 0) - COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type = 'refund'), 0)) - (e.amount_due - e.discount_applied) AS balance
 FROM enrollments e
     LEFT JOIN payments p ON p.enrollment_id = e.id
 GROUP BY e.id;

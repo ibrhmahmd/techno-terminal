@@ -290,5 +290,9 @@ def get_receipt_detail(receipt_id: int) -> dict | None:
 
 
 def get_enrollment_balance(enrollment_id: int) -> dict | None:
+    """
+    Row from `v_enrollment_balance`. **P6:** `balance` = total_paid − net_due
+    (negative = debt, zero = settled, positive = credit).
+    """
     with get_session() as db:
         return repo.get_enrollment_balance(db, enrollment_id)

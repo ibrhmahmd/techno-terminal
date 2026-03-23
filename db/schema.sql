@@ -360,7 +360,7 @@ SELECT e.id AS enrollment_id,
         ),
         0
     ) AS total_paid,
-    (e.amount_due - e.discount_applied) - (
+    (
         COALESCE(
             SUM(p.amount) FILTER (
                 WHERE p.transaction_type IN ('payment', 'charge')
@@ -372,7 +372,7 @@ SELECT e.id AS enrollment_id,
             ),
             0
         )
-    ) AS balance
+    ) - (e.amount_due - e.discount_applied) AS balance
 FROM enrollments e
     LEFT JOIN payments p ON p.enrollment_id = e.id
 GROUP BY e.id;

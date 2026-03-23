@@ -146,7 +146,8 @@ with tab_fin:
 with tab_acad:
     st.subheader("🎓 Group Roster Report")
     st.caption(
-        "Select a group and level to see the full student roster with attendance % and balance."
+        "Select a group and level to see the full student roster with attendance % and "
+        "account balance (P6: negative = debt)."
     )
 
     show_inactive = st.checkbox("Show inactive/archived groups", key="acad_inactive")
@@ -175,7 +176,7 @@ with tab_acad:
                 columns={
                     "student_name": "Student",
                     "enrollment_status": "Status",
-                    "balance": "Balance (EGP)",
+                    "balance": "Acct balance (EGP)",
                     "sessions_attended": "Present",
                     "sessions_missed": "Absent",
                     "total_sessions": "Total Sessions",
