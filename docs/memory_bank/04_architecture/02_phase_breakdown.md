@@ -1,3 +1,7 @@
+> ⚠️ **STALE DOCUMENT — Historical Reference Only**  
+> Phase statuses below have been corrected (2026-03-24). The implementation details may predate later refactors.  
+> For the authoritative state see [`docs/MEMORY_BANK.md §12`](../../MEMORY_BANK.md) and [`docs/reviews/sprint_roadmap_post_qa_2026.md`](../../reviews/sprint_roadmap_post_qa_2026.md).
+
 # Techno Kids — Detailed Feature Breakdown by Phase
 
 ## Architecture Decision: Module-per-Feature
@@ -17,8 +21,8 @@ modules: crm · academics · enrollments · attendance · finance · competition
 > - ✅ Phase 2 — CRM Core: **COMPLETE**
 > - ✅ Phase 3 — Daily Operations: **COMPLETE** (with full UX overhaul)
 > - ✅ Phase 4 — Financial Ledger: **COMPLETE**
-> - ⏳ Phase 5 — Competitions & Teams: **PENDING**
-> - ⏳ Phase 6 — Reporting & Analytics: **PENDING**
+> - ✅ Phase 5 — Competitions & Teams: **COMPLETE** _(updated 2026-03-24)_
+> - ✅ Phase 6 — Reporting & Analytics: **COMPLETE** _(updated 2026-03-24)_
 
 ---
 

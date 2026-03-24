@@ -1,5 +1,10 @@
 # Techno Kids CRM — Refactoring Task Backlog
 
+> ✅ **STATUS (2026-03-24): All TASK-01 through TASK-10 are IMPLEMENTED.**  
+> The shared exception hierarchy, validators, constants, base repository protocol, service layer discipline, and module naming are all in place in the current codebase.  
+> This document is preserved as a **design decisions archive** — do not treat task lists here as outstanding work.  
+> For current open work see [`docs/reviews/sprint_roadmap_post_qa_2026.md`](../../reviews/sprint_roadmap_post_qa_2026.md).
+
 > **Source:** Architecture Review (2026-03-18)  
 > **Updated:** Added design patterns + API layer planning per task  
 > **Order logic:** Sequenced so no later task overwrites work done by an earlier one. Foundation first, structural second, coupling-fix third, naming last.
