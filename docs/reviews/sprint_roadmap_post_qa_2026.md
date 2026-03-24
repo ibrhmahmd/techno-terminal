@@ -146,6 +146,8 @@ This roadmap turns the QA backlog into **ordered sprints** with clear goals, bac
 
 **Implementation note (2026-03-21):** **B8 / P6** applied — `v_enrollment_balance.balance` = **`total_paid - net_due`** in **`db/schema.sql`**, **`app/db/init_db.py`**, **`db/migrations/007_p6_enrollment_balance.sql`**. Finance UI + analytics predicates updated (debt = **`balance < 0`**). Remaining Sprint 6 items: **U2** (student search / debt filter), **U9** (overpayment warn), **B3** (desk eligibility), **P8** credit consumption rules.
 
+**Next sprint (6b) plan:** [sprint_6b_financial_desk_implementation_plan.md](./sprint_6b_financial_desk_implementation_plan.md) — ordered epics A/B/C, files, acceptance, estimates.
+
 ---
 
 ### Sprint 7 — Reporting: course aggregates (**Could**)
@@ -175,6 +177,7 @@ This roadmap turns the QA backlog into **ordered sprints** with clear goals, bac
 | 4 | Dashboard receipts | B9, U8 |
 | 5 | Balance design spike | B8 (analysis + doc) |
 | 6 | Balance + Financial Desk | B8, B3, U2, U9 |
+| 6b | Financial Desk completion (post-P6) | U2, U9, B3, P8 phase A — see `sprint_6b_financial_desk_implementation_plan.md` |
 | 7 | Course stats | B5, D3, U5 |
 | Phase 2 | PDF, competitions | U6, B6, U7, B7 |
 
@@ -200,6 +203,7 @@ This roadmap turns the QA backlog into **ordered sprints** with clear goals, bac
 | 1.4 | 2026-03-21 | Engineering | Sprint 4 (B9/U8): `search_receipts`, migration 006 + index, Dashboard receipt browser + tabs. |
 | 1.5 | 2026-03-21 | Engineering | Sprint 5 (B8 spike): linked `sprint_5_b8_balance_design_spike.md` (consumer inventory + migration plan). |
 | 1.6 | 2026-03-21 | Engineering | Sprint 6 (partial): P6 `v_enrollment_balance` + migration `007`; UI/analytics aligned — U2/U9/B3/P8 credit still open. |
+| 1.7 | 2026-03-21 | Engineering | Sprint 6b: linked `sprint_6b_financial_desk_implementation_plan.md` (U2/U9/B3/P8-A). |
 
 ---
 

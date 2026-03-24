@@ -273,7 +273,7 @@ The UI imports **only from `service.py`**, not from `repository.py`.
 
 **Dashboard (Sprint 4):** **`dashboard_receipts.render_receipt_browser`** on **`0_Dashboard.py`** → Financial Desk sub-tab; DB index **`idx_receipts_paid_at`** (`006` + **`schema.sql`**).
 
-**Balance (P6 / B8):** View **`v_enrollment_balance.balance`** = **`total_paid − net_due`** — **negative** = debt, **zero** = settled, **positive** = credit. Migration **`007_p6_enrollment_balance.sql`**; analytics and Financial Desk use **debt** predicates (**`balance < 0`**). Sprint 6 follow-up: U2/U9/B3, **P8** credit application.
+**Balance (P6 / B8):** View **`v_enrollment_balance.balance`** = **`total_paid − net_due`** — **negative** = debt, **zero** = settled, **positive** = credit. Migration **`007_p6_enrollment_balance.sql`**; analytics and Financial Desk use **debt** predicates (**`balance < 0`**). **Next:** [reviews/sprint_6b_financial_desk_implementation_plan.md](reviews/sprint_6b_financial_desk_implementation_plan.md) (U2, U9, B3, P8 phase A).
 
 ---
 
