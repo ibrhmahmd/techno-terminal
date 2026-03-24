@@ -41,6 +41,18 @@ def render_receipt_detail(receipt_id: int):
         f"**Date:** {str(r.paid_at)[:10] if r.paid_at else 'N/A'}"
     )
     st.markdown(f"**Total Collected: {total:.0f} EGP**")
+    
+    # PDF Download Button
+    pdf_bytes = fin_srv.get_receipt_pdf_bytes(receipt_id)
+    if pdf_bytes:
+        file_name = f"Receipt_{r.receipt_number or receipt_id}.pdf"
+        st.download_button(
+            label="🖨️ Download PDF",
+            data=pdf_bytes,
+            file_name=file_name,
+            mime="application/pdf",
+            type="primary"
+        )
 
     st.divider()
 

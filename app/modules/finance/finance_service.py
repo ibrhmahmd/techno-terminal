@@ -282,6 +282,64 @@ def issue_refund(
 # ── Balance & Reporting ───────────────────────────────────────────────────────
 
 
+def suggest_household_credits(guardian_id: int) -> list[dict]:
+    """
+    Returns all enrollments with a positive balance (credit) across all students
+    linked to the given guardian. Used to suggest credit applications.
+    """
+    from app.modules.crm.crm_service import get_guardian_students
+    students = get_guardian_students(guardian_id)
+    credits = []
+    
+    with get_session() as db:
+        for student in students:
+            # get_student_balances returns all enrollments with non-zero balances
+            balances = repo.get_student_balances(db, student.id)
+            for b in balances:
+                bal = float(b["balance"])
+                if bal > 0:  # P6: positive balance is credit
+                    credits.append({
+                        "student_id": student.id,
+                        "student_name": student.full_name,
+                        "enrollment_id": b["enrollment_id"],
+                        "course_name": b.get("course_name", "Unknown"),
+                        "level_number": b.get("level_number", "?"),
+                        "available_credit": bal
+                    })
+    return credits
+
+
+def build_receipt_notes(
+    charge_lines: list[dict],
+    applied_credits: list[dict],
+    total_collected: float
+) -> str:
+    """
+    Builds the structured text block for receipt.notes containing exact
+    details of what was charged and what credit was applied.
+    """
+    notes = ["Charge lines:"]
+    for c in charge_lines:
+        s_name = c.get("student_name", f"Student {c['student_id']}")
+        e_id = c.get("enrollment_id", "?")
+        amt = c.get("amount", 0)
+        notes.append(f"  - {s_name} / Enr #{e_id} / Amount: {amt:g} EGP")
+    
+    if applied_credits:
+        notes.append("\nCredit applied from household:")
+        total_applied = 0.0
+        for cr in applied_credits:
+            s_name = cr.get("student_name", f"Student {cr['student_id']}")
+            e_id = cr.get("enrollment_id", "?")
+            amt = cr.get("applied_amount", 0)
+            total_applied += amt
+            notes.append(f"  - {s_name} / Enr #{e_id}: {amt:g} EGP applied")
+        notes.append(f"  Total credit applied: {total_applied:g} EGP")
+    
+    notes.append(f"\nAmount collected from customer: {total_collected:g} EGP")
+    return "\n".join(notes)
+
+
 def get_student_financial_summary(student_id: int) -> list[dict]:
     """Returns all enrollment balances for a student."""
     with get_session() as db:
@@ -345,3 +403,27 @@ def get_enrollment_balance(enrollment_id: int) -> dict | None:
     """
     with get_session() as db:
         return repo.get_enrollment_balance(db, enrollment_id)
+
+
+def get_receipt_pdf_bytes(receipt_id: int) -> bytes | None:
+    """Generates a PDF byte stream for a receipt."""
+    with get_session() as db:
+        data = repo.get_receipt_with_lines(db, receipt_id)
+        if not data:
+            return None
+        r = data["receipt"]
+        lines = data["lines"]
+        total = repo.get_receipt_total(db, receipt_id)
+        
+        # Fetch guardian name
+        guardian_name = "—"
+        if r.guardian_id:
+            from app.modules.crm.crm_service import get_guardian_by_id
+            g = get_guardian_by_id(r.guardian_id)
+            if g:
+                guardian_name = g.full_name
+                
+        # Lazy import to avoid circulars
+        from app.modules.finance.receipt_pdf import build_receipt_pdf
+        return build_receipt_pdf(r, lines, total, guardian_name)
+
