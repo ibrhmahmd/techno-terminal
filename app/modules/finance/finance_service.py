@@ -18,6 +18,7 @@ def create_receipt_with_charge_lines(
     received_by_user_id: Optional[int],
     lines: list[ReceiptLineInput],
     notes: Optional[str] = None,
+    allow_credit: bool = True,
 ) -> dict:
     """
     Single transaction: receipt header, persisted receipt number, and all payment lines.
@@ -27,6 +28,12 @@ def create_receipt_with_charge_lines(
     if not lines:
         raise BusinessRuleError("Cannot create a receipt with no payment lines.")
     with get_session() as db:
+        if not allow_credit:
+            overpay = preview_overpayment_risk(lines, db=db)
+            if overpay:
+                raise BusinessRuleError(
+                    "One or more lines would create credit. Confirm overpayment before finalizing."
+                )
         r = repo.create_receipt(
             db, guardian_id, method, received_by_user_id, notes=notes
         )
@@ -70,6 +77,48 @@ def create_receipt_with_charge_lines(
             "total": total,
             "payment_ids": payment_ids,
         }
+
+
+def preview_overpayment_risk(
+    lines: list[ReceiptLineInput],
+    *,
+    db=None,
+) -> list[dict]:
+    """
+    Returns lines that would create/increase credit under P6.
+    P6: balance = total_paid - net_due, so debt is negative.
+    """
+    own_session = db is None
+    if own_session:
+        cm = get_session()
+        db = cm.__enter__()
+    try:
+        risk_rows: list[dict] = []
+        for spec in lines:
+            ld = spec.model_dump()
+            enrollment_id = ld.get("enrollment_id")
+            if not enrollment_id:
+                continue
+            bal = repo.get_enrollment_balance(db, enrollment_id)
+            current_balance = float((bal or {}).get("balance") or 0.0)
+            pay_amount = float(ld["amount"])
+            projected_balance = current_balance + pay_amount
+            if projected_balance > 0:
+                debt_before = max(-current_balance, 0.0)
+                risk_rows.append(
+                    {
+                        "student_id": ld["student_id"],
+                        "enrollment_id": enrollment_id,
+                        "amount": pay_amount,
+                        "debt_before": debt_before,
+                        "projected_balance": projected_balance,
+                        "excess_credit": max(pay_amount - debt_before, 0.0),
+                    }
+                )
+        return risk_rows
+    finally:
+        if own_session:
+            cm.__exit__(None, None, None)
 
 
 def open_receipt(
