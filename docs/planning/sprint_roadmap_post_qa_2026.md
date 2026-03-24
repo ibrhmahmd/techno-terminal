@@ -150,7 +150,7 @@ This roadmap turns the QA backlog into **ordered sprints** with clear goals, bac
 
 ---
 
-### Sprint 7 — Reporting: course aggregates (**Could**)
+### Sprint 7 — Reporting: course aggregates (**✅ DONE**)
 
 | Backlog | Work summary |
 |---------|----------------|
@@ -162,7 +162,7 @@ This roadmap turns the QA backlog into **ordered sprints** with clear goals, bac
 
 | Area | Backlog | Notes |
 |------|---------|--------|
-| PDF receipts | **U6**, **B6** | After receipt # and listing are stable. |
+| PDF receipts | **U6**, **B6** | **✅ DONE** |
 | Competition fees | **U7**, **B7** | Edition × category fees; equal team split; **P9**. |
 
 ---
@@ -178,8 +178,8 @@ This roadmap turns the QA backlog into **ordered sprints** with clear goals, bac
 | 5 | Balance design spike | B8 (analysis + doc) |
 | 6 | Balance + Financial Desk | B8, B3, U2, U9 |
 | 6b | Financial Desk completion (post-P6) | U2, U9, B3, P8 phase A — see `sprint_6b_financial_desk_implementation_plan.md` |
-| 7 | Course stats | B5, D3, U5 |
-| Phase 2 | PDF, competitions | U6, B6, U7, B7 |
+| 7 | Course stats (✅) | B5, D3, U5 |
+| Phase 2 | PDF (✅), competitions | U6, B6, U7, B7 |
 
 ---
 
