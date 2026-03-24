@@ -18,6 +18,7 @@ def render_course_detail(course_id: int):
         return
 
     groups = acad_srv.get_groups_by_course(course_id)
+    stats = acad_srv.get_course_stats(course_id)
 
     # Header section
     col1, col2 = st.columns([1, 4])
@@ -36,8 +37,19 @@ def render_course_detail(course_id: int):
     if course.description:
         st.info(f"**Description:** {course.description}")
 
+    # ── Stats bar ────────────────────────────────────────────────────────────
+    if stats:
+        s_col1, s_col2, s_col3 = st.columns(3)
+        with s_col1:
+            st.metric("Active Groups", stats.get("active_groups", 0))
+        with s_col2:
+            st.metric("Active Students", stats.get("active_students", 0))
+        with s_col3:
+            st.metric("Total Students Ever", stats.get("total_students_ever", 0))
+
     from app.ui.components.forms.edit_course_form import render_edit_course_form
     render_edit_course_form(course)
+
 
     st.divider()
 

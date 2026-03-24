@@ -50,6 +50,8 @@ def render_course_overview():
     search_query = st.text_input("🔍 Search Courses by Name", placeholder="e.g. HTML")
 
     courses = acad_srv.get_active_courses()
+    stats_list = acad_srv.get_all_course_stats()
+    stats_map = {s["course_id"]: s for s in stats_list}
 
     if search_query:
         query = search_query.lower()
@@ -59,17 +61,24 @@ def render_course_overview():
         st.info("No courses found.")
     else:
         st.markdown("Select a course below to view its details and active groups:")
-        df = pd.DataFrame([c.model_dump() for c in courses])
-        display_cols = [
-            "id",
-            "name",
-            "category",
-            "price_per_level",
-            "sessions_per_level",
-        ]
+
+        rows = []
+        for c in courses:
+            s = stats_map.get(c.id, {})
+            rows.append({
+                "ID": c.id,
+                "Name": c.name,
+                "Category": c.category.capitalize(),
+                "Price (EGP)": c.price_per_level,
+                "Sessions/Level": c.sessions_per_level,
+                "Groups": s.get("active_groups", 0),
+                "Active Students": s.get("active_students", 0),
+            })
+
+        df = pd.DataFrame(rows)
 
         event = st.dataframe(
-            df[display_cols],
+            df,
             hide_index=True,
             use_container_width=True,
             selection_mode="single-row",
@@ -80,3 +89,4 @@ def render_course_overview():
             sel_idx = event.selection.rows[0]
             st.session_state["nav_target_course_id"] = courses[sel_idx].id
             st.rerun()
+

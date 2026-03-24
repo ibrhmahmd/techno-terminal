@@ -101,6 +101,26 @@ def get_active_courses() -> list[Course]:
         return list(repo.list_active_courses(session))
 
 
+def get_all_course_stats() -> list[dict]:
+    """
+    Returns aggregate stats (group + student counts) for ALL courses.
+    Backed by the v_course_stats view — single DB query, no N+1.
+    Used by the course overview table.
+    """
+    with get_session() as session:
+        return repo.get_all_course_stats(session)
+
+
+def get_course_stats(course_id: int) -> dict | None:
+    """
+    Returns aggregate stats for a single course from v_course_stats.
+    Returns None if the course does not exist.
+    Used by the course detail page.
+    """
+    with get_session() as session:
+        return repo.get_course_stats(session, course_id)
+
+
 # ── Group Service ─────────────────────────────────────────────────────────────
 
 

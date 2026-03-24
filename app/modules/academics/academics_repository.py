@@ -203,3 +203,48 @@ def get_course_by_id(session: Session, course_id: int) -> Course | None:
 get_by_id = get_course_by_id
 create = create_course
 list_all = list_active_courses
+
+
+# ── Course Analytics (v_course_stats view) ────────────────────────────────────
+
+
+def get_all_course_stats(session: Session) -> list[dict]:
+    """
+    Returns aggregate stats for ALL courses from v_course_stats.
+    Single query — safe to call for the overview table (no N+1).
+    """
+    stmt = text("""
+        SELECT
+            course_id,
+            course_name,
+            total_groups,
+            active_groups,
+            total_students_ever,
+            active_students
+        FROM v_course_stats
+        ORDER BY course_name
+    """)
+    result = session.execute(stmt)
+    return [dict(row._mapping) for row in result.all()]
+
+
+def get_course_stats(session: Session, course_id: int) -> dict | None:
+    """
+    Returns aggregate stats for a single course from v_course_stats.
+    Returns None if course_id does not exist in the view.
+    """
+    stmt = text("""
+        SELECT
+            course_id,
+            course_name,
+            total_groups,
+            active_groups,
+            total_students_ever,
+            active_students
+        FROM v_course_stats
+        WHERE course_id = :course_id
+    """)
+    result = session.execute(stmt, {"course_id": course_id})
+    row = result.first()
+    return dict(row._mapping) if row else None
+
