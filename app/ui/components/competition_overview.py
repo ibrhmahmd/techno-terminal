@@ -171,7 +171,7 @@ def render_competition_overview():
                     t_coach_id = t_coach.id if t_coach else None
 
                     # Link to a group roster (optional, for student selection)
-                    from app.modules.academics import academics_service as acad_srv
+                    import app.modules.academics as acad_srv
 
                     all_groups = acad_srv.get_all_active_groups_enriched()
                     t_group = st.selectbox(

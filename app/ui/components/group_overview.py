@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import time
 import datetime
 
-from app.modules.academics import academics_service as acad_srv
+import app.modules.academics as acad_srv
 from app.modules.academics.schemas import ScheduleGroupInput
 from app.modules.hr import hr_service as hr_srv
 from app.shared.exceptions import NotFoundError, BusinessRuleError, ValidationError, ConflictError

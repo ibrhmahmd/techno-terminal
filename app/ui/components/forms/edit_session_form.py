@@ -1,6 +1,6 @@
 import streamlit as st
 from datetime import date, datetime
-from app.modules.academics import academics_service as acad_srv
+import app.modules.academics as acad_srv
 from app.db.connection import get_session
 from app.modules.academics.academics_session_models import CourseSession
 from app.modules.hr.hr_service import get_active_instructors
@@ -30,7 +30,7 @@ def render_edit_session_form(session_id: int):
     s_notes = st.text_area("Notes", value=cs.notes or "")
     
     if st.button("Save Session Changes", type="primary", use_container_width=True):
-        from app.modules.academics.academics_schemas import UpdateSessionDTO
+        from app.modules.academics.schemas import UpdateSessionDTO
         try:
             acad_srv.update_session(cs.id, UpdateSessionDTO(
                 session_date=s_date,

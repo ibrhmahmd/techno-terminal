@@ -1,5 +1,5 @@
 import streamlit as st
-from app.modules.academics import academics_service as acad_srv
+import app.modules.academics as acad_srv
 
 def render_edit_course_form(course):
     with st.expander("✏️ Edit Course Information"):
@@ -17,7 +17,7 @@ def render_edit_course_form(course):
             ec_desc = st.text_area("Description", value=course.description or "")
             
             if st.form_submit_button("Save Changes", type="primary"):
-                from app.modules.academics.academics_schemas import UpdateCourseDTO
+                from app.modules.academics.schemas import UpdateCourseDTO
                 try:
                     acad_srv.update_course(course.id, UpdateCourseDTO(
                         name=ec_name.strip(),

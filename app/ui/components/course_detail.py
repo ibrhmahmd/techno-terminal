@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from app.db.connection import get_session
 from app.modules.academics.academics_models import Course
-from app.modules.academics import academics_service as acad_srv
+import app.modules.academics as acad_srv
 from app.modules.hr.hr_service import get_active_instructors
 
 

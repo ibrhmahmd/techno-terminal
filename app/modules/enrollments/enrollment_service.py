@@ -4,7 +4,7 @@ from app.db.connection import get_session
 from app.shared.audit_utils import apply_create_audit
 from app.shared.datetime_utils import utc_now
 from app.modules.crm import crm_service as crm_srv
-from app.modules.academics import academics_service as acad_srv
+import app.modules.academics as acad_srv
 from app.modules.enrollments.enrollment_models import Enrollment
 from app.shared.exceptions import NotFoundError, BusinessRuleError, ConflictError
 from . import enrollment_repository as repo

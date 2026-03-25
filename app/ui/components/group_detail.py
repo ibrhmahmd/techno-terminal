@@ -1,6 +1,6 @@
 import streamlit as st
 from datetime import date, timedelta
-from app.modules.academics import academics_service as acad_srv
+import app.modules.academics as acad_srv
 from app.modules.enrollments import enrollment_service as enroll_srv
 from .attendance_grid import render_attendance_grid
 
@@ -46,7 +46,7 @@ def render_group_detail(group_id: int):
 
     from app.ui.components.forms.edit_group_form import render_edit_group_form
     from app.modules.hr.hr_service import get_active_instructors
-    from app.modules.academics.academics_service import get_active_courses
+    from app.modules.academics import get_active_courses
     instructors = get_active_instructors()
     courses = get_active_courses()
     render_edit_group_form(group_info, instructors, courses)

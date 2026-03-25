@@ -1,5 +1,5 @@
 import streamlit as st
-from app.modules.academics import academics_service as acad_srv
+import app.modules.academics as acad_srv
 
 WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
@@ -31,7 +31,7 @@ def render_edit_group_form(group_info, instructors, courses):
                 eg_status = st.selectbox("Status", status_opts, index=status_opts.index(group_info.status) if group_info.status in status_opts else 0)
 
             if st.form_submit_button("Save Changes", type="primary"):
-                from app.modules.academics.academics_schemas import UpdateGroupDTO
+                from app.modules.academics.schemas import UpdateGroupDTO
                 try:
                     acad_srv.update_group(group_info.id, UpdateGroupDTO(
                         name=eg_name.strip(),

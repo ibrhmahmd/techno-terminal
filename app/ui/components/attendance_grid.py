@@ -100,7 +100,7 @@ def render_attendance_grid(sessions: list, roster: list):
                 st.session_state[delete_key] = False
                 st.rerun()
             if bc2.button("⚠️", key=f"del_yes_{sess.id}", type="primary", use_container_width=True, help="Confirm"):
-                from app.modules.academics import academics_service as acad_srv
+                import app.modules.academics as acad_srv
                 try:
                     acad_srv.delete_session(sess.id)
                     del st.session_state[delete_key]
