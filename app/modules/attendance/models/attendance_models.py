@@ -1,6 +1,6 @@
 from typing import Optional
 from datetime import datetime
-from sqlmodel import SQLModel, Field, Relationship, Column, String
+from sqlmodel import SQLModel, Field, Column, String
 from sqlalchemy import UniqueConstraint
 from app.shared.constants import AttendanceStatus
 

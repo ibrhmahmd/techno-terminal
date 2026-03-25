@@ -1,7 +1,8 @@
 from typing import Sequence
 from sqlmodel import Session, select
 from sqlalchemy import text
-from app.modules.attendance.attendance_models import Attendance
+from app.modules.attendance.models import Attendance
+from app.modules.attendance.schemas import EnrollmentAttendanceSummaryDTO
 
 
 def upsert_attendance(session: Session, record: Attendance) -> Attendance:
@@ -33,7 +34,7 @@ def get_session_attendance(session: Session, session_id: int) -> Sequence[Attend
     return session.exec(stmt).all()
 
 
-def get_enrollment_attendance(session: Session, enrollment_id: int) -> dict:
+def get_enrollment_attendance(session: Session, enrollment_id: int) -> EnrollmentAttendanceSummaryDTO:
     """Queries the v_enrollment_attendance view for summary stats."""
     stmt = text("""
         SELECT enrollment_id, sessions_attended, sessions_missed
@@ -42,16 +43,14 @@ def get_enrollment_attendance(session: Session, enrollment_id: int) -> dict:
     """)
     result = session.execute(stmt, {"enrollment_id": enrollment_id}).first()
     if result:
-        return dict(result._mapping)
-    return {
-        "enrollment_id": enrollment_id,
-        "sessions_attended": 0,
-        "sessions_missed": 0,
-    }
-
+        return EnrollmentAttendanceSummaryDTO(**result._mapping)
+    return EnrollmentAttendanceSummaryDTO(
+        enrollment_id=enrollment_id,
+        sessions_attended=0,
+        sessions_missed=0,
+    )
 
 # ── RepositoryProtocol aliases ────────────────────────────────────────────────
 # Note: Attendance is upsert-only (no separate insert/update).
-# get_by_id is not meaningful for attendance (queried by session, not PK).
 create = upsert_attendance
 list_all = get_session_attendance

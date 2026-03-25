@@ -1,7 +1,7 @@
 import streamlit as st
 from app.db.connection import get_session
 from app.modules.crm.crm_models import Student
-from app.modules.attendance import attendance_service as att_srv
+import app.modules.attendance as att_srv
 
 # Toggle cycle: unset -> present -> absent -> unset
 NEXT_STATE = {
@@ -44,8 +44,8 @@ def render_attendance_grid(sessions: list, roster: list):
         for sess in sessions:
             att_records = att_srv.get_session_roster_with_attendance(sess.id)
             for r in att_records:
-                if r["status"]:
-                    db_state[(r["student_id"], sess.id)] = r["status"]
+                if r.status:
+                    db_state[(r.student_id, sess.id)] = r.status
         st.session_state[grid_key] = db_state
 
     current_state = st.session_state[grid_key]
@@ -149,7 +149,7 @@ def render_attendance_grid(sessions: list, roster: list):
 
                 if sess_payload:
                     res = att_srv.mark_session_attendance(sess.id, sess_payload, None)
-                    total_saved += res["marked"]
+                    total_saved += res.marked
 
             st.success(f"Successfully saved {total_saved} attendance records.")
         except Exception as e:
