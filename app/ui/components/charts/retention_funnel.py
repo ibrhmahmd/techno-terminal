@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from app.modules.analytics import analytics_service as att_srv
+import app.modules.analytics as att_srv
 
 def render_retention_funnel():
     st.markdown("#### 🎯 Level-to-Level Retention Churn")
@@ -9,7 +9,7 @@ def render_retention_funnel():
         st.info("No retention data yet.")
         return
 
-    df = pd.DataFrame(data)
+    df = pd.DataFrame([d.model_dump() for d in data])
     # df has 'course_name', 'level_number', 'student_count'
     # Pivot so each row is a course, each column is a level
     pivot = df.pivot_table(index="course_name", columns="level_number", values="student_count", fill_value=0)

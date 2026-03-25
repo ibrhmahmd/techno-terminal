@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from app.modules.analytics import analytics_service as att_srv
+import app.modules.analytics as att_srv
 
 def render_schedule_utilization():
     st.markdown("#### 📅 Schedule Capacity Hotspots")
@@ -9,7 +9,7 @@ def render_schedule_utilization():
         st.info("No schedule data.")
         return
 
-    df = pd.DataFrame(data)
+    df = pd.DataFrame([d.model_dump() for d in data])
     # Pivot for heatmap: index=time_start, columns=day
     pivot = df.pivot_table(index="time_start", columns="day", values="utilization_pct", fill_value=0)
     

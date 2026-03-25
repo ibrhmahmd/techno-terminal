@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from app.modules.analytics import analytics_service as att_srv
+import app.modules.analytics as att_srv
 
 def render_instructor_matrix():
     st.markdown("#### 👨‍🏫 Instructor Value Matrix")
@@ -9,7 +9,7 @@ def render_instructor_matrix():
         st.info("No instructor data.")
         return
 
-    df = pd.DataFrame(data)
+    df = pd.DataFrame([d.model_dump() for d in data])
     # Scatter plot mapping Revenue (x) vs Attendance Pct (y)
     
     st.scatter_chart(

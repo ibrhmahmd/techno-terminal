@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from app.modules.analytics import analytics_service as att_srv
+import app.modules.analytics as att_srv
 
 def render_financial_risk():
     st.markdown("#### ⚠️ Flight Risk Students")
@@ -10,7 +10,7 @@ def render_financial_risk():
         st.success("No high flight risk students found.")
         return
 
-    df = pd.DataFrame(data)
+    df = pd.DataFrame([d.model_dump() for d in data])
     st.dataframe(
         df.rename(columns={
             "student_name": "Student",
