@@ -4,7 +4,7 @@ from datetime import date, timedelta
 from calendar import monthrange
 
 from app.ui.components.auth_guard import require_auth
-import app.modules.analytics as analytics_srv
+from app.modules.analytics import analytics_service as analytics_srv
 import app.modules.academics as acad_srv
 
 st.set_page_config(page_title="Reports - Techno Kids", layout="wide")
@@ -57,7 +57,7 @@ with tab_fin:
     with col1:
         st.subheader("💳 Revenue by Payment Method")
         if rev_by_method:
-            df_m = pd.DataFrame([r.model_dump() for r in rev_by_method])
+            df_m = pd.DataFrame(rev_by_method)
             df_m["net_revenue"] = df_m["net_revenue"].apply(float)
             total = df_m["net_revenue"].sum()
             st.metric("Total Collected", f"{total:,.0f} EGP")
@@ -78,7 +78,7 @@ with tab_fin:
     with col2:
         st.subheader("📈 Daily Revenue Trend")
         if rev_by_date:
-            df_d = pd.DataFrame([r.model_dump() for r in rev_by_date])
+            df_d = pd.DataFrame(rev_by_date)
             df_d["net_revenue"] = df_d["net_revenue"].apply(float)
             df_d = df_d.set_index("day")
             df_d.columns = ["Revenue (EGP)"]
@@ -90,7 +90,7 @@ with tab_fin:
     st.divider()
     st.subheader("🔴 Outstanding Balances by Group")
     if outstanding:
-        df_out = pd.DataFrame([o.model_dump() for o in outstanding])
+        df_out = pd.DataFrame(outstanding)
         df_out["total_outstanding"] = df_out["total_outstanding"].apply(float)
         df_out = df_out.rename(
             columns={
@@ -115,7 +115,7 @@ with tab_fin:
     st.divider()
     st.subheader("👤 Top Debtors")
     if debtors:
-        df_debt = pd.DataFrame([d.model_dump() for d in debtors])
+        df_debt = pd.DataFrame(debtors)
         df_debt["total_outstanding"] = df_debt["total_outstanding"].apply(float)
         df_debt = df_debt.rename(
             columns={
@@ -134,7 +134,7 @@ with tab_fin:
         )
         if event_debt.selection.rows:
             sel_idx = event_debt.selection.rows[0]
-            st.session_state["nav_target_student_id"] = debtors[sel_idx].student_id
+            st.session_state["nav_target_student_id"] = debtors[sel_idx]["student_id"]
             st.switch_page("pages/1_Directory.py")
     else:
         st.info("No debtors found.")
@@ -169,7 +169,7 @@ with tab_acad:
 
         roster = analytics_srv.get_group_roster(sel_group.id, sel_level)
         if roster:
-            df_roster = pd.DataFrame([r.model_dump() for r in roster])
+            df_roster = pd.DataFrame(roster)
             df_roster["balance"] = df_roster["balance"].apply(float)
             df_roster["attendance_pct"] = df_roster["attendance_pct"].apply(float)
             df_roster = df_roster.rename(
@@ -204,7 +204,7 @@ with tab_comp:
     st.subheader("🏆 Competition Fee Summary")
     fee_summary = analytics_srv.get_competition_fee_summary()
     if fee_summary:
-        df_comp = pd.DataFrame([f.model_dump() for f in fee_summary])
+        df_comp = pd.DataFrame(fee_summary)
         df_comp["fees_collected"] = df_comp["fees_collected"].apply(float)
         df_comp["fees_outstanding"] = df_comp["fees_outstanding"].apply(float)
         df_comp["competition_date"] = df_comp["competition_date"].astype(str)
@@ -268,7 +268,7 @@ with tab_heatmap:
 
         heat_data = analytics_srv.get_attendance_heatmap(sel_group_h.id, sel_level_h)
         if heat_data:
-            df_heat = pd.DataFrame([h.model_dump() for h in heat_data])
+            df_heat = pd.DataFrame(heat_data)
 
             # Pivot: rows = student, columns = session_number + date
             df_heat["session_label"] = df_heat.apply(

@@ -171,49 +171,8 @@ def render_finance_overview():
     lines = list(st.session_state.get("fd_lines", {}).values())
     if lines:
         st.markdown("---")
-        total_charges = sum(l["amount"] for l in lines)
-        
-        # --- Credit Suggestion UI ---
-        available_credits = fin_srv.suggest_household_credits(selected_parent.id)
-        applied_credits_spec = []
-        total_credit_applied = 0.0
-        
-        if available_credits:
-            total_avail = sum(c["available_credit"] for c in available_credits)
-            st.info(f"💡 **Household has {total_avail:g} EGP total credit available.**")
-            
-            with st.expander("Apply Credit to this Receipt"):
-                st.write("Specify how much credit to apply from each source:")
-                for cr in available_credits:
-                    max_amt = cr["available_credit"]
-                    slider_key = f"fd_credit_{cr['enrollment_id']}"
-                    
-                    amt_to_apply = st.number_input(
-                        f"From {cr['student_name']} (Enr #{cr['enrollment_id']}, Max: {max_amt:g} EGP)",
-                        min_value=0.0,
-                        max_value=float(max_amt),
-                        value=0.0,
-                        step=50.0,
-                        key=slider_key,
-                    )
-                    
-                    if amt_to_apply > 0:
-                        applied_credits_spec.append({
-                            "student_id": cr["student_id"],
-                            "student_name": cr["student_name"],
-                            "enrollment_id": cr["enrollment_id"],
-                            "applied_amount": amt_to_apply
-                        })
-                        total_credit_applied += amt_to_apply
-        
-        net_to_collect = max(total_charges - total_credit_applied, 0.0)
-        
-        # Display Summary
-        st.markdown(f"#### 🧾 Receipt Summary")
-        st.markdown(f"- **Total Charges:** {total_charges:g} EGP")
-        if total_credit_applied > 0:
-            st.markdown(f"- **Credit Applied:** -{total_credit_applied:g} EGP")
-        st.markdown(f"### 💰 Net to Collect: **{net_to_collect:g} EGP**")
+        total = sum(l["amount"] for l in lines)
+        st.markdown(f"#### 🧾 Receipt Summary: **{total:.0f} EGP**")
 
         # Overpayment preview gate (U9 / P8 phase A)
         preview = st.session_state.get("fd_overpay_preview")
@@ -248,17 +207,11 @@ def render_finance_overview():
                         )
                         for line in lines
                     ]
-                    
-                    structured_notes = fin_srv.build_receipt_notes(
-                        lines, applied_credits_spec, net_to_collect
-                    )
-                    
                     summary = fin_srv.create_receipt_with_charge_lines(
                         guardian_id=selected_parent.id,
                         method=method,
                         received_by_user_id=state.get_current_user_id(),
                         lines=line_specs,
-                        notes=structured_notes,
                         allow_credit=True,
                     )
                     st.success(f"✅ Receipt **{summary['receipt_number']}** finalized!")
@@ -292,16 +245,11 @@ def render_finance_overview():
                     st.session_state["fd_overpay_preview"] = risks
                     st.rerun()
 
-                structured_notes = fin_srv.build_receipt_notes(
-                    lines, applied_credits_spec, net_to_collect
-                )
-
                 summary = fin_srv.create_receipt_with_charge_lines(
                     guardian_id=selected_parent.id,
                     method=method,
                     received_by_user_id=state.get_current_user_id(),
                     lines=line_specs,
-                    notes=structured_notes,
                     allow_credit=False,
                 )
                 st.success(f"✅ Receipt **{summary['receipt_number']}** finalized!")
@@ -311,4 +259,3 @@ def render_finance_overview():
                 st.rerun()
             except Exception as e:
                 st.error(f"❌ Payment Failed: {e}")
-

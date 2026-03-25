@@ -1,6 +1,6 @@
 import streamlit as st
 
-import app.modules.academics as academics_service
+from app.modules.academics import academics_service
 from app.modules.auth.auth_service import (
     force_reset_password,
     get_users_for_employee,
