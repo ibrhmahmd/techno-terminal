@@ -77,7 +77,7 @@ def render_student_detail(student_id: int):
 
             # Fetch attendance summary for this enrollment
             att_summary = get_attendance_summary(e.id)
-            att_str = f"✅ {att_summary.get('sessions_attended', 0)}   ❌ {att_summary.get('sessions_missed', 0)}"
+            att_str = f"✅ {att_summary.sessions_attended}   ❌ {att_summary.sessions_missed}"
 
             balance_data = fin_srv.get_enrollment_balance(e.id)
             balance = balance_data["balance"] if balance_data else None
