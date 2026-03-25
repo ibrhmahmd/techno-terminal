@@ -7,8 +7,8 @@ from datetime import date
 from app.db.connection import get_session
 from app.shared.audit_utils import apply_update_audit
 from app.shared.exceptions import NotFoundError
-from app.modules.academics.academics_models import Course, Group
-from app.modules.academics.academics_session_models import CourseSession
+from app.modules.academics.models import Course, Group
+from app.modules.academics.models import CourseSession
 from app.modules.academics.schemas import ScheduleGroupInput, UpdateGroupDTO, EnrichedGroupDTO
 from app.modules.academics.helpers.time_helpers import fmt_12h, next_weekday, validate_times
 from app.modules.academics.helpers.session_planning import create_sessions_in_session

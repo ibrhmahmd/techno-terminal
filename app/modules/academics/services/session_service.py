@@ -8,9 +8,9 @@ from app.db.connection import get_session
 from app.shared.audit_utils import apply_update_audit
 from app.shared.datetime_utils import utc_now
 from app.shared.exceptions import NotFoundError, BusinessRuleError
-from app.modules.academics.academics_models import Course, Group
-from app.modules.academics.academics_session_models import CourseSession
-from app.modules.academics.schemas import UpdateSessionDTO
+from app.modules.academics.models import Course, Group
+from app.modules.academics.models import CourseSession
+from app.modules.academics.schemas import UpdateSessionDTO, AddExtraSessionInput, GenerateLevelSessionsInput
 from app.modules.academics.helpers.time_helpers import next_weekday
 from app.modules.academics.helpers.session_planning import create_sessions_in_session
 from app.modules.academics import repositories as repo
@@ -18,7 +18,7 @@ from app.modules.academics import repositories as repo
 
 class SessionService:
     def generate_level_sessions(
-        self, group_id: int, level_number: int, start_date: date
+        self, data: GenerateLevelSessionsInput
     ) -> list[CourseSession]:
         """
         Generates N weekly sessions for a group level.
@@ -26,26 +26,26 @@ class SessionService:
         ATOMIC — validation + session creation in one transaction.
         """
         with get_session() as session:                          # ← ONE session
-            group = repo.get_group_by_id(session, group_id)
+            group = repo.get_group_by_id(session, data.group_id)
             if not group:
-                raise NotFoundError(f"Group {group_id} not found.")
+                raise NotFoundError(f"Group {data.group_id} not found.")
             course = session.get(Course, group.course_id)
             if not course:
-                raise NotFoundError(f"Course for group {group_id} not found.")
+                raise NotFoundError(f"Course for group {data.group_id} not found.")
 
-            existing = repo.count_sessions(session, group_id, level_number)
+            existing = repo.count_sessions(session, data.group_id, data.level_number)
             if existing > 0:
                 raise BusinessRuleError(
-                    f"Level {level_number} already has {existing} session(s). "
+                    f"Level {data.level_number} already has {existing} session(s). "
                     "Remove them first or add extra sessions instead."
                 )
 
             snapped = (
-                next_weekday(start_date, group.default_day)
-                if group.default_day else start_date
+                next_weekday(data.start_date, group.default_day)
+                if group.default_day else data.start_date
             )
             return create_sessions_in_session(                # ← SAME session
-                session, group_id, level_number, snapped,
+                session, data.group_id, data.level_number, snapped,
                 course.sessions_per_level,
                 group.default_time_start, group.default_time_end,
                 group.instructor_id,
@@ -53,7 +53,7 @@ class SessionService:
         # ← SINGLE COMMIT — validation + sessions or nothing
 
     def add_extra_session(
-        self, group_id: int, level_number: int, extra_date: date, notes: str | None = None
+        self, data: AddExtraSessionInput
     ) -> CourseSession:
         """
         Adds an extra session numbered after the last existing session.
@@ -62,23 +62,23 @@ class SessionService:
         two concurrent requests to compute the same next number.
         """
         with get_session() as session:
-            group = repo.get_group_by_id(session, group_id)
+            group = repo.get_group_by_id(session, data.group_id)
             if not group:
-                raise NotFoundError(f"Group {group_id} not found.")
+                raise NotFoundError(f"Group {data.group_id} not found.")
 
             # Atomic: read max session_number from DB within the same transaction
-            next_num = repo.get_max_session_number(session, group_id, level_number) + 1
+            next_num = repo.get_max_session_number(session, data.group_id, data.level_number) + 1
 
             cs = CourseSession(
-                group_id=group_id,
-                level_number=level_number,
+                group_id=data.group_id,
+                level_number=data.level_number,
                 session_number=next_num,
-                session_date=extra_date,
+                session_date=data.extra_date,
                 start_time=group.default_time_start,
                 end_time=group.default_time_end,
                 actual_instructor_id=group.instructor_id,
                 is_extra_session=True,
-                notes=notes,
+                notes=data.notes,
                 created_at=utc_now(),
             )
             return repo.create_session(session, cs)

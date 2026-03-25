@@ -5,7 +5,7 @@ Repository functions for the Course entity.
 """
 from typing import Sequence
 from sqlmodel import Session, select
-from app.modules.academics.academics_models import Course
+from app.modules.academics.models import Course
 
 
 def create_course(session: Session, course: Course) -> Course:

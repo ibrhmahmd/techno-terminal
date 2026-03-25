@@ -8,7 +8,7 @@ No commits. Caller owns the transaction.
 from datetime import date, time, timedelta
 from sqlmodel import Session
 from app.shared.datetime_utils import utc_now
-from app.modules.academics.academics_session_models import CourseSession
+from app.modules.academics.models import CourseSession
 
 
 def create_sessions_in_session(

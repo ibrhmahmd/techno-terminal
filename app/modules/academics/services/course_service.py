@@ -7,7 +7,7 @@ from app.db.connection import get_session
 from app.shared.audit_utils import apply_update_audit
 from app.shared.exceptions import ConflictError, NotFoundError
 from app.shared.validators import validate_positive_amount
-from app.modules.academics.academics_models import Course
+from app.modules.academics.models import Course
 from app.modules.academics.schemas import AddNewCourseInput, UpdateCourseDTO, CourseStatsDTO
 from app.modules.academics import repositories as repo
 

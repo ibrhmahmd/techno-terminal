@@ -1,6 +1,6 @@
 from app.db.connection import get_session
 from app.modules.enrollments.enrollment_repository import get_active_enrollment
-from app.modules.academics.academics_session_models import CourseSession
+from app.modules.academics.models import CourseSession
 from sqlmodel import select
 from app.modules.attendance.attendance_models import Attendance
 from app.shared.exceptions import NotFoundError

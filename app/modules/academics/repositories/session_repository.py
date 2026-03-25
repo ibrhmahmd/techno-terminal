@@ -6,7 +6,7 @@ Repository functions for the CourseSession entity.
 from typing import Sequence
 from sqlmodel import Session, select
 from sqlalchemy import func
-from app.modules.academics.academics_session_models import CourseSession
+from app.modules.academics.models import CourseSession
 
 
 def create_session(session: Session, course_session: CourseSession) -> CourseSession:

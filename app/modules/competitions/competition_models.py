@@ -8,7 +8,7 @@ from sqlmodel import SQLModel, Field
 # Ensure related models are loaded so SQLAlchemy can resolve foreign keys
 import app.modules.finance.finance_models
 import app.modules.crm.crm_models
-import app.modules.academics.academics_models
+import app.modules.academics.models
 import app.modules.auth.auth_models
 import app.modules.enrollments.enrollment_models
 

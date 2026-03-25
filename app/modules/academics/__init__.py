@@ -38,8 +38,8 @@ list_group_sessions = _session_svc.list_group_sessions
 check_level_complete = _session_svc.check_level_complete
 advance_group_level = _session_svc.advance_group_level
 
-from .academics_models import Course, Group
-from .academics_session_models import CourseSession
+from .models import Course, Group
+from .models import CourseSession
 from .schemas import (
     AddNewCourseInput,
     ScheduleGroupInput,

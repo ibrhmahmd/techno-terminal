@@ -11,8 +11,8 @@ from app.db.connection import get_engine, get_session
 from app.modules.hr.hr_models import Employee
 from app.modules.auth.auth_models import User
 from app.modules.crm.crm_models import Guardian, Student, StudentGuardian
-from app.modules.academics.academics_models import Course, Group
-from app.modules.academics.academics_session_models import CourseSession
+from app.modules.academics.models import Course, Group
+from app.modules.academics.models import CourseSession
 from app.modules.attendance.attendance_models import Attendance
 from app.modules.enrollments.enrollment_models import Enrollment
 from app.modules.finance.finance_models import Receipt, Payment
@@ -90,6 +90,19 @@ SELECT group_id,
     COUNT(*) AS total_sessions
 FROM sessions
 GROUP BY group_id, level_number;
+
+CREATE OR REPLACE VIEW v_course_stats AS
+SELECT
+    c.id                                                                    AS course_id,
+    c.name                                                                  AS course_name,
+    COUNT(DISTINCT g.id)                                                    AS total_groups,
+    COUNT(DISTINCT g.id) FILTER (WHERE g.status = 'active')                 AS active_groups,
+    COUNT(DISTINCT e.student_id)                                            AS total_students_ever,
+    COUNT(DISTINCT e.student_id) FILTER (WHERE e.status = 'active')         AS active_students
+FROM courses c
+LEFT JOIN groups g ON g.course_id = c.id
+LEFT JOIN enrollments e ON e.group_id = g.id
+GROUP BY c.id, c.name;
 """
 
 

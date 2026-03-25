@@ -6,7 +6,7 @@ Repository functions for the Group entity.
 from typing import Sequence
 from sqlmodel import Session, select
 from sqlalchemy import text
-from app.modules.academics.academics_models import Group
+from app.modules.academics.models import Group
 from app.modules.academics.schemas import EnrichedGroupDTO
 from app.modules.academics.constants import GROUP_STATUS_ACTIVE, INSTRUCTOR_PLACEHOLDER
 
