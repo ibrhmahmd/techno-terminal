@@ -127,6 +127,7 @@ from app.modules.crm.services.parent_service import ParentService
 from app.modules.academics.services.course_service import CourseService
 from app.modules.academics.services.group_service import GroupService
 from app.modules.academics.services.session_service import SessionService
+from app.modules.academics.services.group_analytics_service import GroupAnalyticsService
 from app.modules.enrollments.services.enrollment_service import EnrollmentService
 import app.modules.finance as finance_module  # flat module — free functions, not a class
 
@@ -228,3 +229,22 @@ from app.modules.analytics.services.competition_service import CompetitionAnalyt
 def get_competition_analytics_service() -> CompetitionAnalyticsService:
     """Returns a fresh CompetitionAnalyticsService instance per request."""
     return CompetitionAnalyticsService()
+
+
+# Group Analytics service
+from app.modules.academics.services.group_history_service import GroupHistoryService
+from app.modules.academics.services.group_level_service import GroupLevelService
+
+def get_group_history_service() -> GroupHistoryService:
+    """Returns a fresh GroupHistoryService instance per request."""
+    return GroupHistoryService()
+
+
+def get_group_level_service() -> GroupLevelService:
+    """Returns a fresh GroupLevelService instance per request."""
+    return GroupLevelService()
+
+
+def get_group_analytics_service() -> GroupAnalyticsService:
+    """Returns a fresh GroupAnalyticsService instance per request."""
+    return GroupAnalyticsService()

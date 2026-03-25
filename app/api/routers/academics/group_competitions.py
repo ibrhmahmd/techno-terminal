@@ -6,10 +6,12 @@ Router for group-centric competition APIs.
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.schemas.common import ApiResponse
-from app.api.dependencies import require_any, require_admin, get_group_competition_service, get_team_service
+from app.api.dependencies import require_any, require_admin, get_group_competition_service, get_team_service, get_group_analytics_service
 from app.modules.auth import User
 from app.modules.academics.services.group_competition_service import GroupCompetitionService
+from app.modules.academics.services.group_analytics_service import GroupAnalyticsService
 from app.modules.competitions.services.team_service import TeamService
+from app.api.schemas.academics.group_analytics import GroupCompetitionHistoryResponseDTO
 
 router = APIRouter(tags=["Academics — Group Competitions"])
 
