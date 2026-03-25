@@ -1,0 +1,77 @@
+"""
+app/modules/academics/repositories/__init__.py
+───────────────────────────────────────────────
+Facade for exporting all repository layer functions for the academics module.
+Maintains backward compatibility for academics_service.py during migration.
+"""
+
+from .course_repository import (
+    create_course,
+    get_course_by_name,
+    list_active_courses,
+    update_course_price,
+    get_course_by_id,
+    # Protocol aliases
+    get_by_id,
+    create,
+    list_all,
+)
+
+from .group_repository import (
+    create_group,
+    list_groups_by_course,
+    list_all_active_groups,
+    get_group_by_id,
+    increment_group_level,
+    get_enriched_groups,
+    get_enriched_groups_by_date,
+)
+
+from .session_repository import (
+    create_session,
+    delete_session,
+    list_sessions,
+    get_session_by_id,
+    count_sessions,
+    get_max_session_number,
+    update_session_instructor,
+)
+
+from .course_stats_repository import (
+    get_all_course_stats,
+    get_course_stats,
+)
+
+__all__ = [
+    # Course Repository
+    "create_course",
+    "get_course_by_name",
+    "list_active_courses",
+    "update_course_price",
+    "get_course_by_id",
+    "get_by_id",
+    "create",
+    "list_all",
+    
+    # Group Repository
+    "create_group",
+    "list_groups_by_course",
+    "list_all_active_groups",
+    "get_group_by_id",
+    "increment_group_level",
+    "get_enriched_groups",
+    "get_enriched_groups_by_date",
+    
+    # Session Repository
+    "create_session",
+    "delete_session",
+    "list_sessions",
+    "get_session_by_id",
+    "count_sessions",
+    "get_max_session_number",
+    "update_session_instructor",
+    
+    # Course Stats Repository
+    "get_all_course_stats",
+    "get_course_stats",
+]

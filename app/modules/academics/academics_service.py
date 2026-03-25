@@ -14,7 +14,7 @@ from app.modules.academics.helpers.time_helpers import fmt_12h, next_weekday, va
 from app.modules.academics.helpers.session_planning import create_sessions_in_session
 from app.shared.exceptions import NotFoundError, BusinessRuleError, ConflictError
 from app.shared.validators import validate_positive_amount
-from . import academics_repository as repo
+from . import repositories as repo
 
 # ── Course Service ────────────────────────────────────────────────────────────
 
