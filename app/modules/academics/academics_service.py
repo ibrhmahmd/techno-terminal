@@ -1,53 +1,20 @@
-from datetime import time, date, timedelta
+from datetime import date
 from sqlmodel import Session
 from app.db.connection import get_session
 from app.shared.audit_utils import apply_update_audit
 from app.shared.datetime_utils import utc_now
 from app.modules.academics.academics_models import Course, Group
 from app.modules.academics.academics_session_models import CourseSession
-from app.modules.academics.academics_schemas import AddNewCourseInput, ScheduleGroupInput, UpdateCourseDTO, UpdateGroupDTO, UpdateSessionDTO
-from app.shared.exceptions import ValidationError, NotFoundError, BusinessRuleError, ConflictError
+from app.modules.academics.schemas import (
+    AddNewCourseInput, ScheduleGroupInput,
+    UpdateCourseDTO, UpdateGroupDTO, UpdateSessionDTO,
+    CourseStatsDTO, EnrichedGroupDTO,
+)
+from app.modules.academics.helpers.time_helpers import fmt_12h, next_weekday, validate_times
+from app.modules.academics.helpers.session_planning import create_sessions_in_session
+from app.shared.exceptions import NotFoundError, BusinessRuleError, ConflictError
 from app.shared.validators import validate_positive_amount
 from . import academics_repository as repo
-
-# ── Time constraints ──────────────────────────────────────────────────────────
-_EARLIEST = time(11, 0)  # 11:00 AM
-_LATEST = time(21, 0)  # 9:00 PM
-
-WEEKDAYS = [
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-    "Sunday",
-]
-
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
-
-def _fmt_12h(t: time) -> str:
-    h12 = t.hour % 12 or 12
-    ampm = "PM" if t.hour >= 12 else "AM"
-    return f"{h12}:{t.minute:02d} {ampm}"
-
-
-def _next_weekday(from_date: date, day_name: str) -> date:
-    target = WEEKDAYS.index(day_name)
-    delta = (target - from_date.weekday()) % 7
-    return from_date + timedelta(days=delta)
-
-
-def _validate_times(start_time: time, end_time: time) -> None:
-    if start_time < _EARLIEST or end_time > _LATEST:
-        raise ValidationError(
-            f"Groups must be scheduled between 11:00 AM and 9:00 PM. "
-            f"Got {_fmt_12h(start_time)} – {_fmt_12h(end_time)}."
-        )
-    if start_time >= end_time:
-        raise ValidationError("End time must be after start time.")
-
 
 # ── Course Service ────────────────────────────────────────────────────────────
 
@@ -101,7 +68,7 @@ def get_active_courses() -> list[Course]:
         return list(repo.list_active_courses(session))
 
 
-def get_all_course_stats() -> list[dict]:
+def get_all_course_stats() -> list[CourseStatsDTO]:
     """
     Returns aggregate stats (group + student counts) for ALL courses.
     Backed by the v_course_stats view — single DB query, no N+1.
@@ -111,7 +78,7 @@ def get_all_course_stats() -> list[dict]:
         return repo.get_all_course_stats(session)
 
 
-def get_course_stats(course_id: int) -> dict | None:
+def get_course_stats(course_id: int) -> CourseStatsDTO | None:
     """
     Returns aggregate stats for a single course from v_course_stats.
     Returns None if the course does not exist.
@@ -124,39 +91,8 @@ def get_course_stats(course_id: int) -> dict | None:
 # ── Group Service ─────────────────────────────────────────────────────────────
 
 
-def _create_sessions_in_session(
-    session: Session,
-    group_id: int,
-    level_number: int,
-    start_date: date,
-    count: int,
-    start_time: time,
-    end_time: time,
-    instructor_id: int,
-) -> list[CourseSession]:
-    """
-    Creates CourseSession records within an existing session — does NOT commit.
-    Called by schedule_group() and generate_level_sessions() to stay atomic.
-    """
-    created = []
-    d = start_date
-    for i in range(count):
-        cs = CourseSession(
-            group_id=group_id,
-            level_number=level_number,
-            session_number=i + 1,
-            session_date=d,
-            start_time=start_time,
-            end_time=end_time,
-            actual_instructor_id=instructor_id,
-            is_extra_session=False,
-            created_at=utc_now(),
-        )
-        session.add(cs)
-        session.flush()
-        created.append(cs)
-        d += timedelta(weeks=1)
-    return created
+# _create_sessions_in_session has been moved to helpers/session_planning.py
+# Use: from app.modules.academics.helpers.session_planning import create_sessions_in_session
 
 
 def schedule_group(data: ScheduleGroupInput | dict) -> tuple[Group, list[CourseSession]]:
@@ -167,11 +103,7 @@ def schedule_group(data: ScheduleGroupInput | dict) -> tuple[Group, list[CourseS
     ATOMIC — group + sessions commit together or not at all.
     Accepts ScheduleGroupInput or a plain dict (backward compat with UI call sites).
     """
-    if isinstance(data, dict):
-        data = ScheduleGroupInput.model_validate(data)
-    # _validate_times already called by ScheduleGroupInput.validate_time_window
-    # but called again here for plain-dict paths that bypass the model
-    _validate_times(data.default_time_start, data.default_time_end)
+    validate_times(data.default_time_start, data.default_time_end)
 
     with get_session() as session:                          # ← ONE session
         course = session.get(Course, data.course_id)
@@ -180,7 +112,7 @@ def schedule_group(data: ScheduleGroupInput | dict) -> tuple[Group, list[CourseS
 
         auto_name = (
             f"{data.default_day} "
-            f"{_fmt_12h(data.default_time_start)} - {course.name}"
+            f"{fmt_12h(data.default_time_start)} - {course.name}"
         )
         group = Group(
             name=auto_name,
@@ -196,10 +128,10 @@ def schedule_group(data: ScheduleGroupInput | dict) -> tuple[Group, list[CourseS
         session.flush()                                     # get group.id without commit
 
         start_date = (
-            _next_weekday(date.today(), data.default_day)
+            next_weekday(date.today(), data.default_day)
             if data.default_day else date.today()
         )
-        sessions = _create_sessions_in_session(            # ← SAME session
+        sessions = create_sessions_in_session(            # ← SAME session
             session, group.id, 1, start_date,
             course.sessions_per_level,
             data.default_time_start, data.default_time_end,
@@ -219,13 +151,13 @@ def get_all_active_groups(include_inactive: bool = False) -> list[Group]:
         return list(repo.list_all_active_groups(session, include_inactive))
 
 
-def get_all_active_groups_enriched() -> list[dict]:
+def get_all_active_groups_enriched() -> list[EnrichedGroupDTO]:
     """Returns groups with instructor_name and course_name joined for display."""
     with get_session() as session:
         return repo.get_enriched_groups(session)
 
 
-def get_todays_groups_enriched() -> list[dict]:
+def get_todays_groups_enriched() -> list[EnrichedGroupDTO]:
     """Returns active groups that have at least one session scheduled for today."""
     with get_session() as session:
         return repo.get_enriched_groups_by_date(session, date.today().isoformat())
@@ -278,10 +210,10 @@ def generate_level_sessions(
             )
 
         snapped = (
-            _next_weekday(start_date, group.default_day)
+            next_weekday(start_date, group.default_day)
             if group.default_day else start_date
         )
-        return _create_sessions_in_session(                # ← SAME session
+        return create_sessions_in_session(                # ← SAME session
             session, group_id, level_number, snapped,
             course.sessions_per_level,
             group.default_time_start, group.default_time_end,

@@ -2,6 +2,11 @@ from typing import Sequence
 from sqlmodel import Session, select
 from sqlalchemy import text, func
 from app.modules.academics.academics_models import Course, Group
+from app.modules.academics.academics_session_models import CourseSession
+from app.modules.academics.schemas import CourseStatsDTO, EnrichedGroupDTO
+from app.modules.academics.constants import (
+    GROUP_STATUS_ACTIVE, INSTRUCTOR_PLACEHOLDER, VIEW_COURSE_STATS
+)
 
 # --- Course Repository ---
 
@@ -71,14 +76,14 @@ def increment_group_level(session: Session, group_id: int) -> Group | None:
     return group
 
 
-def get_enriched_groups(session: Session) -> list[dict]:
+def get_enriched_groups(session: Session) -> list[EnrichedGroupDTO]:
     """Returns active groups joined with instructor name and course name for display."""
-    stmt = text("""
+    stmt = text(f"""
         SELECT
             g.id,
             g.name AS group_name,
             c.name AS course_name,
-            COALESCE(e.full_name, 'Unassigned') AS instructor_name,
+            COALESCE(e.full_name, '{INSTRUCTOR_PLACEHOLDER}') AS instructor_name,
             g.level_number,
             g.default_day,
             g.default_time_start,
@@ -88,21 +93,21 @@ def get_enriched_groups(session: Session) -> list[dict]:
         FROM groups g
         JOIN courses c ON g.course_id = c.id
         LEFT JOIN employees e ON g.instructor_id = e.id
-        WHERE g.status = 'active'
+        WHERE g.status = '{GROUP_STATUS_ACTIVE}'
         ORDER BY g.id
     """)
     result = session.execute(stmt)
-    return [dict(row._mapping) for row in result.all()]
+    return [EnrichedGroupDTO(**dict(row._mapping)) for row in result.all()]
 
 
-def get_enriched_groups_by_date(session: Session, target_date: str) -> list[dict]:
+def get_enriched_groups_by_date(session: Session, target_date: str) -> list[EnrichedGroupDTO]:
     """Returns active groups that have at least one session on the given date."""
-    stmt = text("""
+    stmt = text(f"""
         SELECT DISTINCT
             g.id,
             g.name AS group_name,
             c.name AS course_name,
-            COALESCE(e.full_name, 'Unassigned') AS instructor_name,
+            COALESCE(e.full_name, '{INSTRUCTOR_PLACEHOLDER}') AS instructor_name,
             g.level_number,
             g.default_day,
             g.default_time_start,
@@ -113,16 +118,14 @@ def get_enriched_groups_by_date(session: Session, target_date: str) -> list[dict
         JOIN courses c ON g.course_id = c.id
         LEFT JOIN employees e ON g.instructor_id = e.id
         JOIN sessions s ON g.id = s.group_id
-        WHERE g.status = 'active' AND s.session_date = :target_date
+        WHERE g.status = '{GROUP_STATUS_ACTIVE}' AND s.session_date = :target_date
         ORDER BY g.id
     """)
     result = session.execute(stmt, {"target_date": target_date})
-    return [dict(row._mapping) for row in result.all()]
+    return [EnrichedGroupDTO(**dict(row._mapping)) for row in result.all()]
 
 
 # --- Session (CourseSession) Repository ---
-
-from app.modules.academics.academics_session_models import CourseSession
 
 
 def create_session(session: Session, course_session: CourseSession) -> CourseSession:
@@ -208,12 +211,12 @@ list_all = list_active_courses
 # ── Course Analytics (v_course_stats view) ────────────────────────────────────
 
 
-def get_all_course_stats(session: Session) -> list[dict]:
+def get_all_course_stats(session: Session) -> list[CourseStatsDTO]:
     """
     Returns aggregate stats for ALL courses from v_course_stats.
     Single query — safe to call for the overview table (no N+1).
     """
-    stmt = text("""
+    stmt = text(f"""
         SELECT
             course_id,
             course_name,
@@ -221,19 +224,19 @@ def get_all_course_stats(session: Session) -> list[dict]:
             active_groups,
             total_students_ever,
             active_students
-        FROM v_course_stats
+        FROM {VIEW_COURSE_STATS}
         ORDER BY course_name
     """)
     result = session.execute(stmt)
-    return [dict(row._mapping) for row in result.all()]
+    return [CourseStatsDTO(**dict(row._mapping)) for row in result.all()]
 
 
-def get_course_stats(session: Session, course_id: int) -> dict | None:
+def get_course_stats(session: Session, course_id: int) -> CourseStatsDTO | None:
     """
     Returns aggregate stats for a single course from v_course_stats.
     Returns None if course_id does not exist in the view.
     """
-    stmt = text("""
+    stmt = text(f"""
         SELECT
             course_id,
             course_name,
@@ -241,10 +244,10 @@ def get_course_stats(session: Session, course_id: int) -> dict | None:
             active_groups,
             total_students_ever,
             active_students
-        FROM v_course_stats
+        FROM {VIEW_COURSE_STATS}
         WHERE course_id = :course_id
     """)
     result = session.execute(stmt, {"course_id": course_id})
     row = result.first()
-    return dict(row._mapping) if row else None
+    return CourseStatsDTO(**dict(row._mapping)) if row else None
 
