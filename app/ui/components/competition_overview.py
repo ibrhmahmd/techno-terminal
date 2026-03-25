@@ -177,10 +177,10 @@ def render_competition_overview():
                     t_group = st.selectbox(
                         "Source Group (optional)",
                         options=[None] + all_groups,
-                        format_func=lambda g: "— Select group to pick students —" if g is None else f"{g['group_name']} ({g['course_name']})",
+                        format_func=lambda g: "— Select group to pick students —" if g is None else f"{g.group_name} ({g.course_name})",
                         key="t_group",
                     )
-                    t_group_id = t_group["id"] if t_group else None
+                    t_group_id = t_group.id if t_group else None
 
                     selected_student_ids = []
                     if t_group_id:

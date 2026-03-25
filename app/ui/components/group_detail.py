@@ -79,7 +79,14 @@ def render_group_detail(group_id: int):
     with st.expander("➕ Add Extra Session"):
         ex_date = st.date_input("Date", value=next_date, key="ex_dt")
         if st.button("Add Session"):
-            acad_srv.add_extra_session(group_id, int(level_filter), ex_date)
+            with st.spinner("Adding session..."):
+                acad_srv.add_extra_session(
+                    AddExtraSessionInput(
+                        group_id=group_id,
+                        level_number=int(level_filter),
+                        extra_date=ex_date
+                    )
+                )
             st.success("Added.")
             st.rerun()
 

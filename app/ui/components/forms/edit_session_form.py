@@ -2,7 +2,7 @@ import streamlit as st
 from datetime import date, datetime
 import app.modules.academics as acad_srv
 from app.db.connection import get_session
-from app.modules.academics.academics_session_models import CourseSession
+from app.modules.academics.models import CourseSession
 from app.modules.hr.hr_service import get_active_instructors
 
 @st.dialog("✏️ Edit Session Details")
