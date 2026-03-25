@@ -4,7 +4,7 @@ from datetime import date, timedelta
 from calendar import monthrange
 
 from app.ui.components.auth_guard import require_auth
-from app.modules.analytics import analytics_service as analytics_srv
+import app.modules.analytics as analytics_srv
 import app.modules.academics as acad_srv
 
 st.set_page_config(page_title="Reports - Techno Kids", layout="wide")
