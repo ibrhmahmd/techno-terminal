@@ -19,11 +19,8 @@ from . import academics_repository as repo
 # ── Course Service ────────────────────────────────────────────────────────────
 
 
-def add_new_course(data: AddNewCourseInput | dict) -> Course:
-    """Validates and creates a new course. Accepts AddNewCourseInput or a plain dict."""
-    if isinstance(data, dict):
-        data = AddNewCourseInput.model_validate(data)
-
+def add_new_course(data: AddNewCourseInput) -> Course:
+    """Validates and creates a new course."""
     with get_session() as session:
         if repo.get_course_by_name(session, data.name):
             raise ConflictError(f"Course '{data.name}' already exists.")
@@ -95,13 +92,12 @@ def get_course_stats(course_id: int) -> CourseStatsDTO | None:
 # Use: from app.modules.academics.helpers.session_planning import create_sessions_in_session
 
 
-def schedule_group(data: ScheduleGroupInput | dict) -> tuple[Group, list[CourseSession]]:
+def schedule_group(data: ScheduleGroupInput) -> tuple[Group, list[CourseSession]]:
     """
     Creates a group, auto-generates its name, validates time window (11AM-9PM),
     and immediately generates the first level sessions starting from today.
     Returns (group, sessions).
     ATOMIC — group + sessions commit together or not at all.
-    Accepts ScheduleGroupInput or a plain dict (backward compat with UI call sites).
     """
     validate_times(data.default_time_start, data.default_time_end)
 

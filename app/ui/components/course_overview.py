@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from app.modules.academics import academics_service as acad_srv
+from app.modules.academics.schemas import AddNewCourseInput
 
 
 @st.dialog("Create New Course")
@@ -23,13 +24,13 @@ def modal_create_course():
             else:
                 try:
                     course = acad_srv.add_new_course(
-                        {
-                            "name": name.strip(),
-                            "category": category,
-                            "price_per_level": price,
-                            "sessions_per_level": int(sessions_pl),
-                            "description": description.strip() if description else None,
-                        }
+                        AddNewCourseInput(
+                            name=name.strip(),
+                            category=category,
+                            price_per_level=price,
+                            sessions_per_level=int(sessions_pl),
+                            description=description.strip() if description else None,
+                        )
                     )
                     st.success(
                         f"✅ Created course: **{course.name}** (ID: {course.id})"
@@ -51,7 +52,7 @@ def render_course_overview():
 
     courses = acad_srv.get_active_courses()
     stats_list = acad_srv.get_all_course_stats()
-    stats_map = {s["course_id"]: s for s in stats_list}
+    stats_map = {s.course_id: s for s in stats_list}
 
     if search_query:
         query = search_query.lower()
@@ -71,8 +72,8 @@ def render_course_overview():
                 "Category": c.category.capitalize(),
                 "Price (EGP)": c.price_per_level,
                 "Sessions/Level": c.sessions_per_level,
-                "Groups": s.get("active_groups", 0),
-                "Active Students": s.get("active_students", 0),
+                "Groups": getattr(s, "active_groups", 0),
+                "Active Students": getattr(s, "active_students", 0),
             })
 
         df = pd.DataFrame(rows)

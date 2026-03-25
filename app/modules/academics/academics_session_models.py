@@ -26,9 +26,4 @@ class CourseSession(CourseSessionBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     created_at: Optional[datetime] = None  # DB: TIMESTAMPTZ
 
-class CourseSessionCreate(CourseSessionBase):
-    pass
 
-class CourseSessionRead(CourseSessionBase):
-    id: int
-    created_at: Optional[datetime] = None

@@ -24,15 +24,8 @@ class Course(CourseBase, table=True):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
-class CourseCreate(CourseBase):
-    pass
 
-class CourseRead(CourseBase):
-    id: int
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-
-# --- Group Schemas ---
+# --- Group Models ---
 
 class GroupBase(SQLModel):
     name: Optional[str] = None
@@ -57,12 +50,3 @@ class Group(GroupBase, table=True):
         default=None,
         sa_column=SAColumn("metadata", JSONB),
     )
-
-class GroupCreate(GroupBase):
-    pass
-
-class GroupRead(GroupBase):
-    id: int
-    started_at: Optional[datetime] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None

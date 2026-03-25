@@ -4,6 +4,7 @@ from datetime import time
 import datetime
 
 from app.modules.academics import academics_service as acad_srv
+from app.modules.academics.schemas import ScheduleGroupInput
 from app.modules.hr import hr_service as hr_srv
 from app.shared.exceptions import NotFoundError, BusinessRuleError, ValidationError, ConflictError
 
@@ -63,14 +64,14 @@ def modal_create_group():
         if st.form_submit_button("Create Group", type="primary"):
             try:
                 group, _ = acad_srv.schedule_group(
-                    {
-                        "course_id": sel_course.id,
-                        "instructor_id": sel_inst.id,
-                        "max_capacity": int(max_cap),
-                        "default_day": day,
-                        "default_time_start": to_time(st_h, st_m, st_p),
-                        "default_time_end": to_time(en_h, en_m, en_p),
-                    }
+                    ScheduleGroupInput(
+                        course_id=sel_course.id,
+                        instructor_id=sel_inst.id,
+                        max_capacity=int(max_cap),
+                        default_day=day,
+                        default_time_start=to_time(st_h, st_m, st_p),
+                        default_time_end=to_time(en_h, en_m, en_p),
+                    )
                 )
                 st.success(f"Group '{group.name}' created.")
                 st.session_state["group_creation_success"] = True
@@ -86,7 +87,7 @@ def modal_create_group():
 
 
 @st.dialog("Browse All Groups", width="large")
-def modal_browse_all_groups(all_groups: list[dict]):
+def modal_browse_all_groups(all_groups):
     if not all_groups:
         st.info("No groups found.")
         return
@@ -100,7 +101,7 @@ def modal_browse_all_groups(all_groups: list[dict]):
     end_idx = start_idx + PAGE_SIZE
     page_data = all_groups[start_idx:end_idx]
 
-    df = pd.DataFrame(page_data)
+    df = pd.DataFrame([g.model_dump() for g in page_data])
     display_cols = [
         "id",
         "group_name",
@@ -122,7 +123,7 @@ def modal_browse_all_groups(all_groups: list[dict]):
     selected_rows = event.selection.rows
     if selected_rows:
         real_idx = selected_rows[0]
-        selected_id = page_data[real_idx]["id"]
+        selected_id = page_data[real_idx].id
         st.session_state["selected_group_id"] = selected_id
         st.session_state["bg_page"] = 0
         st.rerun()
@@ -185,7 +186,7 @@ def render_group_overview():
     todays_groups = [
         g
         for g in all_groups
-        if g["default_day"] == st.session_state["selected_day_filter"]
+        if g.default_day == st.session_state["selected_day_filter"]
     ]
 
     # Filter live based on search_q
@@ -194,15 +195,15 @@ def render_group_overview():
         todays_groups = [
             g
             for g in todays_groups
-            if q in g["group_name"].lower()
-            or q in g["course_name"].lower()
-            or q in str(g["default_time_start"]).lower()
+            if q in g.group_name.lower()
+            or q in g.course_name.lower()
+            or q in str(g.default_time_start).lower()
         ]
 
     st.markdown("Select a row below to manage its sessions and attendance:")
 
     if todays_groups:
-        df = pd.DataFrame(todays_groups)
+        df = pd.DataFrame([g.model_dump() for g in todays_groups])
         display_cols = [
             "id",
             "group_name",
@@ -224,7 +225,7 @@ def render_group_overview():
 
         if event.selection.rows:
             sel_idx = event.selection.rows[0]
-            st.session_state["selected_group_id"] = todays_groups[sel_idx]["id"]
+            st.session_state["selected_group_id"] = todays_groups[sel_idx].id
             st.rerun()
     else:
         st.info("No groups scheduled for today or matching your search.")
