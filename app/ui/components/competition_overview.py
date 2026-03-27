@@ -130,13 +130,13 @@ def render_competition_overview():
                 if teams:
                     for team in teams:
                         members = comp_srv.list_team_members(team.id)
-                        paid = sum(1 for m in members if m["fee_paid"])
+                        paid = sum(1 for m in members if m.fee_paid)
                         with st.expander(
                             f"👥 {team.team_name} — {len(members)} members ({paid}/{len(members)} fees paid)"
                         ):
                             if members:
                                 st.dataframe(
-                                    pd.DataFrame(members)[
+                                    pd.DataFrame([m.model_dump() for m in members])[
                                         ["student_name", "fee_paid", "payment_id"]
                                     ].rename(
                                         columns={
@@ -213,7 +213,7 @@ def render_competition_overview():
                                 fee_per_student=t_fee or None,
                             )
                             st.success(
-                                f"✅ Team '{result['team'].team_name}' registered with {result['members_added']} members!"
+                                f"✅ Team '{result.team.team_name}' registered with {result.members_added} members!"
                             )
                             st.rerun()
                         except Exception as e:
@@ -264,8 +264,8 @@ def render_competition_overview():
 
                         for m in members2:
                             col_name, col_status, col_btn = st.columns([3, 2, 2])
-                            col_name.markdown(f"👤 {m['student_name']}")
-                            if m["fee_paid"]:
+                            col_name.markdown(f"👤 {m.student_name}")
+                            if m.fee_paid:
                                 col_status.success("✅ Paid")
                             else:
                                 col_status.warning("❌ Unpaid")
@@ -295,7 +295,7 @@ def render_competition_overview():
                                                 mark_fee_paid(
                                                     db,
                                                     sel_team2.id,
-                                                    m["student_id"],
+                                                    m.student_id,
                                                     None,
                                                 )
                                             st.success("✅ Granted!")
@@ -315,7 +315,7 @@ def render_competition_overview():
                                     ):
                                         with st.container():
                                             g_q = st.text_input(
-                                                f"Parent/Parent for {m['student_name']} (name/phone)",
+                                                f"Parent/Parent for {m.student_name} (name/phone)",
                                                 key=f"fee_gq_{m['student_id']}",
                                             )
                                         guardian_id = None
@@ -339,12 +339,12 @@ def render_competition_overview():
                                             try:
                                                 result = comp_srv.pay_competition_fee(
                                                     team_id=sel_team2.id,
-                                                    student_id=m["student_id"],
+                                                    student_id=m.student_id,
                                                     guardian_id=guardian_id,
                                                     received_by_user_id=None,
                                                 )
                                                 st.success(
-                                                    f"✅ Fee paid! Receipt: {result['receipt_number']} | {result['amount']:.0f} EGP"
+                                                    f"✅ Fee paid! Receipt: {result.receipt_number} | {result.amount:.0f} EGP"
                                                 )
                                                 del st.session_state[
                                                     f"fee_paying_{m['student_id']}"

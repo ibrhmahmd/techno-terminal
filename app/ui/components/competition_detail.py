@@ -14,8 +14,8 @@ def render_competition_detail(competition_id: int):
             st.rerun()
         return
 
-    comp = comp_data["competition"]
-    categories = comp_data["categories"]
+    comp = comp_data.competition
+    categories = comp_data.categories
 
     col1, col2 = st.columns([1, 4])
     with col1:
@@ -70,8 +70,8 @@ def render_competition_detail(competition_id: int):
 
     with get_session() as db:
         for cat_data in categories:
-            cat = cat_data["category"]
-            teams = cat_data["teams"]
+            cat = cat_data.category
+            teams = cat_data.teams
 
             cat_col, del_cat_col = st.columns([5, 1])
             with cat_col:
@@ -89,8 +89,8 @@ def render_competition_detail(competition_id: int):
                 st.markdown("*No teams registered in this category.*")
             else:
                 for t_data in teams:
-                    team = t_data["team"]
-                    members = t_data["members"]
+                    team = t_data.team
+                    members = t_data.members
 
                     coach_name = "—"
                     if team.coach_id:

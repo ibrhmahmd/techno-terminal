@@ -184,6 +184,7 @@ service.py        Business logic — opens sessions via get_session(), calls rep
 
 **Variations:**
 - **Academics:** session entity lives in `academics_session_models.py` (`CourseSession`), not in `academics_models.py`, to avoid circular imports.
+- **Competitions:** Deep-SOLID architecture utilizing explicit directories for `models/`, `repositories/`, `services/`, and `schemas/` instead of single monolithic files. The facade `__init__.py` exposes singleton service methods.
 - **API DTOs:** several modules expose `*_schemas.py` (Create/Read shapes) for FastAPI — alongside `*_models.py`.
 - **`app/shared/base_repository.py`:** `RepositoryProtocol` for structural typing; repos may expose module-level aliases (e.g. `get_by_id`) without class inheritance.
 
@@ -279,10 +280,16 @@ The UI imports **only from `service.py`**, not from `repository.py`.
 
 ### 5.7 `app/modules/competitions`
 
-**Models:** `Competition`, `CompetitionCategory`, `Team`, `TeamMember`  
+**Architecture:** Deep-SOLID Refactored. The module uses separated directories natively: `models/`, `schemas/`, `repositories/`, `services/`.
+**Models:** `Competition`, `CompetitionCategory` (in `models/competition_models.py`); `Team`, `TeamMember` (in `models/team_models.py`).
 **Hierarchy:** Competition → Category → Team → TeamMember
+**DTOs:** Uses strict Pydantic typed objects for input commands and output views (e.g., `TeamMemberRosterDTO`, `CompetitionSummaryDTO`).
 
-**service.py:** `get_student_competitions`, `create_competition`, `list_competitions`, category/team CRUD, `add_member_to_team`, `remove_member_from_team`, `mark_team_fee_paid`, …
+**Services:** 
+- **`CompetitionService`**: `create_competition`, `list_competitions`, `update_competition`, `delete_competition`, category CRUD, `get_competition_summary`.
+- **`TeamService`**: `get_student_competitions`, `register_team`, `list_teams`, `update_team`, `delete_team`, `add_team_member_to_existing`, `remove_team_member`, `list_team_members`, `pay_competition_fee`, `unmark_team_fee_for_payment`.
+
+**Facade:** `app/modules/competitions/__init__.py` globally instantiates these singletons and maps their methods for UI backward compatibility.
 
 ---
 

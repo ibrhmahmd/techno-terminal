@@ -8,15 +8,18 @@ from sqlmodel import SQLModel, text
 from app.db.connection import get_engine, get_session
 
 # IMPORTANT: Import ALL SQLModels here so SQLModel.metadata recognizes them before create_all()
-from app.modules.hr.hr_models import Employee
+import app.modules.hr.hr_models
 from app.modules.auth import User
-from app.modules.crm import Guardian, Student, StudentGuardian
-from app.modules.academics.models import Course, Group
-from app.modules.academics.models import CourseSession
+import app.modules.crm.models.guardian_models
+import app.modules.crm.models.student_models
+import app.modules.crm.models.link_models
+import app.modules.academics.models.course_models
+import app.modules.academics.models.schedule_models
 from app.modules.attendance import Attendance
-from app.modules.enrollments.enrollment_models import Enrollment
-from app.modules.finance.finance_models import Receipt, Payment
-from app.modules.competitions.competition_models import Competition, CompetitionCategory, Team, TeamMember
+import app.modules.enrollments.enrollment_models
+import app.modules.finance.finance_models
+import app.modules.competitions.models.competition_models
+import app.modules.competitions.models.team_models
 
 from app.db.seed import seed_admin_account
 
