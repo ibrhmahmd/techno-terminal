@@ -1,7 +1,7 @@
 from sqlmodel import select
 from app.db.connection import get_session
-from app.modules.auth.auth_models import User
-from app.modules.auth.role_types import UserRole
+from app.modules.auth import User
+from app.modules.auth import UserRole
 from app.core.supabase_clients import get_supabase_admin
 
 

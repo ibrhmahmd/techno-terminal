@@ -9,10 +9,10 @@ from app.db.connection import get_engine, get_session
 
 # IMPORTANT: Import ALL SQLModels here so SQLModel.metadata recognizes them before create_all()
 from app.modules.hr.hr_models import Employee
-from app.modules.auth.auth_models import User
-from app.modules.crm.crm_models import Guardian, Student, StudentGuardian
-from app.modules.academics import Course, Group
-from app.modules.academics import CourseSession
+from app.modules.auth import User
+from app.modules.crm import Guardian, Student, StudentGuardian
+from app.modules.academics.models import Course, Group
+from app.modules.academics.models import CourseSession
 from app.modules.attendance import Attendance
 from app.modules.enrollments.enrollment_models import Enrollment
 from app.modules.finance.finance_models import Receipt, Payment
