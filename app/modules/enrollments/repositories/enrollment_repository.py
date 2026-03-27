@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Sequence
 from sqlmodel import Session, select
-from app.modules.enrollments.enrollment_models import Enrollment
+from app.modules.enrollments.models.enrollment_models import Enrollment
 from app.shared.audit_utils import apply_update_audit
 
 
@@ -72,9 +72,3 @@ def get_enrollments_by_student(
     """Returns all enrollments for a student across all groups and statuses."""
     stmt = select(Enrollment).where(Enrollment.student_id == student_id)
     return list(session.exec(stmt).all())
-
-
-# ── RepositoryProtocol aliases ────────────────────────────────────────────────
-get_by_id = get_enrollment
-create = create_enrollment
-list_all = list_enrollments

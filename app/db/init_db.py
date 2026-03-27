@@ -16,7 +16,7 @@ import app.modules.crm.models.link_models
 import app.modules.academics.models.course_models
 import app.modules.academics.models.schedule_models
 from app.modules.attendance import Attendance
-import app.modules.enrollments.enrollment_models
+import app.modules.enrollments.models.enrollment_models
 import app.modules.finance.finance_models
 import app.modules.competitions.models.competition_models
 import app.modules.competitions.models.team_models

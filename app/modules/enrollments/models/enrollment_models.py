@@ -6,7 +6,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import SQLModel, Field, Relationship, Column, String
 from app.shared.constants import EnrollmentStatus
 
-# --- Enrollment Schemas ---
+# --- Enrollment Models ---
 
 class EnrollmentBase(SQLModel):
     student_id: int = Field(foreign_key="students.id")
@@ -31,12 +31,3 @@ class Enrollment(EnrollmentBase, table=True):
         default=None,
         sa_column=SAColumn("metadata", JSONB),
     )
-
-class EnrollmentCreate(EnrollmentBase):
-    pass
-
-class EnrollmentRead(EnrollmentBase):
-    id: int
-    enrolled_at: Optional[datetime] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None

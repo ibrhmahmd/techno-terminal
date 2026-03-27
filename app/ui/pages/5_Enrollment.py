@@ -5,6 +5,7 @@ from app.ui.components.auth_guard import require_auth
 from app.modules.crm import crm_service as crm_srv
 import app.modules.academics as acad_srv
 from app.modules.enrollments import enrollment_service as enroll_srv
+from app.modules.enrollments.schemas import EnrollStudentInput, TransferStudentInput
 from app.shared.exceptions import NotFoundError, BusinessRuleError, ConflictError, ValidationError
 
 st.set_page_config(page_title="Enrollment Wizard", layout="wide")
@@ -86,7 +87,7 @@ with tab_enroll:
             if submit:
                 discount = 50.0 if apply_discount else 0.0
                 try:
-                    enrollment, over_capacity = enroll_srv.enroll_student(
+                    payload = EnrollStudentInput(
                         student_id=selected_student.id,
                         group_id=selected_group.id,
                         amount_due=amount_due,
@@ -94,6 +95,7 @@ with tab_enroll:
                         notes=notes.strip() if notes else None,
                         created_by=state.get_current_user_id(),
                     )
+                    enrollment, over_capacity = enroll_srv.enroll_student(payload)
                     st.success(f"✅ Enrolled successfully! Enrollment ID: {enrollment.id}")
                     if over_capacity:
                         st.warning("⚠️ Group is over capacity. Admin override applied.")
@@ -171,11 +173,12 @@ with tab_manage:
                             )
                             if st.button("Confirm Transfer", type="primary"):
                                 try:
-                                    new_enr = enroll_srv.transfer_student(
-                                        sel_enr.id,
-                                        t_sel.id,
+                                    payload = TransferStudentInput(
+                                        from_enrollment_id=sel_enr.id,
+                                        to_group_id=t_sel.id,
                                         created_by=state.get_current_user_id(),
                                     )
+                                    new_enr = enroll_srv.transfer_student(payload)
                                     st.success(f"Transferred! New ID: #{new_enr.id}")
                                     st.rerun()
                                 except Exception as e: st.error(f"❌ {e}")
