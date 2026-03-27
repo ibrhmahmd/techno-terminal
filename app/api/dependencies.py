@@ -10,8 +10,8 @@ from sqlmodel import Session
 
 from app.db.connection import get_session
 from app.core.supabase_clients import get_supabase_anon
-from app.modules.auth.auth_service import get_user_by_supabase_uid
-from app.modules.auth.auth_models import User
+from app.modules.auth import get_user_by_supabase_uid
+from app.modules.auth import User
 
 logger = logging.getLogger(__name__)
 

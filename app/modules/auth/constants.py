@@ -1,22 +1,22 @@
 """
-Canonical user roles for the application and database CHECK constraints.
-
-To add a role later:
-  1. Add a new member here and include it in ALL_ROLE_VALUES.
-  2. Update the CHECK on users.role in db/schema.sql and add a db/migrations/*.sql
-     (and/or an Alembic revision) to alter the constraint on existing databases.
+app/modules/auth/constants.py
+──────────────────────────────
+Auth-domain constants: role definitions and validators.
 """
-from enum import StrEnum
+from enum import Enum
 
 
-class UserRole(StrEnum):
+class UserRole(str, Enum):
     ADMIN = "admin"
     INSTRUCTOR = "instructor"
-    SYSTEM_ADMIN = "system_admin"
+    RECEPTIONIST = "receptionist"
+    MANAGER = "manager"
 
 
-ALL_ROLE_VALUES: frozenset[str] = frozenset(m.value for m in UserRole)
+# Precomputed set of all valid role string values for fast O(1) membership tests.
+ALL_ROLE_VALUES: frozenset[str] = frozenset(role.value for role in UserRole)
 
 
-def is_valid_role(role: str) -> bool:
-    return role in ALL_ROLE_VALUES
+def is_valid_role(value: str) -> bool:
+    """Returns True if *value* is a recognised role string."""
+    return value in ALL_ROLE_VALUES
