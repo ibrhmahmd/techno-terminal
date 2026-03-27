@@ -1,9 +1,4 @@
-> ⚠️ **STALE DOCUMENT — Historical Reference Only**  
-> This document describes schema **v3.1**. The current schema is **v3.3**.  
-> For the authoritative schema see: `db/schema.sql` (full DDL) and [`docs/MEMORY_BANK.md §3`](../../MEMORY_BANK.md) (summary).  
-> Key differences in v3.3: `users.password_hash` replaced by `supabase_uid`; `instructor` role added; `v_enrollment_balance.balance` formula is `total_paid − net_due` (P6 sign convention); audit columns with triggers; migrations 002–007 applied.
-
-# Techno Kids — PostgreSQL Database Schema (v3.1) — HISTORICAL
+# Techno Kids — PostgreSQL Database Schema (v3.1)
 
 **Engine:** PostgreSQL 15+ | **Tables:** 15 | **Views:** 5 | **Indexes:** 23
 
