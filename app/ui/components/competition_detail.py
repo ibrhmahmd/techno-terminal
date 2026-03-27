@@ -119,7 +119,7 @@ def render_competition_detail(competition_id: int):
                                 st.rerun()
 
                         if members:
-                            from app.modules.crm.crm_models import Student
+                            from app.modules.crm import Student
 
                             member_list = []
                             for m in members:
@@ -148,7 +148,7 @@ def render_competition_detail(competition_id: int):
                             "Search Student by Name", key=f"am_q_{team.id}"
                         )
                         if am_search and len(am_search) >= 2:
-                            from app.modules.crm.crm_service import search_students
+                            from app.modules.crm import search_students
 
                             results = search_students(am_search)
                             if results:

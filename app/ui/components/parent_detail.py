@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from app.db.connection import get_session
-from app.modules.crm.crm_models import Guardian
+from app.modules.crm import Guardian
 from app.modules.crm import crm_service
 from app.modules.finance import finance_service as fin_srv
 from app.modules.competitions import competition_service as comp_srv

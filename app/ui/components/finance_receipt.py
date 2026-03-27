@@ -28,7 +28,7 @@ def render_receipt_detail(receipt_id: int):
     # Header info
     parent_name = "—"
     if r.guardian_id:
-        from app.modules.crm.crm_service import get_guardian_by_id
+        from app.modules.crm import get_guardian_by_id
 
         g = get_guardian_by_id(r.guardian_id)
         if g:

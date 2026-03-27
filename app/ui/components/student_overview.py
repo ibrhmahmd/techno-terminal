@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime
 
 from app.ui import state
-from app.modules.crm import crm_service as crm_srv
+from app.modules.crm import crm_service as crm_srv, RegisterStudentInput, RegisterStudentCommandDTO
 from app.shared.exceptions import NotFoundError, BusinessRuleError, ValidationError
 
 
@@ -60,20 +60,21 @@ def modal_register_student():
                 if not full_name.strip():
                     st.error("Student Name is required.")
                 else:
-                    data = {
-                        "full_name": full_name.strip(),
-                        "date_of_birth": birth_date,
-                        "gender": gender,
-                        "phone": phone.strip() if phone else None,
-                        "notes": notes.strip() if notes else None,
-                    }
+                    data = RegisterStudentInput(
+                        full_name=full_name.strip(),
+                        date_of_birth=birth_date,
+                        gender=gender,
+                        phone=phone.strip() if phone else None,
+                        notes=notes.strip() if notes else None,
+                    )
                     try:
-                        new_student, siblings = crm_srv.register_student(
-                            data,
+                        student_command = RegisterStudentCommandDTO(
+                            student_data=data,
                             guardian_id=selected_parent_id,
                             relationship="Child",
                             created_by_user_id=state.get_current_user_id(),
                         )
+                        new_student, siblings = crm_srv.register_student(student_command)
                         st.success(
                             f"✅ Successfully registered {new_student.full_name} (ID: {new_student.id})!"
                         )

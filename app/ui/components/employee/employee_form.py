@@ -1,7 +1,7 @@
 import streamlit as st
 
-from app.modules.auth.auth_models import UserCreate
-from app.modules.auth.role_types import UserRole
+from app.modules.auth import UserCreate
+from app.modules.auth import UserRole
 from app.modules.hr import hr_service
 from app.modules.hr.hr_models import EmployeeCreate
 from app.shared.constants import EMPLOYMENT_TYPES, EmploymentType

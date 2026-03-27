@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from app.modules.crm import crm_service as crm_srv
+from app.modules.crm import crm_service as crm_srv, RegisterGuardianInput
 from app.shared.exceptions import NotFoundError, BusinessRuleError, ConflictError, ValidationError
 
 
@@ -25,14 +25,14 @@ def modal_register_parent():
             notes = st.text_area("Notes (Optional)", height=68)
 
         if st.form_submit_button("Register Parent", type="primary"):
-            data = {
-                "full_name": full_name.strip(),
-                "phone_primary": phone_primary.strip(),
-                "phone_secondary": phone_secondary.strip() if phone_secondary else None,
-                "email": email.strip() if email else None,
-                "relation": relation,
-                "notes": notes.strip() if notes else None,
-            }
+            data = RegisterGuardianInput(
+                full_name=full_name.strip(),
+                phone_primary=phone_primary.strip(),
+                phone_secondary=phone_secondary.strip() if phone_secondary else None,
+                email=email.strip() if email else None,
+                relation=relation,
+                notes=notes.strip() if notes else None,
+            )
 
             try:
                 new_guardian = crm_srv.register_guardian(data)

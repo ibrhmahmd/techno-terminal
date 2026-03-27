@@ -1,12 +1,12 @@
 import streamlit as st
 
-from app.modules.academics import academics_service
-from app.modules.auth.auth_service import (
+import app.modules.academics as academics_service
+from app.modules.auth import (
     force_reset_password,
     get_users_for_employee,
     link_employee_to_new_user,
 )
-from app.modules.auth.role_types import UserRole
+from app.modules.auth import UserRole
 from app.modules.hr import hr_service
 
 _ROLE_OPTIONS = list(UserRole)

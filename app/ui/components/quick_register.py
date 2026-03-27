@@ -1,6 +1,6 @@
 import streamlit as st
 from app.ui import state
-from app.modules.crm import crm_service as crm_srv
+from app.modules.crm import crm_service as crm_srv, RegisterGuardianInput, RegisterStudentInput, RegisterStudentCommandDTO
 from app.shared.exceptions import ValidationError, ConflictError
 
 def render_quick_register():
@@ -66,28 +66,29 @@ def render_quick_register():
                 
                 try:
                     # 1. Find or create guardian
-                    guardian, created = crm_srv.find_or_create_guardian({
-                        "full_name": p_name.strip(),
-                        "phone_primary": p_phone.strip(),
-                        "phone_secondary": p_phone_sec.strip() if p_phone_sec else None,
-                        "email": p_email.strip() if p_email else None,
-                        "relation": p_relation,
-                        "notes": final_p_notes
-                    })
+                    guardian, created = crm_srv.find_or_create_guardian(RegisterGuardianInput(
+                        full_name=p_name.strip(),
+                        phone_primary=p_phone.strip(),
+                        phone_secondary=p_phone_sec.strip() if p_phone_sec else None,
+                        email=p_email.strip() if p_email else None,
+                        relation=p_relation,
+                        notes=final_p_notes
+                    ))
                     
                     # 2. Register student and link to guardian
-                    student, siblings = crm_srv.register_student(
-                        student_data={
-                            "full_name": s_name.strip(),
-                            "date_of_birth": str(s_dob) if s_dob else None,
-                            "gender": s_gender,
-                            "phone": s_phone.strip() if s_phone else None,
-                            "notes": final_s_notes
-                        },
+                    student_command = RegisterStudentCommandDTO(
+                        student_data=RegisterStudentInput(
+                            full_name=s_name.strip(),
+                            date_of_birth=s_dob if s_dob else None,
+                            gender=s_gender,
+                            phone=s_phone.strip() if s_phone else None,
+                            notes=final_s_notes
+                        ),
                         guardian_id=guardian.id,
                         relationship=p_relation,
                         created_by_user_id=state.get_current_user_id(),
                     )
+                    student, siblings = crm_srv.register_student(student_command)
                     
                     if created:
                         st.success(f"✅ Created new Parent: **{guardian.full_name}** and Student: **{student.full_name}**")

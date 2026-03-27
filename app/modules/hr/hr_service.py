@@ -5,11 +5,11 @@ from sqlalchemy.exc import IntegrityError
 from app.db.connection import get_session
 from app.core.supabase_clients import get_supabase_admin
 from app.modules.hr.hr_models import Employee, EmployeeCreate
-from app.modules.auth.auth_models import UserCreate
-from app.modules.auth.role_types import is_valid_role
+from app.modules.auth import UserCreate
+from app.modules.auth import is_valid_role
 from app.modules.hr import hr_repository as hr_repo
 from app.modules.hr.hr_repository import EMPLOYEE_FIELD_KEYS
-from app.modules.auth import auth_repository as auth_repo
+import app.modules.auth.repositories as auth_repo
 from app.shared.constants import EMPLOYMENT_TYPES, MIN_PASSWORD_LENGTH
 from app.shared.exceptions import ValidationError, ConflictError, NotFoundError
 

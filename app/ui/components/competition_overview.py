@@ -186,7 +186,7 @@ def render_competition_overview():
                     if t_group_id:
                         roster = enroll_srv.get_group_roster(t_group_id, None)
                         if roster:
-                            from app.modules.crm.crm_models import Student
+                            from app.modules.crm import Student
                             from app.db.connection import get_session
 
                             student_opts = {}

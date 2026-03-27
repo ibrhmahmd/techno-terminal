@@ -1,6 +1,6 @@
 import streamlit as st
 from app.db.connection import get_session
-from app.modules.crm.crm_models import Student
+from app.modules.crm import Student
 import app.modules.attendance as att_srv
 
 # Toggle cycle: unset -> present -> absent -> unset

@@ -1,5 +1,5 @@
 import streamlit as st
-from app.modules.crm import crm_service as crm_srv
+from app.modules.crm import crm_service as crm_srv, UpdateGuardianDTO
 
 def render_edit_parent_form(parent):
     with st.expander("✏️ Edit Family Information"):
@@ -18,14 +18,14 @@ def render_edit_parent_form(parent):
             
             if st.form_submit_button("Save Changes", type="primary"):
                 try:
-                    crm_srv.update_guardian(parent.id, {
-                        "full_name": e_name.strip(),
-                        "phone_primary": e_phone.strip(),
-                        "phone_secondary": e_phone_sec.strip() or None,
-                        "email": e_email.strip() or None,
-                        "relation": e_rel,
-                        "notes": e_notes.strip() or None
-                    })
+                    crm_srv.update_guardian(parent.id, UpdateGuardianDTO(
+                        full_name=e_name.strip(),
+                        phone_primary=e_phone.strip(),
+                        phone_secondary=e_phone_sec.strip() or None,
+                        email=e_email.strip() or None,
+                        relation=e_rel,
+                        notes=e_notes.strip() or None
+                    ))
                     st.success("Family details updated!")
                     st.rerun()
                 except Exception as e:

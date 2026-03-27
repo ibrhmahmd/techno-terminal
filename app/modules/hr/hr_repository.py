@@ -1,6 +1,6 @@
 from sqlmodel import Session, select
 from app.shared.datetime_utils import utc_now
-from app.modules.auth.auth_models import User
+from app.modules.auth.models.auth_models import User
 from app.modules.hr.hr_models import Employee
 
 EMPLOYEE_FIELD_KEYS = frozenset(

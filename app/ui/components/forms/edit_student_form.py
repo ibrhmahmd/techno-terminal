@@ -1,5 +1,5 @@
 import streamlit as st
-from app.modules.crm import crm_service as crm_srv
+from app.modules.crm import crm_service as crm_srv, UpdateStudentDTO
 
 def render_edit_student_form(student):
     with st.expander("✏️ Edit Student Information"):
@@ -17,14 +17,14 @@ def render_edit_student_form(student):
             
             if st.form_submit_button("Save Changes", type="primary"):
                 try:
-                    crm_srv.update_student(student.id, {
-                        "full_name": es_name.strip(),
-                        "phone": es_phone.strip() or None,
-                        "gender": es_gender,
-                        "date_of_birth": es_dob,
-                        "notes": es_notes.strip() or None,
-                        "is_active": es_status
-                    })
+                    crm_srv.update_student(student.id, UpdateStudentDTO(
+                        full_name=es_name.strip(),
+                        phone=es_phone.strip() or None,
+                        gender=es_gender,
+                        date_of_birth=es_dob,
+                        notes=es_notes.strip() or None,
+                        is_active=es_status
+                    ))
                     st.success("Student details updated!")
                     st.rerun()
                 except Exception as e:

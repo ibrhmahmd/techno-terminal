@@ -1,7 +1,7 @@
 import pandas as pd
 import streamlit as st
 
-from app.modules.auth.auth_service import get_users_for_employee
+from app.modules.auth import get_users_for_employee
 from app.modules.hr import hr_service
 from app.shared.constants import EMPLOYMENT_TYPES
 
