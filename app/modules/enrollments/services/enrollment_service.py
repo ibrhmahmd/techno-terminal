@@ -11,7 +11,7 @@ from app.modules.enrollments.schemas.enrollment_schemas import (
     EnrollmentDTO,
 )
 from app.shared.exceptions import NotFoundError, BusinessRuleError, ConflictError
-from app.modules.enrollments.repositories import enrollment_repository as repo
+import app.modules.enrollments.repositories.enrollment_repository as repo
 
 class EnrollmentService:
     def enroll_student(

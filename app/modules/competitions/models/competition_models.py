@@ -8,7 +8,7 @@ import app.modules.finance.finance_models
 import app.modules.crm
 import app.modules.academics.models
 import app.modules.auth
-import app.modules.enrollments.enrollment_models
+import app.modules.enrollments.models.enrollment_models
 
 
 # --- Competition Models ---

@@ -4,8 +4,8 @@ from app.db.connection import get_session
 from app.shared.datetime_utils import date_at_utc_midnight
 from app.modules.crm.models.student_models import Student
 from app.modules.crm.schemas.student_schemas import UpdateStudentDTO, RegisterStudentCommandDTO
-from app.modules.crm.repositories import student_repository as repo
-from app.modules.crm.repositories import guardian_repository
+import app.modules.crm.repositories.student_repository as repo
+import app.modules.crm.repositories.guardian_repository as guardian_repository
 from app.shared.audit_utils import apply_create_audit, apply_update_audit
 from app.shared.exceptions import NotFoundError
 

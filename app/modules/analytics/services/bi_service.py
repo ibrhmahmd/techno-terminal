@@ -6,7 +6,7 @@ Domain service for Business Intelligence (BI) analytics.
 
 from datetime import date
 from app.db.connection import get_session
-from app.modules.analytics.repositories import bi_repository as repo
+import app.modules.analytics.repositories.bi_repository as repo
 from app.modules.analytics.schemas import (
     EnrollmentTrendDTO,
     RetentionMetricsDTO,

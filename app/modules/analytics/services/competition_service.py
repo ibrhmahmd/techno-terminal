@@ -5,7 +5,7 @@ Domain service for competition analytics.
 """
 
 from app.db.connection import get_session
-from app.modules.analytics.repositories import competition_repository as repo
+import app.modules.analytics.repositories.competition_repository as repo
 from app.modules.analytics.schemas import CompetitionFeeSummaryDTO
 
 

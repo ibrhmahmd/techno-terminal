@@ -1,7 +1,7 @@
 from app.db.connection import get_session
 from app.modules.crm.models.guardian_models import Guardian
 from app.modules.crm.schemas.guardian_schemas import RegisterGuardianInput, UpdateGuardianDTO
-from app.modules.crm.repositories import guardian_repository as repo
+import app.modules.crm.repositories.guardian_repository as repo
 from app.shared.audit_utils import apply_create_audit, apply_update_audit
 from app.shared.exceptions import ConflictError, NotFoundError
 

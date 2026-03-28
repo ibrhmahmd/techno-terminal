@@ -6,7 +6,7 @@ Domain service for financial analytics.
 
 from datetime import date
 from app.db.connection import get_session
-from app.modules.analytics.repositories import financial_repository as repo
+import app.modules.analytics.repositories.financial_repository as repo
 from app.modules.analytics.schemas import (
     RevenueByDateDTO,
     RevenueByMethodDTO,

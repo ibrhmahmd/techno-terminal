@@ -2,7 +2,7 @@ from typing import List, Optional
 
 from app.core.supabase_clients import get_supabase_admin
 from app.db.connection import get_session
-from app.modules.auth.repositories import auth_repository as repo
+import app.modules.auth.repositories.auth_repository as repo
 from app.modules.auth.models.auth_models import User
 from app.modules.auth.schemas.auth_schemas import UserCreate
 from app.modules.auth.constants import is_valid_role

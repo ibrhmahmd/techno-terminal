@@ -1,14 +1,14 @@
 from app.db.connection import get_session
-from app.modules.enrollments.enrollment_repository import get_active_enrollment
-from app.modules.academics.models import CourseSession
-from app.modules.attendance.models import Attendance
-from app.modules.attendance.schemas import (
+from app.modules.enrollments.repositories.enrollment_repository import get_active_enrollment
+from app.modules.academics.models.session_models import CourseSession
+from app.modules.attendance.models.attendance_models import Attendance
+from app.modules.attendance.schemas.attendance_schemas import (
     SessionAttendanceRowDTO,
     EnrollmentAttendanceSummaryDTO,
     MarkAttendanceResponseDTO,
 )
 from app.shared.exceptions import NotFoundError
-from app.modules.attendance import repositories as repo
+import app.modules.attendance.repositories.attendance_repository as repo
 
 
 class AttendanceService:

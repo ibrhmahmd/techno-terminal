@@ -7,7 +7,7 @@ Domain service for academic analytics.
 from datetime import date
 from typing import Optional
 from app.db.connection import get_session
-from app.modules.analytics.repositories import academic_repository as repo
+import app.modules.analytics.repositories.academic_repository as repo
 from app.modules.analytics.schemas import (
     TodaySessionDTO,
     UnpaidAttendeeDTO,
