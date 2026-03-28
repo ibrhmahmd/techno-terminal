@@ -22,6 +22,8 @@ drop_enrollment = _enrollment_svc.drop_enrollment
 complete_enrollment = _enrollment_svc.complete_enrollment
 get_group_roster = _enrollment_svc.get_group_roster
 get_student_enrollments = _enrollment_svc.get_student_enrollments
+enrollment_service = _enrollment_svc
+enroll_srv = _enrollment_svc
 
 __all__ = [
     "EnrollStudentInput",
@@ -36,4 +38,6 @@ __all__ = [
     "complete_enrollment",
     "get_group_roster",
     "get_student_enrollments",
+    "enrollment_service",
+    "enroll_srv",
 ]

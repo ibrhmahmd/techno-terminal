@@ -1,8 +1,8 @@
 from datetime import date
 from typing import Optional
 from app.db.connection import get_session
-from app.modules.competitions.repositories import team_repository as team_repo
-from app.modules.competitions.repositories import competition_repository as comp_repo
+import app.modules.competitions.repositories.team_repository as team_repo
+import app.modules.competitions.repositories.competition_repository as comp_repo
 from app.shared.exceptions import ValidationError, NotFoundError, BusinessRuleError, ConflictError
 from app.modules.competitions.schemas.team_schemas import (
     RegisterTeamInput,

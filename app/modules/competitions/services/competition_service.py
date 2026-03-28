@@ -1,16 +1,16 @@
 from app.db.connection import get_session
-from app.modules.competitions.repositories import competition_repository as comp_repo
-from app.modules.competitions.repositories import team_repository as team_repo
+import app.modules.competitions.repositories.competition_repository as comp_repo
+import app.modules.competitions.repositories.team_repository as team_repo
 from app.shared.exceptions import NotFoundError
 from app.modules.competitions.schemas.competition_schemas import (
     CreateCompetitionInput,
     AddCategoryInput,
     CompetitionDTO,
     CompetitionCategoryDTO,
-    CompetitionSummaryDTO,
-    CategoryWithTeamsDTO,
 )
 from app.modules.competitions.schemas.team_schemas import (
+    CompetitionSummaryDTO,
+    CategoryWithTeamsDTO,
     TeamWithMembersDTO,
     TeamDTO,
     TeamMemberDTO,
