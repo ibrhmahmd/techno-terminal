@@ -20,11 +20,11 @@
 
 **Transports (dual path):**
 - **Streamlit** (`app/ui/`) is the primary internal UI. Pages call **`app/modules/*/service.py` directly** (same process, no HTTP to self for domain data).
-- **FastAPI** (`app/api/`) exposes a growing **REST API** (JSON). It reuses the same services and `get_session`-backed repositories. **Phase 5.1 (scaffold + auth) is in place:** `GET /api/v1/auth/me`, `GET /health`, global exception handlers, `get_db`. **Domain routers** (CRM, academics, finance, …) are **not mounted** yet — see [phase5_api_execution_roadmap_2026.md](reviews/phase5_api_execution_roadmap_2026.md) for the ordered rollout. Streamlit stores `access_token` in session state after Supabase login for **Bearer** API calls.
+- **FastAPI** (`app/api/`) exposes a growing **REST API** (JSON). It reuses the same services and `get_session`-backed repositories. **Phase 5.1 (scaffold + auth) is in place:** `GET /api/v1/auth/me`, `GET /health`, global exception handlers, `get_db`. **Domain routers** (CRM, academics, finance, …) are **not mounted** yet — see [phase5_api_execution_roadmap_2026.md](planning/phase5_api_execution_roadmap_2026.md) for the ordered rollout. Streamlit stores `access_token` in session state after Supabase login for **Bearer** API calls.
 
 **Authentication:** End-user credentials are verified by **Supabase** (`sign_in_with_password` in Streamlit; JWT verification via Supabase SDK in FastAPI). Local Postgres `users` rows map identities with `supabase_uid`. After successful Streamlit login, **`update_last_login`** updates `users.last_login` (explicit `session.commit()` in service; `get_session()` also commits on exit).
 
-**Audit (D4):** `app/shared/audit_utils.py` stamps `created_at` / `updated_at` / optional `created_by` on CRM, enrollments, and academics mutating paths where applicable. **`db/migrations/005_audit_d4_timestamps.sql`** backfills NULLs, sets `DEFAULT CURRENT_TIMESTAMP`, normalizes legacy TEXT `sessions.created_at` / `session_date`, and adds `tf_set_updated_at` triggers (mirrored in greenfield `db/schema.sql`). Streamlit uses **`state.get_current_user_id()`** for `created_by` / `received_by`. See `docs/reviews/sprint_roadmap_post_qa_2026.md` Sprint 3.
+**Audit (D4):** `app/shared/audit_utils.py` stamps `created_at` / `updated_at` / optional `created_by` on CRM, enrollments, and academics mutating paths where applicable. **`db/migrations/005_audit_d4_timestamps.sql`** backfills NULLs, sets `DEFAULT CURRENT_TIMESTAMP`, normalizes legacy TEXT `sessions.created_at` / `session_date`, and adds `tf_set_updated_at` triggers (mirrored in greenfield `db/schema.sql`). Streamlit uses **`state.get_current_user_id()`** for `created_by` / `received_by`. See `docs/planning/sprint_roadmap_post_qa_2026.md` Sprint 3.
 
 ---
 
@@ -56,8 +56,8 @@ project_root/
 │       └── 007_p6_enrollment_balance.sql           # B8/P6: account balance sign convention
 ├── docs/
 │   ├── MEMORY_BANK.md            # THIS FILE (handoff summary)
-│   ├── plans/                    # Short summaries of completed engineering plans (see §12)
-│   ├── reviews/                  # QA backlog, sprint roadmap, Phase 5 API execution roadmap
+│   ├── archive/                  # Legacy history, completed refactors, and old plans
+│   ├── planning/                 # Active sprint planning, QA backlogs, and roadmaps
 │   └── memory_bank/              # Deeper specs, ADRs, reviews, ETL history (see §12)
 └── app/
     ├── core/
@@ -274,7 +274,7 @@ The UI imports **only from `service.py`**, not from `repository.py`.
 
 **Dashboard (Sprint 4):** **`dashboard_receipts.render_receipt_browser`** on **`0_Dashboard.py`** → Financial Desk sub-tab; DB index **`idx_receipts_paid_at`** (`006` + **`schema.sql`**).
 
-**Balance (P6 / B8):** View **`v_enrollment_balance.balance`** = **`total_paid − net_due`** — **negative** = debt, **zero** = settled, **positive** = credit. Migration **`007_p6_enrollment_balance.sql`**; analytics and Financial Desk use **debt** predicates (**`balance < 0`**). **Next:** [reviews/sprint_6b_financial_desk_implementation_plan.md](reviews/sprint_6b_financial_desk_implementation_plan.md) (U2, U9, B3, P8 phase A).
+**Balance (P6 / B8):** View **`v_enrollment_balance.balance`** = **`total_paid − net_due`** — **negative** = debt, **zero** = settled, **positive** = credit. Migration **`007_p6_enrollment_balance.sql`**; analytics and Financial Desk use **debt** predicates (**`balance < 0`**). **Next:** [planning/sprint_6b_financial_desk_implementation_plan.md](planning/sprint_6b_financial_desk_implementation_plan.md) (U2, U9, B3, P8 phase A).
 
 ---
 
@@ -378,7 +378,7 @@ if "nav_target_student_id" in st.session_state:
 - **`get_db`** — yields a `Session` scoped to the request (uses `get_session()` context manager pattern).
 - **Exception handlers:** `app/api/exceptions.py`
 
-**Phase 5 status:** **5.1** (scaffold + Supabase JWT + `/me`) is implemented. **5.2–5.5** (CRM, academics, transactions, analytics routers) are **planned** — detailed order, acceptance criteria, and security checklist: [docs/reviews/phase5_api_execution_roadmap_2026.md](reviews/phase5_api_execution_roadmap_2026.md). Architectural blueprint: [docs/memory_bank/04_architecture/09_phase5_api_technical_plan.md](memory_bank/04_architecture/09_phase5_api_technical_plan.md). Commented `include_router` placeholders live in `main.py`.
+**Phase 5 status:** **5.1** (scaffold + Supabase JWT + `/me`) is implemented. **5.2–5.5** (CRM, academics, transactions, analytics routers) are **planned** — detailed order, acceptance criteria, and security checklist: [docs/planning/phase5_api_execution_roadmap_2026.md](planning/phase5_api_execution_roadmap_2026.md). Architectural blueprint: [docs/memory_bank/04_architecture/09_phase5_api_technical_plan.md](memory_bank/04_architecture/09_phase5_api_technical_plan.md). Commented `include_router` placeholders live in `main.py`.
 
 ---
 
@@ -501,15 +501,15 @@ alembic stamp 001_baseline_v33
 | 8 | Auth hardening: `UserRole`, `UserPublic`, `HTTPBearer`, lazy Supabase clients; schema v3.3; JSONB metadata on models; `db/migrations/002`, Alembic baseline; employee UI wired to services |
 | 9 | Sprint 3 (D4): `audit_utils`, migration `005` + schema audit defaults/triggers; CRM/enrollment/UI actor threading; `CourseSession` DATE/TIMESTAMPTZ ORM alignment; academics update DTOs + `apply_update_audit`; `state.get_current_user_id()` |
 
-**Completed plan write-ups:** `docs/plans/` ([README](plans/README.md)) — memory-bank refresh summary, auth/DB alignment task list.
+**Completed plan write-ups:** `docs/archive/legacy_plans/` ([README](archive/legacy_plans/README.md)) — memory-bank refresh summary, auth/DB alignment task list.
 
 **Active planning (product + API rollout):**
-- `docs/reviews/qa_backlog_2026_03_testing_findings.md` — QA findings, story points, product decisions **P1–P9**
-- `docs/reviews/sprint_roadmap_post_qa_2026.md` — ordered product/engineering sprints after QA
-- `docs/reviews/phase5_api_execution_roadmap_2026.md` — Phase 5.1–5.5 API delivery plan
+- `docs/planning/qa_backlog_2026_03_testing_findings.md` — QA findings, story points, product decisions **P1–P9**
+- `docs/planning/sprint_roadmap_post_qa_2026.md` — ordered product/engineering sprints after QA
+- `docs/planning/phase5_api_execution_roadmap_2026.md` — Phase 5.1–5.5 API delivery plan
 
 **See also (longer-form, may predate code):**
-- `docs/plans/` — archived summaries of completed engineering plans  
+- `docs/archive/legacy_plans/` — archived summaries of completed engineering plans  
 - `docs/memory_bank/01_business_domain/` — requirements, data dictionary, project origin  
 - `docs/memory_bank/02_database_design/` — schema narrative  
 - `docs/memory_bank/03_etl_pipeline/` — **historical** Excel ETL context (no `src/` pipeline in this repo snapshot)  
