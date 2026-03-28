@@ -30,7 +30,7 @@ def render_edit_session_form(session_id: int):
     s_notes = st.text_area("Notes", value=cs.notes or "")
     
     if st.button("Save Session Changes", type="primary", use_container_width=True):
-        from app.modules.academics.academics_schemas import UpdateSessionDTO
+        from app.modules.academics.schemas.session_schemas import UpdateSessionDTO
         try:
             acad_srv.update_session(cs.id, UpdateSessionDTO(
                 session_date=s_date,

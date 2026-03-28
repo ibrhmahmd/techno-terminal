@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from app.modules.competitions import competition_service as comp_srv
+from app.modules.competitions import team_service as team_srv
 from app.modules.hr.hr_service import get_employee_by_id
 from app.db.connection import get_session
 
@@ -115,7 +116,7 @@ def render_competition_detail(competition_id: int):
                             )
                         with t_col2:
                             if st.button("🗑️ Delete Team", key=f"del_team_{team.id}"):
-                                comp_srv.delete_team(team.id)
+                                team_srv.delete_team(team.id)
                                 st.rerun()
 
                         if members:
@@ -171,7 +172,7 @@ def render_competition_detail(competition_id: int):
                                         type="primary",
                                     ):
                                         try:
-                                            comp_srv.add_team_member_to_existing(
+                                            team_srv.add_team_member_to_existing(
                                                 team.id, sel_s.id
                                             )
                                             st.success("Member added!")

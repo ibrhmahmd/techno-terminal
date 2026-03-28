@@ -4,7 +4,7 @@ from app.db.connection import get_session
 from app.modules.crm import Guardian
 from app.modules.crm import crm_service
 from app.modules.finance import finance_service as fin_srv
-from app.modules.competitions import competition_service as comp_srv
+from app.modules.competitions import team_service as comp_srv
 from app.modules.enrollments import get_student_enrollments
 
 

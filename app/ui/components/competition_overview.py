@@ -3,6 +3,8 @@ import pandas as pd
 from datetime import date
 
 from app.modules.competitions import competition_service as comp_srv
+from app.modules.competitions import team_service as team_srv
+from app.modules.competitions import CreateCompetitionInput, RegisterTeamInput, PayCompetitionFeeInput
 from app.modules.hr import hr_service as hr_srv
 from app.modules.crm import crm_service as crm_srv
 from app.modules.enrollments import enrollment_service as enroll_srv
@@ -37,9 +39,13 @@ def render_competition_overview():
                 col_save, col_cancel = st.columns(2)
                 if col_save.button("✅ Save Competition", type="primary"):
                     try:
-                        comp_srv.create_competition(
-                            c_name, c_edition, c_date, c_location, c_notes
-                        )
+                        comp_srv.create_competition(CreateCompetitionInput(
+                            name=c_name,
+                            edition=c_edition or None,
+                            competition_date=c_date,
+                            location=c_location or None,
+                            notes=c_notes or None,
+                        ))
                         st.success(f"Competition '{c_name}' created!")
                         st.session_state["show_new_comp"] = False
                         st.rerun()
@@ -125,11 +131,11 @@ def render_competition_overview():
                     format_func=lambda c: c.category_name,
                     key="team_cat",
                 )
-                teams = comp_srv.list_teams(sel_cat.id)
+                teams = team_srv.list_teams(sel_cat.id)
 
                 if teams:
                     for team in teams:
-                        members = comp_srv.list_team_members(team.id)
+                        members = team_srv.list_team_members(team.id)
                         paid = sum(1 for m in members if m.fee_paid)
                         with st.expander(
                             f"👥 {team.team_name} — {len(members)} members ({paid}/{len(members)} fees paid)"
@@ -204,14 +210,14 @@ def render_competition_overview():
 
                     if st.button("✅ Register Team", type="primary"):
                         try:
-                            result = comp_srv.register_team(
+                            result = team_srv.register_team(RegisterTeamInput(
                                 category_id=sel_cat.id,
                                 team_name=t_name,
                                 student_ids=selected_student_ids,
                                 coach_id=t_coach_id,
                                 group_id=t_group_id,
                                 fee_per_student=t_fee or None,
-                            )
+                            ))
                             st.success(
                                 f"✅ Team '{result.team.team_name}' registered with {result.members_added} members!"
                             )
@@ -243,7 +249,7 @@ def render_competition_overview():
                     format_func=lambda c: c.category_name,
                     key="fee_cat",
                 )
-                teams2 = comp_srv.list_teams(sel_cat2.id)
+                teams2 = team_srv.list_teams(sel_cat2.id)
 
                 if not teams2:
                     st.info("No teams in this category.")
@@ -254,7 +260,7 @@ def render_competition_overview():
                         format_func=lambda t: t.team_name,
                         key="fee_team",
                     )
-                    members2 = comp_srv.list_team_members(sel_team2.id)
+                    members2 = team_srv.list_team_members(sel_team2.id)
 
                     if not members2:
                         st.info("No members in this team.")
@@ -288,7 +294,7 @@ def render_competition_overview():
                                             from app.db.connection import get_session
 
                                             with get_session() as db:
-                                                from app.modules.competitions.competition_repository import (
+                                                from app.modules.competitions.repositories.competition_repository import (
                                                     mark_fee_paid,
                                                 )
 
@@ -337,12 +343,12 @@ def render_competition_overview():
                                             type="primary",
                                         ):
                                             try:
-                                                result = comp_srv.pay_competition_fee(
+                                                result = team_srv.pay_competition_fee(PayCompetitionFeeInput(
                                                     team_id=sel_team2.id,
                                                     student_id=m.student_id,
                                                     guardian_id=guardian_id,
                                                     received_by_user_id=None,
-                                                )
+                                                ))
                                                 st.success(
                                                     f"✅ Fee paid! Receipt: {result.receipt_number} | {result.amount:.0f} EGP"
                                                 )
