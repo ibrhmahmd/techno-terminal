@@ -1,4 +1,4 @@
-# Techno Kids CRM — Full Codebase Context
+# Techno Terminal — Full Codebase Context
 > **Generated:** 2026-03-24  
 > **Branch:** `feature/api-layer`  
 > **Last committed sprint:** Sprint 6b (`12fd3db`)  
@@ -9,7 +9,7 @@
 
 ## 1. What This Project Is
 
-**Techno Kids CRM** is a full-stack internal management system for a STEM education center. It manages:
+**Techno Terminal** is a full-stack internal management system for a STEM education center. It manages:
 
 - Student & parent (guardian) profiles
 - Course catalog, group scheduling, session tracking

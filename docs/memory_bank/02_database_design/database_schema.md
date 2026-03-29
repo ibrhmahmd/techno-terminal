@@ -1,4 +1,4 @@
-# Techno Kids — PostgreSQL Database Schema (v3.1)
+# Techno Terminal — PostgreSQL Database Schema (v3.1)
 
 **Engine:** PostgreSQL 15+ | **Tables:** 15 | **Views:** 5 | **Indexes:** 23
 

@@ -1,7 +1,7 @@
 import streamlit as st
 from app.ui.components.auth_guard import require_auth
 
-st.set_page_config(page_title="Competitions - Techno Kids", layout="wide")
+st.set_page_config(page_title="Competitions - Techno Terminal", layout="wide")
 
 require_auth()
 

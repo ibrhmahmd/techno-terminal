@@ -1,8 +1,8 @@
-# Techno Kids — Requirements Analysis
+# Techno Terminal — Requirements Analysis
 
 ## 1. Company Overview
 
-**Techno Kids / Techno Future KFS** is a tech and robotics education center for children and teens. It offers courses in software (HTML, CSS, JS, Scratch, Database), hardware/robotics (EV3, WEDO, Spike, Arduino), and STEAM fields. The center also participates in international competitions (FLL, Robofest, Afro-Asian Forum, etc.).
+**Techno Terminal / Techno Future KFS** is a tech and robotics education center for children and teens. It offers courses in software (HTML, CSS, JS, Scratch, Database), hardware/robotics (EV3, WEDO, Spike, Arduino), and STEAM fields. The center also participates in international competitions (FLL, Robofest, Afro-Asian Forum, etc.).
 
 ---
 

@@ -2,12 +2,12 @@ import streamlit as st
 import state
 from components.auth_guard import require_auth
 
-st.set_page_config(page_title="Techno Kids", layout="wide", page_icon="🤖")
+st.set_page_config(page_title="Techno Terminal", layout="wide", page_icon="🤖")
 
 user = require_auth()
 
 with st.sidebar:
-    st.title("🤖 Techno Kids")
+    st.title("🤖 Techno Terminal")
     st.caption(f"**{user.username}** · {user.role}")
     st.divider()
 

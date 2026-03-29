@@ -1,4 +1,4 @@
-# Techno Kids CRM — Refactoring Task Backlog
+# Techno Terminal — Refactoring Task Backlog
 
 > ✅ **STATUS (2026-03-24): All TASK-01 through TASK-10 are IMPLEMENTED.**  
 > The shared exception hierarchy, validators, constants, base repository protocol, service layer discipline, and module naming are all in place in the current codebase.  

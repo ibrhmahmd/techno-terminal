@@ -2,7 +2,7 @@
 > Phase statuses below have been corrected (2026-03-24). The implementation details may predate later refactors.  
 > For the authoritative state see [`docs/MEMORY_BANK.md §12`](../../MEMORY_BANK.md) and [`docs/reviews/sprint_roadmap_post_qa_2026.md`](../../reviews/sprint_roadmap_post_qa_2026.md).
 
-# Techno Kids — Detailed Feature Breakdown by Phase
+# Techno Terminal — Detailed Feature Breakdown by Phase
 
 ## Architecture Decision: Module-per-Feature
 

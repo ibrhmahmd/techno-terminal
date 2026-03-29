@@ -144,12 +144,15 @@ Pages to audit (in priority order):
 Fix any import errors found using the same pattern as Step 1A.
 
 #### Step 1C — Finance Correctness Smoke Test
-- Create a test receipt with 2 payment lines
-- Verify balance updates correctly
-- Verify refund flow works end-to-end
-- Verify daily collections report reflects the test receipt
+- [x] Create a test receipt with 2 payment lines
+- [x] Verify balance updates correctly
+- [x] Verify refund flow works end-to-end
+- [x] Verify daily collections report reflects the test receipt
 
-**Deliverable: Streamlit UI navigable with no crashes on all priority pages ✅**
+**Deliverable: Streamlit UI navigable with no crashes on all priority pages ✅ [COMPLETED]**
+
+> [!WARNING]
+> **DELIVERY PLAN PAUSED:** The deployment of the FastAPI bridge (Days 2-5) is temporarily suspended. We are executing a new Core Logic Refactoring Sprint (Architecting independent student financials, breaking the mandatory parent link, automated level progression, and session cancellation cascading) before returning to API scaffolding.
 
 ---
 
@@ -166,7 +169,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routers import auth, students, guardians
 
-app = FastAPI(title="Techno Kids API", version="1.0.0")
+app = FastAPI(title="Techno Terminal API", version="1.0.0")
 
 app.add_middleware(CORSMiddleware, allow_origins=["*"],
                    allow_methods=["*"], allow_headers=["*"])

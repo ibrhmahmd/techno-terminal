@@ -1,4 +1,4 @@
-# Production-Grade Architecture Review — Techno Kids CRM Backend
+# Production-Grade Architecture Review — Techno Terminal Backend
 
 > Reviewed after completion of TASK-01 through TASK-10.
 > All findings reference specific files/functions. Severity: **Critical / High / Medium / Low**.

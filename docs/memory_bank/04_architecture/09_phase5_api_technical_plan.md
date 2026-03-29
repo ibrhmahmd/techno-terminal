@@ -2,7 +2,7 @@
 
 **Execution roadmap (sprints, acceptance, current vs planned):** [phase5_api_execution_roadmap_2026.md](../../reviews/phase5_api_execution_roadmap_2026.md)
 
-This document serves as the architectural blueprint for converting the Techno Kids CRM backend from a direct-consumption Streamlit application into a highly scalable, stateless REST API using **FastAPI**.
+This document serves as the architectural blueprint for converting the Techno Terminal backend from a direct-consumption Streamlit application into a highly scalable, stateless REST API using **FastAPI**.
 
 ## 1. Context & Motivation
 Phases A-D successfully decoupled the monolithic Streamlit logic into strict Domain-Driven `models.py`, `repository.py`, and `service.py` layers. However, parsing heavy state and complex UI logic within Streamlit natively reached its scale ceiling. To support future SaaS clients (Flutter, React, Mobile), the backend must provide a unified JSON interface.

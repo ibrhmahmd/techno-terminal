@@ -5,7 +5,7 @@ from datetime import date
 from app.ui.components.auth_guard import require_auth
 import app.modules.analytics as analytics_srv
 
-st.set_page_config(page_title="Dashboard - Techno Kids", layout="wide")
+st.set_page_config(page_title="Dashboard - Techno Terminal", layout="wide")
 require_auth()
 
 st.title("⚡ Daily Command Center")

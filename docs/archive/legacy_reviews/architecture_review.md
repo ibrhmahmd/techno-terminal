@@ -1,4 +1,4 @@
-# Techno Kids CRM — Full-Scale Architecture Review
+# Techno Terminal — Full-Scale Architecture Review
 
 > **Scope:** File structure, naming conventions, DB access strategy, scalability concerns, and vertical-slice migration path.  
 > **Evidence based on:** Actual file readings across all 8 modules + UI layer.  

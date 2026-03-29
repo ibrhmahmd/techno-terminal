@@ -3,7 +3,7 @@
 **Date:** March 2026
 
 ## Objective
-To restructure the [analytics](file:///e:/Users/ibrahim/Desktop/techno_data_%20Copy/app/db/init_db.py#116-125) module from a monolithic, functional architecture into a highly segregated, Object-Oriented, and strictly-typed (DTO-driven) design that complies with the Techno Kids CRM Refactoring SOP.
+To restructure the [analytics](file:///e:/Users/ibrahim/Desktop/techno_data_%20Copy/app/db/init_db.py#116-125) module from a monolithic, functional architecture into a highly segregated, Object-Oriented, and strictly-typed (DTO-driven) design that complies with the Techno Terminal Refactoring SOP.
 
 ## Phase 1: Foundation (Constants & Setup)
 *   **Create `app/modules/analytics/constants.py`**

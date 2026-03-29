@@ -1,6 +1,6 @@
 # Module Refactoring Guide & Architectural Template
 
-This document serves as the **Standard Operating Procedure (SOP)** for refactoring monolithic/legacy modules in the Techno Kids CRM into the robust, per-entity, SOLID architecture. It is heavily derived from the highly successful `academics` module refactoring in March 2026.
+This document serves as the **Standard Operating Procedure (SOP)** for refactoring monolithic/legacy modules in the Techno Terminal into the robust, per-entity, SOLID architecture. It is heavily derived from the highly successful `academics` module refactoring in March 2026.
 
 ## 1. The Core Philosophy (Target Architecture)
 The module architecture strictly enforces:

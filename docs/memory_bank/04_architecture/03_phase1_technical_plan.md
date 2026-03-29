@@ -287,12 +287,12 @@ import streamlit as st
 from app.ui.components.auth_guard import require_auth
 from app.ui import state
 
-st.set_page_config(page_title="Techno Kids", layout="wide")
+st.set_page_config(page_title="Techno Terminal", layout="wide")
 
 user = require_auth()
 
 with st.sidebar:
-    st.title("Techno Kids")
+    st.title("Techno Terminal")
     st.caption(f"Logged in as **{user.username}** · {user.role}")
 
     st.page_link("pages/dashboard.py", label="Dashboard", icon="🏠")

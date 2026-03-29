@@ -75,7 +75,7 @@ def render_attendance_grid(sessions: list, roster: list):
     cols[0].markdown("**Student Name**")
     for i, sess in enumerate(sessions):
         actual_instructor_name = inst_map.get(sess.actual_instructor_id, "Unassigned")
-        header_html = f"**S{sess.session_number}**<br/><small>{actual_instructor_name}</small><br/><small>{sess.session_date}</small>"
+        header_html = f"**Session {sess.session_number}**<br/><small>{actual_instructor_name}</small><br/><small>{sess.session_date}</small>"
         cols[i + 1].markdown(
             header_html,
             unsafe_allow_html=True,

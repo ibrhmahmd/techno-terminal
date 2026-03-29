@@ -7,7 +7,7 @@ from app.ui.components.auth_guard import require_auth
 import app.modules.analytics as analytics_srv
 import app.modules.academics as acad_srv
 
-st.set_page_config(page_title="Reports - Techno Kids", layout="wide")
+st.set_page_config(page_title="Reports - Techno Terminal", layout="wide")
 require_auth()
 
 st.title("📊 Reports & Analytics")
@@ -272,7 +272,7 @@ with tab_heatmap:
 
             # Pivot: rows = student, columns = session_number + date
             df_heat["session_label"] = df_heat.apply(
-                lambda r: f"S{int(r['session_number'])}\n{str(r['session_date'])[:10]}",
+                lambda r: f"Session {int(r['session_number'])}\n{str(r['session_date'])[:10]}",
                 axis=1,
             )
 

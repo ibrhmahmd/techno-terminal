@@ -1,5 +1,5 @@
 """
-Techno Kids CRM - FastAPI Application Factory
+Techno Terminal - FastAPI Application Factory
 """
 
 from fastapi import FastAPI

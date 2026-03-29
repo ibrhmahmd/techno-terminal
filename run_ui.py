@@ -22,7 +22,7 @@ if __name__ == "__main__":
 
     # Execute Streamlit programmatically using the same Python executable
     args = [sys.executable, "-m", "streamlit", "run", "app/ui/main.py"]
-    print(f"Starting Techno Kids App: {' '.join(args)}")
+    print(f"Starting Techno Terminal App: {' '.join(args)}")
 
     try:
         subprocess.run(args)

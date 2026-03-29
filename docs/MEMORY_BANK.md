@@ -1,4 +1,4 @@
-# Techno Kids CRM — Memory Bank
+# Techno Terminal — Memory Bank
 > **Purpose:** Complete architectural and code-level reference for AI agent handoff.  
 > **Last updated:** 2026-03-21  
 > **Schema version:** v3.3 (15 tables, 5 views) — see `db/schema.sql` header  
@@ -8,7 +8,7 @@
 
 ## 1. Project Overview
 
-**Techno Kids CRM** is a full-stack internal management system for a STEM education center. It manages:
+**Techno Terminal** is a full-stack internal management system for a STEM education center. It manages:
 - Student & parent (guardian) registration and profiles
 - Course catalogs, group scheduling, and session tracking
 - Student enrollment per group level
@@ -23,6 +23,10 @@
 - **FastAPI** (`app/api/`) exposes a growing **REST API** (JSON). It reuses the same services and `get_session`-backed repositories. **Phase 5.1 (scaffold + auth) is in place:** `GET /api/v1/auth/me`, `GET /health`, global exception handlers, `get_db`. **Domain routers** (CRM, academics, finance, …) are **not mounted** yet — see [phase5_api_execution_roadmap_2026.md](planning/phase5_api_execution_roadmap_2026.md) for the ordered rollout. Streamlit stores `access_token` in session state after Supabase login for **Bearer** API calls.
 
 **Authentication:** End-user credentials are verified by **Supabase** (`sign_in_with_password` in Streamlit; JWT verification via Supabase SDK in FastAPI). Local Postgres `users` rows map identities with `supabase_uid`. After successful Streamlit login, **`update_last_login`** updates `users.last_login` (explicit `session.commit()` in service; `get_session()` also commits on exit).
+
+**Current Status (End of March 2026):**
+- **Streamlit Stabilization Complete:** All UI crashes caused by the deep-SOLID architecture (Pydantic DTO strictness, Service facades) have been patched. 
+- **Pivot:** API scaffolding (Day 2 of Delivery Plan) is temporarily paused. The project is currently entering a new structural sprint to decouple the Student-Guardian relationship, shift financial tracking directly to the Student entity, handle automatic level progression, and handle session cancellations with cascading numbering.
 
 **Audit (D4):** `app/shared/audit_utils.py` stamps `created_at` / `updated_at` / optional `created_by` on CRM, enrollments, and academics mutating paths where applicable. **`db/migrations/005_audit_d4_timestamps.sql`** backfills NULLs, sets `DEFAULT CURRENT_TIMESTAMP`, normalizes legacy TEXT `sessions.created_at` / `session_date`, and adds `tf_set_updated_at` triggers (mirrored in greenfield `db/schema.sql`). Streamlit uses **`state.get_current_user_id()`** for `created_by` / `received_by`. See `docs/planning/sprint_roadmap_post_qa_2026.md` Sprint 3.
 

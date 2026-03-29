@@ -4,7 +4,7 @@ from app.modules.auth import get_user_by_supabase_uid, update_last_login
 
 import state
 
-st.set_page_config(page_title="Login — Techno Kids", layout="centered")
+st.set_page_config(page_title="Login — Techno Terminal", layout="centered")
 
 if state.is_authenticated():
     st.switch_page("pages/0_Dashboard.py")

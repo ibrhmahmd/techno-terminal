@@ -1,4 +1,4 @@
-# Techno Kids CRM — Documentation Index
+# Techno Terminal — Documentation Index
 
 > **Primary handoff reference for agents and engineers:** [`MEMORY_BANK.md`](./MEMORY_BANK.md)  
 > **Last updated:** 2026-03-24 | **Schema:** v3.3 | **Branch:** `feature/api-layer`
