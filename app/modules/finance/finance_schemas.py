@@ -28,7 +28,7 @@ class ReceiptLineInput(BaseModel):
 
 class OpenReceiptInput(BaseModel):
     """Input for finance_service.open_receipt()."""
-    parent_id: Optional[int] = None
+    payer_name: Optional[str] = None
     method: PaymentMethod | str = "cash"
     received_by_user_id: Optional[int] = None
     notes: Optional[str] = None

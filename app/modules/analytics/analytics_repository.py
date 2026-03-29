@@ -182,9 +182,10 @@ def get_group_roster(db: Session, group_id: int, level_number: int) -> list[dict
             CASE
                 WHEN COALESCE(vgs.total_sessions, 0) = 0 THEN 0
                 ELSE ROUND(
-                    100.0 * COALESCE(att.sessions_attended, 0) / vgs.total_sessions, 1
+                    100.0 * COALESCE(att.sessions_attended, 0) / NULLIF(vgs.total_sessions, 0), 1
                 )
-            END AS attendance_pct
+            END AS attendance_pct,
+            (COALESCE(vb.balance, 0) >= 0) AS has_paid_current_level
         FROM enrollments en
         JOIN students st ON en.student_id = st.id
         LEFT JOIN v_enrollment_balance vb ON vb.enrollment_id = en.id

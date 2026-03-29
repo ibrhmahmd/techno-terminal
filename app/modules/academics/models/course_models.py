@@ -13,6 +13,7 @@ class CourseBase(SQLModel):
     price_per_level: float  # schema: price_per_level (not price_egp)
     sessions_per_level: int = 5
     description: Optional[str] = None
+    notes: Optional[str] = None
     is_active: bool = True
 
 class Course(CourseBase, table=True):

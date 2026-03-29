@@ -13,7 +13,7 @@ from app.modules.finance.finance_schemas import ReceiptLineInput
 
 
 def create_receipt_with_charge_lines(
-    parent_id: Optional[int],
+    payer_name: Optional[str],
     method: PaymentMethod | str,
     received_by_user_id: Optional[int],
     lines: list[ReceiptLineInput],
@@ -35,7 +35,7 @@ def create_receipt_with_charge_lines(
                     "One or more lines would create credit. Confirm overpayment before finalizing."
                 )
         r = repo.create_receipt(
-            db, parent_id, method, received_by_user_id, notes=notes
+            db, payer_name, method, received_by_user_id, notes=notes
         )
         repo.set_receipt_number(db, r.id)
         db.refresh(r)
@@ -122,7 +122,7 @@ def preview_overpayment_risk(
 
 
 def open_receipt(
-    parent_id: Optional[int],
+    payer_name: Optional[str],
     method: PaymentMethod | str,
     received_by_user_id: Optional[int],
     notes: Optional[str] = None,
@@ -130,7 +130,7 @@ def open_receipt(
     """Creates receipt header + auto-assigns a receipt number."""
     with get_session() as db:
         r = repo.create_receipt(
-            db, parent_id, method, received_by_user_id, notes=notes
+            db, payer_name, method, received_by_user_id, notes=notes
         )
         repo.set_receipt_number(db, r.id)
         # Refresh after number update
@@ -140,7 +140,7 @@ def open_receipt(
 
 def _open_receipt_in_session(
     db,
-    parent_id: Optional[int],
+    payer_name: Optional[str],
     method: PaymentMethod | str,
     received_by_user_id: Optional[int],
     notes: Optional[str] = None,
@@ -149,7 +149,7 @@ def _open_receipt_in_session(
     Internal variant — creates a receipt header within an existing session.
     Does NOT commit. Used by issue_refund() so receipt + refund line are atomic.
     """
-    r = repo.create_receipt(db, parent_id, method, received_by_user_id, notes=notes)
+    r = repo.create_receipt(db, payer_name, method, received_by_user_id, notes=notes)
     repo.set_receipt_number(db, r.id)
     db.refresh(r)
     return r

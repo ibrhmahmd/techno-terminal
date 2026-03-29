@@ -20,6 +20,7 @@ class GroupBase(SQLModel):
     default_day: Optional[str] = None
     default_time_start: Optional[time] = None
     default_time_end: Optional[time] = None
+    notes: Optional[str] = None
     status: GroupStatus = Field(default="active", sa_column=Column(String))
 
 class Group(GroupBase, table=True):

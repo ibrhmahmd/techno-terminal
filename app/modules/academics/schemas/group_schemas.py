@@ -23,6 +23,7 @@ class ScheduleGroupInput(BaseModel):
     default_day: WeekDay
     default_time_start: time
     default_time_end: time
+    notes: Optional[str] = None
     max_capacity: int = 15
 
     @model_validator(mode="after")
@@ -43,6 +44,7 @@ class UpdateGroupDTO(BaseModel):
     default_day: Optional[str] = None
     default_time_start: Optional[time] = None
     default_time_end: Optional[time] = None
+    notes: Optional[str] = None
     status: Optional[str] = None
 
 
@@ -59,4 +61,5 @@ class EnrichedGroupDTO(BaseModel):
     default_time_start: Optional[time] = None
     default_time_end: Optional[time] = None
     max_capacity: Optional[int] = None
+    notes: Optional[str] = None
     status: str

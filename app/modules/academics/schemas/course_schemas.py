@@ -15,6 +15,7 @@ class AddNewCourseInput(BaseModel):
     name: str
     category: Optional[str] = None
     description: Optional[str] = None
+    notes: Optional[str] = None
     price_per_level: float
     sessions_per_level: int
 
@@ -38,6 +39,7 @@ class UpdateCourseDTO(BaseModel):
     name: Optional[str] = None
     category: Optional[str] = None
     description: Optional[str] = None
+    notes: Optional[str] = None
     price_per_level: Optional[float] = None
     sessions_per_level: Optional[int] = None
     is_active: Optional[bool] = None

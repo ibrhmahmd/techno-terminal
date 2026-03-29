@@ -11,14 +11,14 @@ from app.shared.datetime_utils import utc_now, date_at_utc_midnight
 
 def create_receipt(
     db: Session,
-    parent_id: Optional[int],
+    payer_name: Optional[str],
     method: str,
     received_by: Optional[int],
     paid_at: Optional[datetime] = None,
     notes: Optional[str] = None,
 ) -> Receipt:
     r = Receipt(
-        parent_id=parent_id,
+        payer_name=payer_name,
         payment_method=method,
         received_by=received_by,
         paid_at=paid_at or utc_now(),
@@ -69,16 +69,15 @@ def list_receipts_by_date(db: Session, target_date: date) -> list[dict]:
         SELECT
             r.id,
             r.receipt_number,
-            g.full_name AS parent_name,
+            r.payer_name AS parent_name,
             r.payment_method,
             r.paid_at,
             COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type IN ('payment','charge')), 0)
             - COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type = 'refund'), 0) AS total
         FROM receipts r
-        LEFT JOIN parents g ON r.parent_id = g.id
         LEFT JOIN payments p ON p.receipt_id = r.id
         WHERE DATE(r.paid_at) = :target_date
-        GROUP BY r.id, g.full_name
+        GROUP BY r.id, r.payer_name
         ORDER BY r.paid_at DESC
     """)
     rows = db.execute(stmt, {"target_date": str(target_date)}).all()
@@ -90,14 +89,14 @@ def search_receipts(
     from_date: date,
     to_date: date,
     *,
-    parent_id: Optional[int] = None,
+    payer_name_contains: Optional[str] = None,
     student_id: Optional[int] = None,
     receipt_number_contains: Optional[str] = None,
     limit: int = 200,
 ) -> list[dict]:
     """
     Receipts with line totals in [from_date, to_date] (inclusive, by paid_at in UTC).
-    Optional filters: parent, student (any line on receipt), partial receipt_number (ILIKE).
+    Optional filters: payer_name, student (any line on receipt), partial receipt_number (ILIKE).
     Uses half-open [start, end) on timestamptz so idx_receipts_paid_at can be used.
     """
     fd_start = date_at_utc_midnight(from_date)
@@ -105,9 +104,9 @@ def search_receipts(
     where_clauses = ["r.paid_at >= :fd_start AND r.paid_at < :td_end"]
     params: dict = {"fd_start": fd_start, "td_end": td_end, "limit": limit}
 
-    if parent_id is not None:
-        where_clauses.append("r.parent_id = :gid")
-        params["gid"] = parent_id
+    if payer_name_contains:
+        where_clauses.append("r.payer_name ILIKE :pnam")
+        params["pnam"] = f"%{payer_name_contains.strip()}%"
     if student_id is not None:
         where_clauses.append(
             "EXISTS (SELECT 1 FROM payments pstu WHERE pstu.receipt_id = r.id AND pstu.student_id = :sid)"
@@ -123,16 +122,15 @@ def search_receipts(
         SELECT
             r.id,
             r.receipt_number,
-            g.full_name AS parent_name,
+            r.payer_name AS parent_name,
             r.payment_method,
             r.paid_at,
             COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type IN ('payment','charge')), 0)
             - COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type = 'refund'), 0) AS total
         FROM receipts r
-        LEFT JOIN parents g ON r.parent_id = g.id
         LEFT JOIN payments p ON p.receipt_id = r.id
         WHERE {where_sql}
-        GROUP BY r.id, r.receipt_number, g.full_name, r.payment_method, r.paid_at
+        GROUP BY r.id, r.receipt_number, r.payer_name, r.payment_method, r.paid_at
         ORDER BY r.paid_at DESC
         LIMIT :limit
     """)

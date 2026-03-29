@@ -135,10 +135,103 @@ class SessionService:
             count = repo.count_sessions(session, group_id, level_number)
             return count >= course.sessions_per_level
 
-    def advance_group_level(self, group_id: int) -> Group:
-        """Increments group.level_number. Call after a level is confirmed complete."""
+    def progress_group_level(self, group_id: int) -> Group:
+        """
+        Increments group level, inflates enrollment amount_due for the new level,
+        and automatically generates the block of sessions.
+        """
+        from app.modules.enrollments.models.enrollment_models import Enrollment
+        from sqlmodel import select
+        from app.modules.academics.helpers.time_helpers import next_weekday
+        
         with get_session() as session:
             group = repo.increment_group_level(session, group_id)
             if not group:
                 raise NotFoundError(f"Group {group_id} not found.")
+                
+            course = session.get(Course, group.course_id)
+            
+            # Sub-Phase: Increment active enrollments & bill them for the new level
+            stmt = select(Enrollment).where(
+                Enrollment.group_id == group_id, 
+                Enrollment.status == "active"
+            )
+            enrollments = session.exec(stmt).all()
+            for e in enrollments:
+                e.level_number = group.level_number
+                e.amount_due = float(e.amount_due or 0) + float(course.price_per_level)
+                session.add(e)
+                
+            # Sub-Phase: Generate sessions for the new level
+            start_dt = next_weekday(date.today(), group.default_day) if group.default_day else date.today()
+            create_sessions_in_session(
+                session, group_id, group.level_number, start_dt,
+                course.sessions_per_level,
+                group.default_time_start, group.default_time_end,
+                group.instructor_id,
+            )
+            session.commit()
             return group
+
+    def cancel_session(self, session_id: int) -> CourseSession:
+        """
+        Flags session as cancelled.
+        Cascades the session number downwards onto future sessions so numbering isn't broken.
+        Appends exactly one new session at the tail to maintain course density compliance.
+        """
+        from sqlmodel import select
+        from datetime import timedelta
+        
+        with get_session() as session:
+            cs = session.get(CourseSession, session_id)
+            if not cs:
+                raise NotFoundError(f"Session {session_id} not found.")
+            if cs.status == "cancelled":
+                return cs
+                
+            cs.status = "cancelled"
+            old_number = cs.session_number
+            cs.session_number = 0  # detach from strictly ordered numbering
+            
+            # Find future sessions to slide numbers down by 1
+            stmt_future = select(CourseSession).where(
+                CourseSession.group_id == cs.group_id,
+                CourseSession.level_number == cs.level_number,
+                CourseSession.session_number > old_number,
+                CourseSession.status != "cancelled"
+            ).order_by(CourseSession.session_number)
+            future_sessions = session.exec(stmt_future).all()
+            
+            for fs in future_sessions:
+                fs.session_number -= 1
+                session.add(fs)
+                
+            # Determine tail date for a replacement session
+            stmt_max = select(CourseSession).where(
+                CourseSession.group_id == cs.group_id,
+                CourseSession.level_number == cs.level_number
+            ).order_by(CourseSession.session_date.desc())
+            last_cs = session.exec(stmt_max).first()
+            tail_date = last_cs.session_date if last_cs else cs.session_date
+            
+            course = session.get(Course, session.get(Group, cs.group_id).course_id)
+            
+            # Recalculate max number to safely append
+            max_num = repo.get_max_session_number(session, cs.group_id, cs.level_number)
+            
+            replacement = CourseSession(
+                group_id=cs.group_id,
+                level_number=cs.level_number,
+                session_number=max_num + 1,
+                session_date=tail_date + timedelta(days=7),
+                start_time=cs.start_time,
+                end_time=cs.end_time,
+                actual_instructor_id=cs.actual_instructor_id,
+                status="scheduled"
+            )
+            
+            session.add(replacement)
+            session.add(cs)
+            session.commit()
+            session.refresh(cs)
+            return cs

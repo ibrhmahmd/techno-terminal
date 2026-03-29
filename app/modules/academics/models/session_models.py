@@ -18,6 +18,7 @@ class CourseSessionBase(SQLModel):
     is_substitute: bool = False
     is_extra_session: bool = False
     notes: Optional[str] = None
+    status: str = Field(default="scheduled")
 
 class CourseSession(CourseSessionBase, table=True):
     __tablename__ = "sessions"
