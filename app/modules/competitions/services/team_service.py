@@ -191,7 +191,7 @@ class TeamService:
 
         # Trigger external finance service layer
         summary = fin_srv.create_receipt_with_charge_lines(
-            guardian_id=cmd.guardian_id,
+            parent_id=cmd.parent_id,
             method="cash",
             received_by_user_id=cmd.received_by_user_id,
             lines=[

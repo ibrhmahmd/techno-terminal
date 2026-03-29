@@ -13,7 +13,7 @@ from app.modules.finance.finance_schemas import ReceiptLineInput
 
 
 def create_receipt_with_charge_lines(
-    guardian_id: Optional[int],
+    parent_id: Optional[int],
     method: PaymentMethod | str,
     received_by_user_id: Optional[int],
     lines: list[ReceiptLineInput],
@@ -35,7 +35,7 @@ def create_receipt_with_charge_lines(
                     "One or more lines would create credit. Confirm overpayment before finalizing."
                 )
         r = repo.create_receipt(
-            db, guardian_id, method, received_by_user_id, notes=notes
+            db, parent_id, method, received_by_user_id, notes=notes
         )
         repo.set_receipt_number(db, r.id)
         db.refresh(r)
@@ -122,7 +122,7 @@ def preview_overpayment_risk(
 
 
 def open_receipt(
-    guardian_id: Optional[int],
+    parent_id: Optional[int],
     method: PaymentMethod | str,
     received_by_user_id: Optional[int],
     notes: Optional[str] = None,
@@ -130,7 +130,7 @@ def open_receipt(
     """Creates receipt header + auto-assigns a receipt number."""
     with get_session() as db:
         r = repo.create_receipt(
-            db, guardian_id, method, received_by_user_id, notes=notes
+            db, parent_id, method, received_by_user_id, notes=notes
         )
         repo.set_receipt_number(db, r.id)
         # Refresh after number update
@@ -140,7 +140,7 @@ def open_receipt(
 
 def _open_receipt_in_session(
     db,
-    guardian_id: Optional[int],
+    parent_id: Optional[int],
     method: PaymentMethod | str,
     received_by_user_id: Optional[int],
     notes: Optional[str] = None,
@@ -149,7 +149,7 @@ def _open_receipt_in_session(
     Internal variant — creates a receipt header within an existing session.
     Does NOT commit. Used by issue_refund() so receipt + refund line are atomic.
     """
-    r = repo.create_receipt(db, guardian_id, method, received_by_user_id, notes=notes)
+    r = repo.create_receipt(db, parent_id, method, received_by_user_id, notes=notes)
     repo.set_receipt_number(db, r.id)
     db.refresh(r)
     return r
@@ -240,7 +240,7 @@ def issue_refund(
     with get_session() as db:
         refund_receipt = _open_receipt_in_session(
             db,
-            guardian_id=None,
+            parent_id=None,
             method=method,
             received_by_user_id=received_by_user_id,
             notes=f"Refund: {reason}",
@@ -308,7 +308,7 @@ def search_receipts(
     from_date: date,
     to_date: date,
     *,
-    guardian_id: Optional[int] = None,
+    parent_id: Optional[int] = None,
     student_id: Optional[int] = None,
     receipt_number_contains: Optional[str] = None,
     limit: int = 200,
@@ -321,7 +321,7 @@ def search_receipts(
             db,
             from_date,
             to_date,
-            guardian_id=guardian_id,
+            parent_id=parent_id,
             student_id=student_id,
             receipt_number_contains=receipt_number_contains,
             limit=limit,

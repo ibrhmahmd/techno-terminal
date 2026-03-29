@@ -40,7 +40,7 @@ So **`balance` is the negative of P6 “account balance”** (see QA backlog: *p
 
 | ID | Rule |
 |----|------|
-| **P5** | Per-enrollment balance + **guardian total** = sum of dependents’ balances (same convention). |
+| **P5** | Per-enrollment balance + **parent total** = sum of dependents’ balances (same convention). |
 | **P6** | **Negative** = debt, **zero** = settled, **positive** = credit. |
 | **P7** | Collection flows: emphasize or filter to **debt** (under P6: **balance &lt; 0** once flipped). |
 | **P8** | Overpayment: warn → confirm; credit applies to **future** charges (implementation in Sprint 6). |
@@ -134,7 +134,7 @@ Anything that assumes **`balance > 0` means debt** must flip to **`balance < 0`*
 
 ## 6. Open questions (resolve in Sprint 5)
 
-- **Guardian total (P5):** Confirm aggregation is **SUM(account_balance)** over active enrollments only vs all non-dropped.
+- **Parent total (P5):** Confirm aggregation is **SUM(account_balance)** over active enrollments only vs all non-dropped.
 - **Enrollment “closed”:** Are balances frozen when status ≠ `active`? (Affects lists and sums.)
 - **Competition fees:** `parent_detail` mixes enrollment balances with competition unpaid — confirm whether credit (**P8**) can apply across competition vs course in v1.
 - **Naming in Arabic/English UI:** Single glossary for “debt”, “credit”, “settled” (**P6**).
@@ -157,7 +157,7 @@ Anything that assumes **`balance > 0` means debt** must flip to **`balance < 0`*
 |----|------|
 | **B8** | Implement chosen view + repo + service normalization. |
 | **B3** | Financial desk eligibility + debt-only filter (**P7**). |
-| **U2** | Student search + guardian totals (**P5**). |
+| **U2** | Student search + parent totals (**P5**). |
 | **U9** | Overpayment warn + confirm (**P8**). |
 
 ---

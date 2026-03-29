@@ -27,10 +27,10 @@ def render_receipt_detail(receipt_id: int):
 
     # Header info
     parent_name = "—"
-    if r.guardian_id:
-        from app.modules.crm import get_guardian_by_id
+    if r.parent_id:
+        from app.modules.crm import get_parent_by_id
 
-        g = get_guardian_by_id(r.guardian_id)
+        g = get_parent_by_id(r.parent_id)
         if g:
             parent_name = g.full_name
 

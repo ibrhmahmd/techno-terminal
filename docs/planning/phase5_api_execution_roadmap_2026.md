@@ -68,13 +68,13 @@ The technical plan mentioned a **local `POST /auth/token` JWT dispenser**. The i
 
 ### Phase 5.2 — CRM API
 
-**Goal:** JSON CRUD for guardians and students aligned with `crm_service` / `crm_repository`.
+**Goal:** JSON CRUD for parents and students aligned with `crm_service` / `crm_repository`.
 
 | Suggested routes (draft) | Service entrypoints (verify before implement) |
 |--------------------------|-----------------------------------------------|
-| `POST /api/v1/crm/guardians` | `register_guardian` / `find_or_create_guardian` |
-| `GET /api/v1/crm/guardians` | search / list (paginated) |
-| `GET /api/v1/crm/guardians/{id}` | `get_guardian_by_id` |
+| `POST /api/v1/crm/parents` | `register_parent` / `find_or_create_parent` |
+| `GET /api/v1/crm/parents` | search / list (paginated) |
+| `GET /api/v1/crm/parents/{id}` | `get_parent_by_id` |
 | `POST /api/v1/crm/students` | `register_student` |
 | `GET /api/v1/crm/students/{id}` | `get_student_by_id` |
 | `GET /api/v1/crm/students` | `search_students` |
@@ -82,7 +82,7 @@ The technical plan mentioned a **local `POST /auth/token` JWT dispenser**. The i
 **Prerequisites**
 
 - Stable **request/response DTOs** in `crm_schemas` or `crm_models` (Create/Read) — pattern already started for registration inputs.
-- **Role policy:** which `UserRole` values may create guardians/students (document in router deps).
+- **Role policy:** which `UserRole` values may create parents/students (document in router deps).
 
 **Acceptance**
 
@@ -176,7 +176,7 @@ The technical plan mentioned a **local `POST /auth/token` JWT dispenser**. The i
 | Phase | Theme | Primary deliverable | Status |
 |-------|--------|---------------------|--------|
 | **5.1** | Scaffold + auth | FastAPI app, `/me`, `/health`, DI, exceptions | **Largely done** |
-| **5.2** | CRM | Guardian + student routes | Planned |
+| **5.2** | CRM | Parent + student routes | Planned |
 | **5.3** | Academics | Courses, groups, sessions, attendance | Planned |
 | **5.4** | Transactions | Enrollments + finance | Planned (finance after receipt fix) |
 | **5.5** | Analytics | Read-only reporting API | Planned |

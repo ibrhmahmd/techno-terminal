@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from app.db.connection import get_session
-from app.modules.crm import Guardian
+from app.modules.crm import Parent
 from app.modules.crm import crm_service
 from app.modules.finance import finance_service as fin_srv
 from app.modules.competitions import team_service as comp_srv
@@ -9,7 +9,7 @@ from app.modules.enrollments import get_student_enrollments
 
 
 def render_parent_detail(parent_id: int):
-    parent = crm_service.get_guardian_by_id(parent_id)
+    parent = crm_service.get_parent_by_id(parent_id)
 
     if not parent:
         st.error("Parent not found.")
@@ -18,8 +18,8 @@ def render_parent_detail(parent_id: int):
             st.rerun()
         return
 
-    # Extract children (students mapped to this guardian)
-    children = crm_service.get_guardian_students(parent_id)
+    # Extract children (students mapped to this parent)
+    children = crm_service.get_parent_students(parent_id)
 
     # Header section
     col1, col2 = st.columns([1, 4])

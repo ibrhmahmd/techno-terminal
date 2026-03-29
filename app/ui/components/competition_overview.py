@@ -324,9 +324,9 @@ def render_competition_overview():
                                                 f"Parent/Parent for {m.student_name} (name/phone)",
                                                 key=f"fee_gq_{m['student_id']}",
                                             )
-                                        guardian_id = None
+                                        parent_id = None
                                         if g_q and len(g_q) >= 2:
-                                            gs = crm_srv.search_guardians(g_q)
+                                            gs = crm_srv.search_parents(g_q)
                                             if gs:
                                                 sel_g = st.selectbox(
                                                     "Select Parent",
@@ -334,7 +334,7 @@ def render_competition_overview():
                                                     format_func=lambda g: f"{g.full_name} ({g.phone_primary})",
                                                     key=f"fee_gsel_{m['student_id']}",
                                                 )
-                                                guardian_id = sel_g.id
+                                                parent_id = sel_g.id
 
                                         fc1, fc2 = st.columns(2)
                                         if fc1.button(
@@ -346,7 +346,7 @@ def render_competition_overview():
                                                 result = team_srv.pay_competition_fee(PayCompetitionFeeInput(
                                                     team_id=sel_team2.id,
                                                     student_id=m.student_id,
-                                                    guardian_id=guardian_id,
+                                                    parent_id=parent_id,
                                                     received_by_user_id=None,
                                                 ))
                                                 st.success(

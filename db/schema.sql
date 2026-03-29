@@ -8,7 +8,7 @@
 --   [T4]  Changed `CHECK (amount > 0)` to `!= 0` to allow refunds
 --   [T5]  Added `transaction_type` to payments ('charge', 'payment', 'refund')
 --   [T6]  Made `attendance.enrollment_id` NOT NULL
---   [T7]  Replaced `students.guardian_id` with `student_guardians` junction table
+--   [T7]  Replaced `students.parent_id` with `student_parents` junction table
 --
 -- Tables ordered by dependency (referenced tables first).
 -- =============================================================================
@@ -26,10 +26,10 @@ DROP TABLE IF EXISTS groups CASCADE;
 DROP TABLE IF EXISTS courses CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 DROP TABLE IF EXISTS employees CASCADE;
-DROP TABLE IF EXISTS student_guardians CASCADE;
+DROP TABLE IF EXISTS student_parents CASCADE;
 DROP TABLE IF EXISTS students CASCADE;
-DROP TABLE IF EXISTS guardians CASCADE;
-CREATE TABLE guardians (
+DROP TABLE IF EXISTS parents CASCADE;
+CREATE TABLE parents (
     id SERIAL PRIMARY KEY,
     full_name TEXT NOT NULL,
     phone_primary TEXT,
@@ -95,14 +95,14 @@ CREATE TABLE students (
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         metadata JSONB DEFAULT '{}'
 );
-CREATE TABLE student_guardians (
+CREATE TABLE student_parents (
     student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    guardian_id INTEGER NOT NULL REFERENCES guardians(id) ON DELETE CASCADE,
+    parent_id INTEGER NOT NULL REFERENCES parents(id) ON DELETE CASCADE,
     relationship TEXT,
     -- 'father', 'mother', etc.
     is_primary BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (student_id, guardian_id)
+    PRIMARY KEY (student_id, parent_id)
 );
 CREATE TABLE courses (
     id SERIAL PRIMARY KEY,
@@ -196,7 +196,7 @@ CREATE TABLE attendance (
 );
 CREATE TABLE receipts (
     id SERIAL PRIMARY KEY,
-    guardian_id INTEGER REFERENCES guardians(id) ON DELETE
+    parent_id INTEGER REFERENCES parents(id) ON DELETE
     SET NULL,
         payment_method TEXT CHECK (
             payment_method IN ('cash', 'card', 'transfer', 'online')
@@ -263,10 +263,10 @@ CREATE TABLE team_members (
         UNIQUE(team_id, student_id)
 );
 -- Indexes
-CREATE INDEX idx_guardians_phone ON guardians(phone_primary)
+CREATE INDEX idx_parents_phone ON parents(phone_primary)
 WHERE phone_primary IS NOT NULL;
-CREATE INDEX idx_student_guardians_student ON student_guardians(student_id);
-CREATE INDEX idx_student_guardians_guardian ON student_guardians(guardian_id);
+CREATE INDEX idx_student_parents_student ON student_parents(student_id);
+CREATE INDEX idx_student_parents_parent ON student_parents(parent_id);
 CREATE INDEX idx_students_active ON students(is_active)
 WHERE is_active = TRUE;
 CREATE INDEX idx_students_name ON students(full_name);
@@ -301,8 +301,8 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-CREATE TRIGGER trg_guardians_updated_at
-    BEFORE UPDATE ON guardians
+CREATE TRIGGER trg_parents_updated_at
+    BEFORE UPDATE ON parents
     FOR EACH ROW EXECUTE PROCEDURE tf_set_updated_at();
 CREATE TRIGGER trg_employees_updated_at
     BEFORE UPDATE ON employees
@@ -335,12 +335,12 @@ SELECT s.id,
     s.created_at,
     s.updated_at,
     s.metadata,
-    g.full_name AS primary_guardian_name,
-    g.phone_primary AS primary_guardian_phone
+    g.full_name AS primary_parent_name,
+    g.phone_primary AS primary_parent_phone
 FROM students s
-    LEFT JOIN student_guardians sg ON s.id = sg.student_id
+    LEFT JOIN student_parents sg ON s.id = sg.student_id
     AND sg.is_primary = TRUE
-    LEFT JOIN guardians g ON sg.guardian_id = g.id;
+    LEFT JOIN parents g ON sg.parent_id = g.id;
 CREATE OR REPLACE VIEW v_enrollment_balance AS
 SELECT e.id AS enrollment_id,
     e.student_id,
@@ -391,9 +391,9 @@ SELECT sg1.student_id AS student_id,
     s1.full_name AS student_name,
     sg2.student_id AS sibling_id,
     s2.full_name AS sibling_name,
-    sg1.guardian_id
-FROM student_guardians sg1
-    JOIN student_guardians sg2 ON sg1.guardian_id = sg2.guardian_id
+    sg1.parent_id
+FROM student_parents sg1
+    JOIN student_parents sg2 ON sg1.parent_id = sg2.parent_id
     AND sg1.student_id < sg2.student_id
     JOIN students s1 ON sg1.student_id = s1.id
     JOIN students s2 ON sg2.student_id = s2.id

@@ -123,7 +123,7 @@ def authenticate(username: str, password: str):
 |---|---|
 | **Severity** | High |
 | **Category** | Code Quality / DX / Bug Risk |
-| **Location** | `crm_service.py:register_guardian()`, `academics_service.py:schedule_group()`, [add_new_course()](file:///e:/Users/ibrahim/Desktop/techno_data_%20Copy/app/modules/academics/academics_service.py#52-70), and all other functions accepting `data: dict` |
+| **Location** | `crm_service.py:register_parent()`, `academics_service.py:schedule_group()`, [add_new_course()](file:///e:/Users/ibrahim/Desktop/techno_data_%20Copy/app/modules/academics/academics_service.py#52-70), and all other functions accepting `data: dict` |
 | **Problem** | Using `dict` as input type means there is no static analysis protection. A missing key causes a `KeyError` at runtime, deep inside the service, with no useful message. `data.get("course_id")` silently returns `None`, which propagates to the ORM and causes an `IntegrityError` miles away. This is tribal knowledge — you must read the source to know what keys are required. |
 | **Recommendation** | Replace all `data: dict` signatures with typed Pydantic `BaseModel` or dataclass inputs. |
 ```python
@@ -272,9 +272,9 @@ def enroll_student(student_id, group_id, ...):
 |---|---|
 | **Severity** | Medium |
 | **Category** | Database / Data Integrity |
-| **Location** | `crm_service.py:register_guardian()` (phone uniqueness), `enrollment_service.py:enroll_student()` (active duplicate check) |
+| **Location** | `crm_service.py:register_parent()` (phone uniqueness), `enrollment_service.py:enroll_student()` (active duplicate check) |
 | **Problem** | Both functions rely on a pre-check query to prevent duplicates. If the database doesn't have a corresponding `UNIQUE` constraint, two concurrent requests can bypass the check and violate the business rule. Application-level uniqueness checks without DB constraints are not race-safe. |
-| **Recommendation** | Add `UNIQUE INDEX` on [guardians(phone_primary)](file:///e:/Users/ibrahim/Desktop/techno_data_%20Copy/app/modules/crm/crm_service.py#62-68) and a partial unique index on [enrollments(student_id, group_id) WHERE status='active'](file:///e:/Users/ibrahim/Desktop/techno_data_%20Copy/app/modules/enrollments/enrollment_service.py#152-156). Catch `IntegrityError` from SQLAlchemy and translate it to [ConflictError](file:///e:/Users/ibrahim/Desktop/techno_data_%20Copy/app/shared/exceptions.py#98-110). |
+| **Recommendation** | Add `UNIQUE INDEX` on [parents(phone_primary)](file:///e:/Users/ibrahim/Desktop/techno_data_%20Copy/app/modules/crm/crm_service.py#62-68) and a partial unique index on [enrollments(student_id, group_id) WHERE status='active'](file:///e:/Users/ibrahim/Desktop/techno_data_%20Copy/app/modules/enrollments/enrollment_service.py#152-156). Catch `IntegrityError` from SQLAlchemy and translate it to [ConflictError](file:///e:/Users/ibrahim/Desktop/techno_data_%20Copy/app/shared/exceptions.py#98-110). |
 
 ---
 

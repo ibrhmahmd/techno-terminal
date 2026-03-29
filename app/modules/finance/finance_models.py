@@ -9,7 +9,7 @@ from app.shared.constants import PaymentMethod, TransactionType, PaymentType
 # --- Receipt Schemas ---
 
 class ReceiptBase(SQLModel):
-    guardian_id: Optional[int] = Field(default=None, foreign_key="guardians.id")
+    parent_id: Optional[int] = Field(default=None, foreign_key="parents.id")
     payment_method: Optional[PaymentMethod] = Field(default=None, sa_column=Column(String))  # cash | card | transfer | online
     received_by: Optional[int] = Field(default=None, foreign_key="users.id")
     receipt_number: Optional[str] = None

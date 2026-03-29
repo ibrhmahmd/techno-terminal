@@ -90,7 +90,7 @@ This roadmap turns the QA backlog into **ordered sprints** with clear goals, bac
 
 **Theme:** `created_at`, `updated_at`, `created_by` (and analogous fields) populated consistently — comparable to attendance **`marked_by`**.
 
-**Implementation note (2026-03):** **`app/shared/audit_utils.py`** (`apply_create_audit` / `apply_update_audit`) stamps CRM creates/updates, **`student_guardians`** links, and enrollment creates/status/discount changes. **`db/migrations/005_audit_d4_timestamps.sql`** backfills NULLs, sets **`DEFAULT CURRENT_TIMESTAMP`**, and adds **`tf_set_updated_at`** triggers (also in greenfield **`db/schema.sql`**). Streamlit passes **`state.get_current_user_id()`** into enroll/transfer, student registration, and Financial Desk receipts (fixes reliance on a non-existent `session_state["user_id"]`).
+**Implementation note (2026-03):** **`app/shared/audit_utils.py`** (`apply_create_audit` / `apply_update_audit`) stamps CRM creates/updates, **`student_parents`** links, and enrollment creates/status/discount changes. **`db/migrations/005_audit_d4_timestamps.sql`** backfills NULLs, sets **`DEFAULT CURRENT_TIMESTAMP`**, and adds **`tf_set_updated_at`** triggers (also in greenfield **`db/schema.sql`**). Streamlit passes **`state.get_current_user_id()`** into enroll/transfer, student registration, and Financial Desk receipts (fixes reliance on a non-existent `session_state["user_id"]`).
 
 | Backlog | Work summary |
 |---------|----------------|
@@ -109,7 +109,7 @@ This roadmap turns the QA backlog into **ordered sprints** with clear goals, bac
 
 | Backlog | Work summary |
 |---------|----------------|
-| **B9** | Service/repository: list receipts by date, optional filters (guardian, student, receipt #). |
+| **B9** | Service/repository: list receipts by date, optional filters (parent, student, receipt #). |
 | **U8** | Dashboard entry: today’s receipts, search, open detail view (reuse existing receipt component where possible). |
 
 **Suggested acceptance criteria**
@@ -119,20 +119,20 @@ This roadmap turns the QA backlog into **ordered sprints** with clear goals, bac
 
 **Dependency:** **Sprint 1** strongly recommended first.
 
-**Implementation note (2026-03-21):** **`finance_repository.search_receipts`** + **`finance_service.search_receipts`** — date range using UTC half-open bounds on **`paid_at`**, optional guardian / student (via `EXISTS` on **`payments`**) / receipt-number **`ILIKE`**, `ORDER BY paid_at DESC`, **`LIMIT` 200**. **`db/migrations/006_receipts_paid_at_index.sql`** and greenfield **`db/schema.sql`** add **`idx_receipts_paid_at`**. Dashboard **Financial Desk** uses tabs **Browse receipts** (`dashboard_receipts.render_receipt_browser`) vs **Record payment** (`finance_overview`); row selection sets **`selected_receipt_id`** and reuses **`finance_receipt.render_receipt_detail`**.
+**Implementation note (2026-03-21):** **`finance_repository.search_receipts`** + **`finance_service.search_receipts`** — date range using UTC half-open bounds on **`paid_at`**, optional parent / student (via `EXISTS` on **`payments`**) / receipt-number **`ILIKE`**, `ORDER BY paid_at DESC`, **`LIMIT` 200**. **`db/migrations/006_receipts_paid_at_index.sql`** and greenfield **`db/schema.sql`** add **`idx_receipts_paid_at`**. Dashboard **Financial Desk** uses tabs **Browse receipts** (`dashboard_receipts.render_receipt_browser`) vs **Record payment** (`finance_overview`); row selection sets **`selected_receipt_id`** and reuses **`finance_receipt.render_receipt_detail`**.
 
 ---
 
 ### Sprint 5 — Spike + Sprint 6 — Finance: balance model & Financial Desk (**epic**)
 
-**Theme:** Implement product semantics **P5–P8** (debt negative, credit positive, guardian total, “owed only” list, overpayment warn → confirm).
+**Theme:** Implement product semantics **P5–P8** (debt negative, credit positive, parent total, “owed only” list, overpayment warn → confirm).
 
 **Sprint 5 deliverable (design only):** [sprint_5_b8_balance_design_spike.md](./sprint_5_b8_balance_design_spike.md) — consumer inventory, P6 vs current formula, options A/B/C, migration order, open questions, Sprint 6 handoff.
 
 | Phase | Backlog | Work summary |
 |-------|---------|----------------|
 | **Sprint 5 (spike, ~3–5 days)** | **B8** (design) | Document target: replace or extend `v_enrollment_balance` (e.g. `account_balance = total_paid - net_due` vs rename `balance`); migration order; list every consumer (finance UI, analytics SQL, services). |
-| **Sprint 6 (build)** | **B8**, **B3**, **U2**, **U9** | Implement view/service changes; student search; guardian aggregate; filter “in debt only”; overpayment warning + confirm; apply credit to future payments per **P8**. |
+| **Sprint 6 (build)** | **B8**, **B3**, **U2**, **U9** | Implement view/service changes; student search; parent aggregate; filter “in debt only”; overpayment warning + confirm; apply credit to future payments per **P8**. |
 
 **Suggested acceptance criteria**
 

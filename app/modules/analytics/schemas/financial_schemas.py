@@ -31,6 +31,6 @@ class OutstandingByGroupDTO(BaseModel):
 class TopDebtorDTO(BaseModel):
     student_id: int
     student_name: str
-    guardian_name: Optional[str]
+    parent_name: Optional[str]
     phone_primary: Optional[str]
     total_outstanding: float

@@ -10,7 +10,7 @@ from app.db.connection import get_engine, get_session
 # IMPORTANT: Import ALL SQLModels here so SQLModel.metadata recognizes them before create_all()
 import app.modules.hr.hr_models
 from app.modules.auth import User
-import app.modules.crm.models.guardian_models
+import app.modules.crm.models.parent_models
 import app.modules.crm.models.student_models
 import app.modules.crm.models.link_models
 import app.modules.academics.models.course_models
@@ -47,11 +47,11 @@ SELECT s.id,
     s.created_at,
     s.updated_at,
     s.metadata,
-    g.full_name AS primary_guardian_name,
-    g.phone_primary AS primary_guardian_phone
+    g.full_name AS primary_parent_name,
+    g.phone_primary AS primary_parent_phone
 FROM students s
-    LEFT JOIN student_guardians sg ON s.id = sg.student_id AND sg.is_primary = TRUE
-    LEFT JOIN guardians g ON sg.guardian_id = g.id;
+    LEFT JOIN student_parents sg ON s.id = sg.student_id AND sg.is_primary = TRUE
+    LEFT JOIN parents g ON sg.parent_id = g.id;
 
 CREATE OR REPLACE VIEW v_enrollment_balance AS
 SELECT e.id AS enrollment_id,
@@ -79,9 +79,9 @@ SELECT sg1.student_id AS student_id,
     s1.full_name AS student_name,
     sg2.student_id AS sibling_id,
     s2.full_name AS sibling_name,
-    sg1.guardian_id
-FROM student_guardians sg1
-    JOIN student_guardians sg2 ON sg1.guardian_id = sg2.guardian_id AND sg1.student_id < sg2.student_id
+    sg1.parent_id
+FROM student_parents sg1
+    JOIN student_parents sg2 ON sg1.parent_id = sg2.parent_id AND sg1.student_id < sg2.student_id
     JOIN students s1 ON sg1.student_id = s1.id
     JOIN students s2 ON sg2.student_id = s2.id
 WHERE s1.is_active = TRUE AND s2.is_active = TRUE;

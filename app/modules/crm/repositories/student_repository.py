@@ -1,6 +1,6 @@
 from typing import Sequence
 from sqlmodel import Session, select
-from app.modules.crm.models import Student, StudentGuardian
+from app.modules.crm.models import Student, StudentParent
 from app.shared.audit_utils import apply_create_audit
 
 def create_student(session: Session, student: Student) -> Student:
@@ -20,21 +20,21 @@ def search_students(session: Session, query: str) -> Sequence[Student]:
     stmt = select(Student).where(Student.full_name.ilike(search_term)).limit(50)
     return session.exec(stmt).all()
 
-def get_student_guardians(session: Session, student_id: int) -> Sequence[StudentGuardian]:
-    """Retrieves the guardian link objects for a given student."""
-    stmt = select(StudentGuardian).where(StudentGuardian.student_id == student_id)
+def get_student_parents(session: Session, student_id: int) -> Sequence[StudentParent]:
+    """Retrieves the parent link objects for a given student."""
+    stmt = select(StudentParent).where(StudentParent.student_id == student_id)
     return session.exec(stmt).all()
 
-def link_guardian(
+def link_parent(
     session: Session,
     student_id: int,
-    guardian_id: int,
+    parent_id: int,
     relationship: str | None = None,
     is_primary: bool = False,
-) -> StudentGuardian:
-    link = StudentGuardian(
+) -> StudentParent:
+    link = StudentParent(
         student_id=student_id,
-        guardian_id=guardian_id,
+        parent_id=parent_id,
         relationship=relationship,
         is_primary=is_primary,
     )
@@ -45,20 +45,20 @@ def link_guardian(
 
 def get_siblings(session: Session, student_id: int) -> list[dict]:
     """
-    Returns sibling data via ORM joins on StudentGuardian.
-    Two-query approach: find shared guardians, then find their other students.
+    Returns sibling data via ORM joins on StudentParent.
+    Two-query approach: find shared parents, then find their other students.
     """
-    guardian_links = session.exec(
-        select(StudentGuardian).where(StudentGuardian.student_id == student_id)
+    parent_links = session.exec(
+        select(StudentParent).where(StudentParent.student_id == student_id)
     ).all()
-    guardian_ids = [link.guardian_id for link in guardian_links]
-    if not guardian_ids:
+    parent_ids = [link.parent_id for link in parent_links]
+    if not parent_ids:
         return []
 
     sibling_links = session.exec(
-        select(StudentGuardian)
-        .where(StudentGuardian.guardian_id.in_(guardian_ids))
-        .where(StudentGuardian.student_id != student_id)
+        select(StudentParent)
+        .where(StudentParent.parent_id.in_(parent_ids))
+        .where(StudentParent.student_id != student_id)
     ).all()
     sibling_ids = {link.student_id for link in sibling_links}
 
@@ -68,17 +68,17 @@ def get_siblings(session: Session, student_id: int) -> list[dict]:
         if (s := session.get(Student, sid))
     ]
 
-def get_students_by_guardian_id(
-    session: Session, guardian_id: int, active_only: bool = True
+def get_students_by_parent_id(
+    session: Session, parent_id: int, active_only: bool = True
 ) -> list[Student]:
     """
-    Returns all Student objects linked to a guardian via StudentGuardian.
+    Returns all Student objects linked to a parent via StudentParent.
     Single JOIN — avoids N+1 query anti-pattern.
     """
     stmt = (
         select(Student)
-        .join(StudentGuardian, StudentGuardian.student_id == Student.id)
-        .where(StudentGuardian.guardian_id == guardian_id)
+        .join(StudentParent, StudentParent.student_id == Student.id)
+        .where(StudentParent.parent_id == parent_id)
     )
     if active_only:
         stmt = stmt.where(Student.is_active == True)

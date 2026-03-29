@@ -75,7 +75,7 @@ with tab_schedule:
         st.markdown("---")
         st.subheader("🔴 Outstanding Balances — Today's Attendees")
         st.caption("Total debt (EGP) — sum where account balance is negative (P6).")
-        df_unpaid = pd.DataFrame([u.model_dump() for u in unpaid_today])[["student_name", "guardian_name", "phone_primary", "total_balance"]]
+        df_unpaid = pd.DataFrame([u.model_dump() for u in unpaid_today])[["student_name", "parent_name", "phone_primary", "total_balance"]]
         df_unpaid.columns = ["Student", "Parent", "Phone", "Debt (EGP)"]
         df_unpaid["Balance (EGP)"] = df_unpaid["Balance (EGP)"].apply(lambda x: f"{float(x):,.0f}")
         st.dataframe(df_unpaid, use_container_width=True, hide_index=True)

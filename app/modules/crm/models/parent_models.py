@@ -1,8 +1,8 @@
 """
-app/modules/crm/models/guardian_models.py
+app/modules/crm/models/parent_models.py
 ──────────────────────────────────────────
-SQLModel table definition for the Guardian entity.
-StudentGuardian junction lives in link_models.py to avoid circular refs.
+SQLModel table definition for the Parent entity.
+StudentParent junction lives in link_models.py to avoid circular refs.
 """
 from datetime import datetime
 from typing import TYPE_CHECKING, List, Optional
@@ -10,10 +10,10 @@ from typing import TYPE_CHECKING, List, Optional
 from sqlmodel import SQLModel, Field, Relationship
 
 if TYPE_CHECKING:
-    from app.modules.crm.models.link_models import StudentGuardian
+    from app.modules.crm.models.link_models import StudentParent
 
 
-class GuardianBase(SQLModel):
+class ParentBase(SQLModel):
     full_name: str
     phone_primary: Optional[str] = None  # unique enforced at DB level
     phone_secondary: Optional[str] = None
@@ -22,23 +22,23 @@ class GuardianBase(SQLModel):
     notes: Optional[str] = None
 
 
-class Guardian(GuardianBase, table=True):
-    __tablename__ = "guardians"
+class Parent(ParentBase, table=True):
+    __tablename__ = "parents"
     __table_args__ = {"extend_existing": True}
 
     id: Optional[int] = Field(default=None, primary_key=True)
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
-    student_links: List["StudentGuardian"] = Relationship(back_populates="guardian")
+    student_links: List["StudentParent"] = Relationship(back_populates="parent")
 
 
-class GuardianCreate(GuardianBase):
-    """DTO for creating a new guardian via bulk/seed operations."""
+class ParentCreate(ParentBase):
+    """DTO for creating a new parent via bulk/seed operations."""
     pass
 
 
-class GuardianRead(GuardianBase):
+class ParentRead(ParentBase):
     """Network-safe read representation."""
     id: int
     created_at: Optional[datetime] = None

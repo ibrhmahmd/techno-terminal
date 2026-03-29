@@ -15,7 +15,7 @@ def render_finance_overview():
     debt_only = st.toggle("Show owed money only (debt < 0)", value=False, key="fd_debt_only")
 
     focus_student = None
-    focus_guardian_id = None
+    focus_parent_id = None
     student_q = st.text_input(
         "🔎 Search Student (name)",
         key="fd_sq",
@@ -30,12 +30,12 @@ def render_finance_overview():
                 format_func=lambda s: f"{s.full_name} (#{s.id})",
                 key="fd_ssel",
             )
-            links = crm_srv.get_student_guardians(focus_student.id)
+            links = crm_srv.get_student_parents(focus_student.id)
             primary = next((l for l in links if l.is_primary), None)
             if primary:
-                focus_guardian_id = primary.guardian_id
+                focus_parent_id = primary.parent_id
             elif links:
-                focus_guardian_id = links[0].guardian_id
+                focus_parent_id = links[0].parent_id
         else:
             st.caption("No students found.")
 
@@ -46,15 +46,15 @@ def render_finance_overview():
     )
     selected_parent = None
 
-    if focus_guardian_id:
-        selected_parent = crm_srv.get_guardian_by_id(focus_guardian_id)
+    if focus_parent_id:
+        selected_parent = crm_srv.get_parent_by_id(focus_parent_id)
         if selected_parent and focus_student:
             st.caption(
                 f"Student context: **{focus_student.full_name}** -> "
                 f"family **{selected_parent.full_name}**"
             )
     elif parent_q and len(parent_q) >= 2:
-        parents = crm_srv.search_guardians(parent_q)
+        parents = crm_srv.search_parents(parent_q)
         if parents:
             sel_parent = st.selectbox(
                 "Select Parent",
@@ -74,7 +74,7 @@ def render_finance_overview():
     # ── 2. Payment Builder ─────────────────────────────────────────────────────
     st.markdown(f"#### 👨‍👩‍👧 Family Account: **{selected_parent.full_name}**")
 
-    children = crm_srv.get_guardian_students(selected_parent.id)
+    children = crm_srv.get_parent_students(selected_parent.id)
     if not children:
         st.info("No students linked to this parent.")
         return
@@ -85,8 +85,8 @@ def render_finance_overview():
         st.session_state["fd_lines"] = {}
 
     # Reset draft lines when switching family.
-    if st.session_state.get("fd_active_guardian_id") != selected_parent.id:
-        st.session_state["fd_active_guardian_id"] = selected_parent.id
+    if st.session_state.get("fd_active_parent_id") != selected_parent.id:
+        st.session_state["fd_active_parent_id"] = selected_parent.id
         st.session_state["fd_lines"] = {}
         st.session_state.pop("fd_overpay_preview", None)
 
@@ -208,7 +208,7 @@ def render_finance_overview():
                         for line in lines
                     ]
                     summary = fin_srv.create_receipt_with_charge_lines(
-                        guardian_id=selected_parent.id,
+                        parent_id=selected_parent.id,
                         method=method,
                         received_by_user_id=state.get_current_user_id(),
                         lines=line_specs,
@@ -246,7 +246,7 @@ def render_finance_overview():
                     st.rerun()
 
                 summary = fin_srv.create_receipt_with_charge_lines(
-                    guardian_id=selected_parent.id,
+                    parent_id=selected_parent.id,
                     method=method,
                     received_by_user_id=state.get_current_user_id(),
                     lines=line_specs,

@@ -41,7 +41,7 @@ When a team is created:
 3. Save the `member_share` onto each `team_members` row as it is inserted.
 
 ### 2. Financial Desk (`finance_service` & `finance_overview.py`)
-Modify the Financial Desk to read unpaid `team_members` rows for the selected guardian's students:
+Modify the Financial Desk to read unpaid `team_members` rows for the selected parent's students:
 1. Find all `team_members` where `fee_paid = false` for the matched students.
 2. Display them in the checkout UI as checkable charge lines (just like enrollments).
 3. When paid, the `create_receipt_with_charge_lines` function records a payment where `payment_type='competition'`.

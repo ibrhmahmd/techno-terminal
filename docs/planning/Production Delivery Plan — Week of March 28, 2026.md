@@ -91,7 +91,7 @@ app/
         ├── __init__.py
         ├── auth.py             ← POST /auth/login, GET /auth/me
         ├── students.py         ← CRUD /students
-        ├── guardians.py        ← CRUD /guardians
+        ├── parents.py        ← CRUD /parents
         ├── groups.py           ← GET/POST /groups
         ├── sessions.py         ← GET/POST /sessions
         ├── attendance.py       ← POST /attendance
@@ -167,7 +167,7 @@ Fix any import errors found using the same pattern as Step 1A.
 ```python
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.routers import auth, students, guardians
+from app.api.routers import auth, students, parents
 
 app = FastAPI(title="Techno Terminal API", version="1.0.0")
 
@@ -176,7 +176,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"],
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(students.router, prefix="/api/v1")
-app.include_router(guardians.router, prefix="/api/v1")
+app.include_router(parents.router, prefix="/api/v1")
 ```
 
 #### Step 2B — Supabase JWT Auth Middleware
@@ -207,13 +207,13 @@ async def verify_supabase_jwt(request: Request) -> dict:
 **[NEW] `app/api/dependencies.py`**
 ```python
 from app.modules.crm.services.student_service import StudentService
-from app.modules.crm.services.guardian_service import GuardianService
+from app.modules.crm.services.parent_service import ParentService
 from app.modules.auth.services.auth_service import AuthService
 from app.modules.enrollments.services.enrollment_service import EnrollmentService
 ...
 
 def get_student_service() -> StudentService:     return StudentService()
-def get_guardian_service() -> GuardianService:   return GuardianService()
+def get_parent_service() -> ParentService:   return ParentService()
 def get_auth_service() -> AuthService:           return AuthService()
 def get_enrollment_service() -> EnrollmentService: return EnrollmentService()
 ```
@@ -252,11 +252,11 @@ class ErrorResponse(BaseModel):
 - `GET /api/v1/students/{id}/enrollments` — get student enrollments
 - `GET /api/v1/students/{id}/competitions` — competition history
 
-**[NEW] `app/api/routers/guardians.py`**
-- `GET /api/v1/guardians` — list/search guardians
-- `POST /api/v1/guardians` — register guardian
-- `GET /api/v1/guardians/{id}` — guardian detail + children
-- `PATCH /api/v1/guardians/{id}` — update guardian
+**[NEW] `app/api/routers/parents.py`**
+- `GET /api/v1/parents` — list/search parents
+- `POST /api/v1/parents` — register parent
+- `GET /api/v1/parents/{id}` — parent detail + children
+- `PATCH /api/v1/parents/{id}` — update parent
 
 **Deliverable: FastAPI running on port 8000. `/api/v1/docs` accessible. Auth + CRM endpoints tested via Swagger UI ✅**
 
@@ -290,7 +290,7 @@ class ErrorResponse(BaseModel):
 **[NEW] `app/api/routers/finance.py`**
 - `POST /api/v1/receipts` — create receipt with charge lines
 - `GET /api/v1/receipts/{id}` — receipt detail
-- `GET /api/v1/receipts/search` — search receipts by date/guardian/student
+- `GET /api/v1/receipts/search` — search receipts by date/parent/student
 - `POST /api/v1/receipts/{id}/refund` — issue refund
 - `GET /api/v1/finance/collections/daily` — daily collections report
 - `GET /api/v1/finance/balance/{enrollment_id}` — enrollment balance
@@ -338,7 +338,7 @@ if __name__ == "__main__":
 #### Step 5A — Full API Smoke Test (Manual via Swagger)
 Run through every priority flow end-to-end via `/api/v1/docs`:
 - [ ] Login → receive token → use token on protected endpoints
-- [ ] Register guardian + student
+- [ ] Register parent + student
 - [ ] Enroll student in group
 - [ ] Mark attendance for a session
 - [ ] Create receipt with payment line → verify balance

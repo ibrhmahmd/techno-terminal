@@ -120,7 +120,7 @@ with tab_fin:
         df_debt = df_debt.rename(
             columns={
                 "student_name": "Student",
-                "guardian_name": "Parent",
+                "parent_name": "Parent",
                 "phone_primary": "Phone",
                 "total_outstanding": "Owed (EGP)",
             }

@@ -17,7 +17,7 @@ def validate_phone(phone: str) -> str:
     Strips all non-digit characters and checks minimum length (10 digits).
     Returns the cleaned phone string on success.
 
-    Reusable for: guardian primary phone, guardian secondary phone,
+    Reusable for: parent primary phone, parent secondary phone,
                   student phone, future HR employee contact.
     """
     if not phone:

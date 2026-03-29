@@ -13,7 +13,7 @@
 BEGIN;
 
 -- ── Backfill NULL timestamps ───────────────────────────────────────────────
-UPDATE guardians SET
+UPDATE parents SET
     created_at = COALESCE(created_at, NOW()),
     updated_at = COALESCE(updated_at, created_at, NOW());
 
@@ -25,7 +25,7 @@ UPDATE students SET
     created_at = COALESCE(created_at, NOW()),
     updated_at = COALESCE(updated_at, created_at, NOW());
 
-UPDATE student_guardians SET
+UPDATE student_parents SET
     created_at = COALESCE(created_at, NOW());
 
 UPDATE courses SET
@@ -114,8 +114,8 @@ UPDATE teams SET
     created_at = COALESCE(created_at, NOW());
 
 -- ── INSERT defaults (ORM may still set explicitly) ──────────────────────────
-ALTER TABLE guardians ALTER COLUMN created_at SET DEFAULT CURRENT_TIMESTAMP;
-ALTER TABLE guardians ALTER COLUMN updated_at SET DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE parents ALTER COLUMN created_at SET DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE parents ALTER COLUMN updated_at SET DEFAULT CURRENT_TIMESTAMP;
 
 ALTER TABLE employees ALTER COLUMN created_at SET DEFAULT CURRENT_TIMESTAMP;
 ALTER TABLE employees ALTER COLUMN updated_at SET DEFAULT CURRENT_TIMESTAMP;
@@ -123,7 +123,7 @@ ALTER TABLE employees ALTER COLUMN updated_at SET DEFAULT CURRENT_TIMESTAMP;
 ALTER TABLE students ALTER COLUMN created_at SET DEFAULT CURRENT_TIMESTAMP;
 ALTER TABLE students ALTER COLUMN updated_at SET DEFAULT CURRENT_TIMESTAMP;
 
-ALTER TABLE student_guardians ALTER COLUMN created_at SET DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE student_parents ALTER COLUMN created_at SET DEFAULT CURRENT_TIMESTAMP;
 
 ALTER TABLE courses ALTER COLUMN created_at SET DEFAULT CURRENT_TIMESTAMP;
 ALTER TABLE courses ALTER COLUMN updated_at SET DEFAULT CURRENT_TIMESTAMP;
@@ -155,9 +155,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trg_guardians_updated_at ON guardians;
-CREATE TRIGGER trg_guardians_updated_at
-    BEFORE UPDATE ON guardians
+DROP TRIGGER IF EXISTS trg_parents_updated_at ON parents;
+CREATE TRIGGER trg_parents_updated_at
+    BEFORE UPDATE ON parents
     FOR EACH ROW EXECUTE PROCEDURE tf_set_updated_at();
 
 DROP TRIGGER IF EXISTS trg_employees_updated_at ON employees;

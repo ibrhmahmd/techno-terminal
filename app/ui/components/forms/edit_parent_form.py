@@ -1,5 +1,5 @@
 import streamlit as st
-from app.modules.crm import crm_service as crm_srv, UpdateGuardianDTO
+from app.modules.crm import crm_service as crm_srv, UpdateParentDTO
 
 def render_edit_parent_form(parent):
     with st.expander("✏️ Edit Family Information"):
@@ -8,7 +8,7 @@ def render_edit_parent_form(parent):
             with c1:
                 e_name = st.text_input("Full Name *", value=parent.full_name)
                 e_phone = st.text_input("Primary Phone *", value=parent.phone_primary)
-                rel_opts = ["Father", "Mother", "Guardian", "Other"]
+                rel_opts = ["Father", "Mother", "Parent", "Other"]
                 e_rel = st.selectbox("Relationship", rel_opts, index=rel_opts.index(parent.relation) if parent.relation in rel_opts else 3)
             with c2:
                 e_phone_sec = st.text_input("Secondary Phone", value=parent.phone_secondary or "")
@@ -18,7 +18,7 @@ def render_edit_parent_form(parent):
             
             if st.form_submit_button("Save Changes", type="primary"):
                 try:
-                    crm_srv.update_guardian(parent.id, UpdateGuardianDTO(
+                    crm_srv.update_parent(parent.id, UpdateParentDTO(
                         full_name=e_name.strip(),
                         phone_primary=e_phone.strip(),
                         phone_secondary=e_phone_sec.strip() or None,

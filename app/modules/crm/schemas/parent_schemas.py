@@ -1,7 +1,7 @@
 """
-app/modules/crm/schemas/guardian_schemas.py
+app/modules/crm/schemas/parent_schemas.py
 ────────────────────────────────────────────
-Pydantic DTOs scoped to Guardian operations.
+Pydantic DTOs scoped to Parent operations.
 """
 from typing import Optional
 
@@ -9,9 +9,9 @@ from pydantic import BaseModel, field_validator
 from app.shared.validators import validate_phone
 
 
-class RegisterGuardianInput(BaseModel):
+class RegisterParentInput(BaseModel):
     """
-    Input for CRMService.register_guardian() and find_or_create_guardian().
+    Input for CRMService.register_parent() and find_or_create_parent().
     The phone_primary field is validated and normalised on input.
     """
     full_name: str
@@ -28,9 +28,9 @@ class RegisterGuardianInput(BaseModel):
         return validate_phone(v)
 
 
-class UpdateGuardianDTO(BaseModel):
+class UpdateParentDTO(BaseModel):
     """
-    Input for CRMService.update_guardian().
+    Input for CRMService.update_parent().
     All fields are optional; only provided fields will be written.
     """
     full_name: Optional[str] = None

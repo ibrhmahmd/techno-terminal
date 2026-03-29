@@ -1,6 +1,6 @@
-from .guardian_schemas import (
-    RegisterGuardianInput,
-    UpdateGuardianDTO,
+from .parent_schemas import (
+    RegisterParentInput,
+    UpdateParentDTO,
 )
 from .student_schemas import (
     RegisterStudentInput,
@@ -9,8 +9,8 @@ from .student_schemas import (
 )
 
 __all__ = [
-    "RegisterGuardianInput",
-    "UpdateGuardianDTO",
+    "RegisterParentInput",
+    "UpdateParentDTO",
     "RegisterStudentInput",
     "UpdateStudentDTO",
     "RegisterStudentCommandDTO",

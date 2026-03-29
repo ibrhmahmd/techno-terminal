@@ -2,7 +2,7 @@
 app/modules/crm/models/student_models.py
 ─────────────────────────────────────────
 SQLModel table definition for the Student entity.
-StudentGuardian junction lives in link_models.py to avoid circular refs.
+StudentParent junction lives in link_models.py to avoid circular refs.
 """
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, List, Optional
@@ -12,7 +12,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import SQLModel, Field, Relationship
 
 if TYPE_CHECKING:
-    from app.modules.crm.models.link_models import StudentGuardian
+    from app.modules.crm.models.link_models import StudentParent
 
 
 class StudentBase(SQLModel):
@@ -36,7 +36,7 @@ class Student(StudentBase, table=True):
         default=None,
         sa_column=Column("metadata", JSONB),
     )
-    guardian_links: List["StudentGuardian"] = Relationship(back_populates="student")
+    parent_links: List["StudentParent"] = Relationship(back_populates="student")
 
 
 class StudentCreate(StudentBase):

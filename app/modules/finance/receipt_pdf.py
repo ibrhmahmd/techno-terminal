@@ -17,7 +17,7 @@ class ReceiptPDF(FPDF):
         self.cell(0, 10, f"Page {self.page_no()}", align="C")
 
 
-def build_receipt_pdf(receipt: Receipt, lines: list[Payment], total: float, guardian_name: str) -> bytes:
+def build_receipt_pdf(receipt: Receipt, lines: list[Payment], total: float, parent_name: str) -> bytes:
     """Generates a PDF receipt using fpdf2 and returns the raw bytes."""
     pdf = ReceiptPDF(orientation="P", unit="mm", format="A5")
     pdf.add_page()
@@ -38,9 +38,9 @@ def build_receipt_pdf(receipt: Receipt, lines: list[Payment], total: float, guar
     pdf.cell(0, 6, dt_str, ln=1)
 
     pdf.set_font("helvetica", "", 10)
-    pdf.cell(50, 6, "Guardian / Name:", ln=0)
+    pdf.cell(50, 6, "Parent / Name:", ln=0)
     pdf.set_font("helvetica", "B", 10)
-    pdf.cell(0, 6, guardian_name, ln=1)
+    pdf.cell(0, 6, parent_name, ln=1)
 
     pdf.set_font("helvetica", "", 10)
     pdf.cell(50, 6, "Payment Method:", ln=0)

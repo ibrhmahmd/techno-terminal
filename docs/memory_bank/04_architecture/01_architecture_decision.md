@@ -39,7 +39,7 @@ A single "Enroll Student" feature touches `models/enrollment.py`, `repositories/
 
 - When building the Enrollment feature, you jump between 4 different folders
 - `services/` grows to 20+ files covering completely unrelated domains (Finance and CRM in the same folder)
-- Coupling within a layer becomes invisible — `enrollment_service.py` might import from `guardian_service.py` in ways that are hard to track
+- Coupling within a layer becomes invisible — `enrollment_service.py` might import from `parent_service.py` in ways that are hard to track
 
 **Verdict for Techno Terminal:** Works fine at small scale, but starts to hide complexity as the project grows.
 
@@ -80,7 +80,7 @@ To build "Mark Attendance", you only ever open `features/attendance/`. Everythin
 
 **Cons for this project:**
 
-- Techno Terminal features are *not* truly independent: Attendance depends on Enrollments which depends on Students which depends on Guardians. A vertical slice structure would duplicate code or require heavy imports between feature folders, breaking the isolation benefit.
+- Techno Terminal features are *not* truly independent: Attendance depends on Enrollments which depends on Students which depends on Parents. A vertical slice structure would duplicate code or require heavy imports between feature folders, breaking the isolation benefit.
 - 16 tables imply ~12 features — that is manageable, but the `shared/` folder (where re-used domain models live) grows and becomes a second "flat layer", partially defeating the purpose.
 
 **Verdict for Techno Terminal:** Vertical Slice shines when features are loosely coupled (e.g., e-commerce: Cart, Checkout, Orders are independent). For a tightly-coupled CRM like this, it adds indirection without much benefit.
@@ -94,7 +94,7 @@ Organize code by **business domain**, where each domain is a Python package cont
 ```
 src/
 ├── modules/
-│   ├── crm/              # Guardians + Students (same domain)
+│   ├── crm/              # Parents + Students (same domain)
 │   │   ├── models.py
 │   │   ├── repository.py
 │   │   └── service.py

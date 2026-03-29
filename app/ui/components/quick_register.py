@@ -1,6 +1,6 @@
 import streamlit as st
 from app.ui import state
-from app.modules.crm import crm_service as crm_srv, RegisterGuardianInput, RegisterStudentInput, RegisterStudentCommandDTO
+from app.modules.crm import crm_service as crm_srv, RegisterParentInput, RegisterStudentInput, RegisterStudentCommandDTO
 from app.shared.exceptions import ValidationError, ConflictError
 
 def render_quick_register():
@@ -15,7 +15,7 @@ def render_quick_register():
                 st.markdown("##### 👩‍👦 Parent Details")
                 p_phone = st.text_input("Phone Number (Primary)*", placeholder="01xxxxxxxxx")
                 p_name = st.text_input("Full Name*", placeholder="Parent's Name")
-                p_relation = st.selectbox("Relationship", ["Father", "Mother", "Guardian", "Other"])
+                p_relation = st.selectbox("Relationship", ["Father", "Mother", "Parent", "Other"])
             
             with col_s:
                 st.markdown("##### 🎓 Student Details")
@@ -65,8 +65,8 @@ def render_quick_register():
                 final_s_notes = " | ".join(s_meta) if s_meta else None
                 
                 try:
-                    # 1. Find or create guardian
-                    guardian, created = crm_srv.find_or_create_guardian(RegisterGuardianInput(
+                    # 1. Find or create parent
+                    parent, created = crm_srv.find_or_create_parent(RegisterParentInput(
                         full_name=p_name.strip(),
                         phone_primary=p_phone.strip(),
                         phone_secondary=p_phone_sec.strip() if p_phone_sec else None,
@@ -75,7 +75,7 @@ def render_quick_register():
                         notes=final_p_notes
                     ))
                     
-                    # 2. Register student and link to guardian
+                    # 2. Register student and link to parent
                     student_command = RegisterStudentCommandDTO(
                         student_data=RegisterStudentInput(
                             full_name=s_name.strip(),
@@ -84,16 +84,16 @@ def render_quick_register():
                             phone=s_phone.strip() if s_phone else None,
                             notes=final_s_notes
                         ),
-                        guardian_id=guardian.id,
+                        parent_id=parent.id,
                         relationship=p_relation,
                         created_by_user_id=state.get_current_user_id(),
                     )
                     student, siblings = crm_srv.register_student(student_command)
                     
                     if created:
-                        st.success(f"✅ Created new Parent: **{guardian.full_name}** and Student: **{student.full_name}**")
+                        st.success(f"✅ Created new Parent: **{parent.full_name}** and Student: **{student.full_name}**")
                     else:
-                        st.success(f"✅ Added Student: **{student.full_name}** to existing Parent: **{guardian.full_name}**")
+                        st.success(f"✅ Added Student: **{student.full_name}** to existing Parent: **{parent.full_name}**")
                     
                     if siblings:
                         st.info(f"💡 Note: This student has {len(siblings)} sibling(s) registered under this parent.")

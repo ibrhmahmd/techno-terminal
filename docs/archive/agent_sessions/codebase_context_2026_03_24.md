@@ -11,7 +11,7 @@
 
 **Techno Terminal** is a full-stack internal management system for a STEM education center. It manages:
 
-- Student & parent (guardian) profiles
+- Student & parent (parent) profiles
 - Course catalog, group scheduling, session tracking
 - Student enrollment per group/level
 - Attendance marking
@@ -111,11 +111,11 @@ get_session()  # @contextmanager — yields Session, auto-commits on exit, rolls
 
 | Table | Key Notes |
 |-------|-----------|
-| `guardians` | Parent contacts; `phone_primary` indexed |
+| `parents` | Parent contacts; `phone_primary` indexed |
 | `employees` | `national_id` NOT NULL UNIQUE; `phone` NOT NULL UNIQUE; `email` UNIQUE nullable; `employment_type` NOT NULL; D5 CHECK on `contract_percentage` |
 | `users` | `supabase_uid` UNIQUE NOT NULL; roles: `admin`, `instructor`, `system_admin`; optional `employee_id` FK |
-| `students` | `is_active` flag; no direct guardian FK — uses junction |
-| `student_guardians` | M:M junction; `UNIQUE(student_id, guardian_id)`; `is_primary` flag |
+| `students` | `is_active` flag; no direct parent FK — uses junction |
+| `student_parents` | M:M junction; `UNIQUE(student_id, parent_id)`; `is_primary` flag |
 | `courses` | `category IN ('software','hardware','steam','other')` |
 | `groups` | `level_number` = current active level; `status IN ('active','completed','cancelled')` |
 | `sessions` | `session_date DATE`, `created_at TIMESTAMPTZ`; ORM uses `date`/`datetime` (not `str`); `ON DELETE RESTRICT` on `group_id` |
@@ -132,10 +132,10 @@ get_session()  # @contextmanager — yields Session, auto-commits on exit, rolls
 
 | View | What It Gives |
 |------|---------------|
-| `v_students` | students + primary guardian name/phone |
+| `v_students` | students + primary parent name/phone |
 | `v_enrollment_balance` | `net_due`, `total_paid`, **`balance = total_paid − net_due`** (P6: **negative = debt**, zero = settled, **positive = credit**) |
 | `v_enrollment_attendance` | `sessions_attended`, `sessions_missed` per enrollment |
-| `v_siblings` | Student pairs sharing a guardian |
+| `v_siblings` | Student pairs sharing a parent |
 | `v_group_session_count` | `regular_sessions`, `extra_sessions`, `total_sessions` per group/level |
 
 > ⚠️ `v_enrollment_balance.balance` returns `Decimal` — always `float()` cast in Python before arithmetic.
@@ -185,10 +185,10 @@ Every domain module is **3-layer**:
 - UI: `employee_directory.py`, `employee_detail.py`, `employee_form.py` (busy flags for double-submit guard)
 
 ### 5.3 `crm`
-- **Naming:** DB/code = `guardian`; UI text = "Parent"
-- Models: `Guardian`, `Student`, `StudentGuardian` in `crm_models.py`
-- Repository: `create_guardian`, `get_guardian_by_phone`, `search_guardians`, `create_student`, `search_students`, `link_guardian`, `get_siblings`, …
-- Service: `register_guardian`, `find_or_create_guardian`, `register_student`, `search_students`, `find_siblings`, `get_guardian_students`, …
+- **Naming:** DB/code = `parent`; UI text = "Parent"
+- Models: `Parent`, `Student`, `StudentParent` in `crm_models.py`
+- Repository: `create_parent`, `get_parent_by_phone`, `search_parents`, `create_student`, `search_students`, `link_parent`, `get_siblings`, …
+- Service: `register_parent`, `find_or_create_parent`, `register_student`, `search_students`, `find_siblings`, `get_parent_students`, …
 - Audit: create paths use `apply_create_audit()`; update paths use `apply_update_audit()`
 
 ### 5.4 `academics`
@@ -211,7 +211,7 @@ Every domain module is **3-layer**:
 - Models: `Receipt`, `Payment`
 - **Preferred flow (one atomic transaction):**
   ```python
-  create_receipt_with_charge_lines(guardian_id, method, user_id, lines, allow_credit=True) → dict summary + payment_ids
+  create_receipt_with_charge_lines(parent_id, method, user_id, lines, allow_credit=True) → dict summary + payment_ids
   ```
 - **Legacy/granular flow:** `open_receipt` → `add_charge_line` (loop) → `finalize_receipt`
 - Other service functions: `issue_refund`, `search_receipts` (UTC half-open on `paid_at`, LIMIT 200), `get_enrollment_balance`, `preview_overpayment_risk(lines, db=...)`, `get_daily_receipts`, `get_student_financial_summary`
@@ -263,7 +263,7 @@ if "nav_target_student_id" in st.session_state:
 | Key | Purpose |
 |-----|---------|
 | `nav_target_student_id` | Student detail cross-link |
-| `nav_target_parent_id` | Guardian detail cross-link |
+| `nav_target_parent_id` | Parent detail cross-link |
 | `nav_target_group_id` | Group detail |
 | `nav_target_course_id` | Course detail |
 | `selected_receipt_id` | Receipt detail in Dashboard tab |
@@ -275,10 +275,10 @@ if "nav_target_student_id" in st.session_state:
 
 | Component | File | Role |
 |-----------|------|------|
-| Finance Desk | `finance_overview.py` | Student/guardian search, owed-only toggle, household balance, overpayment warn+confirm, record payment |
+| Finance Desk | `finance_overview.py` | Student/parent search, owed-only toggle, household balance, overpayment warn+confirm, record payment |
 | Receipt Browser | `dashboard_receipts.py` | Date-range search, row select → detail |
 | Receipt Detail | `finance_receipt.py` | Reusable receipt detail + refund |
-| Quick Register | `quick_register.py` | New student + guardian from Dashboard |
+| Quick Register | `quick_register.py` | New student + parent from Dashboard |
 | Auth guard | `auth_guard.py` | `require_auth()` wrapper |
 | Employee forms | `employee/employee_form.py`, `employee_directory.py`, `employee_detail.py` |
 
@@ -336,7 +336,7 @@ API calls (FastAPI) → Authorization: Bearer <supabase_jwt>
 
 ### Sprint 6b — What Was Implemented (Latest)
 
-- **`finance_overview.py`:** Student search entry path; auto-resolves to guardian; "Show owed money only" toggle (P7); household balance rollup (P5/P6)
+- **`finance_overview.py`:** Student search entry path; auto-resolves to parent; "Show owed money only" toggle (P7); household balance rollup (P5/P6)
 - **`finance_service.py`:** `create_receipt_with_charge_lines(..., allow_credit: bool = True)` guard; `preview_overpayment_risk(lines, db=...)` helper — pre-flight scan before receipt creation
 - **`finance/__init__.py`:** Exports `preview_overpayment_risk`
 
@@ -379,7 +379,7 @@ API calls (FastAPI) → Authorization: Bearer <supabase_jwt>
 | 7 | After a `BEGIN…COMMIT` migration fails, run **`ROLLBACK;`** before re-running (else SQLSTATE 25P02) |
 | 8 | Zero-fee teams (`enrollment_fee_per_student IS NULL or = 0`) → auto-mark as paid |
 | 9 | `expire_on_commit=False` — objects usable after session close; don't share across threads |
-| 10 | `search_Parents` / `list_groups` **do not exist** — use `search_guardians`, `get_all_active_groups()` |
+| 10 | `search_Parents` / `list_groups` **do not exist** — use `search_parents`, `get_all_active_groups()` |
 | 11 | `st.switch_page()` path must match filename exactly under `pages/` |
 | 12 | `update_course` / `update_group` / `update_session` all call `apply_update_audit()` before commit |
 | 13 | `balance < 0` = debt (P6); `balance > 0` = credit — never invert this convention |

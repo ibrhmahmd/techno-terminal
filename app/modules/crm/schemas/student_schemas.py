@@ -39,6 +39,6 @@ class RegisterStudentCommandDTO(BaseModel):
     and audit context for full CQRS-style registration.
     """
     student_data: RegisterStudentInput
-    guardian_id: int
+    parent_id: int
     relationship: Optional[str] = None
     created_by_user_id: Optional[int] = None

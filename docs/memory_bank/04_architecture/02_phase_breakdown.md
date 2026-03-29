@@ -70,34 +70,34 @@ modules: crm · academics · enrollments · attendance · finance · competition
 > **Goal:** Administrators can fully manage families, students, and the course catalogue.
 > **Modules touched:** `modules/crm/`, `modules/academics/`
 
-### 2.1 Guardian Management (`modules/crm/`)
+### 2.1 Parent Management (`modules/crm/`)
 
-- `models.py`: `Guardian` SQLModel (id, full_name, phone_primary, phone_secondary, email, relation, notes)
+- `models.py`: `Parent` SQLModel (id, full_name, phone_primary, phone_secondary, email, relation, notes)
 - `repository.py`:
-  - `create_guardian(data)` — inserts, returns `Guardian`
-  - `get_guardian(id)` — returns `Guardian | None`
-  - `search_guardians(query)` — searches `full_name` and `phone_primary` (ILIKE)
-  - `update_guardian(id, data)` — partial update, backend sets `updated_at`
-  - `list_guardians(page, page_size)` — paginated list
+  - `create_parent(data)` — inserts, returns `Parent`
+  - `get_parent(id)` — returns `Parent | None`
+  - `search_parents(query)` — searches `full_name` and `phone_primary` (ILIKE)
+  - `update_parent(id, data)` — partial update, backend sets `updated_at`
+  - `list_parents(page, page_size)` — paginated list
 - `service.py`:
-  - `register_guardian(data)` — validates required fields, calls repo
-  - `find_or_create_guardian(phone, full_name)` — prevents duplicate guardian creation
-  - `update_guardian_contact(id, data)` — validates phone format, calls repo
+  - `register_parent(data)` — validates required fields, calls repo
+  - `find_or_create_parent(phone, full_name)` — prevents duplicate parent creation
+  - `update_parent_contact(id, data)` — validates phone format, calls repo
 
 ### 2.2 Student Management (`modules/crm/`)
 
-- `models.py`: `Student`, `StudentGuardian` SQLModel definitions
+- `models.py`: `Student`, `StudentParent` SQLModel definitions
 - `repository.py`:
   - `create_student(data)` — returns `Student`
-  - `link_guardian(student_id, guardian_id, relationship, is_primary)`
-  - `get_student(id)` — returns full student + primary guardian via `v_students` view
+  - `link_parent(student_id, parent_id, relationship, is_primary)`
+  - `get_student(id)` — returns full student + primary parent via `v_students` view
   - `search_students(query)` — searches name
   - `list_students(is_active, page, page_size)` — filterable
   - `deactivate_student(id)` — sets `is_active = FALSE` (soft delete)
   - `get_siblings(student_id)` — queries `v_siblings` view
 - `service.py`:
-  - `register_student(student_data, guardian_id, relationship)` — validates DOB, links guardian
-  - `add_secondary_guardian(student_id, guardian_id, relationship)` — validates no duplicate link
+  - `register_student(student_data, parent_id, relationship)` — validates DOB, links parent
+  - `add_secondary_parent(student_id, parent_id, relationship)` — validates no duplicate link
   - `detect_siblings(student_id)` — returns list of sibling students via view
   - `deactivate_student(id)` — checks for active enrollments before allowing deactivation
 
@@ -211,7 +211,7 @@ All backend services, repository functions, and UI pages were implemented.
 
 **Key design decisions:**
 
-- A single receipt can cover multiple children of the same guardian (parent pays for all kids at once)
+- A single receipt can cover multiple children of the same parent (parent pays for all kids at once)
 - No `total_amount` stored on receipts — always derived from `payments` rows via `v_enrollment_balance` view
 - `transaction_type`: `'payment'` = money in, `'charge'` = obligation, `'refund'` = money out (all amounts positive)
 - Receipt numbers formatted as `TK-YYYY-{id:05d}`
@@ -228,13 +228,13 @@ All backend services, repository functions, and UI pages were implemented.
 
 - `models.py`: `Receipt`, `Payment` SQLModel definitions
 - `repository.py`:
-  - `create_receipt(guardian_id, method, received_by, paid_at)` — returns `Receipt`
+  - `create_receipt(parent_id, method, received_by, paid_at)` — returns `Receipt`
   - `generate_receipt_number(receipt_id)` — formats `TK-YYYY-{id:05d}`
   - `add_payment_line(receipt_id, student_id, enrollment_id, amount, transaction_type, payment_type, discount)` — inserts payment row
   - `get_receipt_with_lines(receipt_id)` — receipt + all linked payments
   - `get_receipt_total(receipt_id)` — `SUM(payments.amount WHERE type IN ('payment','charge')) - SUM(... WHERE type='refund')`
 - `service.py`:
-  - `open_receipt(guardian_id, method, received_by)` — creates the receipt header
+  - `open_receipt(parent_id, method, received_by)` — creates the receipt header
   - `add_charge_line(receipt_id, student_id, enrollment_id, amount, payment_type, discount)` — validates enrollment is active, inserts payment row with `transaction_type='charge'` (the obligation) or `'payment'`(settling it)
   - `finalize_receipt(receipt_id)` — validates at least 1 payment line exists, returns receipt summary
   - `void_receipt(receipt_id)` — validates no settled payments, deletes header (ON DELETE RESTRICT enforces data safety on payments)
@@ -285,7 +285,7 @@ All backend services, repository functions, and UI pages were implemented.
     1. Validates all students are active
     2. Creates team
     3. Adds each student as member
-  - `pay_competition_fee(team_id, student_id, receipt_id, guardian_id)`:
+  - `pay_competition_fee(team_id, student_id, receipt_id, parent_id)`:
     1. Creates payment line under the receipt with `payment_type='competition'`
     2. Marks `team_members.fee_paid = TRUE`, links `payment_id`
 
@@ -305,7 +305,7 @@ All backend services, repository functions, and UI pages were implemented.
 ### 6.2 Student Profile Page (Streamlit)
 
 - Full history: enrollments → sessions per level → attendance per session → payments
-- All guardian contacts
+- All parent contacts
 - Sibling links
 - Competition participations
 
@@ -320,7 +320,7 @@ All backend services, repository functions, and UI pages were implemented.
 ## Dependency Order (Why These Phases Exist in This Sequence)
 
 ```
-Auth → CRM (Guardian/Student) → Academics (Course/Group)
+Auth → CRM (Parent/Student) → Academics (Course/Group)
                                          ↓
                                    Enrollments ← links CRM + Academics
                                          ↓

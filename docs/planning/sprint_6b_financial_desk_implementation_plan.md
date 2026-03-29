@@ -12,7 +12,7 @@ Finish **product-backed** Financial Desk behaviour that was left after the **B8 
 
 | ID | Outcome |
 |----|---------|
-| **U2** | Operators can reach a family via **student** search, see **per-enrollment** lines and **guardian-level total** (P5), optionally narrow to **debt-only** families (P7). |
+| **U2** | Operators can reach a family via **student** search, see **per-enrollment** lines and **parent-level total** (P5), optionally narrow to **debt-only** families (P7). |
 | **B3** | Desk logic consistently uses **P6** predicates (**debt ⇒ `balance < 0`**) for eligibility and filtering. |
 | **U9** | If a line would create **credit** (pay more than debt on an enrollment), show **warning** + **Confirm** / **Cancel** before calling `create_receipt_with_charge_lines` (P8 intent). |
 | **P8 (phase A)** | Credit is **visible** (positive balance) and **allowed** after confirm; **no** cross-enrollment auto-apply in this sprint (phase B = later design). |
@@ -27,10 +27,10 @@ Finish **product-backed** Financial Desk behaviour that was left after the **B8 
 
 | # | Task | Details | Primary files |
 |---|------|---------|----------------|
-| A1 | **Student entry path** | At top of `render_finance_overview`, add student name search (`crm_service.search_students`, min 2 chars). On select: load **primary guardian** (or list if multiple — use primary first); set `session_state` `fd_focus_guardian_id` + optional `fd_focus_student_id` to expand/highlight that child. Reuse existing parent selectbox or auto-fill flow. | `app/ui/components/finance_overview.py`, `crm_service` |
-| A2 | **Guardian total (P5)** | After parent resolved, compute `total_account_balance = sum(b["balance"] for child in children for b in get_student_financial_summary(child.id))` over **active** enrollments only (filter enrollments in UI or add `finance_service.guardian_balance_rollup(guardian_id)` that SQLs or loops consistently). Display one line: **“Household account balance (sum of enrollments): X EGP”** with P6 caption. | `finance_overview.py`, optionally `finance_service.py` |
-| A3 | **“Owed money only” toggle (P7)** | `st.toggle` default **off** (show all linked students). When **on**, hide students (or collapse expanders) where **every** active enrollment has `balance >= 0`. If **on** and selected guardian has no debt at all, show info + suggest turning toggle off. | `finance_overview.py` |
-| A4 | **Parent search respects toggle** | When toggle on, optional: filter `search_guardians` results — expensive if N guardians. **Pragmatic v1:** filter **after** parent selection (if no debt, message); **v1.5:** add `finance_repository.guardian_ids_with_any_enrollment_debt()` and intersect with search results if product requires. | `finance_repository.py` (optional), `finance_overview.py` |
+| A1 | **Student entry path** | At top of `render_finance_overview`, add student name search (`crm_service.search_students`, min 2 chars). On select: load **primary parent** (or list if multiple — use primary first); set `session_state` `fd_focus_parent_id` + optional `fd_focus_student_id` to expand/highlight that child. Reuse existing parent selectbox or auto-fill flow. | `app/ui/components/finance_overview.py`, `crm_service` |
+| A2 | **Parent total (P5)** | After parent resolved, compute `total_account_balance = sum(b["balance"] for child in children for b in get_student_financial_summary(child.id))` over **active** enrollments only (filter enrollments in UI or add `finance_service.parent_balance_rollup(parent_id)` that SQLs or loops consistently). Display one line: **“Household account balance (sum of enrollments): X EGP”** with P6 caption. | `finance_overview.py`, optionally `finance_service.py` |
+| A3 | **“Owed money only” toggle (P7)** | `st.toggle` default **off** (show all linked students). When **on**, hide students (or collapse expanders) where **every** active enrollment has `balance >= 0`. If **on** and selected parent has no debt at all, show info + suggest turning toggle off. | `finance_overview.py` |
+| A4 | **Parent search respects toggle** | When toggle on, optional: filter `search_parents` results — expensive if N parents. **Pragmatic v1:** filter **after** parent selection (if no debt, message); **v1.5:** add `finance_repository.parent_ids_with_any_enrollment_debt()` and intersect with search results if product requires. | `finance_repository.py` (optional), `finance_overview.py` |
 
 **Acceptance (Epic A):** User can open Financial Desk from **student** search, see household sum, and use **debt-only** UI without contradicting P6/P7.
 
@@ -60,8 +60,8 @@ Finish **product-backed** Financial Desk behaviour that was left after the **B8 
 
 ## 3. Testing checklist (QA)
 
-- [ ] Student with two guardians — primary used; secondary documented if ambiguous.
-- [ ] Guardian with three children — sum matches manual sum of per-enrollment `balance` (P6).
+- [ ] Student with two parents — primary used; secondary documented if ambiguous.
+- [ ] Parent with three children — sum matches manual sum of per-enrollment `balance` (P6).
 - [ ] Toggle “owed only” — student with all enrollments settled/credit hidden when appropriate.
 - [ ] Pay **exact** debt — no overpay dialog.
 - [ ] Pay **1 EGP over** debt — dialog; confirm creates receipt; balance +1 vs net_due.
@@ -75,7 +75,7 @@ Finish **product-backed** Financial Desk behaviour that was left after the **B8 
 |------|------------|
 | Double submit on Streamlit | Disable primary button while pending; clear `fd_lines` only after success (existing). |
 | API later bypasses U9 | `allow_credit` + default False in `create_receipt_with_charge_lines`. |
-| Guardian total includes dropped enrollments | Restrict rollup to `enrollment.status == 'active'` only. |
+| Parent total includes dropped enrollments | Restrict rollup to `enrollment.status == 'active'` only. |
 
 ---
 

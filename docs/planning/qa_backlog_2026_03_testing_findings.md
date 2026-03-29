@@ -22,7 +22,7 @@ Testing surfaced gaps in **staff data quality** (duplicates, missing employment 
 | P2 | **Staff — uniqueness** | **Phone** and **email** must be **unique among employees** (DB + application validation). |
 | P3 | **Staff — mandatory fields** | **full_name**, **phone**, **national_id**, **university**, **major**, **is_graduate**, **employment_type**. *(Email was not listed as mandatory; enforce **uniqueness** when provided. Flows that create a login may still require a username/email per `users` rules.)* |
 | P4 | **Receipt # `N/A`** | Occurs on **every** newly created receipt in testing. **Dashboard** currently has **no** way to open/browse receipts (only after payment redirect). |
-| P5 | **Balances — levels** | **Per-student** balance (enrollment-level as today) plus **guardian total** = **sum of balances** of all related students (same sign convention). |
+| P5 | **Balances — levels** | **Per-student** balance (enrollment-level as today) plus **parent total** = **sum of balances** of all related students (same sign convention). |
 | P6 | **Balance sign convention** | **Negative** = **owes** money. **Zero** = **settled** (nothing owed, no credit). **Positive** = **credit** (overpayment / prepayment for future use). |
 | P7 | **“Settled” / collection list** | **Do not** surface in “collect money” contexts when **balance ≥ 0**. **Do** surface when **balance < 0** (debt). |
 | P8 | **Overpayment** | **Warn** first; on **confirm**, record payment; balance becomes **positive** (credit). Credit **applies to future** payments. |
@@ -39,7 +39,7 @@ Testing surfaced gaps in **staff data quality** (duplicates, missing employment 
 | # | Issue | Current behavior / context | Expected / target | Depends on | SP |
 |---|--------|------------------------------|-------------------|------------|-----|
 | U1 | **Duplicate staff creation** | Multiple clicks on “Adding Employee Data” can create the same person repeatedly; no inline uniqueness feedback. | Disable submit while in flight; errors for duplicate **phone**, **email**, or **national_id**; enforce **P3** required fields. | B1, D1, D6 | 3 |
-| U2 | **Financial desk search & filtering** | Search is guardian-only; no student search; settled families still discoverable. | Search by **student**; default or toggle **“owed money only”** using **P6/P7** (show guardians with any enrollment still **in debt**); show **per-student** and **guardian total** (**P5**). | B3, B8 | 5 |
+| U2 | **Financial desk search & filtering** | Search is parent-only; no student search; settled families still discoverable. | Search by **student**; default or toggle **“owed money only”** using **P6/P7** (show parents with any enrollment still **in debt**); show **per-student** and **parent total** (**P5**). | B3, B8 | 5 |
 | U3 | **Receipt header shows `Receipt #: N/A`** | Confirmed **P4** on every new receipt; UI shows `r.receipt_number or 'N/A'` (`finance_receipt.py`). | Fix persistence/refresh (**B2**); never show N/A for committed receipts. | B2 | 2 |
 | U4 | **Staff profile attributes** | Form lacks **national_id**, **university**, **major**, **is_graduate**, **employment_type** (mandatory per **P3**). | Full create/edit per **P3**; **contract %** only when `employment_type = contract`. | B4, D2, D6 | 5 |
 | U5 | **Course management table** | User cannot see **how many groups** and **how many students** (current / historical) per course in one place. | Table or drill-down: counts per course (definitions: active only vs all time). | B5, D3 | 5 | ✅ DONE |
@@ -58,13 +58,13 @@ Testing surfaced gaps in **staff data quality** (duplicates, missing employment 
 |---|--------|------------------------------|-------------------|-----|
 | B1 | **Uniqueness for employees** | Duplicates allowed in practice. | **UNIQUE** on **phone**, **email** (where not null per DB design), **national_id**; app validation + API 409; Streamlit errors. | 5 |
 | B2 | **Receipt number persistence** | **P4:** `N/A` on every new receipt despite `set_receipt_number` in code — treat as **release-blocker**: trace `Receipt` load path, commits, column mapping, and Supabase vs local schema drift. | **Acceptance:** After finalize, DB row and `get_receipt_detail` always have non-null `receipt_number`. | 5 |
-| B3 | **Financial desk eligibility** | Uses `v_enrollment_balance`; sign convention **inverted** vs **P6** until migrated. | Implement **P5–P7**: student search; guardian aggregate; filter **debt only** (after balance convention fix). | 5 |
+| B3 | **Financial desk eligibility** | Uses `v_enrollment_balance`; sign convention **inverted** vs **P6** until migrated. | Implement **P5–P7**: student search; parent aggregate; filter **debt only** (after balance convention fix). | 5 |
 | B4 | **Employment type & contract %** | `employment_type` optional in model; DB allows `full_time` / `part_time` / `contract` (see migration `003`). | Enforce **P3**; **national_id**, **university**, **major**, **is_graduate** on create/update; contract % only for contract (service normalizes). | 5 |
 | B5 | **Course aggregates** | Counts require queries across `course_offerings`, `groups`, `enrollments` (or equivalent). | Repository + service: `get_course_stats(course_id)` → groups count, students count (specify time scope). | 3 | ✅ DONE |
 | B6 | **PDF generation** | Not present. | Choose library (e.g. WeasyPrint, fpdf2, or server-side template → PDF); endpoint or Streamlit download; same data as receipt detail. | 5 | ✅ DONE |
 | B7 | **Competition fees (domain)** | Fees vary by competition, category, edition (**P9**); equal split per team member. | Schema: fee rows scoped to **edition + category** (and competition as needed); persist **member_share** on `team_members` at registration. | 8 |
 | B8 | **Balance convention & credit application** | View/UI match old view: `balance = net_due − paid` (positive = still owed). | Align to **P6** (debt negative, credit positive); default suggested payment = **−balance** when balance is debt; persist and **consume credit** (positive balance) on later payments per **P8**. | 8 | ✅ DONE |
-| B9 | **Receipt listing for Dashboard** | No service/UI slice for “receipts today / by guardian / by student”. | Queries + thin API or direct service calls for Streamlit (**U8**). | 3 |
+| B9 | **Receipt listing for Dashboard** | No service/UI slice for “receipts today / by parent / by student”. | Queries + thin API or direct service calls for Streamlit (**U8**). | 3 |
 
 ---
 
@@ -96,7 +96,7 @@ Testing surfaced gaps in **staff data quality** (duplicates, missing employment 
 ### 4.2 Balances, settlement, and overpayment (**P5–P8**)
 
 - **Per student (enrollment):** one balance per the chosen grain (today: enrollment via `v_enrollment_balance`).  
-- **Per guardian:** **sum** of related students’ balances (same convention).  
+- **Per parent:** **sum** of related students’ balances (same convention).  
 - **Signs:** **negative** = debt; **zero** = settled; **positive** = credit.  
 - **Collection UX:** prioritize or filter to families with **any** debt (negative balance under **P6**).  
 - **Overpayment:** warn → on confirm, allow; credit **positive** balance; **apply toward future** charges.

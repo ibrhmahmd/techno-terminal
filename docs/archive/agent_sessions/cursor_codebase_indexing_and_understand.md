@@ -285,8 +285,8 @@ Sprint **3 (D4 — audit fields)** is implemented end-to-end. Here is what lande
 ### Application layer
 - **`app/shared/audit_utils.py`** — `apply_create_audit()` (timestamps + optional `created_by`) and `apply_update_audit()` (`updated_at`).
 - **`app/ui/state.py`** — `get_current_user_id()` returns the logged-in local `users.id` (replaces the broken `st.session_state.get("user_id")`, which login never set).
-- **CRM** — `register_guardian`, `find_or_create_guardian`, and new students get create audits; `update_guardian` / `update_student` bump `updated_at`. `register_student(..., created_by_user_id=...)` is optional and backward compatible.
-- **`crm_repository.link_guardian`** — stamps `student_guardians.created_at`.
+- **CRM** — `register_parent`, `find_or_create_parent`, and new students get create audits; `update_parent` / `update_student` bump `updated_at`. `register_student(..., created_by_user_id=...)` is optional and backward compatible.
+- **`crm_repository.link_parent`** — stamps `student_parents.created_at`.
 - **Enrollments** — `enroll_student` / transfer new rows use `apply_create_audit` (so `updated_at` is set on insert); `update_enrollment_status` and `update_discount` call `apply_update_audit`.
 
 ### UI
@@ -295,7 +295,7 @@ Sprint **3 (D4 — audit fields)** is implemented end-to-end. Here is what lande
 - **`finance_overview.py`** — `received_by_user_id=state.get_current_user_id()` so receipts record the cashier.
 
 ### Database
-- **`db/migrations/005_audit_d4_timestamps.sql`** — backfills NULL audit columns, `DEFAULT CURRENT_TIMESTAMP`, and `tf_set_updated_at` + triggers on guardians, employees, students, courses, groups, enrollments.
+- **`db/migrations/005_audit_d4_timestamps.sql`** — backfills NULL audit columns, `DEFAULT CURRENT_TIMESTAMP`, and `tf_set_updated_at` + triggers on parents, employees, students, courses, groups, enrollments.
 - **`db/schema.sql`** — same defaults for greenfield installs + the same trigger block after indexes (aligned with the migration).
 
 ### Docs
@@ -392,7 +392,7 @@ That was the **only** place in `app/` where audit/time fields were modeled as pl
 
 ### What was *not* a problem
 
-- Other modules use **`datetime`** for timestamps (`Guardian`, `Student`, `Enrollment`, finance, etc.).
+- Other modules use **`datetime`** for timestamps (`Parent`, `Student`, `Enrollment`, finance, etc.).
 - Other `Optional[str]` fields are normal text (phones, notes, etc.), not timestamps.
 - Migration **`004`** `COALESCE` usages are on compatible types (text + text, bool + bool, etc.).
 
@@ -538,7 +538,7 @@ Updating `search_receipts` to use a UTC half-open range on `paid_at` for index-f
 Sprint **4 (B9 / U8)** is implemented and committed as **`8e17786`** on `feature/api-layer`.
 
 ### Backend
-- **`finance_repository.search_receipts`** — UTC half-open window on **`paid_at`** (`>=` start of `from_date`, `<` start of `to_date` + 1 day) so **`idx_receipts_paid_at`** can be used; optional **guardian**, **student** (`EXISTS` on `payments`), **receipt #** `ILIKE`; **`ORDER BY paid_at DESC`**, **`LIMIT` 200**.
+- **`finance_repository.search_receipts`** — UTC half-open window on **`paid_at`** (`>=` start of `from_date`, `<` start of `to_date` + 1 day) so **`idx_receipts_paid_at`** can be used; optional **parent**, **student** (`EXISTS` on `payments`), **receipt #** `ILIKE`; **`ORDER BY paid_at DESC`**, **`LIMIT` 200**.
 - **`finance_service.search_receipts`** — validates `to_date >= from_date`; exported from **`finance/__init__.py`**.
 
 ### Database
@@ -657,7 +657,7 @@ Here’s a compact **sprint memory** and **where to go next**, aligned with [`do
 
 **Sprint 6 — build (after spike is approved)**
 
-- Implement **B8** + **B3**, **U2**, **U9**: Financial Desk by student, guardian totals, “owed only”, overpayment warn/confirm, credit behavior (**P8**), with **P6** sign convention in UI copy.
+- Implement **B8** + **B3**, **U2**, **U9**: Financial Desk by student, parent totals, “owed only”, overpayment warn/confirm, credit behavior (**P8**), with **P6** sign convention in UI copy.
 
 **Sprint 7 (Could)** — **B5 / D3 / U5** course aggregates.
 
@@ -721,7 +721,7 @@ It includes:
 1. **Consumer inventory** — DB/view, `finance_repository` / `finance_service`, Streamlit (`finance_overview`, `parent_detail`, `student_detail`, `finance_receipt`), and **analytics** (`get_today_unpaid_attendees`, outstanding/debtors, roster, `get_instructor_value_matrix`, `get_flight_risk_students`), plus **`init_db.py`** view mirror.
 2. **Design options** — **A** flip `balance` in one go, **B** add `account_balance` (or legacy alias) for a safer transition, **C** service-only mapping (not recommended as the long-term fix).
 3. **Migration order** for Sprint 6: view → repo → services → UI → analytics → docs.
-4. **Open questions** (guardian totals, inactive enrollments, competition vs course credit).
+4. **Open questions** (parent totals, inactive enrollments, competition vs course credit).
 5. **Sprint 5 checklist** and a short **Sprint 6 handoff** table.
 
 The roadmap now **links** that file under Sprint 5 and has revision **1.5** in the history table.
@@ -886,7 +886,7 @@ Implemented ✅ **Sprint 6b core flow** and committed as **`12fd3db`**.
 
 - **U2 / B3 (Financial Desk discovery + debt filtering)**
   - Added **student search** entry path in `finance_overview`.
-  - Auto-resolves selected student to primary guardian family context.
+  - Auto-resolves selected student to primary parent family context.
   - Added **“Show owed money only”** toggle (P7).
   - Added **household account balance** rollup display (P5 + P6 convention).
   - Keeps behavior aligned with P6 (`balance < 0` is debt).

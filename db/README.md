@@ -67,7 +67,7 @@ If the pooler rejects `pg_restore`, switch the target URI to the **direct** conn
 **4. Fix sequences if needed**
 
 ```sql
-SELECT setval(pg_get_serial_sequence('guardians', 'id'), (SELECT MAX(id) FROM guardians));
+SELECT setval(pg_get_serial_sequence('parents', 'id'), (SELECT MAX(id) FROM parents));
 -- repeat for other tables as needed
 ```
 

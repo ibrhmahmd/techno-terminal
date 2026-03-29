@@ -49,7 +49,7 @@ The [repository.py](file:///e:/Users/ibrahim/Desktop/techno_data_%20Copy/app/mod
 
 | Pattern Seen | Module |
 |---|---|
-| [create_guardian](file:///e:/Users/ibrahim/Desktop/techno_data_%20Copy/app/modules/crm/repository.py#10-14) | crm |
+| [create_parent](file:///e:/Users/ibrahim/Desktop/techno_data_%20Copy/app/modules/crm/repository.py#10-14) | crm |
 | [create_enrollment](file:///e:/Users/ibrahim/Desktop/techno_data_%20Copy/app/modules/enrollments/repository.py#7-11) | enrollments |
 | `create_receipt` | finance |
 | `add_payment_line` | finance |
@@ -72,10 +72,10 @@ All standard CRUD goes through SQLModel's `select()` + `session.exec()`:
 
 ```python
 # crm/repository.py — ORM query
-stmt = select(Guardian).where(
+stmt = select(Parent).where(
     or_(
-        Guardian.full_name.ilike(search_term),
-        Guardian.phone_primary.ilike(search_term),
+        Parent.full_name.ilike(search_term),
+        Parent.phone_primary.ilike(search_term),
     )
 ).limit(50)
 return session.exec(stmt).all()
@@ -111,12 +111,12 @@ stmt = text("SELECT sibling_id, sibling_name FROM v_siblings WHERE student_id = 
 
 The concern is that raw SQL leaks **into modules that should be ORM-only**. [crm/repository.py](file:///e:/Users/ibrahim/Desktop/techno_data_%20Copy/app/modules/crm/repository.py) has a `from sqlalchemy import text` import buried at line 86, mid-file. This is not analytics — it is a view query that could be expressed in ORM via a `v_siblings` model but was short-cut with raw SQL. The boundary between "ORM module" and "raw SQL module" is implicit, not enforced.
 
-### 3.4 [get_guardian_students](file:///e:/Users/ibrahim/Desktop/techno_data_%20Copy/app/modules/crm/service.py#138-154) — Logic in Service Layer, Not Repo
+### 3.4 [get_parent_students](file:///e:/Users/ibrahim/Desktop/techno_data_%20Copy/app/modules/crm/service.py#138-154) — Logic in Service Layer, Not Repo
 
 In [crm/service.py](file:///e:/Users/ibrahim/Desktop/techno_data_%20Copy/app/modules/crm/service.py) (lines 143-153):
 ```python
 # Querying directly inside service.py bypassing repository
-stmt = sql_select(StudentGuardian).where(...)
+stmt = sql_select(StudentParent).where(...)
 links = session.exec(stmt).all()
 for link in links:
     s = session.get(Student, link.student_id)
@@ -140,7 +140,7 @@ modules/
 │   │   ├── command.py          ← input DTO
 │   │   └── query.py            ← read model
 │   ├── search_students/
-│   └── guardian_profile/
+│   └── parent_profile/
 ├── enrollments/
 │   ├── enroll_student/
 │   ├── transfer_enrollment/
@@ -280,7 +280,7 @@ The UI has to `try/except ValueError` and show a generic error box. There is no 
 | 8 | `academics/service.py:155` | `dt.utcnow()` (deprecated in Python 3.12+) — should use `datetime.now(timezone.utc)` | 🟡 Medium |
 | 9 | All services | `ValueError` for all error types — no semantic error hierarchy | 🟡 Medium |
 | 10 | All repos | No shared base class / protocol — no enforced CRUD contract | 🟡 Medium |
-| 11 | `crm/models.py:21` | Forward reference as full string `"app.modules.crm.models.StudentGuardian"` — fragile if module path changes | 🟢 Low |
+| 11 | `crm/models.py:21` | Forward reference as full string `"app.modules.crm.models.StudentParent"` — fragile if module path changes | 🟢 Low |
 | 12 | Connection pool `pool_size=5, max_overflow=5` | Max 10 concurrent connections — fine now, will hit ceiling at ~20 concurrent Streamlit users | 🟢 Low |
 
 ---
@@ -313,7 +313,7 @@ This is a phased recommendation — **not a rewrite**, an incremental improvemen
 ### Phase B — Fix Session Anti-Patterns (No interface changes)
 5. Rewrite `schedule_group()` to use a single session for group + sessions creation (pass session down)
 6. Rewrite `issue_refund()` to use a single session
-7. Move `get_guardian_students` logic to `crm/repository.py`
+7. Move `get_parent_students` logic to `crm/repository.py`
 8. Move the inline `select(Enrollment)` in `enrollments/service.py:164` to `enrollments/repository.py`
 
 ### Phase C — Fix Cross-Module Coupling

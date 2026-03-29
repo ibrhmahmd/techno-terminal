@@ -47,7 +47,7 @@ We have chosen **Option A: Shared DTOs** for development speed, meaning these Cr
     - Create `app/api/exceptions.py` mapping domain errors to HTTP status codes.
     - **Auth:** validate **Supabase-issued** Bearer JWTs and expose **`GET /api/v1/auth/me`** returning a safe **`UserPublic`** DTO — *not* a local `POST /auth/token` issuer (see execution roadmap §3).
 2.  **Phase 5.2: CRM Endpoints**
-    - `POST /guardians`, `GET /students`.
+    - `POST /parents`, `GET /students`.
 3.  **Phase 5.3: Academic Endpoints**
     - `POST /groups`, `POST /sessions`, `PUT /attendance`.
 4.  **Phase 5.4: Transaction Endpoints**

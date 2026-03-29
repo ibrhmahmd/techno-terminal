@@ -18,7 +18,7 @@ def modal_register_student():
     selected_parent_id = None
 
     if parent_search and len(parent_search) >= 2:
-        parents = crm_srv.search_guardians(parent_search)
+        parents = crm_srv.search_parents(parent_search)
         if parents:
             parent_options = {
                 f"{g.full_name} ({g.phone_primary})": g.id for g in parents
@@ -70,7 +70,7 @@ def modal_register_student():
                     try:
                         student_command = RegisterStudentCommandDTO(
                             student_data=data,
-                            guardian_id=selected_parent_id,
+                            parent_id=selected_parent_id,
                             relationship="Child",
                             created_by_user_id=state.get_current_user_id(),
                         )

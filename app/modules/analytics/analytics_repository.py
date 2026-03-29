@@ -65,7 +65,7 @@ def get_today_unpaid_attendees(
         SELECT DISTINCT
             st.id AS student_id,
             st.full_name AS student_name,
-            g.full_name AS guardian_name,
+            g.full_name AS parent_name,
             g.phone_primary,
             SUM(CASE WHEN vb.balance < 0 THEN -vb.balance ELSE 0 END)
                 OVER (PARTITION BY st.id) AS total_balance
@@ -73,8 +73,8 @@ def get_today_unpaid_attendees(
         JOIN sessions s ON a.session_id = s.id
         JOIN students st ON a.student_id = st.id
         JOIN v_enrollment_balance vb ON vb.student_id = st.id
-        LEFT JOIN student_guardians sg ON sg.student_id = st.id AND sg.is_primary = TRUE
-        LEFT JOIN guardians g ON g.id = sg.guardian_id
+        LEFT JOIN student_parents sg ON sg.student_id = st.id AND sg.is_primary = TRUE
+        LEFT JOIN parents g ON g.id = sg.parent_id
         WHERE s.session_date = :target_date
           AND a.status IN ('present', 'late')
           AND vb.balance < 0
@@ -148,13 +148,13 @@ def get_top_debtors(db: Session, limit: int = 10) -> list[dict]:
         SELECT
             st.id AS student_id,
             st.full_name AS student_name,
-            g.full_name AS guardian_name,
+            g.full_name AS parent_name,
             g.phone_primary,
             SUM(CASE WHEN vb.balance < 0 THEN -vb.balance ELSE 0 END) AS total_outstanding
         FROM v_enrollment_balance vb
         JOIN students st ON vb.student_id = st.id
-        LEFT JOIN student_guardians sg ON sg.student_id = st.id AND sg.is_primary = TRUE
-        LEFT JOIN guardians g ON g.id = sg.guardian_id
+        LEFT JOIN student_parents sg ON sg.student_id = st.id AND sg.is_primary = TRUE
+        LEFT JOIN parents g ON g.id = sg.parent_id
         WHERE vb.balance < 0
         GROUP BY st.id, st.full_name, g.full_name, g.phone_primary
         ORDER BY total_outstanding DESC

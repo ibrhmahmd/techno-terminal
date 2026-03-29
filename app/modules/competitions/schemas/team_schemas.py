@@ -58,7 +58,7 @@ class RegisterTeamInput(BaseModel):
 class PayCompetitionFeeInput(BaseModel):
     team_id: int
     student_id: int
-    guardian_id: Optional[int] = None
+    parent_id: Optional[int] = None
     received_by_user_id: Optional[int] = None
 
 

@@ -46,13 +46,13 @@ def render_student_detail(student_id: int):
     # 1. Parent Info
     st.markdown("#### Parent/Parent Details")
 
-    parents = crm_service.get_student_guardians(student_id)
+    parents = crm_service.get_student_parents(student_id)
 
     if parents:
         # Sort so primary is always first
         parents.sort(key=lambda x: not x.is_primary)
         for g_link in parents:
-            g = g_link.guardian
+            g = g_link.parent
             badge = "🏆 Primary" if g_link.is_primary else "Secondary"
             st.markdown(
                 f"**{g.full_name}** ({g_link.relationship}) — {badge}  \n📞 {g.phone_primary} | {g.phone_secondary or ''}"

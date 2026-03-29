@@ -454,7 +454,7 @@ All 8 repos have inconsistent function naming. No enforced CRUD contract. Writin
 
 | Module | Get by ID | Create | List |
 |---|---|---|---|
-| crm | `get_guardian_by_id` | `create_guardian` | `search_guardians` |
+| crm | `get_parent_by_id` | `create_parent` | `search_parents` |
 | enrollments | `get_enrollment` | `create_enrollment` | `list_enrollments` |
 | finance | (none) | `create_receipt` | `list_receipts_by_date` |
 
@@ -574,7 +574,7 @@ Two services bypass the repository layer with inline queries:
 ```python
 # crm/service.py:143 — service opens session AND writes select()
 with get_session() as session:
-    stmt = sql_select(StudentGuardian).where(...)
+    stmt = sql_select(StudentParent).where(...)
     links = session.exec(stmt).all()
     ...
 
@@ -593,22 +593,22 @@ Testing these functions requires a real PostgreSQL connection. With the API laye
 
 ```python
 # crm/repository.py
-def get_students_by_guardian_id(
-    session: Session, guardian_id: int, active_only: bool = True
+def get_students_by_parent_id(
+    session: Session, parent_id: int, active_only: bool = True
 ) -> list[Student]:
     stmt = (
         select(Student)
-        .join(StudentGuardian, StudentGuardian.student_id == Student.id)
-        .where(StudentGuardian.guardian_id == guardian_id)
+        .join(StudentParent, StudentParent.student_id == Student.id)
+        .where(StudentParent.parent_id == parent_id)
     )
     if active_only:
         stmt = stmt.where(Student.is_active == True)
     return list(session.exec(stmt).all())
 
 # crm/service.py — now a pure orchestrator
-def get_guardian_students(guardian_id: int) -> list[Student]:
+def get_parent_students(parent_id: int) -> list[Student]:
     with get_session() as session:
-        return repo.get_students_by_guardian_id(session, guardian_id)
+        return repo.get_students_by_parent_id(session, parent_id)
 ```
 
 **Pros:** Service is testable by mocking the repo; query is visible in repo's public API  
@@ -633,16 +633,16 @@ def get_guardian_students(guardian_id: int) -> list[Student]:
 |---|---|
 | **Command Query Separation (CQS)** | Repos handle queries (read) and commands (write). Services only orchestrate — they don't query |
 | **Humble Object** | The service becomes a thin coordinator. All testable logic lives in the repo (mockable) or service business rules (pure functions) |
-| **Façade** | Service exposes a clean public method (`get_guardian_students`) while the complexity of joining through `StudentGuardian` lives inside the repo |
+| **Façade** | Service exposes a clean public method (`get_parent_students`) while the complexity of joining through `StudentParent` lives inside the repo |
 
 ### API Layer Impact
 
 ```python
 # app/api/routers/students.py
-@router.get("/{student_id}/guardian")
-def get_guardian(student_id: int, db: Session = Depends(get_db)):
+@router.get("/{student_id}/parent")
+def get_parent(student_id: int, db: Session = Depends(get_db)):
     # After TASK-05: directly calls repo — mockable in tests
-    return crm_repo.get_students_by_guardian_id(db, student_id)
+    return crm_repo.get_students_by_parent_id(db, student_id)
 ```
 
 Without TASK-05, the API route would have to call the service (which opens its own internal session), making the `db` dependency injection pointless and tests impossible.
@@ -653,7 +653,7 @@ Without TASK-05, the API route would have to call the service (which opens its o
 
 | Action | File |
 |---|---|
-| **MODIFY** | `app/modules/crm/repository.py` — add `get_students_by_guardian_id()` |
+| **MODIFY** | `app/modules/crm/repository.py` — add `get_students_by_parent_id()` |
 | **MODIFY** | `app/modules/crm/service.py` — delegate; remove inline query |
 | **MODIFY** | `app/modules/enrollments/repository.py` — add `get_enrollments_by_student()` |
 | **MODIFY** | `app/modules/enrollments/service.py` — delegate; remove inline query |
@@ -698,17 +698,17 @@ Move `from sqlalchemy import text` to line 1 alongside other imports.
 
 ```python
 def get_siblings(session: Session, student_id: int) -> list[dict]:
-    guardian_links = session.exec(
-        select(StudentGuardian).where(StudentGuardian.student_id == student_id)
+    parent_links = session.exec(
+        select(StudentParent).where(StudentParent.student_id == student_id)
     ).all()
-    guardian_ids = [l.guardian_id for l in guardian_links]
-    if not guardian_ids:
+    parent_ids = [l.parent_id for l in parent_links]
+    if not parent_ids:
         return []
 
     sibling_links = session.exec(
-        select(StudentGuardian)
-        .where(StudentGuardian.guardian_id.in_(guardian_ids))
-        .where(StudentGuardian.student_id != student_id)
+        select(StudentParent)
+        .where(StudentParent.parent_id.in_(parent_ids))
+        .where(StudentParent.student_id != student_id)
     ).all()
     sibling_ids = {l.student_id for l in sibling_links}
     return [
@@ -1220,22 +1220,22 @@ Declare what each module publicly exposes. No file renaming.
 ```python
 # app/modules/crm/__init__.py
 from .service import (
-    register_guardian,
-    find_or_create_guardian,
-    search_guardians,
+    register_parent,
+    find_or_create_parent,
+    search_parents,
     register_student,
     search_students,
     find_siblings,
-    get_guardian_students,
+    get_parent_students,
     get_student_by_id,
 )
-from .models import Student, Guardian, StudentGuardian
+from .models import Student, Parent, StudentParent
 
 __all__ = [
-    "register_guardian", "find_or_create_guardian", "search_guardians",
+    "register_parent", "find_or_create_parent", "search_parents",
     "register_student", "search_students", "find_siblings",
-    "get_guardian_students", "get_student_by_id",
-    "Student", "Guardian", "StudentGuardian",
+    "get_parent_students", "get_student_by_id",
+    "Student", "Parent", "StudentParent",
 ]
 ```
 

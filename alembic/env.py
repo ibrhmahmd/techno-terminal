@@ -10,7 +10,7 @@ from sqlmodel import SQLModel
 # Import every table model so metadata is complete (mirror app/db/init_db.py)
 from app.modules.hr.hr_models import Employee  # noqa: F401
 from app.modules.auth.auth_models import User  # noqa: F401
-from app.modules.crm.crm_models import Guardian, Student, StudentGuardian  # noqa: F401
+from app.modules.crm.crm_models import Parent, Student, StudentParent  # noqa: F401
 from app.modules.academics.academics_models import Course, Group  # noqa: F401
 from app.modules.academics.academics_session_models import CourseSession  # noqa: F401
 from app.modules.attendance.attendance_models import Attendance  # noqa: F401

@@ -9,7 +9,7 @@
 ## 1. Project Overview
 
 **Techno Terminal** is a full-stack internal management system for a STEM education center. It manages:
-- Student & parent (guardian) registration and profiles
+- Student & parent (parent) registration and profiles
 - Course catalogs, group scheduling, and session tracking
 - Student enrollment per group level
 - Attendance marking
@@ -26,7 +26,7 @@
 
 **Current Status (End of March 2026):**
 - **Streamlit Stabilization Complete:** All UI crashes caused by the deep-SOLID architecture (Pydantic DTO strictness, Service facades) have been patched. 
-- **Pivot:** API scaffolding (Day 2 of Delivery Plan) is temporarily paused. The project is currently entering a new structural sprint to decouple the Student-Guardian relationship, shift financial tracking directly to the Student entity, handle automatic level progression, and handle session cancellations with cascading numbering.
+- **Pivot:** API scaffolding (Day 2 of Delivery Plan) is temporarily paused. The project is currently entering a new structural sprint to decouple the Student-Parent relationship, shift financial tracking directly to the Student entity, handle automatic level progression, and handle session cancellations with cascading numbering.
 
 **Audit (D4):** `app/shared/audit_utils.py` stamps `created_at` / `updated_at` / optional `created_by` on CRM, enrollments, and academics mutating paths where applicable. **`db/migrations/005_audit_d4_timestamps.sql`** backfills NULLs, sets `DEFAULT CURRENT_TIMESTAMP`, normalizes legacy TEXT `sessions.created_at` / `session_date`, and adds `tf_set_updated_at` triggers (mirrored in greenfield `db/schema.sql`). Streamlit uses **`state.get_current_user_id()`** for `created_by` / `received_by`. See `docs/planning/sprint_roadmap_post_qa_2026.md` Sprint 3.
 
@@ -119,11 +119,11 @@ get_session()     # @contextmanager — yields Session, auto-commit on exit, rol
 
 | Table | Purpose | Key Constraints |
 |---|---|---|
-| `guardians` | Parent/guardian contact records | phone_primary indexed |
+| `parents` | Parent/parent contact records | phone_primary indexed |
 | `employees` | Staff (instructors, admin) | `national_id` UNIQUE NOT NULL; `phone` NOT NULL UNIQUE; `email` UNIQUE (nullable); `university`, `major`, `is_graduate` NOT NULL; `employment_type` NOT NULL; D5 CHECK on `contract_percentage`; see `db/migrations/004_employees_sprint2_identity.sql` |
 | `users` | Login accounts | roles: `admin`, `instructor`, `system_admin`; `supabase_uid` UNIQUE NOT NULL; optional `employee_id` → `employees` |
-| `students` | Student profiles | `is_active` flag; no guardian FK — uses junction table |
-| `student_guardians` | M:M student–guardian with primary flag | `UNIQUE(student_id, guardian_id)` |
+| `students` | Student profiles | `is_active` flag; no parent FK — uses junction table |
+| `student_parents` | M:M student–parent with primary flag | `UNIQUE(student_id, parent_id)` |
 | `courses` | Course catalog | `category IN ('software','hardware','steam','other')` |
 | `groups` | Scheduling groups per course | `level_number` tracks current level; `status IN ('active','completed','cancelled')` |
 | `sessions` | Individual class sessions | `session_date` DATE, `created_at` TIMESTAMPTZ (ORM: `CourseSession` uses `date` / `datetime` — avoid legacy TEXT columns); `ON DELETE RESTRICT` on `group_id` |
@@ -140,10 +140,10 @@ get_session()     # @contextmanager — yields Session, auto-commit on exit, rol
 
 | View | What it gives you |
 |---|---|
-| `v_students` | students + primary guardian name/phone joined |
+| `v_students` | students + primary parent name/phone joined |
 | `v_enrollment_balance` | enrollment_id + `net_due`, `total_paid`, balance (live, computed from payments) |
 | `v_enrollment_attendance` | enrollment_id + `sessions_attended`, `sessions_missed` |
-| `v_siblings` | pairs of students who share a guardian |
+| `v_siblings` | pairs of students who share a parent |
 | `v_group_session_count` | group_id + level → `regular_sessions`, `extra_sessions`, `total_sessions` |
 
 > **Critical:** `v_enrollment_balance.balance` is a PostgreSQL `Decimal` — always cast to `float()` in Python before arithmetic.
@@ -226,15 +226,15 @@ The UI imports **only from `service.py`**, not from `repository.py`.
 
 ---
 
-### 5.2 `app/modules/crm` — Students & Guardians
+### 5.2 `app/modules/crm` — Students & Parents
 
-> **Naming:** DB/model = `guardians` / `Guardian`. UI text = "Parent". Python APIs keep `guardian` in function names.
+> **Naming:** DB/model = `parents` / `Parent`. UI text = "Parent". Python APIs keep `parent` in function names.
 
-**Models:** `Guardian`, `Student`, `StudentGuardian` (`crm_models.py`)
+**Models:** `Parent`, `Student`, `StudentParent` (`crm_models.py`)
 
-**repository.py:** `create_guardian`, `get_guardian_by_id`, `get_guardian_by_phone`, `search_guardians`, `create_student`, `get_student_by_id`, `search_students`, `get_student_guardians`, `link_guardian`, `get_siblings`, …
+**repository.py:** `create_parent`, `get_parent_by_id`, `get_parent_by_phone`, `search_parents`, `create_student`, `get_student_by_id`, `search_students`, `get_student_parents`, `link_parent`, `get_siblings`, …
 
-**service.py:** `validate_phone`, `register_guardian`, `find_or_create_guardian`, `search_guardians`, `register_student`, `search_students`, `find_siblings`, `get_guardian_students`, …
+**service.py:** `validate_phone`, `register_parent`, `find_or_create_parent`, `search_parents`, `register_student`, `search_students`, `find_siblings`, `get_parent_students`, …
 
 ---
 
@@ -274,7 +274,7 @@ The UI imports **only from `service.py`**, not from `repository.py`.
 **payment_type:** `course_level`, `competition`, `other`  
 **Auto receipt_number format:** `TK-{year}-{id:05d}` (assigned in `finance_repository.set_receipt_number`)
 
-**service.py:** `create_receipt_with_charge_lines` (single transaction — Financial Desk + competition fee), `open_receipt`, `add_charge_line`, `finalize_receipt`, `issue_refund`, `get_receipt_detail`, `get_daily_receipts`, **`search_receipts`** (date range on **`paid_at`**, optional guardian / student / receipt #), `get_student_financial_summary`, `get_daily_collections`, `get_enrollment_balance`, …
+**service.py:** `create_receipt_with_charge_lines` (single transaction — Financial Desk + competition fee), `open_receipt`, `add_charge_line`, `finalize_receipt`, `issue_refund`, `get_receipt_detail`, `get_daily_receipts`, **`search_receipts`** (date range on **`paid_at`**, optional parent / student / receipt #), `get_student_financial_summary`, `get_daily_collections`, `get_enrollment_balance`, …
 
 **Dashboard (Sprint 4):** **`dashboard_receipts.render_receipt_browser`** on **`0_Dashboard.py`** → Financial Desk sub-tab; DB index **`idx_receipts_paid_at`** (`006` + **`schema.sql`**).
 
@@ -336,7 +336,7 @@ if "nav_target_student_id" in st.session_state:
 | Key | Used by |
 |---|---|
 | `nav_target_student_id` | Student detail (Directory + cross-links) |
-| `nav_target_parent_id` | Parent/guardian detail (Directory) |
+| `nav_target_parent_id` | Parent/parent detail (Directory) |
 | `nav_target_group_id` | Group-focused flows (legacy naming; some pages use `selected_group_id` from Dashboard) |
 | `nav_target_course_id` | Course detail |
 | `selected_receipt_id` | Finance receipt detail inside Dashboard tab |
@@ -394,10 +394,10 @@ if "nav_target_student_id" in st.session_state:
 | ADR-2 | SQLModel (not raw SQLAlchemy only) | Pydantic validation + SQLAlchemy in one |
 | ADR-3 | `get_session()` as context manager | Auto-commit on exit, rollback on exception; `expire_on_commit=False` |
 | ADR-4 | `enrollment.level_number` is a snapshot | Historical enrollments stay stable when group advances |
-| ADR-5 | `student_guardians` junction | M:M parents; sibling detection via `v_siblings` |
+| ADR-5 | `student_parents` junction | M:M parents; sibling detection via `v_siblings` |
 | ADR-6 | Receipts + Payment lines | One receipt, many students; refunds as new rows |
 | ADR-7 | NULL/zero-fee teams auto-mark paid | Academy-sponsored teams |
-| ADR-8 | Guardian (code) vs Parent (UI) | Avoid breaking imports; consistent UX wording |
+| ADR-8 | Parent (code) vs Parent (UI) | Avoid breaking imports; consistent UX wording |
 | ADR-9 | Analytics raw SQL (`text()`) | Aggregations and window functions stay readable |
 | ADR-10 | Supabase for identity | Centralized auth; local `users.supabase_uid` mapping |
 | ADR-11 | Canonical `UserRole` in code + DB CHECK | Single extensibility path for roles (`role_types.py` + migrations) |
@@ -409,10 +409,10 @@ if "nav_target_student_id" in st.session_state:
 
 ### Finance Flow
 ```
-Preferred (one commit): create_receipt_with_charge_lines(guardian_id, method, user_id, lines) -> dict summary + payment_ids
+Preferred (one commit): create_receipt_with_charge_lines(parent_id, method, user_id, lines) -> dict summary + payment_ids
 
 Legacy / granular:
-1. open_receipt(guardian_id, method, user_id)        -> Receipt
+1. open_receipt(parent_id, method, user_id)        -> Receipt
 2. add_charge_line(receipt_id, student_id, ...)      -> Payment (repeat per student)
 3. finalize_receipt(receipt_id)                      -> dict summary
 4. (Competition) pay_competition_fee(...)            -> receipt + mark_fee_paid
@@ -434,7 +434,7 @@ Legacy / granular:
 
 1. **`Decimal` + `float` crash** — cast `float(value)` before arithmetic on money from the DB.
 2. **`group.current_level` does NOT exist** — use `group.level_number`.
-3. **`search_Parents` / `list_groups` do NOT exist** — use `search_guardians`, `get_all_active_groups()`, etc.
+3. **`search_Parents` / `list_groups` do NOT exist** — use `search_parents`, `get_all_active_groups()`, etc.
 4. **Session state navigation** — prefer `.pop("nav_key")` when consuming one-shot navigation ids.
 5. **`st.switch_page()` path** — must match the filename under `pages/` (e.g. `"pages/1_Directory.py"`, `"pages/0_Dashboard.py"`).
 6. **`expire_on_commit=False`** — objects stay usable after close; do not share across threads.
@@ -494,7 +494,7 @@ alembic stamp 001_baseline_v33
 
 | Phase | Features Added |
 |---|---|
-| 1 | DB schema, student/guardian CRUD |
+| 1 | DB schema, student/parent CRUD |
 | 2 | Course catalog, groups, session generation |
 | 3 | Enrollment with level snapshots |
 | 4 | Finance: receipts, payments, balances |

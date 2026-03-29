@@ -5,7 +5,7 @@ from app.shared.datetime_utils import date_at_utc_midnight
 from app.modules.crm.models.student_models import Student
 from app.modules.crm.schemas.student_schemas import UpdateStudentDTO, RegisterStudentCommandDTO
 import app.modules.crm.repositories.student_repository as repo
-import app.modules.crm.repositories.guardian_repository as guardian_repository
+import app.modules.crm.repositories.parent_repository as parent_repository
 from app.shared.audit_utils import apply_create_audit, apply_update_audit
 from app.shared.exceptions import NotFoundError
 
@@ -17,15 +17,15 @@ class StudentService:
         command_dto: RegisterStudentCommandDTO,
     ) -> tuple[Student, list[dict]]:
         """
-        Registers a student and links them to an existing guardian as primary contact
+        Registers a student and links them to an existing parent as primary contact
         using the unified RegisterStudentCommandDTO parameters.
         Returns (student, siblings) so the UI can offer the sibling discount.
         """
 
         with get_session() as session:
-            guardian = guardian_repository.get_guardian_by_id(session, command_dto.guardian_id)
-            if not guardian:
-                raise NotFoundError(f"Guardian with ID {command_dto.guardian_id} not found.")
+            parent = parent_repository.get_parent_by_id(session, command_dto.parent_id)
+            if not parent:
+                raise NotFoundError(f"Parent with ID {command_dto.parent_id} not found.")
 
             dob = command_dto.student_data.date_of_birth
             if dob is not None and isinstance(dob, date) and not isinstance(dob, datetime):
@@ -40,10 +40,10 @@ class StudentService:
             )
             apply_create_audit(student, user_id=command_dto.created_by_user_id)
             created_student = repo.create_student(session, student)
-            repo.link_guardian(
+            repo.link_parent(
                 session=session,
                 student_id=created_student.id,
-                guardian_id=command_dto.guardian_id,
+                parent_id=command_dto.parent_id,
                 relationship=command_dto.relationship,
                 is_primary=True,
             )
@@ -58,11 +58,11 @@ class StudentService:
         with get_session() as session:
             return repo.get_student_by_id(session, student_id)
 
-    def get_student_guardians(self, student_id: int) -> list:
+    def get_student_parents(self, student_id: int) -> list:
         with get_session() as session:
-            links = list(repo.get_student_guardians(session, student_id))
+            links = list(repo.get_student_parents(session, student_id))
             for link in links:
-                _ = link.guardian  # force lazy load inside session
+                _ = link.parent  # force lazy load inside session
             return links
 
     def search_students(self, query: str) -> list[Student]:
@@ -95,6 +95,6 @@ class StudentService:
         with get_session() as session:
             return repo.get_siblings(session, student_id)
 
-    def get_guardian_students(self, guardian_id: int) -> list[Student]:
+    def get_parent_students(self, parent_id: int) -> list[Student]:
         with get_session() as session:
-            return repo.get_students_by_guardian_id(session, guardian_id)
+            return repo.get_students_by_parent_id(session, parent_id)

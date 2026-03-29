@@ -23,14 +23,14 @@ def render_receipt_browser():
     with c3:
         rnum = st.text_input("Receipt # contains", key="dash_rcpt_num", placeholder="Optional")
 
-    guardian_id: int | None = None
+    parent_id: int | None = None
     pq = st.text_input(
         "Parent (name or phone)",
         key="dash_rcpt_pq",
         placeholder="Optional, min 2 characters",
     )
     if pq and len(pq) >= 2:
-        parents = crm_srv.search_guardians(pq)
+        parents = crm_srv.search_parents(pq)
         if parents:
             labels = ["— Any parent —"] + [f"{g.full_name} ({g.phone_primary})" for g in parents]
             idx = st.selectbox(
@@ -40,7 +40,7 @@ def render_receipt_browser():
                 key="dash_rcpt_pidx",
             )
             if idx > 0:
-                guardian_id = parents[idx - 1].id
+                parent_id = parents[idx - 1].id
         else:
             st.caption("No parents match.")
 
@@ -70,7 +70,7 @@ def render_receipt_browser():
             "from_d": from_d,
             "to_d": to_d,
             "rnum": rnum.strip() or None,
-            "guardian_id": guardian_id,
+            "parent_id": parent_id,
             "student_id": student_id,
         }
 
@@ -83,7 +83,7 @@ def render_receipt_browser():
         rows = fin_srv.search_receipts(
             last["from_d"],
             last["to_d"],
-            guardian_id=last["guardian_id"],
+            parent_id=last["parent_id"],
             student_id=last["student_id"],
             receipt_number_contains=last["rnum"],
             limit=200,
@@ -103,7 +103,7 @@ def render_receipt_browser():
             {
                 "Receipt ID": r["id"],
                 "Receipt #": r.get("receipt_number") or "—",
-                "Parent": r.get("guardian_name") or "—",
+                "Parent": r.get("parent_name") or "—",
                 "Method": (r.get("payment_method") or "—").capitalize(),
                 "Paid at": str(pa)[:19] if pa else "—",
                 "Total (EGP)": float(r.get("total") or 0),

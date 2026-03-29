@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from app.modules.crm import crm_service as crm_srv, RegisterGuardianInput
+from app.modules.crm import crm_service as crm_srv, RegisterParentInput
 from app.shared.exceptions import NotFoundError, BusinessRuleError, ConflictError, ValidationError
 
 
@@ -25,7 +25,7 @@ def modal_register_parent():
             notes = st.text_area("Notes (Optional)", height=68)
 
         if st.form_submit_button("Register Parent", type="primary"):
-            data = RegisterGuardianInput(
+            data = RegisterParentInput(
                 full_name=full_name.strip(),
                 phone_primary=phone_primary.strip(),
                 phone_secondary=phone_secondary.strip() if phone_secondary else None,
@@ -35,9 +35,9 @@ def modal_register_parent():
             )
 
             try:
-                new_guardian = crm_srv.register_guardian(data)
+                new_parent = crm_srv.register_parent(data)
                 st.success(
-                    f"✅ Successfully registered {new_guardian.full_name} (ID: {new_guardian.id})!"
+                    f"✅ Successfully registered {new_parent.full_name} (ID: {new_parent.id})!"
                 )
                 st.rerun()
             except ConflictError as e:
@@ -51,7 +51,7 @@ def modal_register_parent():
 
 @st.dialog("Browse All Families", width="large")
 def modal_browse_all_parents():
-    parents = crm_srv.list_all_guardians(limit=1000)
+    parents = crm_srv.list_all_parents(limit=1000)
     if not parents:
         st.info("No parents found.")
         return
@@ -113,7 +113,7 @@ def render_parent_overview():
     )
 
     if search_query and len(search_query) >= 2:
-        results = crm_srv.search_guardians(search_query)
+        results = crm_srv.search_parents(search_query)
         if results:
             st.markdown(
                 "Select a parent below to view their profile and registered children:"

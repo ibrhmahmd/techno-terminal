@@ -8,8 +8,8 @@
 
 ```mermaid
 erDiagram
-    GUARDIANS ||--o{ STUDENT_GUARDIANS : "linked to"
-    STUDENTS ||--o{ STUDENT_GUARDIANS : "linked to"
+    PARENTS ||--o{ STUDENT_PARENTS : "linked to"
+    STUDENTS ||--o{ STUDENT_PARENTS : "linked to"
     STUDENTS ||--o{ ENROLLMENTS : "enrolls in"
     STUDENTS ||--o{ ATTENDANCE : "attends"
     STUDENTS ||--o{ TEAM_MEMBERS : "competes in"
@@ -27,7 +27,7 @@ erDiagram
     ENROLLMENTS ||--o{ ATTENDANCE : "counted toward"
     ENROLLMENTS ||--o{ PAYMENTS : "settled by"
 
-    GUARDIANS ||--o{ RECEIPTS : "pays via"
+    PARENTS ||--o{ RECEIPTS : "pays via"
     RECEIPTS ||--o{ PAYMENTS : "contains"
 
     COMPETITIONS ||--o{ COMPETITION_CATEGORIES : "has"
@@ -43,9 +43,9 @@ erDiagram
 
 | # | Table | Key Columns | Notable |
 |---|---|---|---|
-| 1 | `guardians` | name, phone_primary, phone_secondary | Contact owner. |
+| 1 | `parents` | name, phone_primary, phone_secondary | Contact owner. |
 | 2 | `students` | name, dob, gender, phone | Phone optional (teens). No `age` (derived). |
-| 3 | `student_guardians` | student_id, guardian_id, is_primary | Junction table (supports split families/divorced parents). |
+| 3 | `student_parents` | student_id, parent_id, is_primary | Junction table (supports split families/divorced parents). |
 | 4 | `employees` | name, job_title, employment_type | No auth role. `contract_percentage` for payroll. |
 | 5 | `users` | username, password_hash, role | Role lives HERE only (`admin`, `system_admin`). |
 | 6 | `courses` | name, category, price, sessions_per_level | CHECK on price > 0, sessions > 0. |
@@ -53,7 +53,7 @@ erDiagram
 | 8 | `sessions` | group_id, **level_number**, session_number, date | Level snapshot fixes "time travel" problem. |
 | 9 | `enrollments` | student_id, group_id, **level_number**, amount_due | Level snapshot. Partial unique on active. |
 | 10 | `attendance` | student_id, session_id, **enrollment_id**, status | Enrollment ID is NOT NULL (no orphans). |
-| 11 | `receipts` | guardian_id, method, receipt_number | Groups split payments. No stored `total_amount` (derived). |
+| 11 | `receipts` | parent_id, method, receipt_number | Groups split payments. No stored `total_amount` (derived). |
 | 12 | `payments` | receipt_id, student_id, enrollment_id, amount | Line items. Supports refunds (`transaction_type`). |
 | 13 | `competitions` | name, edition, date | Annual events. |
 | 14 | `competition_categories` | competition_id, category_name | FLL→Explore/Challenge/Discover. |
@@ -64,10 +64,10 @@ erDiagram
 
 | View | Purpose |
 |---|---|
-| `v_students` | Age (derived), guardian name, guardian phone, student phone |
+| `v_students` | Age (derived), parent name, parent phone, student phone |
 | `v_enrollment_balance` | net_due, total_paid, balance per enrollment |
 | `v_enrollment_attendance` | sessions_attended, sessions_missed per enrollment |
-| `v_siblings` | Active sibling pairs sharing a guardian |
+| `v_siblings` | Active sibling pairs sharing a parent |
 | `v_group_session_count` | Regular/extra/total session count per group per level |
 
 ---
@@ -79,7 +79,7 @@ erDiagram
 | Sessions couldn't distinguish Level 1 vs Level 2 | Added `sessions.level_number` — immutable snapshot |
 | Split payments impossible | Added `receipts` table — one receipt, many payments |
 | Students couldn't have phones | Added `students.phone` (optional, for teens) |
-| Guardians had phone + whatsapp (usually same) | Replaced with `phone_primary` + `phone_secondary` |
+| Parents had phone + whatsapp (usually same) | Replaced with `phone_primary` + `phone_secondary` |
 | No CHECK on time ranges | `CHECK (start_time < end_time)` on groups and sessions |
 | No CHECK on amounts | `CHECK (amount > 0)`, `CHECK (price > 0)`, `CHECK (discount >= 0)` |
 | No CHECK on capacity | `CHECK (max_capacity > 0)` — NULL = unlimited |
@@ -131,7 +131,7 @@ BALANCE (per enrollment):
 2.  **Level snapshots** — `sessions.level_number` and `enrollments.level_number` freeze history.
 3.  **Data Permanence** — Critical entities (`groups`, `receipts`, etc.) use `ON DELETE RESTRICT` to prevent accidental CASCADE wipes of historical data.
 4.  **No stored totals** — `receipts.total_amount` is removed; math is evaluated dynamically to prevent drift.
-5.  **Multi-Guardian Architecture** — `student_guardians` junction table allows split families (divorced parents) to both receive links.
+5.  **Multi-Parent Architecture** — `student_parents` junction table allows split families (divorced parents) to both receive links.
 6.  **Full Refund Support** — Refunds are positive amounts typed as `'refund'`, keeping the ledger append-only without breaking `CHECK` constraints.
 7.  **No Orphans** — `attendance` MUST link to an `enrollment_id`.
 8.  **Backend Data Types** — `created_at` and `updated_at` are handled entirely by backend application logic.
