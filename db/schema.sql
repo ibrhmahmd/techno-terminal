@@ -113,6 +113,7 @@ CREATE TABLE courses (
     price_per_level DECIMAL(10, 2) CHECK (price_per_level > 0),
     sessions_per_level INTEGER DEFAULT 5 CHECK (sessions_per_level > 0),
     description TEXT,
+    notes TEXT,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
@@ -130,6 +131,7 @@ CREATE TABLE groups (
         max_capacity INTEGER CHECK (max_capacity > 0),
         status TEXT DEFAULT 'active' CHECK (status IN ('active', 'completed', 'cancelled')),
         started_at DATE,
+        notes TEXT,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         metadata JSONB DEFAULT '{}',
@@ -152,6 +154,7 @@ CREATE TABLE sessions (
         is_substitute BOOLEAN DEFAULT FALSE,
         is_extra_session BOOLEAN DEFAULT FALSE,
         notes TEXT,
+        status TEXT DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'completed', 'cancelled')),
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         CHECK (
             start_time IS NULL
@@ -196,8 +199,7 @@ CREATE TABLE attendance (
 );
 CREATE TABLE receipts (
     id SERIAL PRIMARY KEY,
-    parent_id INTEGER REFERENCES parents(id) ON DELETE
-    SET NULL,
+    payer_name TEXT,
         payment_method TEXT CHECK (
             payment_method IN ('cash', 'card', 'transfer', 'online')
         ),
