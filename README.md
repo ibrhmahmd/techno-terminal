@@ -1,6 +1,4 @@
-# Techno Kids — CRM & Operations System
-
-Internal admin system for Techno Kids / Techno Future KFS tech education center.
+# Techno Terminal
 
 ## Stack
 
