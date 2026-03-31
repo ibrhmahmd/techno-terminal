@@ -8,8 +8,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from app.api.exceptions import register_exception_handlers
 from app.api.middleware.logging_middleware import logging_middleware
 from app.api.routers import auth
+from app.api.routers import crm
 # Domain routers — uncommented as each phase is implemented:
-# from app.api.routers import crm
 # from app.api.routers import academics
 # from app.api.routers import attendance
 # from app.api.routers import enrollments
@@ -47,7 +47,7 @@ def create_app() -> FastAPI:
     # 4. Routers
     app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
     # Phase 5.2 — CRM
-    # app.include_router(crm.router, prefix="/api/v1", tags=["CRM"])
+    app.include_router(crm.router, prefix="/api/v1", tags=["CRM"])
     # Phase 5.3 — Academics + Attendance
     # app.include_router(academics.router,   prefix="/api/v1", tags=["Academics"])
     # app.include_router(attendance.router,  prefix="/api/v1", tags=["Attendance"])
