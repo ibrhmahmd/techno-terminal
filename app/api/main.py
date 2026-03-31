@@ -9,9 +9,9 @@ from app.api.exceptions import register_exception_handlers
 from app.api.middleware.logging_middleware import logging_middleware
 from app.api.routers import auth
 from app.api.routers import crm
+from app.api.routers import academics
+from app.api.routers import attendance
 # Domain routers — uncommented as each phase is implemented:
-# from app.api.routers import academics
-# from app.api.routers import attendance
 # from app.api.routers import enrollments
 # from app.api.routers import finance
 # from app.api.routers import competitions
@@ -49,8 +49,8 @@ def create_app() -> FastAPI:
     # Phase 5.2 — CRM
     app.include_router(crm.router, prefix="/api/v1", tags=["CRM"])
     # Phase 5.3 — Academics + Attendance
-    # app.include_router(academics.router,   prefix="/api/v1", tags=["Academics"])
-    # app.include_router(attendance.router,  prefix="/api/v1", tags=["Attendance"])
+    app.include_router(academics.router,  prefix="/api/v1", tags=["Academics"])
+    app.include_router(attendance.router, prefix="/api/v1", tags=["Attendance"])
     # Phase 5.4 — Transactions
     # app.include_router(enrollments.router, prefix="/api/v1", tags=["Enrollments"])
     # app.include_router(finance.router,     prefix="/api/v1", tags=["Finance"])

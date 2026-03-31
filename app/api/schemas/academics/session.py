@@ -1,0 +1,29 @@
+"""
+app/api/schemas/academics/session.py
+──────────────────────────────────────
+Public-facing CourseSession DTOs.
+"""
+from datetime import date
+from typing import Optional
+
+from pydantic import BaseModel
+
+
+class SessionPublic(BaseModel):
+    """
+    CourseSession profile returned by session list endpoints.
+    """
+
+    id: int
+    group_id: int
+    level_number: int
+    session_number: int
+    session_date: Optional[date] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    status: Optional[str] = None         # scheduled | completed | cancelled
+    is_extra_session: bool = False
+    actual_instructor_id: Optional[int] = None
+    notes: Optional[str] = None
+
+    model_config = {"from_attributes": True}
