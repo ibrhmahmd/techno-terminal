@@ -12,22 +12,22 @@
 
 | # | Task | Status |
 |---|------|--------|
-| A1 | `app/api/schemas/common.py` — `ApiResponse[T]`, `PaginatedResponse[T]`, `ErrorResponse` | ⬜ |
-| A2 | `app/api/dependencies.py` — role guards + service factories | ⬜ |
-| A3 | `app/api/schemas/crm/` — `StudentPublic`, `ParentPublic` | ⬜ |
-| A4 | `app/api/routers/crm.py` — 9 CRM endpoints | ⬜ |
-| A5 | `app/api/schemas/academics/` — `CoursePublic`, `GroupPublic`, `SessionPublic` | ⬜ |
-| A6 | `app/api/routers/academics.py` — Courses, Groups, Sessions | ⬜ |
-| A7 | `app/api/routers/attendance.py` — Attendance mark/read | ⬜ |
-| A8 | `app/api/schemas/enrollments/` + `finance/` | ⬜ |
-| A9 | `app/api/routers/enrollments.py` | ⬜ |
-| A10 | `app/api/routers/finance.py` | ⬜ |
-| A11 | `app/api/routers/competitions.py` (read-first) | ⬜ |
-| A12 | `app/api/routers/hr.py` (read-only) | ⬜ |
-| A13 | `app/api/routers/analytics.py` (stubs) | ⬜ |
-| A14 | `app/api/main.py` — mount all routers | ⬜ |
-| A15 | `app/api/middleware/logging_middleware.py` | ⬜ |
-| A16 | Smoke test via Swagger `/api/v1/docs` | ⬜ |
+| A1 | `app/api/schemas/common.py` — `ApiResponse[T]`, `PaginatedResponse[T]`, `ErrorResponse` | ✅ |
+| A2 | `app/api/dependencies.py` — role guards + service factories | ✅ |
+| A3 | `app/api/schemas/crm/` — `StudentPublic`, `ParentPublic` | ✅ |
+| A4 | `app/api/routers/crm.py` — 9 CRM endpoints | ✅ |
+| A5 | `app/api/schemas/academics/` — `CoursePublic`, `GroupPublic`, `SessionPublic` | ✅ |
+| A6 | `app/api/routers/academics.py` — Courses, Groups, Sessions | ✅ |
+| A7 | `app/api/routers/attendance.py` — Attendance mark/read | ✅ |
+| A8 | `app/api/schemas/enrollments/` + `finance/` | ✅ |
+| A9 | `app/api/routers/enrollments.py` | ✅ |
+| A10 | `app/api/routers/finance.py` | ✅ |
+| A11 | `app/api/routers/competitions.py` (read-first) | ✅ |
+| A12 | `app/api/routers/hr.py` (read-only) | ✅ |
+| A13 | `app/api/routers/analytics.py` (stubs) | ✅ |
+| A14 | `app/api/main.py` — mount all routers | ✅ |
+| A15 | `app/api/middleware/logging_middleware.py` | ✅ |
+| A16 | Smoke test via Swagger `/api/v1/docs` | ✅ |
 
 ---
 
