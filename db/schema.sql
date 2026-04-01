@@ -1,4 +1,4 @@
--- Techno Kids — PostgreSQL Schema v3.3
+-- Techno Terminal  — PostgreSQL Schema v3.3
 -- 15 tables, 5 views, 23 indexes
 -- v3.3: users — Supabase auth (supabase_uid), roles admin/instructor/system_admin; seed via app (see db/README.md)
 -- CHANGES FROM v3.2:
@@ -61,7 +61,10 @@ CREATE TABLE employees (
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     metadata JSONB DEFAULT '{}',
     CONSTRAINT employees_contract_pct_check CHECK (
-        (employment_type != 'contract' AND contract_percentage IS NULL)
+        (
+            employment_type != 'contract'
+            AND contract_percentage IS NULL
+        )
         OR (employment_type = 'contract')
     ),
     CONSTRAINT uq_employees_national_id UNIQUE (national_id),
@@ -154,7 +157,9 @@ CREATE TABLE sessions (
         is_substitute BOOLEAN DEFAULT FALSE,
         is_extra_session BOOLEAN DEFAULT FALSE,
         notes TEXT,
-        status TEXT DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'completed', 'cancelled')),
+        status TEXT DEFAULT 'scheduled' CHECK (
+            status IN ('scheduled', 'completed', 'cancelled')
+        ),
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         CHECK (
             start_time IS NULL
@@ -200,10 +205,10 @@ CREATE TABLE attendance (
 CREATE TABLE receipts (
     id SERIAL PRIMARY KEY,
     payer_name TEXT,
-        payment_method TEXT CHECK (
-            payment_method IN ('cash', 'card', 'transfer', 'online')
-        ),
-        received_by INTEGER REFERENCES users(id) ON DELETE
+    payment_method TEXT CHECK (
+        payment_method IN ('cash', 'card', 'transfer', 'online')
+    ),
+    received_by INTEGER REFERENCES users(id) ON DELETE
     SET NULL,
         receipt_number TEXT UNIQUE,
         notes TEXT,
@@ -296,31 +301,22 @@ CREATE INDEX idx_team_members_team ON team_members(team_id);
 CREATE INDEX idx_team_members_student ON team_members(student_id);
 CREATE UNIQUE INDEX idx_users_supabase_uid ON users(supabase_uid);
 -- Audit (D4): bump updated_at on UPDATE (mirrors db/migrations/005_audit_d4_timestamps.sql)
-CREATE OR REPLACE FUNCTION tf_set_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
+CREATE OR REPLACE FUNCTION tf_set_updated_at() RETURNS TRIGGER AS $$ BEGIN NEW.updated_at = CURRENT_TIMESTAMP;
+RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-CREATE TRIGGER trg_parents_updated_at
-    BEFORE UPDATE ON parents
-    FOR EACH ROW EXECUTE PROCEDURE tf_set_updated_at();
-CREATE TRIGGER trg_employees_updated_at
-    BEFORE UPDATE ON employees
-    FOR EACH ROW EXECUTE PROCEDURE tf_set_updated_at();
-CREATE TRIGGER trg_students_updated_at
-    BEFORE UPDATE ON students
-    FOR EACH ROW EXECUTE PROCEDURE tf_set_updated_at();
-CREATE TRIGGER trg_courses_updated_at
-    BEFORE UPDATE ON courses
-    FOR EACH ROW EXECUTE PROCEDURE tf_set_updated_at();
-CREATE TRIGGER trg_groups_updated_at
-    BEFORE UPDATE ON groups
-    FOR EACH ROW EXECUTE PROCEDURE tf_set_updated_at();
-CREATE TRIGGER trg_enrollments_updated_at
-    BEFORE UPDATE ON enrollments
-    FOR EACH ROW EXECUTE PROCEDURE tf_set_updated_at();
+CREATE TRIGGER trg_parents_updated_at BEFORE
+UPDATE ON parents FOR EACH ROW EXECUTE PROCEDURE tf_set_updated_at();
+CREATE TRIGGER trg_employees_updated_at BEFORE
+UPDATE ON employees FOR EACH ROW EXECUTE PROCEDURE tf_set_updated_at();
+CREATE TRIGGER trg_students_updated_at BEFORE
+UPDATE ON students FOR EACH ROW EXECUTE PROCEDURE tf_set_updated_at();
+CREATE TRIGGER trg_courses_updated_at BEFORE
+UPDATE ON courses FOR EACH ROW EXECUTE PROCEDURE tf_set_updated_at();
+CREATE TRIGGER trg_groups_updated_at BEFORE
+UPDATE ON groups FOR EACH ROW EXECUTE PROCEDURE tf_set_updated_at();
+CREATE TRIGGER trg_enrollments_updated_at BEFORE
+UPDATE ON enrollments FOR EACH ROW EXECUTE PROCEDURE tf_set_updated_at();
 -- Views
 CREATE OR REPLACE VIEW v_students AS
 SELECT s.id,

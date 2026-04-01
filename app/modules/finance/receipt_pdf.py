@@ -8,7 +8,7 @@ class ReceiptPDF(FPDF):
     def header(self):
         # Logo / Title
         self.set_font("helvetica", "B", 16)
-        self.cell(0, 10, "Techno Future CRM", border=0, align="L", ln=1)
+        self.cell(0, 10, "Techno Terminal  CRM", border=0, align="L", ln=1)
         self.ln(5)
 
     def footer(self):
@@ -17,7 +17,9 @@ class ReceiptPDF(FPDF):
         self.cell(0, 10, f"Page {self.page_no()}", align="C")
 
 
-def build_receipt_pdf(receipt: Receipt, lines: list[Payment], total: float, parent_name: str) -> bytes:
+def build_receipt_pdf(
+    receipt: Receipt, lines: list[Payment], total: float, parent_name: str
+) -> bytes:
     """Generates a PDF receipt using fpdf2 and returns the raw bytes."""
     pdf = ReceiptPDF(orientation="P", unit="mm", format="A5")
     pdf.add_page()
@@ -63,7 +65,7 @@ def build_receipt_pdf(receipt: Receipt, lines: list[Payment], total: float, pare
     pdf.set_font("helvetica", "", 9)
     for i, line in enumerate(lines, start=1):
         item_text = f"{line.transaction_type.capitalize()} - {str(line.payment_type).replace('_', ' ').capitalize()}"
-        
+
         pdf.cell(10, 8, str(i), border=1, align="C")
         pdf.cell(40, 8, str(line.student_id), border=1, align="L")
         pdf.cell(50, 8, item_text, border=1, align="L")

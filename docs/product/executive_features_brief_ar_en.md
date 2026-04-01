@@ -1,12 +1,12 @@
-# Techno future CRM Document
+# Techno Terminal  CRM Document
 
 ## Introduction
 
-**Techno future CRM** هو الـ **single source of truth**: من أول تسجيل الطالب وولي الأمر، لحد المجموعات والحضور والإيصالات. الهدف مش “automation لذاته” — الهدف إن الفريق يشيل أقل administrative overhead.
+**Techno Terminal  CRM** هو الـ **single source of truth**: من أول تسجيل الطالب وولي الأمر، لحد المجموعات والحضور والإيصالات. الهدف مش “automation لذاته” — الهدف إن الفريق يشيل أقل administrative overhead.
 
 ---
 
-## System Features : 
+## System Features
 
 - **Profiles (طلاب / أولياء أمور)** — ربط العائلة في مكان واحد. **Benefit:** تواصل أسرع، أقل لخبطة في مين المسؤول ومين الأخوة.
 - **Courses & groups** — كتالوج، مستويات، جدولة، سعة. **Benefit:** قرارات تشغيل أوضح (مين فين، إمتى، قد إيه).

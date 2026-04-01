@@ -1,4 +1,5 @@
 # Techno Terminal — Memory Bank
+>
 > **Purpose:** Complete architectural and code-level reference for AI agent handoff.  
 > **Last updated:** 2026-03-21  
 > **Schema version:** v3.3 (15 tables, 5 views) — see `db/schema.sql` header  
@@ -9,6 +10,7 @@
 ## 1. Project Overview
 
 **Techno Terminal** is a full-stack internal management system for a STEM education center. It manages:
+
 - Student & parent (parent) registration and profiles
 - Course catalogs, group scheduling, and session tracking
 - Student enrollment per group level
@@ -19,13 +21,15 @@
 - Staff (employee) directory and linked login accounts
 
 **Transports (dual path):**
+
 - **Streamlit** (`app/ui/`) is the primary internal UI. Pages call **`app/modules/*/service.py` directly** (same process, no HTTP to self for domain data).
 - **FastAPI** (`app/api/`) exposes a growing **REST API** (JSON). It reuses the same services and `get_session`-backed repositories. **Phase 5.1 (scaffold + auth) is in place:** `GET /api/v1/auth/me`, `GET /health`, global exception handlers, `get_db`. **Domain routers** (CRM, academics, finance, …) are **not mounted** yet — see [phase5_api_execution_roadmap_2026.md](planning/phase5_api_execution_roadmap_2026.md) for the ordered rollout. Streamlit stores `access_token` in session state after Supabase login for **Bearer** API calls.
 
 **Authentication:** End-user credentials are verified by **Supabase** (`sign_in_with_password` in Streamlit; JWT verification via Supabase SDK in FastAPI). Local Postgres `users` rows map identities with `supabase_uid`. After successful Streamlit login, **`update_last_login`** updates `users.last_login` (explicit `session.commit()` in service; `get_session()` also commits on exit).
 
 **Current Status (End of March 2026):**
-- **Streamlit Stabilization Complete:** All UI crashes caused by the deep-SOLID architecture (Pydantic DTO strictness, Service facades) have been patched. 
+
+- **Streamlit Stabilization Complete:** All UI crashes caused by the deep-SOLID architecture (Pydantic DTO strictness, Service facades) have been patched.
 - **Pivot:** API scaffolding (Day 2 of Delivery Plan) is temporarily paused. The project is currently entering a new structural sprint to decouple the Student-Parent relationship, shift financial tracking directly to the Student entity, handle automatic level progression, and handle session cancellations with cascading numbering.
 
 **Audit (D4):** `app/shared/audit_utils.py` stamps `created_at` / `updated_at` / optional `created_by` on CRM, enrollments, and academics mutating paths where applicable. **`db/migrations/005_audit_d4_timestamps.sql`** backfills NULLs, sets `DEFAULT CURRENT_TIMESTAMP`, normalizes legacy TEXT `sessions.created_at` / `session_date`, and adds `tf_set_updated_at` triggers (mirrored in greenfield `db/schema.sql`). Streamlit uses **`state.get_current_user_id()`** for `created_by` / `received_by`. See `docs/planning/sprint_roadmap_post_qa_2026.md` Sprint 3.
@@ -187,6 +191,7 @@ service.py        Business logic — opens sessions via get_session(), calls rep
 ```
 
 **Variations:**
+
 - **Academics:** session entity lives in `academics_session_models.py` (`CourseSession`), not in `academics_models.py`, to avoid circular imports.
 - **Competitions:** Deep-SOLID architecture utilizing explicit directories for `models/`, `repositories/`, `services/`, and `schemas/` instead of single monolithic files. The facade `__init__.py` exposes singleton service methods.
 - **API DTOs:** several modules expose `*_schemas.py` (Create/Read shapes) for FastAPI — alongside `*_models.py`.
@@ -211,6 +216,7 @@ The UI imports **only from `service.py`**, not from `repository.py`.
 **`auth_schemas.py`:** Placeholder Pydantic bodies for future routes (e.g. `PasswordResetBody`).
 
 **Auth API (`app/api/dependencies.py`):**
+
 - **`HTTPBearer`** (not OAuth2 password flow) — raw JWT from Supabase.
 - `get_current_user` → `get_supabase_anon().auth.get_user(token)` → `get_user_by_supabase_uid` → local `User`; **403** if `is_active` is false; failures logged without logging the token.
 
@@ -289,7 +295,8 @@ The UI imports **only from `service.py`**, not from `repository.py`.
 **Hierarchy:** Competition → Category → Team → TeamMember
 **DTOs:** Uses strict Pydantic typed objects for input commands and output views (e.g., `TeamMemberRosterDTO`, `CompetitionSummaryDTO`).
 
-**Services:** 
+**Services:**
+
 - **`CompetitionService`**: `create_competition`, `list_competitions`, `update_competition`, `delete_competition`, category CRUD, `get_competition_summary`.
 - **`TeamService`**: `get_student_competitions`, `register_team`, `list_teams`, `update_team`, `delete_team`, `add_team_member_to_existing`, `remove_team_member`, `list_team_members`, `pay_competition_fee`, `unmark_team_fee_for_payment`.
 
@@ -312,6 +319,7 @@ All functions return `list[dict]` or scalars. Always `float()` cast monetary col
 ### 6.1 Sidebar navigation (`app/ui/main.py`)
 
 Explicit **`st.page_link`** entries (primary IA):
+
 - Dashboard → `pages/0_Dashboard.py`
 - Directory → `pages/1_Directory.py`
 - Competitions → `pages/8_Competitions.py`
@@ -376,7 +384,7 @@ if "nav_target_student_id" in st.session_state:
 
 ## 7. FastAPI snapshot (`app/api/`)
 
-- **`create_app()`** in `main.py` — title *Techno Future API*, **CORS open** (`allow_origins=["*"]`) for development.
+- **`create_app()`** in `main.py` — title *Techno Terminal  API*, **CORS open** (`allow_origins=["*"]`) for development.
 - **Routers:** `auth` mounted at `/api/v1/auth` — **`GET /api/v1/auth/me`** — `Authorization: Bearer <supabase_jwt>` — response **`UserPublic`**.
 - **`GET /health`** — liveness check.
 - **`get_db`** — yields a `Session` scoped to the request (uses `get_session()` context manager pattern).
@@ -408,6 +416,7 @@ if "nav_target_student_id" in st.session_state:
 ## 9. Standard Workflows
 
 ### Finance Flow
+
 ```
 Preferred (one commit): create_receipt_with_charge_lines(parent_id, method, user_id, lines) -> dict summary + payment_ids
 
@@ -420,6 +429,7 @@ Legacy / granular:
 ```
 
 ### Enrollment Flow
+
 ```
 1. search_students(query)                            -> pick student
 2. get_all_active_groups()                           -> pick group
@@ -476,11 +486,13 @@ alembic stamp 001_baseline_v33
 ```
 
 **Environment variables (minimum):**
+
 - `DATABASE_URL` — PostgreSQL
 - `SUPABASE_URL`, `SUPABASE_ANON_KEY` — login + JWT verification
 - `SUPABASE_SERVICE_ROLE_KEY` — **required** for `seed_admin_account()`, staff account creation, and `force_reset_password` (Supabase Admin API); optional only for read-only dev without HR auth actions
 
 **Key dependencies (`requirements.txt`):**
+
 - `streamlit`, `pandas` (Dashboard/Reports)
 - `sqlmodel`, `psycopg2-binary`, `alembic`
 - `python-dotenv`
@@ -508,11 +520,13 @@ alembic stamp 001_baseline_v33
 **Completed plan write-ups:** `docs/archive/legacy_plans/` ([README](archive/legacy_plans/README.md)) — memory-bank refresh summary, auth/DB alignment task list.
 
 **Active planning (product + API rollout):**
+
 - `docs/planning/qa_backlog_2026_03_testing_findings.md` — QA findings, story points, product decisions **P1–P9**
 - `docs/planning/sprint_roadmap_post_qa_2026.md` — ordered product/engineering sprints after QA
 - `docs/planning/phase5_api_execution_roadmap_2026.md` — Phase 5.1–5.5 API delivery plan
 
 **See also (longer-form, may predate code):**
+
 - `docs/archive/legacy_plans/` — archived summaries of completed engineering plans  
 - `docs/memory_bank/01_business_domain/` — requirements, data dictionary, project origin  
 - `docs/memory_bank/02_database_design/` — schema narrative  

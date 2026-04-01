@@ -9,7 +9,7 @@ st.set_page_config(page_title="Login — Techno Terminal", layout="centered")
 if state.is_authenticated():
     st.switch_page("pages/0_Dashboard.py")
 
-st.title("Techno future")
+st.title("Techno Terminal ")
 st.subheader("Admin Login")
 
 with st.form("login_form"):
@@ -19,16 +19,15 @@ with st.form("login_form"):
 
 if submitted:
     supabase = get_supabase_anon()
-    
+
     # Handle legacy usernames by wrapping them in the dummy domain established in hr_service
     email_binding = username if "@" in username else f"{username}@system.local"
-    
+
     try:
-        response = supabase.auth.sign_in_with_password({
-            "email": email_binding, 
-            "password": password
-        })
-        
+        response = supabase.auth.sign_in_with_password(
+            {"email": email_binding, "password": password}
+        )
+
         if response.user:
             # Login successful against Supabase. Fetch our local Postgres profile!
             local_user = get_user_by_supabase_uid(response.user.id)
@@ -39,7 +38,7 @@ if submitted:
                 st.switch_page("pages/0_Dashboard.py")
             else:
                 st.error("Login succeeded, but local profile is inactive or unmapped.")
-                
+
     except Exception as e:
         # Supabase intentionally obscures exact error reasons to prevent enumeration attacks
         st.error("Invalid credentials.")
