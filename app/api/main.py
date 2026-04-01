@@ -11,9 +11,9 @@ from app.api.routers import auth
 from app.api.routers import crm
 from app.api.routers import academics
 from app.api.routers import attendance
+from app.api.routers import enrollments
+from app.api.routers import finance
 # Domain routers — uncommented as each phase is implemented:
-# from app.api.routers import enrollments
-# from app.api.routers import finance
 # from app.api.routers import competitions
 # from app.api.routers import hr
 # from app.api.routers import analytics
@@ -52,8 +52,8 @@ def create_app() -> FastAPI:
     app.include_router(academics.router,  prefix="/api/v1", tags=["Academics"])
     app.include_router(attendance.router, prefix="/api/v1", tags=["Attendance"])
     # Phase 5.4 — Transactions
-    # app.include_router(enrollments.router, prefix="/api/v1", tags=["Enrollments"])
-    # app.include_router(finance.router,     prefix="/api/v1", tags=["Finance"])
+    app.include_router(enrollments.router, prefix="/api/v1", tags=["Enrollments"])
+    app.include_router(finance.router,     prefix="/api/v1", tags=["Finance"])
     # Phase 5.5 — Auxiliary
     # app.include_router(competitions.router, prefix="/api/v1", tags=["Competitions"])
     # app.include_router(hr.router,           prefix="/api/v1", tags=["HR"])
