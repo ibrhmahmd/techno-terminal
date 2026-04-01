@@ -13,10 +13,10 @@ from app.api.routers import academics
 from app.api.routers import attendance
 from app.api.routers import enrollments
 from app.api.routers import finance
+from app.api.routers import competitions
+from app.api.routers import hr
+from app.api.routers import analytics
 # Domain routers — uncommented as each phase is implemented:
-# from app.api.routers import competitions
-# from app.api.routers import hr
-# from app.api.routers import analytics
 
 
 def create_app() -> FastAPI:
@@ -55,9 +55,9 @@ def create_app() -> FastAPI:
     app.include_router(enrollments.router, prefix="/api/v1", tags=["Enrollments"])
     app.include_router(finance.router,     prefix="/api/v1", tags=["Finance"])
     # Phase 5.5 — Auxiliary
-    # app.include_router(competitions.router, prefix="/api/v1", tags=["Competitions"])
-    # app.include_router(hr.router,           prefix="/api/v1", tags=["HR"])
-    # app.include_router(analytics.router,    prefix="/api/v1", tags=["Analytics"])
+    app.include_router(competitions.router, prefix="/api/v1", tags=["Competitions"])
+    app.include_router(hr.router,           prefix="/api/v1", tags=["HR"])
+    app.include_router(analytics.router,    prefix="/api/v1", tags=["Analytics"])
 
     # 5. Utility endpoints
     @app.get("/health", tags=["Health"])
