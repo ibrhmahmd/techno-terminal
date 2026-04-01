@@ -23,26 +23,11 @@ def render_receipt_browser():
     with c3:
         rnum = st.text_input("Receipt # contains", key="dash_rcpt_num", placeholder="Optional")
 
-    parent_id: int | None = None
-    pq = st.text_input(
-        "Parent (name or phone)",
+    payer_name = st.text_input(
+        "Payer Name",
         key="dash_rcpt_pq",
-        placeholder="Optional, min 2 characters",
+        placeholder="Optional partial match",
     )
-    if pq and len(pq) >= 2:
-        parents = crm_srv.search_parents(pq)
-        if parents:
-            labels = ["— Any parent —"] + [f"{g.full_name} ({g.phone_primary})" for g in parents]
-            idx = st.selectbox(
-                "Parent match",
-                range(len(labels)),
-                format_func=lambda i: labels[i],
-                key="dash_rcpt_pidx",
-            )
-            if idx > 0:
-                parent_id = parents[idx - 1].id
-        else:
-            st.caption("No parents match.")
 
     student_id: int | None = None
     sq = st.text_input(
@@ -70,7 +55,7 @@ def render_receipt_browser():
             "from_d": from_d,
             "to_d": to_d,
             "rnum": rnum.strip() or None,
-            "parent_id": parent_id,
+            "payer_name": payer_name.strip() or None,
             "student_id": student_id,
         }
 
@@ -83,7 +68,7 @@ def render_receipt_browser():
         rows = fin_srv.search_receipts(
             last["from_d"],
             last["to_d"],
-            parent_id=last["parent_id"],
+            payer_name_contains=last["payer_name"],
             student_id=last["student_id"],
             receipt_number_contains=last["rnum"],
             limit=200,

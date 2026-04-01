@@ -23,9 +23,10 @@ class StudentService:
         """
 
         with get_session() as session:
-            parent = parent_repository.get_parent_by_id(session, command_dto.parent_id)
-            if not parent:
-                raise NotFoundError(f"Parent with ID {command_dto.parent_id} not found.")
+            if command_dto.parent_id is not None:
+                parent = parent_repository.get_parent_by_id(session, command_dto.parent_id)
+                if not parent:
+                    raise NotFoundError(f"Parent with ID {command_dto.parent_id} not found.")
 
             dob = command_dto.student_data.date_of_birth
             if dob is not None and isinstance(dob, date) and not isinstance(dob, datetime):
@@ -40,13 +41,15 @@ class StudentService:
             )
             apply_create_audit(student, user_id=command_dto.created_by_user_id)
             created_student = repo.create_student(session, student)
-            repo.link_parent(
-                session=session,
-                student_id=created_student.id,
-                parent_id=command_dto.parent_id,
-                relationship=command_dto.relationship,
-                is_primary=True,
-            )
+            
+            if command_dto.parent_id is not None:
+                repo.link_parent(
+                    session=session,
+                    student_id=created_student.id,
+                    parent_id=command_dto.parent_id,
+                    relationship=command_dto.relationship,
+                    is_primary=True,
+                )
             student_id = created_student.id
             student_obj = created_student
 

@@ -8,7 +8,7 @@ from app.modules.enrollments import enrollment_service as enroll_srv
 from app.modules.enrollments.schemas import EnrollStudentInput, TransferStudentInput
 from app.shared.exceptions import NotFoundError, BusinessRuleError, ConflictError, ValidationError
 
-st.set_page_config(page_title="Enrollment Wizard", layout="wide")
+st.set_page_config(page_title="Enrollment Wizard - Techno Terminal", layout="wide")
 require_auth()
 
 st.title("📋 Enrollment Center")

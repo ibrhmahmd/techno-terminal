@@ -7,15 +7,15 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.exceptions import register_exception_handlers
 from app.api.middleware.logging_middleware import logging_middleware
-from app.api.routers import auth
-from app.api.routers import crm
-from app.api.routers import academics
-from app.api.routers import attendance
-from app.api.routers import enrollments
-from app.api.routers import finance
-from app.api.routers import competitions
-from app.api.routers import hr
-from app.api.routers import analytics
+from app.api.routers import auth_router
+from app.api.routers import crm_router
+from app.api.routers import academics_router
+from app.api.routers import attendance_router
+from app.api.routers import enrollments_router
+from app.api.routers import finance_router
+from app.api.routers import competitions_router
+from app.api.routers import hr_router
+from app.api.routers import analytics_router
 # Domain routers — uncommented as each phase is implemented:
 
 
@@ -45,19 +45,19 @@ def create_app() -> FastAPI:
     register_exception_handlers(app)
 
     # 4. Routers
-    app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
+    app.include_router(auth_router.router, prefix="/api/v1/auth", tags=["Authentication"])
     # Phase 5.2 — CRM
-    app.include_router(crm.router, prefix="/api/v1", tags=["CRM"])
+    app.include_router(crm_router.router, prefix="/api/v1", tags=["CRM"])
     # Phase 5.3 — Academics + Attendance
-    app.include_router(academics.router,  prefix="/api/v1", tags=["Academics"])
-    app.include_router(attendance.router, prefix="/api/v1", tags=["Attendance"])
+    app.include_router(academics_router.router,  prefix="/api/v1", tags=["Academics"])
+    app.include_router(attendance_router.router, prefix="/api/v1", tags=["Attendance"])
     # Phase 5.4 — Transactions
-    app.include_router(enrollments.router, prefix="/api/v1", tags=["Enrollments"])
-    app.include_router(finance.router,     prefix="/api/v1", tags=["Finance"])
+    app.include_router(enrollments_router.router, prefix="/api/v1", tags=["Enrollments"])
+    app.include_router(finance_router.router,     prefix="/api/v1", tags=["Finance"])
     # Phase 5.5 — Auxiliary
-    app.include_router(competitions.router, prefix="/api/v1", tags=["Competitions"])
-    app.include_router(hr.router,           prefix="/api/v1", tags=["HR"])
-    app.include_router(analytics.router,    prefix="/api/v1", tags=["Analytics"])
+    app.include_router(competitions_router.router, prefix="/api/v1", tags=["Competitions"])
+    app.include_router(hr_router.router,           prefix="/api/v1", tags=["HR"])
+    app.include_router(analytics_router.router,    prefix="/api/v1", tags=["Analytics"])
 
     # 5. Utility endpoints
     @app.get("/health", tags=["Health"])

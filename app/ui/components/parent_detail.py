@@ -37,7 +37,8 @@ def render_parent_detail(parent_id: int):
         f"**Primary Phone:** {parent.phone_primary} | **Secondary Form:** {parent.phone_secondary or 'N/A'}"
     )
     if parent.notes:
-        st.info(f"**Notes:** {parent.notes}")
+        with st.expander("💬 View Notes"):
+            st.write(parent.notes)
 
     from app.ui.components.forms.edit_parent_form import render_edit_parent_form
     render_edit_parent_form(parent)

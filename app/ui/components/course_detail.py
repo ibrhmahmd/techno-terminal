@@ -34,8 +34,12 @@ def render_course_detail(course_id: int):
     st.markdown(
         f"**Category:** {course.category.capitalize()} | **Sessions/Level:** {course.sessions_per_level}"
     )
-    if course.description:
+    if getattr(course, "description", None):
         st.info(f"**Description:** {course.description}")
+        
+    if getattr(course, "notes", None):
+        with st.expander("💬 View Notes"):
+            st.write(course.notes)
 
     # ── Stats bar ────────────────────────────────────────────────────────────
     if stats:

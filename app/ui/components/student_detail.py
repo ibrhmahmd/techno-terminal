@@ -36,7 +36,8 @@ def render_student_detail(student_id: int):
     c_ph.markdown(f"**Phone:** {student.phone or 'N/A'}")
 
     if student.notes:
-        st.info(f"**Notes:** {student.notes}")
+        with st.expander("💬 View Notes"):
+            st.write(student.notes)
 
     from app.ui.components.forms.edit_student_form import render_edit_student_form
     render_edit_student_form(student)

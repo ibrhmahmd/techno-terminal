@@ -5,7 +5,7 @@ from app.ui.components.parent_detail import render_parent_detail
 from app.ui.components.student_overview import render_student_overview
 from app.ui.components.student_detail import render_student_detail
 
-st.set_page_config(page_title="Directory - Parents & Students", layout="wide")
+st.set_page_config(page_title="Directory - Parents & Students - Techno Terminal", layout="wide")
 require_auth()
 
 st.title("📇 People Directory")

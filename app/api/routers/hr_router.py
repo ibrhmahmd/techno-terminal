@@ -27,6 +27,7 @@ class LogAttendanceInputStub(BaseModel):
     notes: str = ""
 
 
+# list all employees
 @router.get(
     "/hr/employees",
     response_model=ApiResponse[list[Any]],
@@ -49,6 +50,7 @@ def list_employees(_user: User = Depends(require_admin)):
     ])
 
 
+# log employee attendance
 @router.post(
     "/hr/attendance/log",
     response_model=ApiResponse[Any],

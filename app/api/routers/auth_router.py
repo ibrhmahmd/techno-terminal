@@ -12,6 +12,7 @@ Phase 1 (done): Role enforcement via require_admin / require_any in dependencies
 All tokens are issued by Supabase. Use "Authorize" in Swagger UI with:
     Bearer <your_supabase_access_token>
 """
+
 from fastapi import APIRouter, Depends
 
 from app.modules.auth import User, UserPublic
@@ -20,6 +21,7 @@ from app.api.dependencies import get_current_user, require_admin
 router = APIRouter()
 
 
+# get current authenticated user
 @router.get(
     "/me",
     response_model=UserPublic,

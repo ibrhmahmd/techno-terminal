@@ -36,7 +36,8 @@ delete_session = _session_svc.delete_session
 mark_substitute_instructor = _session_svc.mark_substitute_instructor
 list_group_sessions = _session_svc.list_group_sessions
 check_level_complete = _session_svc.check_level_complete
-advance_group_level = _session_svc.advance_group_level
+progress_group_level = _session_svc.progress_group_level
+cancel_session = _session_svc.cancel_session
 
 from .models import Course, Group
 from .models import CourseSession
@@ -76,7 +77,8 @@ __all__ = [
     "mark_substitute_instructor",
     "list_group_sessions",
     "check_level_complete",
-    "advance_group_level",
+    "progress_group_level",
+    "cancel_session",
     # Models
     "Course",
     "Group",

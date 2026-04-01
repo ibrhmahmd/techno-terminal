@@ -13,6 +13,7 @@ Role policy:
 Note on schedule_group: returns (group, sessions) — we drop sessions here;
 they're accessible via GET /academics/groups/{id}/sessions.
 """
+
 from fastapi import APIRouter, Depends, Query
 
 from app.api.schemas.common import ApiResponse, PaginatedResponse
@@ -44,6 +45,8 @@ router = APIRouter(tags=["Academics"])
 
 # ── Courses ────────────────────────────────────────────────────────────────────
 
+
+# list all active courses
 @router.get(
     "/academics/courses",
     response_model=PaginatedResponse[CoursePublic],
@@ -56,7 +59,7 @@ def list_courses(
     svc: CourseService = Depends(get_course_service),
 ):
     results = svc.get_active_courses()
-    page = results[skip: skip + limit]
+    page = results[skip : skip + limit]
     return PaginatedResponse(
         data=[CoursePublic.model_validate(c) for c in page],
         total=len(results),
@@ -65,6 +68,7 @@ def list_courses(
     )
 
 
+# create a new course
 @router.post(
     "/academics/courses",
     response_model=ApiResponse[CoursePublic],
@@ -83,6 +87,7 @@ def create_course(
     )
 
 
+# update a course
 @router.patch(
     "/academics/courses/{course_id}",
     response_model=ApiResponse[CoursePublic],
@@ -100,6 +105,8 @@ def update_course(
 
 # ── Groups ─────────────────────────────────────────────────────────────────────
 
+
+# list all active groups
 @router.get(
     "/academics/groups",
     response_model=PaginatedResponse[GroupListItem],
@@ -112,7 +119,7 @@ def list_groups(
     svc: GroupService = Depends(get_group_service),
 ):
     results = svc.get_all_active_groups()
-    page = results[skip: skip + limit]
+    page = results[skip : skip + limit]
     return PaginatedResponse(
         data=[GroupListItem.model_validate(g) for g in page],
         total=len(results),
@@ -121,6 +128,7 @@ def list_groups(
     )
 
 
+# get group by ID
 @router.get(
     "/academics/groups/{group_id}",
     response_model=ApiResponse[GroupPublic],
@@ -135,6 +143,7 @@ def get_group(
     return ApiResponse(data=GroupPublic.model_validate(group))
 
 
+# create a new group
 @router.post(
     "/academics/groups",
     response_model=ApiResponse[GroupPublic],
@@ -154,6 +163,7 @@ def create_group(
     )
 
 
+# update a group
 @router.patch(
     "/academics/groups/{group_id}",
     response_model=ApiResponse[GroupPublic],
@@ -171,6 +181,8 @@ def update_group(
 
 # ── Sessions ───────────────────────────────────────────────────────────────────
 
+
+# list sessions for a group (optionally filter by level)
 @router.get(
     "/academics/groups/{group_id}/sessions",
     response_model=ApiResponse[list[SessionPublic]],
@@ -186,6 +198,7 @@ def list_group_sessions(
     return ApiResponse(data=[SessionPublic.model_validate(s) for s in sessions])
 
 
+# add an extra session to a group
 @router.post(
     "/academics/groups/{group_id}/sessions",
     response_model=ApiResponse[SessionPublic],
@@ -205,6 +218,7 @@ def add_extra_session(
     )
 
 
+# update a session (date, time, status, notes)
 @router.patch(
     "/academics/sessions/{session_id}",
     response_model=ApiResponse[SessionPublic],

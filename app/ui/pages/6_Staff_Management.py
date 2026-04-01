@@ -5,7 +5,7 @@ from app.ui.components.employee.employee_directory import render_employee_direct
 from app.ui.components.employee.employee_detail import render_employee_detail
 from app.ui.components.employee.employee_form import render_add_employee_form
 
-st.set_page_config(page_title="Staff Management", layout="wide")
+st.set_page_config(page_title="Staff Management - Techno Terminal", layout="wide")
 require_auth()
 
 # Staff tools: admins and system admins only (not instructors)

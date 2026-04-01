@@ -39,6 +39,9 @@ def render_group_detail(group_id: int):
     st.markdown(
         f"**Day:** {group_info.default_day} | **Time:** {group_info.default_time_start} - {group_info.default_time_end} | **Level:** {group_info.level_number}"
     )
+    if getattr(group_info, "notes", None):
+        with st.expander("💬 View Notes"):
+            st.write(group_info.notes)
 
     level_filter = st.number_input(
         "View Level", min_value=1, value=int(group_info.level_number), key="gdtl_level"
@@ -94,8 +97,8 @@ def render_group_detail(group_id: int):
     if acad_srv.check_level_complete(group_id, int(level_filter)):
         st.divider()
         st.success(f"🎓 Level {level_filter} complete!")
-        if st.button(f"Advance to Level {level_filter + 1}", type="primary"):
-            acad_srv.advance_group_level(group_id)
+        if st.button(f"🚀 Progress to Level {level_filter + 1} & Bill Students", type="primary"):
+            acad_srv.progress_group_level(group_id)
             st.rerun()
 
     st.divider()

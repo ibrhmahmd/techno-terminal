@@ -18,6 +18,7 @@ from app.modules.analytics import get_active_enrollment_count, get_today_session
 router = APIRouter(tags=["Analytics"])
 
 
+# get high-level dashboard aggregates
 @router.get(
     "/analytics/dashboard/summary",
     response_model=ApiResponse[dict[str, Any]],

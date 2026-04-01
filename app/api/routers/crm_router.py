@@ -14,6 +14,7 @@ Note: register_student returns (student, siblings) — we drop siblings
 here because the API consumer doesn't need them in the response.
 Sibling info is available via GET /crm/students/{id}/parents.
 """
+
 from fastapi import APIRouter, Depends, Query
 
 from app.api.schemas.common import ApiResponse, PaginatedResponse
@@ -40,13 +41,17 @@ router = APIRouter(prefix="/crm", tags=["CRM"])
 
 # ── Students ───────────────────────────────────────────────────────────────────
 
+
+# list / search students
 @router.get(
     "/students",
     response_model=PaginatedResponse[StudentListItem],
     summary="List / search students",
 )
 def list_students(
-    q: str = Query("", description="Search by name or phone (min 2 chars). Empty → all students."),
+    q: str = Query(
+        "", description="Search by name or phone (min 2 chars). Empty → all students."
+    ),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     _user: User = Depends(require_any),
@@ -57,7 +62,7 @@ def list_students(
     else:
         results = svc.list_all_students(skip=0, limit=1000)  # fetch all, paginate below
 
-    page = results[skip: skip + limit]
+    page = results[skip : skip + limit]
     return PaginatedResponse(
         data=[StudentListItem.model_validate(s) for s in page],
         total=len(results),
@@ -66,6 +71,7 @@ def list_students(
     )
 
 
+# get student by ID
 @router.get(
     "/students/{student_id}",
     response_model=ApiResponse[StudentPublic],
@@ -80,6 +86,7 @@ def get_student(
     return ApiResponse(data=StudentPublic.model_validate(student))
 
 
+# register a new student
 @router.post(
     "/students",
     response_model=ApiResponse[StudentPublic],
@@ -99,6 +106,7 @@ def create_student(
     )
 
 
+# update a student profile
 @router.patch(
     "/students/{student_id}",
     response_model=ApiResponse[StudentPublic],
@@ -114,6 +122,7 @@ def update_student(
     return ApiResponse(data=StudentPublic.model_validate(student))
 
 
+# get all parents linked to a student
 @router.get(
     "/students/{student_id}/parents",
     response_model=ApiResponse[list[ParentPublic]],
@@ -126,19 +135,25 @@ def get_student_parents(
 ):
     links = svc.get_student_parents(student_id)
     # Each link object has a .parent attribute (lazy-loaded inside service)
-    parents = [ParentPublic.model_validate(link.parent) for link in links if link.parent]
+    parents = [
+        ParentPublic.model_validate(link.parent) for link in links if link.parent
+    ]
     return ApiResponse(data=parents)
 
 
 # ── Parents ────────────────────────────────────────────────────────────────────
 
+
+# list / search parents
 @router.get(
     "/parents",
     response_model=PaginatedResponse[ParentListItem],
     summary="List / search parents",
 )
 def list_parents(
-    q: str = Query("", description="Search by name or phone (min 2 chars). Empty → all parents."),
+    q: str = Query(
+        "", description="Search by name or phone (min 2 chars). Empty → all parents."
+    ),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     _user: User = Depends(require_any),
@@ -149,7 +164,7 @@ def list_parents(
     else:
         results = svc.list_all_parents(skip=0, limit=1000)
 
-    page = results[skip: skip + limit]
+    page = results[skip : skip + limit]
     return PaginatedResponse(
         data=[ParentListItem.model_validate(p) for p in page],
         total=len(results),
@@ -158,6 +173,7 @@ def list_parents(
     )
 
 
+# get parent by ID
 @router.get(
     "/parents/{parent_id}",
     response_model=ApiResponse[ParentPublic],
@@ -172,6 +188,7 @@ def get_parent(
     return ApiResponse(data=ParentPublic.model_validate(parent))
 
 
+# register a new parent
 @router.post(
     "/parents",
     response_model=ApiResponse[ParentPublic],
@@ -190,6 +207,7 @@ def create_parent(
     )
 
 
+# update a parent profile
 @router.patch(
     "/parents/{parent_id}",
     response_model=ApiResponse[ParentPublic],

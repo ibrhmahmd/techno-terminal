@@ -3,7 +3,7 @@ from app.ui.components.auth_guard import require_auth
 from app.ui.components.course_overview import render_course_overview
 from app.ui.components.course_detail import render_course_detail
 
-st.set_page_config(page_title="Course Management", layout="wide")
+st.set_page_config(page_title="Course Management - Techno Terminal", layout="wide")
 require_auth()
 
 st.title("📚 Course Management")
