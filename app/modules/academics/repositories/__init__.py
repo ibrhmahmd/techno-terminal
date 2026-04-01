@@ -42,6 +42,16 @@ from .course_stats_repository import (
     get_course_stats,
 )
 
+from .group_history_repository import (
+    get_group_levels_with_details,
+    get_level_student_counts,
+    get_group_enrollments_with_details,
+    get_group_enrollment_stats,
+    get_enrollment_payments,
+    get_group_instructors_summary,
+    get_group_competition_participations,
+)
+
 __all__ = [
     # Course Repository
     "create_course",
@@ -74,4 +84,13 @@ __all__ = [
     # Course Stats Repository
     "get_all_course_stats",
     "get_course_stats",
+    
+    # Group History Repository (Analytics)
+    "get_group_levels_with_details",
+    "get_level_student_counts",
+    "get_group_enrollments_with_details",
+    "get_group_enrollment_stats",
+    "get_enrollment_payments",
+    "get_group_instructors_summary",
+    "get_group_competition_participations",
 ]

@@ -155,3 +155,218 @@ def get_full_group_lifecycle(session: Session, group_id: int) -> dict:
         "levels_timeline": levels,
         "course_assignments": courses,
     }
+
+
+# ════════════════════════════════════════════════════════════
+# Group Analytics Repository Functions
+# ════════════════════════════════════════════════════════════
+
+def get_group_levels_with_details(
+    session: Session, group_id: int
+) -> Sequence[tuple[GroupLevel, str, str | None]]:
+    """
+    Get all group levels with course and instructor names.
+    Returns tuples of (GroupLevel, course_name, instructor_name).
+    """
+    from sqlalchemy.orm import joinedload
+    
+    stmt = (
+        select(GroupLevel)
+        .where(GroupLevel.group_id == group_id)
+        .order_by(GroupLevel.level_number.asc())
+    )
+    levels = session.exec(stmt).all()
+    
+    result = []
+    for level in levels:
+        # Get course name
+        course = session.get(Course, level.course_id)
+        course_name = course.name if course else "Unknown"
+        
+        # Get instructor name
+        instructor_name = None
+        if level.instructor_id:
+            instructor = session.get(Employee, level.instructor_id)
+            instructor_name = instructor.full_name if instructor else None
+        
+        result.append((level, course_name, instructor_name))
+    
+    return result
+
+
+def get_level_student_counts(
+    session: Session, group_id: int
+) -> dict[int, int]:
+    """
+    Get student count per level for a group.
+    Returns dict mapping level_number -> student_count.
+    """
+    # Count enrollments at each level based on EnrollmentLevelHistory
+    stmt = (
+        select(
+            GroupLevel.level_number,
+            func.count(func.distinct(EnrollmentLevelHistory.student_id)).label("student_count")
+        )
+        .join(EnrollmentLevelHistory, GroupLevel.id == EnrollmentLevelHistory.group_level_id)
+        .where(GroupLevel.group_id == group_id)
+        .group_by(GroupLevel.level_number)
+    )
+    
+    results = session.exec(stmt).all()
+    return {level_number: count for level_number, count in results}
+
+
+def get_group_enrollments_with_details(
+    session: Session,
+    group_id: int,
+    status: str | None = None,
+    skip: int = 0,
+    limit: int = 100
+) -> Sequence[tuple]:
+    """
+    Get enrollments for a group with student details.
+    Returns tuples of (Enrollment, student_name, student_phone).
+    """
+    from app.modules.enrollments.models.enrollment_models import Enrollment
+    
+    stmt = (
+        select(Enrollment, Student.full_name, Student.phone)
+        .join(Student, Enrollment.student_id == Student.id)
+        .where(Enrollment.group_id == group_id)
+    )
+    
+    if status:
+        stmt = stmt.where(Enrollment.status == status)
+    
+    stmt = stmt.order_by(Enrollment.enrolled_at.desc()).offset(skip).limit(limit)
+    return session.exec(stmt).all()
+
+
+def get_group_enrollment_stats(session: Session, group_id: int) -> dict:
+    """
+    Get enrollment statistics for a group.
+    Returns: total, active, completed, dropped counts.
+    """
+    from app.modules.enrollments.models.enrollment_models import Enrollment
+    
+    stmt = (
+        select(
+            func.count().label("total"),
+            func.sum(func.case((Enrollment.status == "active", 1), else_=0)).label("active"),
+            func.sum(func.case((Enrollment.status == "completed", 1), else_=0)).label("completed"),
+            func.sum(func.case((Enrollment.status == "dropped", 1), else_=0)).label("dropped"),
+        )
+        .where(Enrollment.group_id == group_id)
+    )
+    
+    result = session.exec(stmt).first()
+    return {
+        "total": result[0] or 0,
+        "active": result[1] or 0,
+        "completed": result[2] or 0,
+        "dropped": result[3] or 0,
+    }
+
+
+def get_enrollment_payments(session: Session, enrollment_id: int) -> float:
+    """
+    Get total payments made for an enrollment.
+    """
+    from app.modules.finance.models.finance_models import Payment
+    
+    stmt = (
+        select(func.coalesce(func.sum(Payment.amount), 0))
+        .where(Payment.enrollment_id == enrollment_id)
+        .where(Payment.status == "completed")
+    )
+    return session.exec(stmt).scalar() or 0.0
+
+
+def get_group_instructors_summary(
+    session: Session, group_id: int
+) -> Sequence[tuple[int, str, datetime, datetime, int, bool]]:
+    """
+    Get unique instructors for a group with summary stats.
+    Returns: (instructor_id, instructor_name, first_assigned, last_assigned, levels_count, is_current)
+    """
+    # Get all levels with instructor info
+    stmt = (
+        select(GroupLevel)
+        .where(GroupLevel.group_id == group_id)
+        .where(GroupLevel.instructor_id.isnot(None))
+        .order_by(GroupLevel.effective_from.asc())
+    )
+    levels = session.exec(stmt).all()
+    
+    # Group by instructor
+    instructor_data: dict[int, dict] = {}
+    current_instructor_id = None
+    
+    for level in levels:
+        instructor_id = level.instructor_id
+        if instructor_id is None:
+            continue
+            
+        # Track current instructor (active level)
+        if level.status == "active":
+            current_instructor_id = instructor_id
+        
+        if instructor_id not in instructor_data:
+            instructor = session.get(Employee, instructor_id)
+            instructor_data[instructor_id] = {
+                "name": instructor.full_name if instructor else "Unknown",
+                "first_assigned": level.effective_from,
+                "last_assigned": level.effective_from,
+                "levels_count": 0,
+            }
+        
+        data = instructor_data[instructor_id]
+        if level.effective_from < data["first_assigned"]:
+            data["first_assigned"] = level.effective_from
+        if level.effective_from > data["last_assigned"]:
+            data["last_assigned"] = level.effective_from
+        data["levels_count"] += 1
+    
+    # Convert to result format
+    result = []
+    for instructor_id, data in instructor_data.items():
+        result.append((
+            instructor_id,
+            data["name"],
+            data["first_assigned"],
+            data["last_assigned"],
+            data["levels_count"],
+            instructor_id == current_instructor_id
+        ))
+    
+    return result
+
+
+def get_group_competition_participations(
+    session: Session, group_id: int
+) -> Sequence[tuple]:
+    """
+    Get competition participation history for a group.
+    Returns tuples with full participation details.
+    """
+    from app.modules.academics.models.group_level_models import GroupCompetitionParticipation
+    from app.modules.competitions.models.competition_models import Competition, CompetitionCategory
+    from app.modules.competitions.models.team_models import Team
+    
+    stmt = (
+        select(
+            GroupCompetitionParticipation,
+            Competition.name.label("competition_name"),
+            Team.team_name,
+            CompetitionCategory.name.label("category_name"),
+        )
+        .join(Competition, GroupCompetitionParticipation.competition_id == Competition.id)
+        .join(Team, GroupCompetitionParticipation.team_id == Team.id)
+        .outerjoin(
+            CompetitionCategory,
+            GroupCompetitionParticipation.category_id == CompetitionCategory.id
+        )
+        .where(GroupCompetitionParticipation.group_id == group_id)
+        .order_by(GroupCompetitionParticipation.entered_at.desc())
+    )
+    return session.exec(stmt).all()

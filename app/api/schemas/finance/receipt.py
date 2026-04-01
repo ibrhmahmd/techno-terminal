@@ -7,7 +7,6 @@ from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel
-from app.modules.finance.finance_schemas import ReceiptLineInput
 
 
 class ReceiptCreatedPublic(BaseModel):
@@ -83,7 +82,7 @@ class CreateReceiptRequest(BaseModel):
     method: str = "cash"
     notes: Optional[str] = None
     allow_credit: bool = True
-    lines: list[ReceiptLineInput]
+    lines: list[ReceiptLinePublic]
 
 
 class IssueRefundRequest(BaseModel):
