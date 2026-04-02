@@ -21,7 +21,11 @@ from app.modules.analytics.schemas import (
 class BIAnalyticsService:
     """Service handling high-level business intelligence, trends, and risk analysis."""
 
-    def get_new_enrollments_trend(self, cutoff_date: date) -> list[EnrollmentTrendDTO]:
+    def get_new_enrollments_trend(self, cutoff_date: date | None = None) -> list[EnrollmentTrendDTO]:
+        """Get enrollment trend. Defaults to 90 days ago if cutoff not provided."""
+        if cutoff_date is None:
+            from datetime import timedelta
+            cutoff_date = date.today() - timedelta(days=90)
         with get_session() as db:
             return repo.get_new_enrollments_trend(db, cutoff_date)
 
