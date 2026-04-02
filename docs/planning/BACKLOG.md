@@ -78,8 +78,33 @@ Once SOLID refactors complete, remove singleton re-exports from `crm/__init__.py
 - `app/api/dependencies.py` — Removed 2 guards, kept only `require_admin` and `require_any`
 - `app/api/routers/attendance_router.py` — Changed `require_instructor` → `require_admin`
 
-### C5 — Automated Test Suite *(21 SP)*
-`pytest` + FastAPI `TestClient`. Cover all happy paths + error flows for auth, CRM, enrollment, finance. Mock Supabase JWT with short-lived test tokens.
+### C5 — Automated Test Suite *(21 SP)* — PHASING DOCUMENTED
+**Reference:** [`TESTING_STRATEGY_PLAN.md`](TESTING_STRATEGY_PLAN.md)
+
+**Goal:** Build comprehensive pytest-based test suite for API endpoints.
+
+**Phased Implementation:**
+
+| Phase | Focus Area | SP | Duration | Status |
+|:---:|:---|:---:|:---:|:---:|
+| **1** | Infrastructure & Auth Testing | 5 | 1 day | ⬜ |
+| **2** | Error Handling & Validation | 3 | 0.5 day | ⬜ |
+| **3** | CRM Endpoints | 5 | 1 day | ⬜ |
+| **4** | Enrollment Endpoints | 4 | 1 day | ⬜ |
+| **5** | Finance Endpoints | 4 | 1 day | ⬜ |
+
+**Key Deliverables per Phase:**
+- **Phase 1:** `conftest.py`, `jwt_mocks.py`, `db_helpers.py`, `test_auth.py`
+- **Phase 2:** `test_error_handlers.py` (401, 403, 404, 422 coverage)
+- **Phase 3:** `test_crm.py` (students, parents endpoints)
+- **Phase 4:** `test_enrollments.py` (enroll, transfer, drop)
+- **Phase 5:** `test_finance.py` (receipts, refunds, search)
+
+**Success Criteria:**
+- >80% API layer coverage
+- All tests pass in CI/CD
+- Mock JWTs (no real Supabase dependency)
+- Transaction rollback per test
 
 ### Debt Summary Table
 
