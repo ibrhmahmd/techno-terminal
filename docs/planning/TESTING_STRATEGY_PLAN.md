@@ -23,16 +23,32 @@ This document outlines a **phased testing strategy** for the Techno Terminal Fas
 
 ## Phase Overview
 
-| Phase | Focus Area | SP | Duration | Priority |
+| Phase | Focus Area | Endpoints | Status | Priority |
 |:---:|:---|:---:|:---:|:---:|
-| **1** | Infrastructure & Auth | 5 | 1 day | 🔴 Critical |
-| **2** | Error Handling & Validation | 3 | 0.5 day | 🔴 Critical |
-| **3** | CRM Endpoints | 5 | 1 day | 🟡 High |
-| **4** | Enrollment Endpoints | 4 | 1 day | 🟡 High |
-| **5** | Finance Endpoints | 4 | 1 day | 🟡 High |
-| **Total** | | **21** | **~4-5 days** | |
+| **1** | Infrastructure & Auth | 6 | 🔴 Not Started | 🔴 Critical |
+| **2** | Error Handling | Global | 🟡 Partial | 🟡 High |
+| **3** | CRM | 9 | ✅ Complete | 🟢 Done |
+| **4** | Enrollments | 4 | ✅ Complete | 🟢 Done |
+| **5** | Finance | 8 | ✅ Complete | 🟢 Done |
+| **6** | Attendance | 2 | 🔴 Not Started | 🔴 Critical |
+| **7** | Academics | 14 | 🔴 Not Started | � Critical |
+| **8** | Competitions | 8 | 🔴 Not Started | 🟡 Medium |
+| **9** | HR | 7 | 🔴 Not Started | 🟡 Medium |
+| **10** | Analytics | 19 | 🔴 Not Started | � Low |
+| **Total** | | **83** | **27 Tested (33%)** | |
 
 **Phase Success Criteria:** Each phase must achieve >80% coverage of its target endpoints before proceeding to next phase.
+
+**Current Coverage:** 27/83 endpoints tested (33%)
+- ✅ CRM: 9/9 (100%)
+- ✅ Enrollments: 4/4 (100%)
+- ✅ Finance: 8/8 (100%)
+- ❌ Auth: 0/6 (0%)
+- ❌ Attendance: 0/2 (0%)
+- ❌ Academics: 0/14 (0%)
+- ❌ Competitions: 0/8 (0%)
+- ❌ HR: 0/7 (0%)
+- ❌ Analytics: 0/19 (0%)
 
 ---
 
@@ -660,10 +676,10 @@ tests/
 
 ### 5.3 Phase 5 Success Criteria
 
-- [ ] Receipt creation tested (single + multiple line items)
-- [ ] Receipt search/filter tested
-- [ ] Refund flow tested
-- [ ] Coverage: >80% of finance endpoints
+- [x] Receipt creation tested (single + multiple line items)
+- [x] Receipt search/filter tested
+- [x] Refund flow tested
+- [x] Coverage: 100% of finance endpoints (8/8)
 
 ### 5.4 Time Estimate
 
@@ -673,6 +689,214 @@ tests/
 | Receipt tests | 2 |
 | Refund tests | 2 |
 | **Total** | **5 hours** |
+
+---
+
+## Phase 6: Attendance Endpoints (2 SP)
+
+**Goal:** Test attendance marking and session roster retrieval.
+
+**Why Sixth:** Core daily operations, simple endpoints.
+
+### 6.1 Files to Create
+
+```
+tests/
+└── test_attendance.py         # Attendance endpoint tests
+```
+
+### 6.2 Test Coverage Matrix
+
+| Method | Endpoint | Tests | Priority |
+|:---:|:---|:---|:---:|
+| GET | `/attendance/session/{id}` | Get roster, 404 | High |
+| POST | `/attendance/session/{id}/mark` | Mark attendance, validation, bulk | High |
+
+### 6.3 Phase 6 Success Criteria
+
+- [ ] Attendance roster retrieval tested
+- [ ] Bulk attendance marking tested
+- [ ] Coverage: 100% of attendance endpoints (2/2)
+
+---
+
+## Phase 7: Academics Endpoints (6 SP)
+
+**Goal:** Test course, group, and session management.
+
+**Why Seventh:** Complex academic operations, many endpoints.
+
+### 7.1 Files to Create
+
+```
+tests/
+└── test_academics.py          # Academics endpoint tests
+```
+
+### 7.2 Test Coverage Matrix
+
+**Courses (3 endpoints):**
+| Method | Endpoint | Tests | Priority |
+|:---:|:---|:---|:---:|
+| GET | `/academics/courses` | List, pagination | High |
+| POST | `/academics/courses` | Create (admin only) | High |
+| PATCH | `/academics/courses/{id}` | Update (admin only), 404 | Medium |
+
+**Groups (6 endpoints):**
+| Method | Endpoint | Tests | Priority |
+|:---:|:---|:---|:---:|
+| GET | `/academics/groups` | List, pagination | High |
+| GET | `/academics/groups/{id}` | Get by ID, 404 | High |
+| POST | `/academics/groups` | Create/schedule (admin only) | High |
+| PATCH | `/academics/groups/{id}` | Update (admin only), 404 | Medium |
+| GET | `/academics/groups/{id}/sessions` | List sessions, filter by level | High |
+| POST | `/academics/groups/{id}/progress-level` | Progress to next level | Medium |
+
+**Sessions (5 endpoints):**
+| Method | Endpoint | Tests | Priority |
+|:---:|:---|:---|:---:|
+| GET | `/academics/sessions/daily-schedule` | Get by date | High |
+| POST | `/academics/groups/{id}/sessions` | Add extra session | Medium |
+| GET | `/academics/sessions/{id}` | Get by ID, 404 | High |
+| PATCH | `/academics/sessions/{id}` | Update, 404 | Medium |
+| DELETE | `/academics/sessions/{id}` | Delete, 404 | Medium |
+| POST | `/academics/sessions/{id}/cancel` | Cancel and reschedule | Medium |
+| POST | `/academics/sessions/{id}/substitute` | Mark substitute instructor | Low |
+
+### 7.3 Phase 7 Success Criteria
+
+- [ ] All course endpoints tested
+- [ ] All group endpoints tested
+- [ ] All session endpoints tested
+- [ ] Coverage: >80% of academics endpoints (11+/14)
+
+---
+
+## Phase 8: Competitions Endpoints (4 SP)
+
+**Goal:** Test competition and team registration management.
+
+**Why Eighth:** Specialized module, lower traffic.
+
+### 8.1 Files to Create
+
+```
+tests/
+└── test_competitions.py       # Competitions endpoint tests
+```
+
+### 8.2 Test Coverage Matrix
+
+| Method | Endpoint | Tests | Priority |
+|:---:|:---|:---|:---:|
+| GET | `/competitions` | List all | Medium |
+| POST | `/competitions` | Create (admin only) | Medium |
+| GET | `/competitions/{id}` | Get by ID, 404 | Medium |
+| GET | `/competitions/{id}/categories` | List categories | Medium |
+| POST | `/competitions/{id}/categories` | Add category (admin only) | Medium |
+| POST | `/competitions/register` | Register team | Medium |
+| GET | `/competitions/{id}/categories/{id}/teams` | List teams with members | Low |
+| POST | `/competitions/team-members/{id}/pay` | Mark fee paid (admin only) | Low |
+
+### 8.3 Phase 8 Success Criteria
+
+- [ ] Competition CRUD tested
+- [ ] Team registration tested
+- [ ] Coverage: >60% of competitions endpoints (5+/8)
+
+---
+
+## Phase 9: HR Endpoints (4 SP)
+
+**Goal:** Test employee and staff account management.
+
+**Why Ninth:** Admin-only functionality, lower priority.
+
+### 9.1 Files to Create
+
+```
+tests/
+└── test_hr.py                 # HR endpoint tests
+```
+
+### 9.2 Test Coverage Matrix
+
+| Method | Endpoint | Tests | Priority |
+|:---:|:---|:---|:---:|
+| GET | `/hr/employees` | List all (admin only) | Medium |
+| GET | `/hr/employees/{id}` | Get by ID, 404 (admin only) | Medium |
+| POST | `/hr/employees` | Create, validation, 409 conflict (admin only) | Medium |
+| PUT | `/hr/employees/{id}` | Update, 404 (admin only) | Medium |
+| GET | `/hr/staff-accounts` | List with linked employee info (admin only) | Low |
+| POST | `/hr/attendance/log` | Log attendance (stub) | Low |
+
+### 9.3 Phase 9 Success Criteria
+
+- [ ] Employee CRUD tested
+- [ ] Staff accounts tested
+- [ ] Coverage: >70% of HR endpoints (5+/7)
+
+---
+
+## Phase 10: Analytics Endpoints (5 SP)
+
+**Goal:** Test dashboard and reporting endpoints.
+
+**Why Tenth:** Read-only endpoints, lowest priority.
+
+### 10.1 Files to Create
+
+```
+tests/
+├── test_analytics_dashboard.py
+├── test_analytics_academic.py
+├── test_analytics_bi.py
+└── test_analytics_financial.py
+```
+
+### 10.2 Test Coverage Matrix
+
+**Dashboard (1 endpoint):**
+| Method | Endpoint | Tests | Priority |
+|:---:|:---|:---|:---:|
+| GET | `/analytics/dashboard/summary` | Active enrollments, today's sessions | High |
+
+**Academic Analytics (3 endpoints):**
+| Method | Endpoint | Tests | Priority |
+|:---:|:---|:---|:---:|
+| GET | `/analytics/academics/unpaid-attendees` | Today's unpaid students | Medium |
+| GET | `/analytics/academics/groups/{id}/roster` | Group roster by level | Medium |
+| GET | `/analytics/academics/groups/{id}/heatmap` | Attendance matrix | Low |
+
+**BI Analytics (7 endpoints):**
+| Method | Endpoint | Tests | Priority |
+|:---:|:---|:---|:---:|
+| GET | `/analytics/bi/enrollment-trend` | Daily new enrollments | Low |
+| GET | `/analytics/bi/retention` | Retention rates by course | Low |
+| GET | `/analytics/bi/instructor-performance` | Groups/students per instructor | Low |
+| GET | `/analytics/bi/retention-funnel` | Level progression counts | Low |
+| GET | `/analytics/bi/instructor-value` | Revenue vs attendance correlation | Low |
+| GET | `/analytics/bi/schedule-utilization` | Slot utilization % | Low |
+| GET | `/analytics/bi/flight-risk` | At-risk students | Low |
+
+**Competition Analytics (1 endpoint):**
+| Method | Endpoint | Tests | Priority |
+|:---:|:---|:---|:---:|
+| GET | `/analytics/competitions/fee-summary` | Participation and fees | Low |
+
+**Financial Analytics (4 endpoints):**
+| Method | Endpoint | Tests | Priority |
+|:---:|:---|:---|:---:|
+| GET | `/analytics/finance/revenue-by-date` | Daily revenue totals | Medium |
+| GET | `/analytics/finance/revenue-by-method` | Revenue by payment method | Medium |
+| GET | `/analytics/finance/outstanding-by-group` | Balances grouped by group | Medium |
+| GET | `/analytics/finance/top-debtors` | Highest outstanding balances | Medium |
+
+### 10.3 Phase 10 Success Criteria
+
+- [ ] Dashboard summary tested
+- [ ] Key financial analytics tested
+- [ ] Coverage: >40% of analytics endpoints (8+/19)
 
 ---
 
@@ -727,16 +951,21 @@ pytest tests/ -x
 
 ## Success Metrics
 
-| Metric | Target |
-|:---|:---:|
-| Overall test coverage | >80% |
-| Auth endpoint coverage | 100% |
-| Error handler coverage | 100% |
-| CRM endpoint coverage | >80% |
-| Enrollment endpoint coverage | >80% |
-| Finance endpoint coverage | >80% |
-| Test execution time | <2 minutes |
-| CI pipeline integration | ✅ |
+| Metric | Current | Target |
+|:---|:---:|:---:|
+| **Overall test coverage** | 33% (27/83) | >80% |
+| Auth endpoint coverage | 0% (0/6) | 100% |
+| Error handler coverage | 0% | 100% |
+| **CRM endpoint coverage** | 100% (9/9) ✅ | 100% |
+| **Enrollment endpoint coverage** | 100% (4/4) ✅ | 100% |
+| **Finance endpoint coverage** | 100% (8/8) ✅ | 100% |
+| Attendance endpoint coverage | 0% (0/2) | 100% |
+| Academics endpoint coverage | 0% (0/14) | >80% |
+| Competitions endpoint coverage | 0% (0/8) | >60% |
+| HR endpoint coverage | 0% (0/7) | >70% |
+| Analytics endpoint coverage | 0% (0/19) | >40% |
+| Test execution time | <2 minutes | <2 minutes |
+| CI pipeline integration | ✅ | ✅ |
 
 ---
 
