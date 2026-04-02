@@ -172,3 +172,59 @@ def get_finance_module():
     """
     return finance_module
 
+
+# ── Additional Service Factories (Standardizing DI pattern) ─────────────────────
+
+# Attendance service
+from app.modules.attendance.attendance_service import AttendanceService
+
+def get_attendance_service() -> AttendanceService:
+    """Returns a fresh AttendanceService instance per request."""
+    return AttendanceService()
+
+
+# Competition services
+from app.modules.competitions.competition_service import CompetitionService
+
+def get_competition_service() -> CompetitionService:
+    """Returns a fresh CompetitionService instance per request."""
+    return CompetitionService()
+
+
+# HR service wrapper (flat module pattern)
+def get_hr_service():
+    """
+    HR is a flat module (free functions).
+    Returns the module so routers can call hr.list_all_employees().
+    Will be replaced with HRService class in SOLID refactor.
+    """
+    import app.modules.hr.hr_service as hr_service_module
+    return hr_service_module
+
+
+# Analytics services
+from app.modules.analytics.services.academic_service import AcademicAnalyticsService
+from app.modules.analytics.services.financial_service import FinancialAnalyticsService
+from app.modules.analytics.services.bi_service import BIAnalyticsService
+
+def get_academic_analytics_service() -> AcademicAnalyticsService:
+    """Returns a fresh AcademicAnalyticsService instance per request."""
+    return AcademicAnalyticsService()
+
+
+def get_financial_analytics_service() -> FinancialAnalyticsService:
+    """Returns a fresh FinancialAnalyticsService instance per request."""
+    return FinancialAnalyticsService()
+
+
+def get_bi_analytics_service() -> BIAnalyticsService:
+    """Returns a fresh BIAnalyticsService instance per request."""
+    return BIAnalyticsService()
+
+
+# Competition Analytics service
+from app.modules.analytics.services.competition_service import CompetitionAnalyticsService
+
+def get_competition_analytics_service() -> CompetitionAnalyticsService:
+    """Returns a fresh CompetitionAnalyticsService instance per request."""
+    return CompetitionAnalyticsService()

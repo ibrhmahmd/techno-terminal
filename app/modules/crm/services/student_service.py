@@ -78,6 +78,11 @@ class StudentService:
         with get_session() as session:
             return list(repo.get_all_students(session, skip, limit))
 
+    def count_students(self, active_only: bool = True) -> int:
+        """Returns total count of students for pagination."""
+        with get_session() as session:
+            return repo.count_students(session, active_only)
+
     def update_student(self, student_id: int, data: UpdateStudentDTO) -> Student:
         """Updates an existing student's fields."""
         with get_session() as session:

@@ -83,3 +83,11 @@ def get_students_by_parent_id(
     if active_only:
         stmt = stmt.where(Student.is_active == True)
     return list(session.exec(stmt).all())
+
+
+def count_students(session: Session, active_only: bool = True) -> int:
+    """Returns total count of students for pagination."""
+    stmt = select(Student)
+    if active_only:
+        stmt = stmt.where(Student.is_active == True)
+    return len(session.exec(stmt).all())
