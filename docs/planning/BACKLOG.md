@@ -38,9 +38,9 @@
 
 | # | Task | SP | Status |
 |---|------|----|--------|
-| B1 | **Competition Fees** — Link team registration to Finance Desk; snapshot `member_share` at registration; charge per category/edition (P9) | 13 | ⬜ |
-| B2 | **Financial Desk — Student Search** (U2/B3) — Search by student, parent total (P5), debt-only toggle (P7) | 5 | ⬜ |
-| B3 | **Overpayment Warning** (U9/P8) — Confirm step before credit-creating payment | 3 | ⬜ |
+| B1 | **Competition Fees** — Link team registration to Finance Desk; snapshot `member_share` at registration; charge per category/edition (P9) | 13 | ✅ |
+| B2 | **Financial Desk — Student Search** (U2/B3) — Search by student, parent total (P5), debt-only toggle (P7) | 5 | ✅ |
+| B3 | **Overpayment Warning** (U9/P8) — Confirm step before credit-creating payment | 3 | ✅ |
 | B4 | **PDF Export Enhancement** — Logo, multi-signature blocks, further layout refinement | 2 | ⬜ |
 
 ---
@@ -64,8 +64,19 @@ Both remain as flat monolithic files. Must be split into `models/ schemas/ repos
 ### C3 — Facade `__init__.py` Retirement *(8 SP)*
 Once SOLID refactors complete, remove singleton re-exports from `crm/__init__.py` and `academics/__init__.py`. UI components import directly from service classes.
 
-### C4 — Role Guard Helper Functions *(3 SP)*
-Convenience `require_admin` / `require_instructor` dependency wrappers to avoid inline role checks in every router. Can start **alongside** API work.
+### C4 — Role Guard Helper Functions *(3 SP)* ✅ COMPLETED — SIMPLIFIED
+**Status:** COMPLETED (2026-04-02) — Role system simplified from 4 roles to 2 roles.
+
+**Changes Made:**
+- `UserRole` enum reduced to 2 roles: `admin`, `system_admin`
+- API guards simplified: `require_admin` (admin + system_admin), `require_any`
+- Removed: `require_instructor`, `require_receptionist` (unused complexity)
+- Attendance endpoints now use `require_admin` instead of `require_instructor`
+
+**Files Changed:**
+- `app/modules/auth/constants.py` — Simplified UserRole enum
+- `app/api/dependencies.py` — Removed 2 guards, kept only `require_admin` and `require_any`
+- `app/api/routers/attendance_router.py` — Changed `require_instructor` → `require_admin`
 
 ### C5 — Automated Test Suite *(21 SP)*
 `pytest` + FastAPI `TestClient`. Cover all happy paths + error flows for auth, CRM, enrollment, finance. Mock Supabase JWT with short-lived test tokens.

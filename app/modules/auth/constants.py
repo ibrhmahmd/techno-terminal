@@ -7,10 +7,9 @@ from enum import Enum
 
 
 class UserRole(str, Enum):
+    """User roles for the application."""
     ADMIN = "admin"
-    INSTRUCTOR = "instructor"
-    RECEPTIONIST = "receptionist"
-    MANAGER = "manager"
+    SYSTEM_ADMIN = "system_admin"
 
 
 # Precomputed set of all valid role string values for fast O(1) membership tests.

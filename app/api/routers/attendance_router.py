@@ -7,8 +7,8 @@ Prefix: /api/v1  (mounted in main.py)
 Tag:    Attendance
 
 Role policy:
-  GET  → require_instructor  (instructors, admins, managers)
-  POST → require_instructor
+  GET  → require_admin (admin, system_admin)
+  POST → require_admin
 
 MarkAttendanceRequest body:
     { "student_statuses": { "12": "present", "13": "absent", "14": "late" } }
@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from app.api.schemas.common import ApiResponse
-from app.api.dependencies import require_instructor, get_attendance_service
+from app.api.dependencies import require_admin, get_attendance_service
 from app.modules.auth import User
 from app.modules.attendance import (
     AttendanceService,
@@ -48,7 +48,7 @@ class MarkAttendanceRequest(BaseModel):
 )
 def get_session_attendance(
     session_id: int,
-    current_user: User = Depends(require_instructor),
+    current_user: User = Depends(require_admin),
     svc: AttendanceService = Depends(get_attendance_service),
 ):
     roster = svc.get_session_roster_with_attendance(session_id)
@@ -69,7 +69,7 @@ def get_session_attendance(
 def mark_attendance(
     session_id: int,
     body: MarkAttendanceRequest,
-    current_user: User = Depends(require_instructor),
+    current_user: User = Depends(require_admin),
     svc: AttendanceService = Depends(get_attendance_service),
 ):
     result = svc.mark_session_attendance(

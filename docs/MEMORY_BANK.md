@@ -28,8 +28,16 @@
   - **DTOs:** All responses typed with Pydantic (no `list[dict]` or `Any`)
   - **DI Pattern:** All services available via `Depends()` factories in `dependencies.py`
   - **Error Handling:** Standardized `ErrorResponse` envelope via custom + HTTPException handlers
-  - **Auth:** Supabase JWT verification with role-based access (require_admin, require_any)
+  - **Auth:** Supabase JWT verification with role-based access (admin, system_admin only)
   - **Phase 5.2–5.5:** CRM, academics, transactions, analytics routers fully implemented
+
+**April 2026 — Role System Simplification:**
+- **Simplified roles:** Reduced from 4 roles (admin, instructor, receptionist, manager) to 2 roles (admin, system_admin)
+- **Rationale:** Eliminate complexity; all operations now require admin access
+- **API Guards:** `require_admin` (admin + system_admin), `require_any` (any authenticated user)
+- **Attendance:** Now requires admin access (was instructor-only)
+- **Files changed:** `app/modules/auth/constants.py`, `app/api/dependencies.py`, `app/api/routers/attendance_router.py`
+- **Breaking change:** Users with instructor/receptionist/manager roles will need role updated to admin
 
 **Authentication:** End-user credentials are verified by **Supabase** (`sign_in_with_password` in Streamlit; JWT verification via Supabase SDK in FastAPI). Local Postgres `users` rows map identities with `supabase_uid`. After successful Streamlit login, **`update_last_login`** updates `users.last_login` (explicit `session.commit()` in service; `get_session()` also commits on exit).
 
@@ -166,7 +174,7 @@ get_session()     # @contextmanager — yields Session, auto-commit on exit, rol
 |---|---|---|
 | `parents` | Parent/parent contact records | phone_primary indexed |
 | `employees` | Staff (instructors, admin) | `national_id` UNIQUE NOT NULL; `phone` NOT NULL UNIQUE; `email` UNIQUE (nullable); `university`, `major`, `is_graduate` NOT NULL; `employment_type` NOT NULL; D5 CHECK on `contract_percentage`; see `db/migrations/004_employees_sprint2_identity.sql` |
-| `users` | Login accounts | roles: `admin`, `instructor`, `system_admin`; `supabase_uid` UNIQUE NOT NULL; optional `employee_id` → `employees` |
+| `users` | Login accounts | roles: `admin`, `system_admin`; `supabase_uid` UNIQUE NOT NULL; optional `employee_id` → `employees` |
 | `students` | Student profiles | `is_active` flag; no parent FK — uses junction table |
 | `student_parents` | M:M student–parent with primary flag | `UNIQUE(student_id, parent_id)` |
 | `courses` | Course catalog | `category IN ('software','hardware','steam','other')` |
@@ -193,11 +201,13 @@ get_session()     # @contextmanager — yields Session, auto-commit on exit, rol
 
 > **Critical:** `v_enrollment_balance.balance` is a PostgreSQL `Decimal` — always cast to `float()` in Python before arithmetic.
 
-### 3.4 `users` table and Supabase (v3.3)
+### 3.4 `users` table and Supabase (v3.4)
 
-- **`db/schema.sql` v3.3** defines `users` with **`supabase_uid`** (no `password_hash`) and role **`CHECK (admin, instructor, system_admin)`**.
-- **Canonical roles in code:** `app/modules/auth/role_types.py` (`UserRole`, `ALL_ROLE_VALUES`, `is_valid_role`) — keep in sync with the DB CHECK when adding a role.
-- **Upgrading old databases:** See `db/migrations/README.md` (`002_users_supabase_roles_v33.sql` + legacy `supabase_auth_patch.sql`). Backfill `supabase_uid` before enforcing `NOT NULL` where documented.
+- **`db/schema.sql` v3.4** defines `users` with **`supabase_uid`** (no `password_hash`) and role **`CHECK (admin, system_admin)`**.
+- **Simplified roles (April 2026):** Reduced from 4 roles to 2 roles (`admin`, `system_admin`). All API operations now require `admin` or `system_admin` role.
+- **API Guards:** `require_admin` (allows admin + system_admin), `require_any` (any authenticated user)
+- **Canonical roles in code:** `app/modules/auth/constants.py` (`UserRole`, `ALL_ROLE_VALUES`, `is_valid_role`)
+- **Upgrading old databases:** Migrate any `instructor`, `receptionist`, or `manager` roles to `admin` before deploying.
 - **Greenfield + Alembic:** After `psql -f db/schema.sql`, run `alembic stamp 001_baseline_v33` so revision history matches reality (`db/README.md`, `alembic/README.md`).
 
 ### 3.5 JSONB `metadata` columns (ORM vs SQL)
@@ -248,7 +258,7 @@ The UI imports **only from `service.py`**, not from `repository.py`.
 
 **Models (`auth_models.py`):** `User` (table), `UserBase`, `UserCreate` (optional `supabase_uid` until after Supabase signup), `UserRead`, **`UserPublic`** (no `supabase_uid` — use for JSON APIs).
 
-**Roles:** `role_types.py` — `UserRole` enum / `is_valid_role`; `UserBase.role` validated against `ALL_ROLE_VALUES`.
+**Roles:** `constants.py` — `UserRole` enum (`admin`, `system_admin`) / `is_valid_role`; `UserBase.role` validated against `ALL_ROLE_VALUES`.
 
 **`auth_repository.py`:** `get_user_by_username`, `get_user_by_supabase_uid`, `get_users_by_employee_id`, `get_user_by_id`, `create_user`, `update_last_login`, `update_user`, …
 

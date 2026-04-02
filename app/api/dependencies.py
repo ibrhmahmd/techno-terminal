@@ -111,17 +111,7 @@ def _require_roles(*roles: UserRole):
 # Convenience shortcuts — use these directly in router Depends() calls.
 require_admin = _require_roles(
     UserRole.ADMIN,
-    UserRole.MANAGER,
-)
-require_instructor = _require_roles(
-    UserRole.INSTRUCTOR,
-    UserRole.ADMIN,
-    UserRole.MANAGER,
-)
-require_receptionist = _require_roles(
-    UserRole.RECEPTIONIST,
-    UserRole.ADMIN,
-    UserRole.MANAGER,
+    UserRole.SYSTEM_ADMIN,
 )
 # Any valid, active, authenticated user.
 require_any = get_current_user
@@ -131,6 +121,7 @@ require_any = get_current_user
 # Each factory instantiates a fresh, stateless service per request.
 # See BACKLOG.md §C1 for the deferred Session Injection refactor.
 
+from app.modules.auth.services.auth_service import AuthService
 from app.modules.crm.services.student_service import StudentService
 from app.modules.crm.services.parent_service import ParentService
 from app.modules.academics.services.course_service import CourseService
@@ -138,6 +129,9 @@ from app.modules.academics.services.group_service import GroupService
 from app.modules.academics.services.session_service import SessionService
 from app.modules.enrollments.services.enrollment_service import EnrollmentService
 import app.modules.finance as finance_module  # flat module — free functions, not a class
+
+def get_auth_service() -> AuthService:
+    return AuthService()
 
 
 def get_student_service() -> StudentService:
@@ -185,10 +179,16 @@ def get_attendance_service() -> AttendanceService:
 
 # Competition services
 from app.modules.competitions.competition_service import CompetitionService
+from app.modules.competitions.team_service import TeamService
 
 def get_competition_service() -> CompetitionService:
     """Returns a fresh CompetitionService instance per request."""
     return CompetitionService()
+
+def get_team_service() -> TeamService:
+    """Returns a fresh TeamService instance per request."""
+    return TeamService()
+
 
 
 # HR service wrapper (flat module pattern)
