@@ -100,8 +100,8 @@ def render_competition_detail(competition_id: int):
                             coach_name = coach.full_name
 
                     fee = (
-                        f"{team.enrollment_fee_per_student:.0f} EGP"
-                        if team.enrollment_fee_per_student
+                        f"{summary.competition.fee_per_student:.0f} EGP"
+                        if summary.competition.fee_per_student
                         else "Free"
                     )
                     paid_count = sum(1 for m in members if m.fee_paid)

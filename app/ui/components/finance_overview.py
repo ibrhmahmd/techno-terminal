@@ -64,7 +64,6 @@ def render_finance_overview():
 
     if not active_enrs:
         st.info("This student has no active enrollments.")
-        return
 
     student_has_debt = False
     total_student_balance = 0.0
@@ -114,9 +113,49 @@ def render_finance_overview():
             del st.session_state["fd_lines"][line_key]
 
     st.caption(f"Total student account balance: **{total_student_balance:.0f} EGP**")
-    
+
     if debt_only and not student_has_debt:
         st.info("This student has no debt. Turn off 'owed money only' to view all enrollments.")
+
+    # ── 2b. Competition Fees ───────────────────────────────────────────────────
+    comp_fees = fin_srv.get_unpaid_competition_fees(focus_student.id)
+    if comp_fees:
+        st.markdown("##### 🏆 Pending Competition Fees")
+        for cf in comp_fees:
+            line_key = f"fd_comp_{cf['team_member_id']}"
+            col_chk, col_amt, col_info = st.columns([1, 1.5, 3])
+            checked = col_chk.checkbox(
+                f"TM #{cf['team_member_id']}",
+                key=f"fd_comp_chk_{cf['team_member_id']}",
+                value=line_key in st.session_state["fd_lines"],
+            )
+            amount = col_amt.number_input(
+                "Amount (EGP)",
+                min_value=0.0,
+                value=float(cf["member_share"]),
+                step=50.0,
+                key=f"fd_comp_amt_{cf['team_member_id']}",
+                label_visibility="collapsed",
+            )
+            col_info.markdown(
+                f"**{cf['competition_name']}** — {cf['category_name']} | "
+                f"Team: **{cf['team_name']}** | Fee: **{cf['member_share']:.0f} EGP**"
+            )
+            if checked and amount > 0:
+                st.session_state["fd_lines"][line_key] = {
+                    "student_id": focus_student.id,
+                    "enrollment_id": None,
+                    "team_member_id": cf["team_member_id"],
+                    "amount": amount,
+                    "payment_type": "competition",
+                    "notes": f"Competition fee — {cf['competition_name']} / {cf['team_name']}",
+                }
+            elif line_key in st.session_state["fd_lines"]:
+                del st.session_state["fd_lines"][line_key]
+
+    if not active_enrs and not comp_fees:
+        st.info("This student has no outstanding fees.")
+        return
 
     # ── 3. Finalize Receipt ────────────────────────────────────────────────────
     lines = list(st.session_state.get("fd_lines", {}).values())

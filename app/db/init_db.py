@@ -119,7 +119,7 @@ def init_db():
     engine = get_engine()
     
     print("Resetting database. Dropping all ORM tables...")
-    SQLModel.metadata.drop_all(engine)
+    # SQLModel.metadata.drop_all(engine)
     
     print("Creating tables dynamically from SQLModel decoupled definitions...")
     SQLModel.metadata.create_all(engine)

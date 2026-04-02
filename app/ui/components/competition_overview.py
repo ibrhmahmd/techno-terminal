@@ -162,9 +162,6 @@ def render_competition_overview():
                 st.divider()
                 with st.expander("➕ Register a New Team in this Category"):
                     t_name = st.text_input("Team Name *", key="t_name")
-                    t_fee = st.number_input(
-                        "Fee per Student (EGP)", min_value=0.0, step=50.0, key="t_fee"
-                    )
 
                     # Coach selection
                     instructors = hr_srv.get_active_instructors()
@@ -216,7 +213,6 @@ def render_competition_overview():
                                 student_ids=selected_student_ids,
                                 coach_id=t_coach_id,
                                 group_id=t_group_id,
-                                fee_per_student=t_fee or None,
                             ))
                             st.success(
                                 f"✅ Team '{result.team.team_name}' registered with {result.members_added} members!"
@@ -265,7 +261,7 @@ def render_competition_overview():
                     if not members2:
                         st.info("No members in this team.")
                     else:
-                        fee = sel_team2.enrollment_fee_per_student or 0.0
+                        fee = members2[0].member_share
                         st.markdown(f"**Fee per student:** {fee:.0f} EGP")
 
                         for m in members2:

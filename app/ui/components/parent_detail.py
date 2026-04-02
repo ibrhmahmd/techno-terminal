@@ -80,9 +80,9 @@ def render_parent_detail(parent_id: int):
             unpaid_comps = [
                 h
                 for h in comp_history
-                if not h["membership"].fee_paid
-                and h["team"].enrollment_fee_per_student
-                and h["team"].enrollment_fee_per_student > 0
+                if not h.membership.fee_paid
+                and h.membership.member_share
+                and h.membership.member_share > 0
             ]
 
             if active_balances or unpaid_comps:
@@ -90,7 +90,7 @@ def render_parent_detail(parent_id: int):
 
                 enr_owed = float(sum(-b["balance"] for b in active_balances))
                 comp_owed = float(
-                    sum(h["team"].enrollment_fee_per_student for h in unpaid_comps)
+                    sum(h.membership.member_share for h in unpaid_comps)
                 )
                 total_owed = enr_owed + comp_owed
 
@@ -104,8 +104,8 @@ def render_parent_detail(parent_id: int):
                     )
                 for hc in unpaid_comps:
                     st.caption(
-                        f"  Competition: {hc['competition'].name if hc['competition'] else 'Unknown'} "
-                        f"({hc['team'].team_name}) | Fee: {hc['team'].enrollment_fee_per_student:.0f} EGP"
+                        f"  Competition: {hc.competition.name if hc.competition else 'Unknown'} "
+                        f"({hc.team.team_name}) | Fee: {hc.membership.member_share:.0f} EGP"
                     )
             else:
                 st.markdown(f"**{c.full_name}** — 🟢 No outstanding balance")

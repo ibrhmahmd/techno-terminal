@@ -19,6 +19,7 @@ class CompetitionBase(SQLModel):
     competition_date: Optional[date] = None
     location: Optional[str] = None
     notes: Optional[str] = None
+    fee_per_student: float = Field(default=0.0)
 
 class Competition(CompetitionBase, table=True):
     __tablename__ = "competitions"

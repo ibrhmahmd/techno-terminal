@@ -15,14 +15,12 @@ def create_team(
     team_name: str,
     coach_id: Optional[int] = None,
     group_id: Optional[int] = None,
-    fee_per_student: Optional[float] = None,
 ) -> Team:
     t = Team(
         category_id=category_id,
         group_id=group_id,
         team_name=team_name,
         coach_id=coach_id,
-        enrollment_fee_per_student=fee_per_student,
         created_at=utc_now(),
     )
     db.add(t)
@@ -60,8 +58,8 @@ def delete_team(db: Session, team_id: int) -> bool:
 
 # ── Team Members ──────────────────────────────────────────────────────────────
 
-def add_team_member(db: Session, team_id: int, student_id: int) -> TeamMember:
-    m = TeamMember(team_id=team_id, student_id=student_id, fee_paid=False)
+def add_team_member(db: Session, team_id: int, student_id: int, member_share: float = 0.0) -> TeamMember:
+    m = TeamMember(team_id=team_id, student_id=student_id, member_share=member_share, fee_paid=False)
     db.add(m)
     db.flush()
     return m

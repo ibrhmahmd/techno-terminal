@@ -14,6 +14,7 @@ class ReceiptLineInput(BaseModel):
 
     student_id: int
     enrollment_id: Optional[int] = None
+    team_member_id: Optional[int] = None   # Set for competition payments — links to TeamMember
     amount: float
     payment_type: str = "course_level"
     discount: float = 0.0

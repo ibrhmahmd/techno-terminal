@@ -19,7 +19,6 @@ class TeamDTO(BaseModel):
     group_id: Optional[int] = None
     team_name: str
     coach_id: Optional[int] = None
-    enrollment_fee_per_student: Optional[float] = None
     created_at: Optional[datetime] = None
 
 
@@ -28,6 +27,7 @@ class TeamMemberDTO(BaseModel):
     id: int
     team_id: int
     student_id: int
+    member_share: float = 0.0
     fee_paid: bool = False
     payment_id: Optional[int] = None
 
@@ -40,7 +40,6 @@ class RegisterTeamInput(BaseModel):
     student_ids: list[int]
     coach_id: Optional[int] = None
     group_id: Optional[int] = None
-    fee_per_student: Optional[float] = None
 
     @field_validator("student_ids")
     @classmethod
@@ -90,6 +89,7 @@ class TeamMemberRosterDTO(BaseModel):
     team_member_id: int
     student_id: int
     student_name: str
+    member_share: float = 0.0
     fee_paid: bool
     payment_id: Optional[int] = None
 

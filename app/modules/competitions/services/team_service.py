@@ -90,9 +90,12 @@ class TeamService:
                 category_id=cmd.category_id, 
                 team_name=cmd.team_name, 
                 coach_id=cmd.coach_id, 
-                group_id=cmd.group_id, 
-                fee_per_student=cmd.fee_per_student
+                group_id=cmd.group_id
             )
+
+            # Fetch competition fee for member_share
+            comp = comp_repo.get_competition(db, cat.competition_id)
+            fee = comp.fee_per_student if comp else 0.0
 
             # Add members
             members_added = 0
@@ -100,7 +103,7 @@ class TeamService:
                 # Skip duplicates gracefully
                 existing = team_repo.get_team_member(db, team.id, sid)
                 if not existing:
-                    team_repo.add_team_member(db, team.id, sid)
+                    team_repo.add_team_member(db, team.id, sid, member_share=fee)
                     members_added += 1
 
             return TeamRegistrationResultDTO(
@@ -137,7 +140,11 @@ class TeamService:
             if existing:
                 raise ConflictError(f"Student is already a member of this team.")
 
-            m = team_repo.add_team_member(db, team_id, student_id)
+            cat = comp_repo.get_category(db, team.category_id)
+            comp = comp_repo.get_competition(db, cat.competition_id) if cat else None
+            fee = comp.fee_per_student if comp else 0.0
+
+            m = team_repo.add_team_member(db, team_id, student_id, member_share=fee)
             return AddTeamMemberResultDTO(
                 team_member_id=m.id,
                 student_id=m.student_id,
@@ -162,6 +169,7 @@ class TeamService:
                         team_member_id=m.id,
                         student_id=m.student_id,
                         student_name=s.full_name if s else f"Student #{m.student_id}",
+                        member_share=m.member_share,
                         fee_paid=m.fee_paid,
                         payment_id=m.payment_id,
                     )
@@ -183,10 +191,10 @@ class TeamService:
             if member.fee_paid:
                 raise BusinessRuleError("Fee is already paid for this student.")
 
-            fee = team.enrollment_fee_per_student or 0.0
+            fee = member.member_share
             if fee <= 0:
                 raise BusinessRuleError(
-                    "Team has no fee set. Set 'enrollment_fee_per_student' on the team first."
+                    "Student's member share fee is 0."
                 )
 
         # Trigger external finance service layer

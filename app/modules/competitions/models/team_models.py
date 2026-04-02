@@ -21,7 +21,6 @@ class TeamBase(SQLModel):
     group_id: Optional[int] = Field(default=None, foreign_key="groups.id")
     team_name: str
     coach_id: Optional[int] = Field(default=None, foreign_key="employees.id")
-    enrollment_fee_per_student: Optional[float] = None
 
 class Team(TeamBase, table=True):
     __tablename__ = "teams"
@@ -40,6 +39,7 @@ class Team(TeamBase, table=True):
 class TeamMemberBase(SQLModel):
     team_id: int = Field(foreign_key="teams.id")
     student_id: int = Field(foreign_key="students.id")
+    member_share: float = Field(default=0.0)
     fee_paid: bool = False
     payment_id: Optional[int] = Field(default=None, foreign_key="payments.id")
 

@@ -67,6 +67,16 @@ def create_receipt_with_charge_lines(
                 notes=ld.get("notes"),
             )
             payment_ids.append(p.id)
+
+            # Auto-link competition payment to TeamMember within the same atomic session
+            if ld.get("payment_type") == "competition" and ld.get("team_member_id"):
+                from app.modules.competitions.models.team_models import TeamMember
+                tm = db.get(TeamMember, ld["team_member_id"])
+                if tm:
+                    tm.fee_paid = True
+                    tm.payment_id = p.id
+                    db.add(tm)
+
         total = repo.get_receipt_total(db, r.id)
         return {
             "receipt_id": r.id,
@@ -345,3 +355,49 @@ def get_enrollment_balance(enrollment_id: int) -> dict | None:
     """
     with get_session() as db:
         return repo.get_enrollment_balance(db, enrollment_id)
+
+
+# ── Unpaid Competition Fees ───────────────────────────────────────────────────
+
+
+def get_unpaid_competition_fees(student_id: int) -> list[dict]:
+    """
+    Returns a list of unpaid competition fee records for a student.
+    Each dict contains all the information the Financial Desk UI needs to
+    render a checkbox payment line:
+      - team_member_id  : int              (FK to mark fee paid)
+      - team_id         : int
+      - team_name       : str
+      - competition_name: str
+      - member_share    : float            (snapshotted amount at registration time)
+      - student_id      : int
+    """
+    from app.modules.competitions.models.team_models import TeamMember, Team
+    from app.modules.competitions.models.competition_models import Competition, CompetitionCategory
+    from sqlmodel import select
+
+    with get_session() as db:
+        stmt = (
+            select(TeamMember, Team, CompetitionCategory, Competition)
+            .join(Team, TeamMember.team_id == Team.id)
+            .join(CompetitionCategory, Team.category_id == CompetitionCategory.id)
+            .join(Competition, CompetitionCategory.competition_id == Competition.id)
+            .where(
+                TeamMember.student_id == student_id,
+                TeamMember.fee_paid == False,
+                TeamMember.member_share > 0,
+            )
+        )
+        rows = db.exec(stmt).all()
+        result = []
+        for tm, team, cat, comp in rows:
+            result.append({
+                "team_member_id": tm.id,
+                "team_id": team.id,
+                "team_name": team.team_name,
+                "competition_name": f"{comp.name}" + (f" – {comp.edition}" if comp.edition else ""),
+                "category_name": cat.category_name,
+                "member_share": float(tm.member_share),
+                "student_id": tm.student_id,
+            })
+        return result

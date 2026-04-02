@@ -19,6 +19,7 @@ class CompetitionDTO(BaseModel):
     competition_date: Optional[date] = None
     location: Optional[str] = None
     notes: Optional[str] = None
+    fee_per_student: float = 0.0
     created_at: Optional[datetime] = None
 
 
@@ -38,6 +39,7 @@ class CreateCompetitionInput(BaseModel):
     competition_date: Optional[date] = None
     location: Optional[str] = None
     notes: Optional[str] = None
+    fee_per_student: float = 0.0
 
     @field_validator("name", mode="before")
     @classmethod

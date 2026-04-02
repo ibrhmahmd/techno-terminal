@@ -18,9 +18,9 @@ def get_competition_fee_summary(db: Session) -> list[CompetitionFeeSummaryDTO]:
             cp.competition_date,
             COUNT(DISTINCT t.id) AS team_count,
             COUNT(DISTINCT tm.id) AS member_count,
-            COALESCE(SUM(t.enrollment_fee_per_student) FILTER (WHERE tm.fee_paid = TRUE), 0) AS fees_collected,
-            COALESCE(SUM(t.enrollment_fee_per_student) FILTER (WHERE tm.fee_paid = FALSE
-                AND t.enrollment_fee_per_student IS NOT NULL), 0) AS fees_outstanding
+            COALESCE(SUM(tm.member_share) FILTER (WHERE tm.fee_paid = TRUE), 0) AS fees_collected,
+            COALESCE(SUM(tm.member_share) FILTER (WHERE tm.fee_paid = FALSE
+                AND tm.member_share IS NOT NULL), 0) AS fees_outstanding
         FROM competitions cp
         LEFT JOIN competition_categories cc ON cc.competition_id = cp.id
         LEFT JOIN teams t ON t.category_id = cc.id
