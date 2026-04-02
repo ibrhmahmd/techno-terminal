@@ -156,5 +156,29 @@ def mark_fee_as_paid(
     _user: User = Depends(require_admin),
     svc: TeamService = Depends(get_team_service),
 ):
-    svc.pay_competition_fee(team_member_id)
+    import app.modules.competitions.repositories.team_repository as team_repo
+    from app.db.connection import get_session
+    from app.modules.competitions.schemas.team_schemas import PayCompetitionFeeInput
+    
+    # Get team member details to construct proper input
+    with get_session() as db:
+        member = team_repo.get_team_member_by_id(db, team_member_id)
+        if not member:
+            raise HTTPException(status_code=404, detail="Team member not found")
+        
+        # Get student's parent for payment
+        from app.modules.crm.models.student_models import Student
+        student = db.get(Student, member.student_id)
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
+        
+        # Construct proper input for service
+        cmd = PayCompetitionFeeInput(
+            team_id=member.team_id,
+            student_id=member.student_id,
+            parent_id=student.primary_parent_id or 0,
+            received_by_user_id=_user.id if _user else 0
+        )
+    
+    svc.pay_competition_fee(cmd)
     return ApiResponse(data=None, message="Fee marked as paid.")

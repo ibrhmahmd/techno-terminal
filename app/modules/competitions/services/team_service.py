@@ -14,6 +14,7 @@ from app.modules.competitions.schemas.team_schemas import (
     TeamMemberRosterDTO,
     PayCompetitionFeeResponseDTO,
     TeamMemberDTO,
+    TeamWithMembersDTO,
 )
 from app.modules.competitions.schemas.competition_schemas import (
     CompetitionDTO,
@@ -115,6 +116,21 @@ class TeamService:
         with get_session() as db:
             teams = team_repo.list_teams(db, category_id)
             return [TeamDTO.model_validate(t) for t in teams]
+
+    def get_teams_with_members(self, category_id: int) -> list[TeamWithMembersDTO]:
+        """Returns all teams in a category with their members."""
+        with get_session() as db:
+            teams = team_repo.list_teams(db, category_id)
+            result = []
+            for team in teams:
+                members = team_repo.list_team_members(db, team.id)
+                result.append(
+                    TeamWithMembersDTO(
+                        team=TeamDTO.model_validate(team),
+                        members=[TeamMemberDTO.model_validate(m) for m in members]
+                    )
+                )
+            return result
 
     def update_team(self, team_id: int, **kwargs) -> TeamDTO | None:
         with get_session() as db:

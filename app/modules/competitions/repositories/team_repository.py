@@ -72,6 +72,11 @@ def get_team_member(db: Session, team_id: int, student_id: int) -> TeamMember | 
     return db.exec(stmt).first()
 
 
+def get_team_member_by_id(db: Session, member_id: int) -> TeamMember | None:
+    """Get a team member by their unique member ID."""
+    return db.get(TeamMember, member_id)
+
+
 def list_team_members(db: Session, team_id: int) -> list[TeamMember]:
     stmt = select(TeamMember).where(TeamMember.team_id == team_id)
     return list(db.exec(stmt).all())

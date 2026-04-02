@@ -37,6 +37,12 @@ class CompetitionService:
             comps = comp_repo.list_competitions(db)
             return [CompetitionDTO.model_validate(c) for c in comps]
 
+    def get_competition_by_id(self, competition_id: int) -> CompetitionDTO | None:
+        """Get a single competition by ID."""
+        with get_session() as db:
+            comp = comp_repo.get_competition(db, competition_id)
+            return CompetitionDTO.model_validate(comp) if comp else None
+
     def update_competition(self, competition_id: int, **kwargs) -> CompetitionDTO | None:
         with get_session() as db:
             comp = comp_repo.update_competition(db, competition_id, **kwargs)
