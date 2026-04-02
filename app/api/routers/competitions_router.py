@@ -12,20 +12,26 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.api.schemas.common import ApiResponse
-from app.api.dependencies import require_any, require_admin, get_competition_service
+from app.api.dependencies import require_any, require_admin, get_competition_service, get_team_service
 from app.modules.auth import User
 from app.modules.competitions import CompetitionService, CompetitionDTO
+from app.modules.competitions.team_service import TeamService
+
+# Import actual schemas
+from app.modules.competitions.schemas.competition_schemas import (
+    CreateCompetitionInput,
+    CompetitionCategoryDTO,
+    AddCategoryInput,
+)
+from app.modules.competitions.schemas.team_schemas import (
+    RegisterTeamInput,
+    TeamRegistrationResultDTO,
+    TeamWithMembersDTO,
+)
 
 router = APIRouter(tags=["Competitions"])
 
 
-class RegisterTeamInputStub(BaseModel):
-    competition_category_id: int
-    team_name: str
-    member_student_ids: list[int]
-
-
-# list all competitions
 @router.get(
     "/competitions",
     response_model=ApiResponse[list[CompetitionDTO]],
@@ -35,25 +41,120 @@ def list_competitions(
     _user: User = Depends(require_any),
     svc: CompetitionService = Depends(get_competition_service),
 ):
-    """
-    Returns a list of all competitions.
-    """
     comps = svc.list_competitions()
     return ApiResponse(data=comps)
 
 
-# register a team for a competition
+@router.post(
+    "/competitions",
+    response_model=ApiResponse[CompetitionDTO],
+    status_code=201,
+    summary="Create a new competition",
+)
+def create_competition(
+    body: CreateCompetitionInput,
+    _user: User = Depends(require_admin),
+    svc: CompetitionService = Depends(get_competition_service),
+):
+    comp = svc.create_competition(body)
+    return ApiResponse(
+        data=CompetitionDTO.model_validate(comp),
+        message="Competition created successfully."
+    )
+
+
+@router.get(
+    "/competitions/{competition_id}",
+    response_model=ApiResponse[CompetitionDTO],
+    summary="Get single competition details",
+)
+def get_competition(
+    competition_id: int,
+    _user: User = Depends(require_any),
+    svc: CompetitionService = Depends(get_competition_service),
+):
+    comp = svc.get_competition_by_id(competition_id)
+    if not comp:
+        raise HTTPException(status_code=404, detail="Competition not found")
+    return ApiResponse(data=CompetitionDTO.model_validate(comp))
+
+
+@router.get(
+    "/competitions/{competition_id}/categories",
+    response_model=ApiResponse[list[CompetitionCategoryDTO]],
+    summary="List categories for a competition",
+)
+def list_categories(
+    competition_id: int,
+    _user: User = Depends(require_any),
+    svc: CompetitionService = Depends(get_competition_service),
+):
+    cats = svc.list_categories(competition_id)
+    return ApiResponse(data=[CompetitionCategoryDTO.model_validate(c) for c in cats])
+
+
+@router.post(
+    "/competitions/{competition_id}/categories",
+    response_model=ApiResponse[CompetitionCategoryDTO],
+    status_code=201,
+    summary="Add a category to a competition",
+)
+def add_category(
+    competition_id: int,
+    body: AddCategoryInput,
+    _user: User = Depends(require_admin),
+    svc: CompetitionService = Depends(get_competition_service),
+):
+    cat = svc.add_category(competition_id, body)
+    return ApiResponse(
+        data=CompetitionCategoryDTO.model_validate(cat),
+        message="Category added successfully."
+    )
+
+
 @router.post(
     "/competitions/register",
-    status_code=501,
-    summary="Register a team for a competition (Not Implemented)",
+    response_model=ApiResponse[TeamRegistrationResultDTO],
+    status_code=201,
+    summary="Register a team for a competition",
 )
-def register_team(body: RegisterTeamInputStub, _user: User = Depends(require_admin)):
-    """
-    Placeholder endpoint for Team Registration.
-    Write logic will be mapped in the post-launch sprint.
-    """
-    raise HTTPException(
-        status_code=501,
-        detail="Team registration endpoint not yet implemented. Use Streamlit UI for team registration."
+def register_team(
+    body: RegisterTeamInput,
+    _user: User = Depends(require_admin),
+    svc: TeamService = Depends(get_team_service),
+):
+    result = svc.register_team(body)
+    return ApiResponse(
+        data=TeamRegistrationResultDTO.model_validate(result),
+        message="Team registered successfully."
     )
+
+
+@router.get(
+    "/competitions/{competition_id}/categories/{category_id}/teams",
+    response_model=ApiResponse[list[TeamWithMembersDTO]],
+    summary="List teams in a competition category",
+)
+def list_teams_in_category(
+    competition_id: int,
+    category_id: int,
+    _user: User = Depends(require_any),
+    svc: TeamService = Depends(get_team_service),
+):
+    # Pass arbitrary criteria to the existing search/list method
+    teams = svc.get_teams_with_members(category_id)
+    return ApiResponse(data=[TeamWithMembersDTO.model_validate(t) for t in teams])
+
+
+@router.post(
+    "/competitions/team-members/{team_member_id}/pay",
+    response_model=ApiResponse[None],
+    summary="Mark competition fee as paid (bypass Finance Desk)",
+)
+def mark_fee_as_paid(
+    team_member_id: int,
+    _user: User = Depends(require_admin),
+    svc: TeamService = Depends(get_team_service),
+):
+    svc.pay_competition_fee(team_member_id)
+    return ApiResponse(data=None, message="Fee marked as paid.")

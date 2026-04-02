@@ -115,6 +115,62 @@ class SessionService:
         with get_session() as session:
             return list(repo.list_sessions(session, group_id, level_number))
 
+    def get_daily_schedule(self, target_date: date) -> list[dict]:
+        """
+        Returns all sessions scheduled for exactly target_date, enriched with
+        group and course data.
+        """
+        from sqlmodel import select, func
+        from app.modules.academics.models import Course, Group
+        from app.modules.enrollments.models.enrollment_models import Enrollment
+
+        with get_session() as session:
+            # Query Session + Group + Course
+            stmt = select(CourseSession, Group, Course).join(
+                Group, CourseSession.group_id == Group.id
+            ).join(
+                Course, Group.course_id == Course.id
+            ).where(
+                CourseSession.session_date == target_date
+            )
+            
+            results = session.exec(stmt).all()
+            
+            # Since generating dashboard calls for this, let's also grab
+            # active enrollment counts. This is slightly imperfect but very fast.
+            group_ids = list({cs.group_id for cs, _, _ in results})
+            enrollment_counts = {}
+            if group_ids:
+                count_stmt = select(
+                    Enrollment.group_id, func.count(Enrollment.id)
+                ).where(
+                    Enrollment.group_id.in_(group_ids),
+                    Enrollment.status == "active"
+                ).group_by(Enrollment.group_id)
+                for g_id, c in session.exec(count_stmt).all():
+                    enrollment_counts[g_id] = c
+            
+            payload = []
+            for cs, group, course in results:
+                payload.append({
+                    "session_id": cs.id,
+                    "date": cs.session_date,
+                    "time_start": cs.start_time,
+                    "time_end": cs.end_time,
+                    "status": cs.status,
+                    "notes": cs.notes,
+                    "group_id": group.id,
+                    "group_name": group.name,
+                    "level_number": cs.level_number,
+                    "course_id": course.id,
+                    "course_name": course.name,
+                    "enrolled_count": enrollment_counts.get(group.id, 0)
+                })
+                
+            # Sort by start time for the dashboard
+            payload.sort(key=lambda x: (x["time_start"] or "", x["course_name"]))
+            return payload
+
     def check_level_complete(self, group_id: int, level_number: int) -> bool:
         """
         Returns True if all regular sessions for the level exist.

@@ -18,7 +18,7 @@ from app.modules.academics.services.session_service import SessionService
 
 router = APIRouter(tags=["Academics — Groups"])
 
-
+# list all active groups
 @router.get(
     "/academics/groups",
     response_model=PaginatedResponse[GroupListItem],
@@ -40,6 +40,7 @@ def list_groups(
     )
 
 
+# get group by ID
 @router.get(
     "/academics/groups/{group_id}",
     response_model=ApiResponse[GroupPublic],
@@ -54,6 +55,7 @@ def get_group(
     return ApiResponse(data=GroupPublic.model_validate(group))
 
 
+# create group
 @router.post(
     "/academics/groups",
     response_model=ApiResponse[GroupPublic],
@@ -73,6 +75,7 @@ def create_group(
     )
 
 
+# update group
 @router.patch(
     "/academics/groups/{group_id}",
     response_model=ApiResponse[GroupPublic],
@@ -88,6 +91,7 @@ def update_group(
     return ApiResponse(data=GroupPublic.model_validate(group))
 
 
+# list sessions for a group
 @router.get(
     "/academics/groups/{group_id}/sessions",
     response_model=ApiResponse[list[SessionPublic]],
@@ -101,3 +105,22 @@ def list_group_sessions(
 ):
     sessions = svc.list_group_sessions(group_id, level_number=level)
     return ApiResponse(data=[SessionPublic.model_validate(s) for s in sessions])
+
+
+# progress group to the next level
+@router.post(
+    "/academics/groups/{group_id}/progress-level",
+    response_model=ApiResponse[GroupPublic],
+    summary="Progress group to the next level",
+)
+def progress_group_level(
+    group_id: int,
+    _user: User = Depends(require_admin),
+    svc: SessionService = Depends(get_session_service),
+):
+    group = svc.progress_group_level(group_id)
+    return ApiResponse(
+        data=GroupPublic.model_validate(group),
+        message=f"Group progressed to level {group.level_number} successfully."
+    )
+

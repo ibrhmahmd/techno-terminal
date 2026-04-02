@@ -16,7 +16,7 @@ from app.modules.academics.services.course_service import CourseService
 
 router = APIRouter(tags=["Academics — Courses"])
 
-
+# list all active courses
 @router.get(
     "/academics/courses",
     response_model=PaginatedResponse[CoursePublic],
@@ -38,6 +38,7 @@ def list_courses(
     )
 
 
+# create a new course
 @router.post(
     "/academics/courses",
     response_model=ApiResponse[CoursePublic],
@@ -56,6 +57,7 @@ def create_course(
     )
 
 
+# update a course
 @router.patch(
     "/academics/courses/{course_id}",
     response_model=ApiResponse[CoursePublic],

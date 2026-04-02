@@ -27,3 +27,20 @@ class SessionPublic(BaseModel):
     notes: Optional[str] = None
 
     model_config = {"from_attributes": True}
+
+
+class DailyScheduleItem(BaseModel):
+    session_id: int
+    date: date
+    time_start: Optional[str] = None
+    time_end: Optional[str] = None
+    status: str
+    notes: Optional[str] = None
+    group_id: int
+    group_name: str
+    level_number: int
+    course_id: int
+    course_name: str
+    enrolled_count: int = 0
+    
+    model_config = {"from_attributes": True}

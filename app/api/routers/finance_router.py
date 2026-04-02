@@ -142,6 +142,27 @@ def get_student_balance(
     )
 
 
+from app.modules.finance.finance_schemas import UnpaidCompFeeItem
+
+@router.get(
+    "/finance/competition-fees/student/{student_id}",
+    response_model=ApiResponse[list[UnpaidCompFeeItem]],
+    summary="Get unpaid competition fees",
+)
+def get_unpaid_competition_fees(
+    student_id: int,
+    _user: User = Depends(require_any),
+    finance=Depends(get_finance_module),
+):
+    """
+    Returns pending competition fees for a student to be paid via Financial Desk setup.
+    """
+    fees = finance.get_unpaid_competition_fees(student_id)
+    return ApiResponse(
+        data=[UnpaidCompFeeItem.model_validate(f) for f in fees]
+    )
+
+
 # preview overpayment risk
 class PreviewRiskRequest(BaseModel):
     """Request to preview overpayment risk for receipt lines."""
