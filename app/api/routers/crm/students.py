@@ -14,6 +14,7 @@ from app.api.dependencies import require_admin, require_any, get_student_service
 from app.modules.crm.schemas import RegisterStudentCommandDTO, UpdateStudentDTO
 from app.modules.auth import User
 from app.modules.crm.services.student_service import StudentService
+from app.shared.exceptions import NotFoundError
 
 router = APIRouter(prefix="/crm", tags=["CRM — Students"])
 
@@ -59,8 +60,7 @@ def get_student(
 ):
     student = svc.get_student_by_id(student_id)
     if student is None:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail="Student not found")
+        raise NotFoundError("Student not found")
     return ApiResponse(data=StudentPublic.model_validate(student))
 
 

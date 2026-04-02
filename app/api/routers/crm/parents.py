@@ -13,6 +13,7 @@ from app.api.dependencies import require_admin, require_any, get_parent_service
 from app.modules.crm.schemas import RegisterParentInput, UpdateParentDTO
 from app.modules.auth import User
 from app.modules.crm.services.parent_service import ParentService
+from app.shared.exceptions import NotFoundError
 
 router = APIRouter(prefix="/crm", tags=["CRM — Parents"])
 
@@ -57,6 +58,8 @@ def get_parent(
     svc: ParentService = Depends(get_parent_service),
 ):
     parent = svc.get_parent_by_id(parent_id)
+    if parent is None:
+        raise NotFoundError("Parent not found")
     return ApiResponse(data=ParentPublic.model_validate(parent))
 
 
