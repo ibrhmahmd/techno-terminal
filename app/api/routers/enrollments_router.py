@@ -33,8 +33,8 @@ def enroll_student(
     current_user: User = Depends(require_admin),
     svc: EnrollmentService = Depends(get_enrollment_service),
 ):
-    body.created_by = current_user.id
-    enrollment, capacity_exceeded = svc.enroll_student(body)
+    enrollment_data = body.model_copy(update={"created_by": current_user.id})
+    enrollment, capacity_exceeded = svc.enroll_student(enrollment_data)
     
     msg = "Student enrolled successfully."
     if capacity_exceeded:
@@ -75,8 +75,8 @@ def transfer_student(
     current_user: User = Depends(require_admin),
     svc: EnrollmentService = Depends(get_enrollment_service),
 ):
-    body.created_by = current_user.id
-    new_enr = svc.transfer_student(body)
+    transfer_data = body.model_copy(update={"created_by": current_user.id})
+    new_enr = svc.transfer_student(transfer_data)
     
     return ApiResponse(
         data=EnrollmentPublic.model_validate(new_enr),

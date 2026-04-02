@@ -140,3 +140,38 @@ def get_student_balance(
     return ApiResponse(
         data=[FinancialSummaryPublic.model_validate(b) for b in balances]
     )
+
+
+# preview overpayment risk
+class PreviewRiskRequest(BaseModel):
+    """Request to preview overpayment risk for receipt lines."""
+    lines: list[ReceiptLineInput]
+
+
+class OverpaymentRiskItem(BaseModel):
+    """Risk item showing potential credit/overpayment."""
+    student_id: int
+    enrollment_id: int
+    amount: float
+    debt_before: float
+    projected_balance: float
+    excess_credit: float
+
+    model_config = {"from_attributes": True}
+
+
+@router.post(
+    "/finance/receipts/preview-risk",
+    response_model=ApiResponse[list[OverpaymentRiskItem]],
+    summary="Preview overpayment risk",
+)
+def preview_overpayment_risk(
+    body: PreviewRiskRequest,
+    _user: User = Depends(require_admin),
+    finance=Depends(get_finance_module),
+):
+    """
+    Returns lines that would create/increase credit before creating a receipt.
+    """
+    risk_rows = finance.preview_overpayment_risk(lines=body.lines)
+    return ApiResponse(data=[OverpaymentRiskItem.model_validate(r) for r in risk_rows])

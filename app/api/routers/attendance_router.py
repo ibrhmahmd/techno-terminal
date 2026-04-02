@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from app.api.schemas.common import ApiResponse
-from app.api.dependencies import require_instructor
+from app.api.dependencies import require_instructor, get_attendance_service
 from app.modules.auth import User
 from app.modules.attendance import (
     AttendanceService,
@@ -28,8 +28,6 @@ from app.modules.attendance import (
 )
 
 router = APIRouter(tags=["Attendance"])
-
-_attendance_svc = AttendanceService()
 
 
 class MarkAttendanceRequest(BaseModel):
@@ -51,8 +49,9 @@ class MarkAttendanceRequest(BaseModel):
 def get_session_attendance(
     session_id: int,
     current_user: User = Depends(require_instructor),
+    svc: AttendanceService = Depends(get_attendance_service),
 ):
-    roster = _attendance_svc.get_session_roster_with_attendance(session_id)
+    roster = svc.get_session_roster_with_attendance(session_id)
     return ApiResponse(data=roster)
 
 
@@ -71,8 +70,9 @@ def mark_attendance(
     session_id: int,
     body: MarkAttendanceRequest,
     current_user: User = Depends(require_instructor),
+    svc: AttendanceService = Depends(get_attendance_service),
 ):
-    result = _attendance_svc.mark_session_attendance(
+    result = svc.mark_session_attendance(
         session_id=session_id,
         student_statuses=body.student_statuses,
         marked_by_user_id=current_user.id,
