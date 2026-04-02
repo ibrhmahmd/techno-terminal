@@ -92,6 +92,7 @@ project_root/
 │   ├── planning/                 # Active sprint planning, QA backlogs, and roadmaps
 │   └── memory_bank/              # Deeper specs, ADRs, reviews, ETL history (see §12)
 └── app/
+
     ├── core/
     │   ├── config.py             # Pydantic Settings: database_url, supabase_url, supabase_anon_key, optional service_role
     │   └── supabase_clients.py   # get_supabase_anon(), get_supabase_admin() (lazy; admin needs service role)
