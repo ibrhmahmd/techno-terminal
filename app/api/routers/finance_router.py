@@ -26,6 +26,7 @@ from app.api.schemas.finance.balance import FinancialSummaryPublic
 from app.api.dependencies import require_admin, require_any, get_finance_module
 from app.modules.finance.finance_schemas import ReceiptLineInput
 from app.modules.auth import User
+from app.shared.exceptions import NotFoundError
 
 # Since finance is a flat module, we treat it similarly to `import app.modules.finance`
 # but use Dependency Injection for testing flexibility.
@@ -71,6 +72,8 @@ def get_receipt(
     finance=Depends(get_finance_module),
 ):
     detail = finance.get_receipt_detail(receipt_id)
+    if detail is None:
+        raise NotFoundError("Receipt not found")
     return ApiResponse(data=ReceiptDetailPublic.model_validate(detail))
 
 

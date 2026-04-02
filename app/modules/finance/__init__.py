@@ -12,6 +12,7 @@ from .finance_service import (
     get_receipt_detail,
     get_enrollment_balance,
     generate_receipt_pdf,
+    get_unpaid_competition_fees,
 )
 from .finance_models import Receipt, Payment
 from .finance_schemas import (
@@ -35,6 +36,7 @@ __all__ = [
     "get_receipt_detail",
     "get_enrollment_balance",
     "generate_receipt_pdf",
+    "get_unpaid_competition_fees",
     "Receipt",
     "Payment",
     # DTOs
