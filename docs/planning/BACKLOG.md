@@ -45,6 +45,28 @@
 
 ---
 
+## 🔵 Stream D — Frontend MVP (Next Sprint)
+
+**Goal:** Ship the React/Vite frontend wired to the completed FastAPI layer.  
+**Plan:** [`docs/planning/FRONTEND_PLAN.md`](FRONTEND_PLAN.md)  
+**Product Spec:** [`docs/product/frontend_handover.md`](../product/frontend_handover.md)  
+**Stack:** Vite + React 18 + TypeScript + TanStack Query + Zustand + React Router v6
+
+| Phase | Deliverable | SP | Status |
+|:-----:|-------------|:--:|:------:|
+| D0 | Scaffold + Vite config + Axios client + Auth Zustand store + Sidebar layout | 3 | ⬜ |
+| D1 | Login Page (`/login`) | 1 | ⬜ |
+| D2 | Dashboard Page — daily schedule cards + Attendance Grid component | 5 | ⬜ |
+| D3 | Group Management + Group Detail View | 4 | ⬜ |
+| D4 | Directory — Students & Parents with detail views | 4 | ⬜ |
+| D5 | Enrollments Page (Enroll / Transfer / Drop panels) | 3 | ⬜ |
+| D6 | Finance & Receipts Page (Create / Search / PDF download) | 3 | ⬜ |
+| D7 | Reports stub (placeholder page, read-only analytics) | 1 | ⬜ |
+
+**Total: ~24 SP (~11 hours build time)**
+
+
+
 ## ⚪ Stream C — Architecture Technical Debt (Post-Delivery Sprint)
 
 > These are explicitly **deferred** so the API ships on time.  

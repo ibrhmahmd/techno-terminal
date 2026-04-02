@@ -43,11 +43,13 @@
 
 **Current Status (April 2026):**
 
-- **API Code Review Complete:** All Medium-Term fixes implemented including router splitting, DTO-ification, and standardized DI patterns.
-- **Router Restructure:** Monolithic routers split into domain packages (`analytics/`, `academics/`, `crm/`) for better maintainability.
-- **New Endpoints:** 14 analytics endpoints, 4 HR CRUD endpoints, and finance overpayment preview added.
-- **Typed DTOs:** All API responses now use proper Pydantic DTOs (no more `list[dict]` or `Any`).
-- **Dependency Injection:** All services accessible via `Depends()` factories in `dependencies.py`.
+- **API Finalization Complete (2026-04-02):** All auth, session, competition, and finance endpoints implemented. The backend is **100% ready for frontend consumption**.
+- **Auth Endpoints:** `POST /auth/login`, `POST /auth/logout`, `POST /auth/refresh`, `GET /auth/me`, `POST /auth/users`, `POST /auth/users/{id}/reset-password` — all using Supabase `sign_in_with_password`.
+- **Daily Schedule Endpoint:** `GET /academics/sessions/daily-schedule?day={dayName}` — single high-performance join across `CourseSession`, `Group`, `Course`, `Enrollment` for the Dashboard.
+- **Competitions Module:** Promoted from stub to full CRUD with registration, categories, and fee bypass endpoints.
+- **PDF Export Enhancement (B4 ✅):** `GET /finance/receipts/{id}/pdf` now returns a branded A4 PDF with optional logo (env: `PDF_LOGO_PATH`), company address, and dual signature blocks.
+- **Frontend Plan:** Stack and phase-by-phase build order documented in `docs/planning/FRONTEND_PLAN.md`. Stack: **Vite + React 18 + TypeScript + TanStack Query + Zustand + React Router v6**.
+- **Backlog Streams A & B:** Fully complete. Stream C (technical debt) deferred post-delivery.
 
 **Previous Status (End of March 2026):**
 
@@ -568,6 +570,7 @@ alembic stamp 001_baseline_v33
 | 8 | Auth hardening: `UserRole`, `UserPublic`, `HTTPBearer`, lazy Supabase clients; schema v3.3; JSONB metadata on models; `db/migrations/002`, Alembic baseline; employee UI wired to services |
 | 9 | Sprint 3 (D4): `audit_utils`, migration `005` + schema audit defaults/triggers; CRM/enrollment/UI actor threading; `CourseSession` DATE/TIMESTAMPTZ ORM alignment; academics update DTOs + `apply_update_audit`; `state.get_current_user_id()` |
 | 10 | **API Code Review Fixes:** Router splitting (analytics/academics/crm), 14 new analytics endpoints, HR CRUD endpoints, DTO-ification, standardized DI patterns, HTTPException handler |
+| 11 | **API Finalization (2026-04-02):** Auth endpoints (login/logout/refresh/users), Sessions daily-schedule, Competition CRUD, Finance PDF export, role simplification to admin/system_admin. Backend 100% ready. |
 
 **Completed plan write-ups:** `docs/archive/legacy_plans/` ([README](archive/legacy_plans/README.md)) — memory-bank refresh summary, auth/DB alignment task list.
 
@@ -591,3 +594,41 @@ alembic stamp 001_baseline_v33
 ## 13. Documentation drift policy
 
 When the repo and `docs/memory_bank/*` disagree, **treat this `MEMORY_BANK.md` and the code as authoritative** for agents; use subdocs for background and intent, then verify against `app/` and `db/`.
+
+---
+
+## 14. Frontend Development (Active — Next Session)
+
+**Status:** Backend complete. Frontend not yet started.  
+**Plan document:** [`docs/planning/FRONTEND_PLAN.md`](planning/FRONTEND_PLAN.md)  
+**Product spec:** [`docs/product/frontend_handover.md`](product/frontend_handover.md)
+
+### Agreed Stack
+| Layer | Choice |
+|-------|--------|
+| Framework | **Vite + React 18 + TypeScript** |
+| Routing | React Router v6 |
+| Server State | TanStack Query (React Query) |
+| Auth/Global State | Zustand (persisted to localStorage) |
+| HTTP | Axios with JWT interceptor |
+| Styling | Vanilla CSS + CSS Variables (dark theme) |
+
+### MVP Phase Order
+| Phase | Deliverable | API Ready |
+|:-----:|-------------|:---------:|
+| 0 | Scaffold + Axios client + Auth store + Layout | ✅ |
+| 1 | Login page | ✅ |
+| 2 | Dashboard (daily schedule + attendance grid) | ✅ |
+| 3 | Group Detail + Attendance Grid component | ✅ |
+| 4 | Directory (Students + Parents + detail views) | ✅ |
+| 5 | Enrollments page | ✅ |
+| 6 | Finance & Receipts page | ✅ |
+
+### Key Architecture Notes for Frontend Agent
+- **Auth Flow:** `POST /api/v1/auth/login` → store `access_token` in Zustand. Axios interceptor auto-injects `Authorization: Bearer <token>`. On 401 → logout + redirect to `/login`.
+- **Daily Schedule:** `GET /api/v1/academics/sessions/daily-schedule?day=Saturday` — day name (English, e.g. `Saturday`) not a date.
+- **Attendance Grid:** Must use local in-memory state map. **No API call per cell click.** Only fire on "Save All" button — one `POST` per session column with changes.
+- **Balance badges:** Fetch `GET /finance/balance/student/{id}` to show 🟢/🔴 debt status on attendance grid rows.
+- **PDF download:** `GET /finance/receipts/{id}/pdf` returns `application/pdf` with `Content-Disposition: attachment`.
+- **CORS:** Backend configured for `localhost:5173` (Vite default). Use Vite proxy in dev.
+- **Role check:** Only 2 roles: `admin`, `system_admin`. All pages require auth. No instructor/receptionist routes exist.
