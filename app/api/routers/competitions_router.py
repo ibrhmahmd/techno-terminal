@@ -15,7 +15,7 @@ from app.api.schemas.common import ApiResponse
 from app.api.dependencies import require_any, require_admin, get_competition_service, get_team_service
 from app.modules.auth import User
 from app.modules.competitions import CompetitionService, CompetitionDTO
-from app.modules.competitions.team_service import TeamService
+from app.modules.competitions.services.team_service import TeamService
 
 # Import actual schemas
 from app.modules.competitions.schemas.competition_schemas import (

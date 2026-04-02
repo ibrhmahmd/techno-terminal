@@ -41,7 +41,7 @@
 | B1 | **Competition Fees** — Link team registration to Finance Desk; snapshot `member_share` at registration; charge per category/edition (P9) | 13 | ✅ |
 | B2 | **Financial Desk — Student Search** (U2/B3) — Search by student, parent total (P5), debt-only toggle (P7) | 5 | ✅ |
 | B3 | **Overpayment Warning** (U9/P8) — Confirm step before credit-creating payment | 3 | ✅ |
-| B4 | **PDF Export Enhancement** — Logo, multi-signature blocks, further layout refinement | 2 | ⬜ |
+| B4 | **PDF Export Enhancement** — Logo, multi-signature blocks, further layout refinement | 2 | ✅ |
 
 ---
 

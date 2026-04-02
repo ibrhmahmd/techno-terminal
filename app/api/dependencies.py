@@ -170,7 +170,7 @@ def get_finance_module():
 # ── Additional Service Factories (Standardizing DI pattern) ─────────────────────
 
 # Attendance service
-from app.modules.attendance.attendance_service import AttendanceService
+from app.modules.attendance.services.attendance_service import AttendanceService
 
 def get_attendance_service() -> AttendanceService:
     """Returns a fresh AttendanceService instance per request."""
@@ -178,8 +178,8 @@ def get_attendance_service() -> AttendanceService:
 
 
 # Competition services
-from app.modules.competitions.competition_service import CompetitionService
-from app.modules.competitions.team_service import TeamService
+from app.modules.competitions.services.competition_service import CompetitionService
+from app.modules.competitions.services.team_service import TeamService
 
 def get_competition_service() -> CompetitionService:
     """Returns a fresh CompetitionService instance per request."""

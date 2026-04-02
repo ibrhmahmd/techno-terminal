@@ -3,6 +3,8 @@ FastAPI exceptions handler mappings.
 """
 from fastapi import Request, HTTPException
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.shared.exceptions import (
     NotFoundError,
     ValidationError,
@@ -24,6 +26,23 @@ def register_exception_handlers(app):
         return JSONResponse(
             status_code=422,
             content={"success": False, "error": "ValidationError", "message": exc.message},
+        )
+
+    @app.exception_handler(RequestValidationError)
+    async def pydantic_validation_handler(request: Request, exc: RequestValidationError):
+        """
+        Handle Pydantic validation errors with standardized format.
+        """
+        errors = exc.errors()
+        message = "; ".join([f"{e['loc']}: {e['msg']}" for e in errors[:3]])
+        return JSONResponse(
+            status_code=422,
+            content={
+                "success": False,
+                "error": "ValidationError",
+                "message": message,
+                "details": errors
+            },
         )
 
     @app.exception_handler(BusinessRuleError)
@@ -48,8 +67,8 @@ def register_exception_handlers(app):
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    @app.exception_handler(HTTPException)
-    async def http_exception_handler(request: Request, exc: HTTPException):
+    @app.exception_handler(StarletteHTTPException)
+    async def http_exception_handler(request: Request, exc: StarletteHTTPException):
         """
         Converts FastAPI HTTPException to standard ErrorResponse envelope.
         Preserves status code while unifying response format.
@@ -59,6 +78,7 @@ def register_exception_handlers(app):
             401: "Unauthorized",
             403: "Forbidden",
             404: "NotFound",
+            405: "MethodNotAllowed",
             409: "Conflict",
             422: "ValidationError",
             500: "InternalServerError",

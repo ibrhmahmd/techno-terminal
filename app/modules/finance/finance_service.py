@@ -401,3 +401,39 @@ def get_unpaid_competition_fees(student_id: int) -> list[dict]:
                 "student_id": tm.student_id,
             })
         return result
+
+
+def generate_receipt_pdf(receipt_id: int) -> bytes:
+    """
+    Generates a PDF for a receipt, fetching the parent name and line items.
+    """
+    from app.modules.finance.receipt_pdf import build_receipt_pdf
+    from app.modules.crm.models import Parent, Student
+    
+    with get_session() as db:
+        data = repo.get_receipt_with_lines(db, receipt_id)
+        if not data:
+            raise NotFoundError(f"Receipt {receipt_id} not found.")
+        
+        receipt = data["receipt"]
+        lines = data["lines"]
+        total = repo.get_receipt_total(db, receipt_id)
+        
+        # Try to find a parent name from the lines (assuming one parent per receipt typically)
+        parent_name = "N/A"
+        if lines:
+            first_student_id = lines[0].student_id
+            student = db.get(Student, first_student_id)
+            if student and student.parent_id:
+                parent = db.get(Parent, student.parent_id)
+                if parent:
+                    parent_name = parent.full_name
+        
+        # Build the PDF bytes
+        pdf_bytes = build_receipt_pdf(
+            receipt=receipt,
+            lines=lines,
+            total=total,
+            parent_name=parent_name
+        )
+        return pdf_bytes

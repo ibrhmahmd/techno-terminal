@@ -58,6 +58,9 @@ def get_student(
     svc: StudentService = Depends(get_student_service),
 ):
     student = svc.get_student_by_id(student_id)
+    if student is None:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Student not found")
     return ApiResponse(data=StudentPublic.model_validate(student))
 
 

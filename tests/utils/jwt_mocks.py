@@ -3,7 +3,7 @@ Mock Supabase JWT generation for tests.
 Uses HS256 with a test secret (never use in production).
 """
 import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 TEST_SECRET = "test-secret-for-local-testing-only-never-use-in-prod"
@@ -37,7 +37,7 @@ def generate_mock_supabase_token(
     Returns:
         Valid JWT token string
     """
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     payload = {
         "sub": user_id,
         "role": "authenticated",
@@ -65,7 +65,7 @@ def decode_mock_token(token: str) -> dict:
 
 def generate_expired_token(user_id: str, role: str, email: str) -> str:
     """Generate an expired token for testing 401 responses."""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     payload = {
         "sub": user_id,
         "role": "authenticated",

@@ -196,3 +196,40 @@ def preview_overpayment_risk(
     """
     risk_rows = finance.preview_overpayment_risk(lines=body.lines)
     return ApiResponse(data=[OverpaymentRiskItem.model_validate(r) for r in risk_rows])
+
+
+from fastapi.responses import Response
+from fastapi import HTTPException
+
+@router.get(
+    "/finance/receipts/{receipt_id}/pdf",
+    summary="Download PDF receipt",
+    response_class=Response,
+    responses={
+        200: {
+            "content": {"application/pdf": {}},
+            "description": "Returns the PDF document",
+        }
+    }
+)
+def download_receipt_pdf(
+    receipt_id: int,
+    _user: User = Depends(require_any),
+    finance=Depends(get_finance_module),
+):
+    """
+    Generate a branded PDF receipt with optional logo and signatures.
+    """
+    receipt = finance.get_receipt_detail(receipt_id)
+    if not receipt:
+        raise HTTPException(status_code=404, detail="Receipt not found")
+
+    pdf_bytes = finance.generate_receipt_pdf(receipt_id)
+    
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="receipt_{receipt.receipt_number or receipt_id}.pdf"'
+        }
+    )

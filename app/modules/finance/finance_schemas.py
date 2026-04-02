@@ -65,3 +65,19 @@ class IssueRefundInput(BaseModel):
     def amount_positive(cls, v: float) -> float:
         validate_positive_amount(v, field="refund amount")
         return v
+
+
+class UnpaidCompFeeItem(BaseModel):
+    """
+    Output DTO for unpaid competition fee records.
+    Used by Financial Desk to render checkbox payment lines.
+    """
+    team_member_id: int      # FK to mark fee paid
+    team_id: int
+    team_name: str
+    competition_name: str
+    category_name: str
+    member_share: float      # Snapshotted amount at registration
+    student_id: int
+
+    model_config = {"from_attributes": True}
