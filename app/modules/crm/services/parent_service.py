@@ -82,3 +82,8 @@ class ParentService:
         """Return a paginated list of all parents."""
         with get_session() as session:
             return list(repo.get_all_parents(session, skip, limit))
+
+    def count_parents(self) -> int:
+        """Returns total count of parents for pagination."""
+        with get_session() as session:
+            return repo.count_parents(session)

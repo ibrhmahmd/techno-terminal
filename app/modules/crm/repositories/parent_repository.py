@@ -34,3 +34,9 @@ def search_parents(session: Session, query: str) -> Sequence[Parent]:
         .limit(50)
     )
     return session.exec(stmt).all()
+
+
+def count_parents(session: Session) -> int:
+    """Returns total count of parents for pagination."""
+    stmt = select(Parent)
+    return len(session.exec(stmt).all())

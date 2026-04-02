@@ -1,7 +1,7 @@
 # Techno Terminal — Memory Bank
 >
 > **Purpose:** Complete architectural and code-level reference for AI agent handoff.  
-> **Last updated:** 2026-03-21  
+> **Last updated:** 2026-04-02  
 > **Schema version:** v3.3 (15 tables, 5 views) — see `db/schema.sql` header  
 > **Framework:** Streamlit + FastAPI + SQLModel + PostgreSQL + Supabase Auth  
 
@@ -23,11 +23,25 @@
 **Transports (dual path):**
 
 - **Streamlit** (`app/ui/`) is the primary internal UI. Pages call **`app/modules/*/service.py` directly** (same process, no HTTP to self for domain data).
-- **FastAPI** (`app/api/`) exposes a growing **REST API** (JSON). It reuses the same services and `get_session`-backed repositories. **Phase 5.1 (scaffold + auth) is in place:** `GET /api/v1/auth/me`, `GET /health`, global exception handlers, `get_db`. **Domain routers** (CRM, academics, finance, …) are **not mounted** yet — see [phase5_api_execution_roadmap_2026.md](planning/phase5_api_execution_roadmap_2026.md) for the ordered rollout. Streamlit stores `access_token` in session state after Supabase login for **Bearer** API calls.
+- **FastAPI (API) Snapshot** (`app/api/`):
+  - **Router Structure:** Split packages for `analytics/`, `academics/`, `crm/` domains (no monolithic routers)
+  - **DTOs:** All responses typed with Pydantic (no `list[dict]` or `Any`)
+  - **DI Pattern:** All services available via `Depends()` factories in `dependencies.py`
+  - **Error Handling:** Standardized `ErrorResponse` envelope via custom + HTTPException handlers
+  - **Auth:** Supabase JWT verification with role-based access (require_admin, require_any)
+  - **Phase 5.2–5.5:** CRM, academics, transactions, analytics routers fully implemented
 
 **Authentication:** End-user credentials are verified by **Supabase** (`sign_in_with_password` in Streamlit; JWT verification via Supabase SDK in FastAPI). Local Postgres `users` rows map identities with `supabase_uid`. After successful Streamlit login, **`update_last_login`** updates `users.last_login` (explicit `session.commit()` in service; `get_session()` also commits on exit).
 
-**Current Status (End of March 2026):**
+**Current Status (April 2026):**
+
+- **API Code Review Complete:** All Medium-Term fixes implemented including router splitting, DTO-ification, and standardized DI patterns.
+- **Router Restructure:** Monolithic routers split into domain packages (`analytics/`, `academics/`, `crm/`) for better maintainability.
+- **New Endpoints:** 14 analytics endpoints, 4 HR CRUD endpoints, and finance overpayment preview added.
+- **Typed DTOs:** All API responses now use proper Pydantic DTOs (no more `list[dict]` or `Any`).
+- **Dependency Injection:** All services accessible via `Depends()` factories in `dependencies.py`.
+
+**Previous Status (End of March 2026):**
 
 - **Streamlit Stabilization Complete:** All UI crashes caused by the deep-SOLID architecture (Pydantic DTO strictness, Service facades) have been patched.
 - **Pivot:** API scaffolding (Day 2 of Delivery Plan) is temporarily paused. The project is currently entering a new structural sprint to decouple the Student-Parent relationship, shift financial tracking directly to the Student entity, handle automatic level progression, and handle session cancellations with cascading numbering.
@@ -73,10 +87,37 @@ project_root/
     │   └── supabase_clients.py   # get_supabase_anon(), get_supabase_admin() (lazy; admin needs service role)
     ├── api/
     │   ├── main.py               # FastAPI app factory, CORS, router mounts
-    │   ├── dependencies.py       # get_db, get_current_user (HTTPBearer JWT → Supabase verify → local User)
-    │   ├── exceptions.py         # HTTP exception registration
+    │   ├── dependencies.py       # get_db, get_current_user, service factories (DI)
+    │   ├── exceptions.py         # HTTP exception handlers (standardized ErrorResponse)
+    │   ├── schemas/              # Pydantic DTOs for API request/response
+    │   │   ├── common.py         # ApiResponse, PaginatedResponse, ErrorResponse
+    │   │   ├── hr/               # EmployeePublic, StaffAccountPublic, AttendanceLogInput/Output
+    │   │   ├── crm/              # StudentPublic, ParentPublic, etc.
+    │   │   ├── academics/        # CoursePublic, GroupPublic, SessionPublic
+    │   │   ├── finance/          # ReceiptPublic, FinancialSummaryPublic
+    │   │   └── analytics/          # DashboardSummaryPublic
     │   └── routers/
-    │       └── auth.py           # e.g. GET /me (Bearer JWT)
+    │       ├── auth.py           # GET /me (Bearer JWT)
+    │       ├── analytics/        # Split package: academic, financial, competition, bi
+    │       │   ├── __init__.py   # Exports all sub-routers
+    │       │   ├── academic.py   # Dashboard, unpaid attendees, roster, heatmap
+    │       │   ├── financial.py  # Revenue by date/method, outstanding, top debtors
+    │       │   ├── competition.py # Fee summary
+    │       │   └── bi.py         # Trends, retention, performance, funnel, risk
+    │       ├── academics/        # Split package: courses, groups, sessions
+    │       │   ├── __init__.py
+    │       │   ├── courses.py    # Course CRUD
+    │       │   ├── groups.py     # Group CRUD + sessions by group
+    │       │   └── sessions.py   # Session management
+    │       ├── crm/              # Split package: students, parents
+    │       │   ├── __init__.py
+    │       │   ├── students.py   # Student CRUD + search + parents
+    │       │   └── parents.py    # Parent CRUD + search
+    │       ├── attendance_router.py
+    │       ├── enrollments_router.py
+    │       ├── finance_router.py
+    │       ├── competitions_router.py
+    │       └── hr_router.py      # Employee CRUD + staff accounts + attendance stub
     ├── db/
     │   ├── connection.py         # SQLModel engine + get_session() context manager
     │   ├── seed.py               # Supabase-linked admin seed (needs service role)
@@ -97,7 +138,7 @@ project_root/
     │   ├── datetime_utils.py     # utc_now, utc_now_iso, date_at_utc_midnight (UTC consistency)
     │   ├── audit_utils.py        # apply_create_audit / apply_update_audit (D4 created_at / updated_at / created_by)
     │   ├── validators.py
-    │   └── exceptions.py
+    │   └── exceptions.py         # NotFoundError, ValidationError, ConflictError, AuthError
     └── ui/
         ├── main.py               # Sidebar page_link entries + auth guard
         ├── state.py              # Session state helpers; `get_current_user_id()` → local `users.id` for audit columns
@@ -516,6 +557,7 @@ alembic stamp 001_baseline_v33
 | 7 | FastAPI scaffold, Supabase JWT deps, `run_api`, auth `/me`, HR + staff UI, Directory consolidation |
 | 8 | Auth hardening: `UserRole`, `UserPublic`, `HTTPBearer`, lazy Supabase clients; schema v3.3; JSONB metadata on models; `db/migrations/002`, Alembic baseline; employee UI wired to services |
 | 9 | Sprint 3 (D4): `audit_utils`, migration `005` + schema audit defaults/triggers; CRM/enrollment/UI actor threading; `CourseSession` DATE/TIMESTAMPTZ ORM alignment; academics update DTOs + `apply_update_audit`; `state.get_current_user_id()` |
+| 10 | **API Code Review Fixes:** Router splitting (analytics/academics/crm), 14 new analytics endpoints, HR CRUD endpoints, DTO-ification, standardized DI patterns, HTTPException handler |
 
 **Completed plan write-ups:** `docs/archive/legacy_plans/` ([README](archive/legacy_plans/README.md)) — memory-bank refresh summary, auth/DB alignment task list.
 
