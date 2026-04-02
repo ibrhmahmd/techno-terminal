@@ -7,10 +7,10 @@ These are intentionally separate from the domain schemas in
 app/modules/crm/schemas/ — they define what API consumers see,
 not what services accept internally.
 """
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class StudentPublic(BaseModel):
@@ -28,6 +28,14 @@ class StudentPublic(BaseModel):
     notes: Optional[str] = None
 
     model_config = {"from_attributes": True}
+
+    @field_validator("date_of_birth", mode="before")
+    @classmethod
+    def convert_datetime_to_date(cls, v):
+        """Convert datetime to date if needed (handles DB datetime fields)."""
+        if isinstance(v, datetime):
+            return v.date()
+        return v
 
 
 class StudentListItem(BaseModel):
