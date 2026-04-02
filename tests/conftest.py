@@ -31,8 +31,7 @@ def admin_token():
     Note: Token expires after ~1 hour. Regenerate with script when needed.
     """
     # Real token from scripts/get_test_jwt.py
-    return "eyJhbGciOiJFUzI1NiIsImtpZCI6IjRmN2U4ODliLWNkNWItNDZlOS1hZDc1LWI4ZDMyY2I3YzI4NCIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL3NyYnBwa2N2cmdpb25laXRrdGRqLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiI2YzY5OWEwOS0zNTViLTQyY2UtOGE5YS1iNmJmODNlZDhhMDMiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzc1MTE1MDg5LCJpYXQiOjE3NzUxMTE0ODksImVtYWlsIjoibXJzLnNoaW1hYUBzeXN0ZW0ubG9jYWwiLCJwaG9uZSI6IiIsImFwcF9tZXRhZGF0YSI6eyJwcm92aWRlciI6ImVtYWlsIiwicHJvdmlkZXJzIjpbImVtYWlsIl19LCJ1c2VyX21ldGFkYXRhIjp7ImVtYWlsX3ZlcmlmaWVkIjp0cnVlfSwicm9sZSI6ImF1dGhlbnRpY2F0ZWQiLCJhYWwiOiJhYWwxIiwiYW1yIjpbeyJtZXRob2QiOiJwYXNzd29yZCIsInRpbWVzdGFtcCI6MTc3NTExMTQ4OX1dLCJzZXNzaW9uX2lkIjoiY2MyMTc2MjAtZTlhYi00YjM5LTg4YzQtMjMzOWM0ZWMzZGQwIiwiaXNfYW5vbnltb3VzIjpmYWxzZX0.046QiqwS9C0GkaLUfCp9-WAIRarilZ5jvnAA8zJVZm3-qZszwdeKtuc-V5LijcaFPEr0MTF7pMUsNZiVI-eeEw"
-
+    return "eyJhbGciOiJFUzI1NiIsImtpZCI6IjRmN2U4ODliLWNkNWItNDZlOS1hZDc1LWI4ZDMyY2I3YzI4NCIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL3NyYnBwa2N2cmdpb25laXRrdGRqLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiI2YzY5OWEwOS0zNTViLTQyY2UtOGE5YS1iNmJmODNlZDhhMDMiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzc1MTI1NDU1LCJpYXQiOjE3NzUxMjE4NTUsImVtYWlsIjoibXJzLnNoaW1hYUBzeXN0ZW0ubG9jYWwiLCJwaG9uZSI6IiIsImFwcF9tZXRhZGF0YSI6eyJwcm92aWRlciI6ImVtYWlsIiwicHJvdmlkZXJzIjpbImVtYWlsIl19LCJ1c2VyX21ldGFkYXRhIjp7ImVtYWlsX3ZlcmlmaWVkIjp0cnVlfSwicm9sZSI6ImF1dGhlbnRpY2F0ZWQiLCJhYWwiOiJhYWwxIiwiYW1yIjpbeyJtZXRob2QiOiJwYXNzd29yZCIsInRpbWVzdGFtcCI6MTc3NTEyMTg1NX1dLCJzZXNzaW9uX2lkIjoiNDRhOWYwYzYtZDQ0Mi00OTBjLWExNmMtYzFhMmFkOGIwZWJhIiwiaXNfYW5vbnltb3VzIjpmYWxzZX0.-JbqRXaueeu_aPWHTr1MZ2aIi3oYnZ-UWEDATFoPu-n0h6L5BIq35va5ZdhNetS8qEjjCi_xzlUKqJ7yhbLyjw"
 
 @pytest.fixture
 def system_admin_token():
@@ -63,9 +62,8 @@ def db_session():
     Uses transaction rollback for test isolation.
     """
     from app.db.connection import get_session
-    session = get_session()
-    try:
+    
+    with get_session() as session:
         yield session
-        session.rollback()  # Clean up test data
-    finally:
-        session.close()
+        # Rollback happens automatically on exception
+        # Or we can explicitly rollback here for cleanup
