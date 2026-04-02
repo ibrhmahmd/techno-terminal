@@ -6,7 +6,9 @@ Public-facing CourseSession DTOs.
 from datetime import date
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+from app.shared.datetime_utils import time_to_str
 
 
 class SessionPublic(BaseModel):
@@ -28,6 +30,11 @@ class SessionPublic(BaseModel):
 
     model_config = {"from_attributes": True}
 
+    @field_validator("start_time", "end_time", mode="before")
+    @classmethod
+    def parse_time(cls, value):
+        return time_to_str(value)
+
 
 class DailyScheduleItem(BaseModel):
     session_id: int
@@ -44,3 +51,8 @@ class DailyScheduleItem(BaseModel):
     enrolled_count: int = 0
     
     model_config = {"from_attributes": True}
+
+    @field_validator("time_start", "time_end", mode="before")
+    @classmethod
+    def parse_time(cls, value):
+        return time_to_str(value)

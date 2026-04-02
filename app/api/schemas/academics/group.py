@@ -5,7 +5,9 @@ Public-facing Group DTOs.
 """
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+from app.shared.datetime_utils import time_to_str
 
 
 class GroupPublic(BaseModel):
@@ -26,6 +28,11 @@ class GroupPublic(BaseModel):
 
     model_config = {"from_attributes": True}
 
+    @field_validator("default_time_start", "default_time_end", mode="before")
+    @classmethod
+    def parse_time(cls, value):
+        return time_to_str(value)
+
 
 class GroupListItem(BaseModel):
     """
@@ -41,3 +48,8 @@ class GroupListItem(BaseModel):
     is_active: bool = True
 
     model_config = {"from_attributes": True}
+
+    @field_validator("default_time_start", mode="before")
+    @classmethod
+    def parse_time(cls, value):
+        return time_to_str(value)
