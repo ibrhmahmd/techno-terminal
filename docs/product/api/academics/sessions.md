@@ -203,8 +203,52 @@ Errors:
 - `401`, `403`, `404`, `422`
 
 Notes:
-- Marks session as cancelled.
-- Re-numbers remaining sessions and appends a replacement tail session.
+- Marks session as "cancelled".
+- Updates all attendance records for this session to "cancelled" status.
+- Re-numbers remaining sessions (shifts future sessions down by 1).
+- Appends a replacement tail session (+7 days from last session).
+- Session number is set to 0 (detached from ordering).
+
+### 8) Reactivate a cancelled session
+**POST** `/api/v1/academics/sessions/{session_id}/reactivate`  
+Auth: `require_admin`
+
+Path params:
+- `session_id` (integer, required)
+
+Response:
+- `200 OK` -> `ApiResponse<SessionPublic>`
+
+Errors:
+- `401`, `403`, `404`, `400` (if session is not cancelled)
+
+Notes:
+- Restores a previously cancelled session to "scheduled" status.
+- Removes the replacement session that was created during cancellation.
+- Restores session numbering (shifts future sessions up by 1).
+- Restores attendance records to "present" status.
+- Returns error if session is not in "cancelled" status.
+
+Example success response:
+```json
+{
+  "success": true,
+  "data": {
+    "id": 501,
+    "group_id": 10,
+    "level_number": 1,
+    "session_number": 2,
+    "session_date": "2026-04-11",
+    "start_time": "14:00:00",
+    "end_time": "16:00:00",
+    "status": "scheduled",
+    "is_extra_session": false,
+    "actual_instructor_id": 7,
+    "notes": null
+  },
+  "message": "Session reactivated successfully."
+}
+```
 
 ### 7) Mark substitute instructor
 **POST** `/api/v1/academics/sessions/{session_id}/substitute`  
@@ -226,5 +270,5 @@ Errors:
 
 ## Router Notes
 
-- This router exposes **7 endpoint signatures**.
+- This router exposes **8 endpoint signatures**.
 - `SubstituteInstructorRequest` uses `instructor_id` (not `substitute_instructor_id`).

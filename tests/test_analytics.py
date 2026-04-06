@@ -3,6 +3,16 @@ tests/test_analytics.py
 ────────────────────────
 Analytics endpoint tests — Phase 10.
 
+⚠️ DEPRECATED: These tests are being migrated to specialized test files:
+- test_analytics_academic.py - Academic analytics (6 endpoints)
+- test_analytics_bi.py - BI analytics (9 endpoints)  
+- test_analytics_financial.py - Financial analytics (6 endpoints)
+- test_analytics_competition.py - Competition analytics (1 endpoint)
+- test_analytics_dashboard.py - Dashboard summary
+
+Please use the new test files for comprehensive analytics testing.
+This file is kept for backward compatibility during transition.
+
 Covers all analytics endpoints:
 - Academic Analytics (3 endpoints)
 - BI Analytics (7 endpoints)

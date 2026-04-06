@@ -48,5 +48,8 @@ class StudentListItem(BaseModel):
     full_name: str
     phone: Optional[str] = None
     is_active: bool
+    notes: Optional[str] = None
+    current_group_id: Optional[int] = None 
+    current_group_name: Optional[str] = None
 
     model_config = {"from_attributes": True}

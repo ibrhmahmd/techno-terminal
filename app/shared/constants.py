@@ -33,13 +33,16 @@ EnrollmentStatus: TypeAlias = Literal[
 
 # ── Attendance ────────────────────────────────────────────────────────────────
 
-AttendanceStatus: TypeAlias = Literal["present", "absent", "late", "excused"]
-ATTENDANCE_STATUSES: list[AttendanceStatus] = ["present", "absent", "late", "excused"]
+AttendanceStatus: TypeAlias = Literal["present", "absent", "late", "excused", "cancelled"]
+ATTENDANCE_STATUSES: list[AttendanceStatus] = ["present", "absent", "late", "excused", "cancelled"]
 
 # ── Academics ─────────────────────────────────────────────────────────────────
 
 GroupStatus: TypeAlias = Literal["active", "inactive", "completed"]
 GROUP_STATUSES: list[GroupStatus] = ["active", "inactive", "completed"]
+
+# Default number of sessions per group level
+DEFAULT_SESSIONS_PER_LEVEL: int = 5
 
 # ── HR / Employees ────────────────────────────────────────────────────────────
 

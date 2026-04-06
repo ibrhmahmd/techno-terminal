@@ -59,12 +59,16 @@ class Student(StudentBase, table=True):
     waiting_since: Optional[datetime] = None
     waiting_priority: Optional[int] = None
     waiting_notes: Optional[str] = None
-    parent_links: List["StudentParent"] = Relationship(back_populates="student")
+    parent_links: List["StudentParent"] = Relationship(
+        back_populates="student",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
 
 
 class StudentCreate(StudentBase):
     """DTO for creating a student via bulk/seed operations."""
     pass
+
 
 
 class StudentRead(StudentBase):

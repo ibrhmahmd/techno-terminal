@@ -4,6 +4,7 @@ from .parent_repository import (
     get_parent_by_phone,
     get_all_parents,
     search_parents,
+    delete_parent
 )
 from .student_repository import (
     create_student,
@@ -35,4 +36,5 @@ __all__ = [
     "link_parent",
     "get_siblings",
     "get_students_by_parent_id",
+    "delete_parent"
 ]

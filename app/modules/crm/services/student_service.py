@@ -236,3 +236,8 @@ class StudentService:
                 import json
                 return json.loads(history) if history else []
             return history if isinstance(history, list) else []
+
+    def delete_student_by_id(self, student_id: int) -> bool:
+        """Delete a student by ID."""
+        with get_session() as session:
+            return repo.delete_student_by_id(session, student_id)

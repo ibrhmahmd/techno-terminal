@@ -30,7 +30,10 @@ class Parent(ParentBase, table=True):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
-    student_links: List["StudentParent"] = Relationship(back_populates="parent")
+    student_links: List["StudentParent"] = Relationship(
+        back_populates="parent",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
 
 
 class ParentCreate(ParentBase):

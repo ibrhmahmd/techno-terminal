@@ -1,5 +1,5 @@
 from typing import Optional, Sequence
-from sqlmodel import Session, select
+from sqlmodel import Session, select, delete
 from datetime import datetime
 import json
 
@@ -154,12 +154,18 @@ def update_student_status(
     
     old_status = student.status
     
+    # Helper to extract value from either enum or string (DB returns strings)
+    def _get_status_value(status):
+        if status is None:
+            return None
+        return status.value if hasattr(status, 'value') else str(status)
+    
     # Create audit entry
     audit_entry = {
         "timestamp": datetime.utcnow().isoformat(),
         "changed_by": user_id,
-        "old_status": old_status.value if old_status else None,
-        "new_status": new_status.value,
+        "old_status": _get_status_value(old_status),
+        "new_status": _get_status_value(new_status),
         "notes": notes
     }
     
@@ -210,3 +216,39 @@ def search_students_with_filters(
     if status:
         stmt = stmt.where(Student.status == status)
     return session.exec(stmt.limit(limit)).all()
+
+
+def delete_student_by_id(
+    session: Session,
+    student_id: int,
+) -> bool:
+    """Delete a student by ID."""
+    # Local imports to avoid circular dependency
+    from app.modules.enrollments.models.enrollment_models import Enrollment
+    from app.modules.attendance.models.attendance_models import Attendance
+    from app.modules.finance.finance_models import Payment
+    
+    student = get_student_by_id(session, student_id)
+    if not student:
+        return False
+    
+    # Get enrollment IDs for this student
+    enrollment_stmt = select(Enrollment.id).where(Enrollment.student_id == student_id)
+    enrollment_ids = list(session.scalars(enrollment_stmt))
+    
+    # Delete attendance records for these enrollments first
+    if enrollment_ids:
+        attendance_stmt = delete(Attendance).where(Attendance.enrollment_id.in_(enrollment_ids))
+        session.exec(attendance_stmt)
+        
+        # Delete payments for these enrollments
+        payments_stmt = delete(Payment).where(Payment.enrollment_id.in_(enrollment_ids))
+        session.exec(payments_stmt)
+    
+    # Delete related enrollments (FK constraint)
+    stmt = delete(Enrollment).where(Enrollment.student_id == student_id)
+    session.exec(stmt)
+    
+    session.delete(student)
+    session.flush()
+    return True

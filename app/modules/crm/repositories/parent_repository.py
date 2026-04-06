@@ -40,3 +40,12 @@ def count_parents(session: Session) -> int:
     """Returns total count of parents for pagination."""
     stmt = select(Parent)
     return len(session.exec(stmt).all())
+
+    
+def delete_parent(session: Session, parent_id: int) -> Parent | None:
+    """Deletes a parent by ID."""
+    parent = session.get(Parent, parent_id)
+    if parent:
+        session.delete(parent)
+        session.commit()
+    return parent

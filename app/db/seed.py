@@ -14,14 +14,14 @@ def seed_admin_account():
             print("Seeding default 'admin' account into Supabase Cloud...")
             try:
                 supabase_admin = get_supabase_admin()
-                admin_email = "ibrahim.ahmd.net@gmail.com"
+                admin_email = "admin.net@techno.crm"
 
                 # We attempt to create the identity natively in Supabase
                 try:
                     auth_response = supabase_admin.auth.admin.create_user(
                         {
                             "email": admin_email,
-                            "password": "admin",
+                            "password": "qwertyuiop12",
                             "email_confirm": True,
                         }
                     )
@@ -58,7 +58,9 @@ def seed_admin_account():
                 session.add(new_admin)
                 session.commit()
                 print(
-                    "✅ Default admin account securely mapped. Login with 'admin@system.local' / 'Admin123_Secure'"
+                    f"✅ Default admin account securely mapped.\n"
+                    f"   Login Email: {admin_email}\n"
+                    f"   Login Password: qwertyuiop12"
                 )
 
             except Exception as e:

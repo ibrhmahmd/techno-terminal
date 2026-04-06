@@ -15,7 +15,6 @@ class StudentStatus(str, Enum):
     ACTIVE = "active"
     WAITING = "waiting"
     INACTIVE = "inactive"
-    GRADUATED = "graduated"
 
 
 class RegisterStudentDTO(BaseModel):
@@ -43,7 +42,7 @@ class UpdateStudentDTO(BaseModel):
     phone: Optional[str] = None
     notes: Optional[str] = None
     is_active: Optional[bool] = None  # Deprecated but kept for compatibility
-    status: Optional[str] = None  # NEW
+    status: Optional[StudentStatus] = None  # Strict enum validation
 
 
 # NEW DTO for status updates

@@ -28,15 +28,19 @@ Type: `Literal["present", "absent", "late", "excused"]`
 ### MarkAttendanceRequest
 ```json
 {
-  "session_id": "integer (required)",
-  "student_statuses": {
-    "1": "present",
-    "2": "absent",
-    "3": "late"
-  },
-  "marked_by_user_id": "integer (optional)"
+  "entries": [
+    { "student_id": 1, "status": "present" },
+    { "student_id": 2, "status": "absent" },
+    { "student_id": 3, "status": "late" }
+  ]
 }
 ```
+
+**Validation Rules:**
+- `entries`: Required, minimum 1 item
+- `student_id`: Required, positive integer (> 0)
+- `status`: Required, must be one of: `"present"`, `"absent"`, `"late"`, `"excused"`
+- No duplicate `student_id` values allowed in the list
 
 ### MarkAttendanceResponseDTO
 ```json
@@ -99,21 +103,20 @@ Type: `Literal["present", "absent", "late", "excused"]`
 
 **Notes:**
 - Bulk attendance marking for a session
-- `student_statuses` is a dict mapping student_id → status
+- `entries` is a typed list of `{student_id, status}` objects
 - Only provided students are updated (partial update)
 - Returns count of marked records and any skipped student_ids
+- Validation enforces: positive student_ids, valid statuses, no duplicates, minimum 1 entry
 
 **Example Request:**
 ```json
 {
-  "session_id": 1,
-  "student_statuses": {
-    "1": "present",
-    "2": "absent",
-    "3": "late",
-    "4": "excused"
-  },
-  "marked_by_user_id": 1
+  "entries": [
+    { "student_id": 1, "status": "present" },
+    { "student_id": 2, "status": "absent" },
+    { "student_id": 3, "status": "late" },
+    { "student_id": 4, "status": "excused" }
+  ]
 }
 ```
 
@@ -136,23 +139,27 @@ Type: `Literal["present", "absent", "late", "excused"]`
 The attendance grid should use **local in-memory state** - not API calls per cell click:
 
 ```javascript
-// Maintain local state map
-const attendanceMap = {
-  [studentId]: status
-}
+// Maintain local state as typed array
+const attendanceEntries = [
+  { student_id: 1, status: 'present' },
+  { student_id: 2, status: 'absent' }
+]
 
 // On cell click, update local state only
 const handleCellClick = (studentId, status) => {
-  attendanceMap[studentId] = status
+  const entry = attendanceEntries.find(e => e.student_id === studentId)
+  if (entry) {
+    entry.status = status
+  } else {
+    attendanceEntries.push({ student_id: studentId, status })
+  }
   // No API call here!
 }
 
 // On "Save All" button, fire single POST
 const handleSaveAll = () => {
   const payload = {
-    session_id: currentSessionId,
-    student_statuses: attendanceMap,
-    marked_by_user_id: currentUserId
+    entries: attendanceEntries
   }
   api.post(`/attendance/session/${sessionId}/mark`, payload)
 }

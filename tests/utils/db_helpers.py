@@ -81,7 +81,7 @@ def create_test_student(
 
 def create_test_course(
     session: Session,
-    name: str = "Test Course",
+    name: str = None,  # Will generate unique name if not provided
     category: str = "software",
     price_per_level: float = 1000.0
 ):
@@ -90,7 +90,7 @@ def create_test_course(
     
     Args:
         session: Database session
-        name: Course name
+        name: Course name (auto-generated with timestamp if not provided)
         category: Course category (software, hardware, steam, other)
         price_per_level: Price per level
         
@@ -98,6 +98,11 @@ def create_test_course(
         Created Course instance
     """
     from app.modules.academics.models import Course
+    import time
+    
+    # Generate unique name if not provided
+    if name is None:
+        name = f"Test Course {int(time.time() * 1000)}"
     
     course = Course(
         name=name,
@@ -113,7 +118,7 @@ def create_test_course(
 def create_test_group(
     session: Session,
     course_id: int,
-    name: str = "Test Group",
+    name: str = None,  # Will generate unique name if not provided
     level_number: int = 1,
     status: str = "active"
 ):
@@ -123,7 +128,7 @@ def create_test_group(
     Args:
         session: Database session
         course_id: Associated course ID
-        name: Group name
+        name: Group name (auto-generated with timestamp if not provided)
         level_number: Current level number
         status: Group status (active, completed, cancelled)
         
@@ -131,6 +136,11 @@ def create_test_group(
         Created Group instance
     """
     from app.modules.academics.models import Group
+    import time
+    
+    # Generate unique name if not provided
+    if name is None:
+        name = f"Test Group {int(time.time() * 1000)}"
     
     group = Group(
         name=name,

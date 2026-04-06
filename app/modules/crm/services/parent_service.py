@@ -87,3 +87,8 @@ class ParentService:
         """Returns total count of parents for pagination."""
         with get_session() as session:
             return repo.count_parents(session)
+    
+    def delete_parent(self, parent_id: int) -> Parent | None:
+        """Deletes a parent by ID."""
+        with get_session() as session:
+            return repo.delete_parent(session, parent_id)

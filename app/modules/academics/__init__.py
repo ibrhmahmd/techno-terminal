@@ -27,6 +27,7 @@ get_all_active_groups_enriched = _group_svc.get_all_active_groups_enriched
 get_todays_groups_enriched = _group_svc.get_todays_groups_enriched
 get_group_by_id = _group_svc.get_group_by_id
 update_group = _group_svc.update_group
+delete_group_by_id = _group_svc.delete_group_by_id
 
 # Session service
 generate_level_sessions = _session_svc.generate_level_sessions
@@ -69,6 +70,7 @@ __all__ = [
     "get_todays_groups_enriched",
     "get_group_by_id",
     "update_group",
+    "delete_group_by_id",
     # Session service
     "generate_level_sessions",
     "add_extra_session",

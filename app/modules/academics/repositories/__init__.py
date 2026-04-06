@@ -29,6 +29,7 @@ from .group_repository import (
     search_groups,
     get_groups_by_type,
     get_groups_by_course,
+    delete_group_by_id,
 )
 
 
@@ -103,6 +104,7 @@ __all__ = [
     "search_groups",
     "get_groups_by_type",
     "get_groups_by_course",
+    "delete_group_by_id",
     
     # Group Levels Repository
     "list_group_levels",

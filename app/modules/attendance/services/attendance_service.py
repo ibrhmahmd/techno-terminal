@@ -6,6 +6,7 @@ from app.modules.attendance.schemas.attendance_schemas import (
     SessionAttendanceRowDTO,
     EnrollmentAttendanceSummaryDTO,
     MarkAttendanceResponseDTO,
+    StudentAttendanceItem,
 )
 from app.shared.exceptions import NotFoundError
 import app.modules.attendance.repositories.attendance_repository as repo
@@ -15,7 +16,7 @@ class AttendanceService:
     def mark_session_attendance(
         self,
         session_id: int,
-        student_statuses: dict[int, str],
+        entries: list[StudentAttendanceItem],
         marked_by_user_id: int | None = None,
     ) -> MarkAttendanceResponseDTO:
         """
@@ -32,17 +33,17 @@ class AttendanceService:
             marked = 0
             skipped = []
 
-            for student_id, status in student_statuses.items():
-                enrollment = get_active_enrollment(session, student_id, group_id)
+            for entry in entries:
+                enrollment = get_active_enrollment(session, entry.student_id, group_id)
                 if not enrollment or enrollment.level_number != level_number:
-                    skipped.append(student_id)
+                    skipped.append(entry.student_id)
                     continue
 
                 record = Attendance(
-                    student_id=student_id,
+                    student_id=entry.student_id,
                     session_id=session_id,
                     enrollment_id=enrollment.id,
-                    status=status,
+                    status=entry.status,
                     marked_by=marked_by_user_id,
                 )
                 repo.upsert_attendance(session, record)

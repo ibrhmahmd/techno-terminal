@@ -3,6 +3,8 @@ app/api/schemas/academics/group.py
 ────────────────────────────────────
 Public-facing Group DTOs.
 """
+from datetime import date
+from decimal import Decimal
 from typing import Optional
 
 from pydantic import BaseModel, field_validator
@@ -78,3 +80,24 @@ class EnrichedGroupPublic(BaseModel):
     @classmethod
     def parse_time(cls, value):
         return time_to_str(value)
+
+
+# ── Group Level Management Request Schemas ────────────────────────────────────
+
+class ScheduleGroupLevelRequest(BaseModel):
+    """
+    Request body for POST /academics/groups/{id}/schedule-level.
+    Schedule a new level for an existing group.
+    """
+    level_number: int = 1
+    instructor_id: Optional[int] = None  # Override group's default instructor
+    price_override: Optional[Decimal] = None  # None/0 uses course default price
+    start_date: Optional[date] = None  # Default: next weekday from today
+
+
+class ProgressGroupLevelRequest(BaseModel):
+    """
+    Request body for POST /academics/groups/{id}/progress-level.
+    Progress group to next level.
+    """
+    price_override: Optional[Decimal] = None  # None/0 uses course default price

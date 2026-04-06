@@ -3,7 +3,8 @@ app/modules/academics/schemas/group_schemas.py
 ───────────────────────────────────────────────
 Input DTOs and typed read models for the Group entity.
 """
-from datetime import time
+from datetime import date, time
+from decimal import Decimal
 from typing import Literal, Optional
 from pydantic import BaseModel, model_validator
 from app.modules.academics.constants import WEEKDAYS
@@ -46,6 +47,32 @@ class UpdateGroupDTO(BaseModel):
     default_time_end: Optional[time] = None
     notes: Optional[str] = None
     status: Optional[str] = None
+
+
+# ── Group Level Management DTOs ───────────────────────────────────────────────
+
+class ScheduleGroupLevelInput(BaseModel):
+    """Input for scheduling a new level for an existing group."""
+    group_id: int
+    level_number: int = 1
+    instructor_id: Optional[int] = None  # Override group's default instructor
+    price_override: Optional[Decimal] = None  # None/0 uses course default price
+    start_date: Optional[date] = None  # Default: next weekday from today
+
+
+class ProgressGroupLevelInput(BaseModel):
+    """Input for progressing a group to the next level."""
+    group_id: int
+    price_override: Optional[Decimal] = None  # None/0 uses course default price
+
+
+class ProgressGroupLevelResult(BaseModel):
+    """Result of progressing a group to the next level."""
+    old_level_number: int
+    new_level_number: int
+    enrollments_migrated: int
+    sessions_created: int
+    message: str
 
 
 # ── Typed Read Models ─────────────────────────────────────────────────────────

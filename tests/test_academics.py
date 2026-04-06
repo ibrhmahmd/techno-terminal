@@ -1,22 +1,20 @@
 """
 tests/test_academics.py
 ─────────────────────────
-Phase 7: Academics Endpoints Testing
+DEPRECATION NOTICE: This file contains basic smoke tests and auth verification.
+For comprehensive per-router testing, see the new test files:
+- test_academics_courses.py - Course CRUD operations
+- test_academics_groups.py - Group management (13 endpoints)
+- test_academics_sessions.py - Session operations (7 endpoints)
+- test_academics_lifecycle.py - Group lifecycle & analytics (12 endpoints)
+- test_academics_competitions.py - Competition integrations (7 endpoints)
 
-Covers:
-- Courses: GET /academics/courses, POST /academics/courses, PATCH /academics/courses/{id}
-- Groups: GET /academics/groups, GET /academics/groups/{id}, POST /academics/groups,
-          PATCH /academics/groups/{id}, GET /academics/groups/{id}/sessions,
-          POST /academics/groups/{id}/progress-level
-- Sessions: GET /academics/sessions/daily-schedule, POST /academics/groups/{id}/sessions,
-            GET /academics/sessions/{id}, PATCH /academics/sessions/{id},
-            DELETE /academics/sessions/{id}, POST /academics/sessions/{id}/cancel,
-            POST /academics/sessions/{id}/substitute
+This file retains:
+- Authentication requirement verification (TestAcademicsAuth)
+- Basic smoke tests for endpoint availability
+- Integration-style tests across multiple routers
 
-All tests verify:
-- Authentication requirements (any auth for reads, admin for writes)
-- Response schema compliance
-- Pagination where applicable
+Phase 7: Academics Endpoints Testing (Legacy)
 """
 import pytest
 from datetime import date, timedelta

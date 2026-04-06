@@ -281,3 +281,21 @@ def get_student_status_history(
         return ApiResponse(data=history)
     except NotFoundError:
         raise HTTPException(status_code=404, detail=f"Student {student_id} not found")
+
+
+@router.delete(
+    "/students/{student_id}",
+    response_model=ApiResponse[None],
+    summary="Delete a student by ID",
+    description="Delete a student by ID."
+)
+def delete_student_by_id(
+    student_id: int,
+    current_user: User = Depends(require_admin),
+    svc: StudentService = Depends(get_student_service),
+):
+    try:
+        svc.delete_student_by_id(student_id)
+        return ApiResponse(data=None, message="Student deleted successfully.")
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail=f"Student {student_id} not found")

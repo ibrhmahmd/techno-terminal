@@ -4,7 +4,7 @@ app/modules/academics/repositories/group_repository.py
 Repository functions for the Group entity.
 """
 from typing import Sequence
-from sqlmodel import Session, select, func
+from sqlmodel import Session, select, func, delete
 from sqlalchemy import text
 from app.modules.academics.models import Group
 from app.modules.academics.schemas import EnrichedGroupDTO
@@ -216,3 +216,63 @@ def get_groups_by_course(
     results = session.exec(results_stmt).all()
     
     return results, total
+
+def delete_group_by_id(session: Session, group_id: int) -> Group | None:
+    """Delete a group by ID. Returns the deleted group or None if not found."""
+    # Local imports to avoid circular dependency
+    from app.modules.academics.models.session_models import CourseSession
+    from app.modules.attendance.models.attendance_models import Attendance
+    from app.modules.competitions.models.team_models import Team, TeamMember
+    from app.modules.enrollments.models.enrollment_models import Enrollment
+    from app.modules.finance.finance_models import Payment
+    
+    group = session.get(Group, group_id)
+    if not group:
+        return None
+        
+    # Get enrollment IDs for this group (attendance & payments FK)
+    enrollment_stmt = select(Enrollment.id).where(Enrollment.group_id == group_id)
+    enrollment_ids = list(session.scalars(enrollment_stmt))
+    
+    if enrollment_ids:
+        # Delete attendance for these enrollments
+        attendance_stmt = delete(Attendance).where(Attendance.enrollment_id.in_(enrollment_ids))
+        session.exec(attendance_stmt)
+        
+        # Delete payments for these enrollments
+        payments_stmt = delete(Payment).where(Payment.enrollment_id.in_(enrollment_ids))
+        session.exec(payments_stmt)
+        
+        # Delete enrollments (FK to groups)
+        enrollment_delete_stmt = delete(Enrollment).where(Enrollment.group_id == group_id)
+        session.exec(enrollment_delete_stmt)
+    
+    # Get session IDs for this group
+    session_stmt = select(CourseSession.id).where(CourseSession.group_id == group_id)
+    session_ids = list(session.scalars(session_stmt))
+    
+    # Delete attendance records for these sessions (FK to sessions)
+    if session_ids:
+        session_attendance_stmt = delete(Attendance).where(Attendance.session_id.in_(session_ids))
+        session.exec(session_attendance_stmt)
+    
+    # Delete related sessions (FK constraint)
+    stmt = delete(CourseSession).where(CourseSession.group_id == group_id)
+    session.exec(stmt)
+    
+    # Get team IDs for this group
+    team_stmt = select(Team.id).where(Team.group_id == group_id)
+    team_ids = list(session.scalars(team_stmt))
+    
+    # Delete team_members for these teams first
+    if team_ids:
+        team_member_stmt = delete(TeamMember).where(TeamMember.team_id.in_(team_ids))
+        session.exec(team_member_stmt)
+        
+        # Delete teams for this group
+        team_stmt = delete(Team).where(Team.group_id == group_id)
+        session.exec(team_stmt)
+    
+    session.delete(group)
+    session.commit()
+    return group

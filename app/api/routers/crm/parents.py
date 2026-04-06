@@ -94,3 +94,22 @@ def update_parent(
 ):
     parent = svc.update_parent(parent_id, body)
     return ApiResponse(data=ParentPublic.model_validate(parent))
+
+
+@router.delete(
+    "/parents/{parent_id}",
+    response_model=ApiResponse[ParentPublic],
+    summary="Delete parent by ID",
+)
+def delete_parent(
+    parent_id: int,
+    _user: User = Depends(require_admin),
+    svc: ParentService = Depends(get_parent_service),
+):
+    parent = svc.delete_parent(parent_id)
+    if parent is None:
+        raise NotFoundError("Parent not found")
+    return ApiResponse(
+        data=ParentPublic.model_validate(parent),
+        message="Parent deleted successfully.",
+    )

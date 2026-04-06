@@ -123,6 +123,28 @@ def cancel_session(
     )
 
 
+# reactivate a cancelled session
+@router.post(
+    "/academics/sessions/{session_id}/reactivate",
+    response_model=ApiResponse[SessionPublic],
+    summary="Reactivate a cancelled session",
+)
+def reactivate_session(
+    session_id: int,
+    _user: User = Depends(require_admin),
+    svc: SessionService = Depends(get_session_service),
+):
+    """
+    Reactivate a previously cancelled session.
+    Restores the session to scheduled status and removes the replacement session.
+    """
+    session = svc.reactivate_session(session_id)
+    return ApiResponse(
+        data=SessionPublic.model_validate(session),
+        message="Session reactivated successfully."
+    )
+
+
 class SubstituteInstructorRequest(BaseModel):
     instructor_id: int
 

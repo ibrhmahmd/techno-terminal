@@ -15,6 +15,8 @@ from app.api.schemas.academics.group import (
     GroupPublic,
     GroupListItem,
     EnrichedGroupPublic,
+    ScheduleGroupLevelRequest,
+    ProgressGroupLevelRequest,
 )
 from app.api.schemas.academics.session import (
     SessionPublic,
@@ -26,7 +28,7 @@ from app.api.dependencies import (
     get_group_service,
     get_session_service,
 )
-from app.modules.academics.schemas import ScheduleGroupInput, UpdateGroupDTO
+from app.modules.academics.schemas import ScheduleGroupInput, UpdateGroupDTO, ProgressGroupLevelResult
 from app.modules.auth import User
 from app.modules.academics.services.group_service import GroupService
 from app.modules.academics.services.session_service import SessionService
@@ -163,21 +165,76 @@ def list_group_sessions(
     return ApiResponse(data=[SessionPublic.model_validate(s) for s in sessions])
 
 
-# progress group to the next level
+# schedule group level
+@router.post(
+    "/academics/groups/{group_id}/schedule-level",
+    response_model=ApiResponse[dict],
+    status_code=201,
+    summary="Schedule a new level for an existing group",
+)
+def schedule_group_level(
+    group_id: int,
+    body: ScheduleGroupLevelRequest,
+    _user: User = Depends(require_admin),
+    svc: GroupService = Depends(get_group_service),
+):
+    """
+    Schedule a new level for an existing group.
+    Creates GroupLevel record and generates 5 sessions.
+    """
+    from app.modules.academics.schemas import ScheduleGroupLevelInput
+
+    data = ScheduleGroupLevelInput(
+        group_id=group_id,
+        level_number=body.level_number,
+        instructor_id=body.instructor_id,
+        price_override=body.price_override,
+        start_date=body.start_date,
+    )
+
+    level, sessions = svc.schedule_group_level(data)
+
+    return ApiResponse(
+        data={
+            "level_id": level.id,
+            "level_number": level.level_number,
+            "group_id": level.group_id,
+            "sessions_created": len(sessions),
+            "sessions": [{"id": s.id, "session_number": s.session_number, "date": s.session_date.isoformat()} for s in sessions],
+        },
+        message=f"Level {level.level_number} scheduled for group {group_id} with {len(sessions)} sessions.",
+    )
+
+
+# progress group level
 @router.post(
     "/academics/groups/{group_id}/progress-level",
-    response_model=ApiResponse[GroupPublic],
-    summary="Progress group to the next level",
+    response_model=ApiResponse[ProgressGroupLevelResult],
+    status_code=200,
+    summary="Progress group to next level",
 )
 def progress_group_level(
     group_id: int,
+    body: ProgressGroupLevelRequest,
     _user: User = Depends(require_admin),
-    svc: SessionService = Depends(get_session_service),
+    svc: GroupService = Depends(get_group_service),
 ):
-    group = svc.progress_group_level(group_id)
+    """
+    Progress a group to the next level.
+    Completes current level, creates new level, migrates enrollments.
+    """
+    from app.modules.academics.schemas import ProgressGroupLevelInput
+
+    data = ProgressGroupLevelInput(
+        group_id=group_id,
+        price_override=body.price_override,
+    )
+
+    result = svc.progress_group_level(data)
+
     return ApiResponse(
-        data=GroupPublic.model_validate(group),
-        message=f"Group progressed to level {group.level_number} successfully.",
+        data=result,
+        message=result.message,
     )
 
 
@@ -195,7 +252,7 @@ def delete_group(
     svc: GroupService = Depends(get_group_service),
 ):
 
-    group = svc.delete_group(group_id)
+    group = svc.delete_group_by_id(group_id)
 
     if not group:
         raise HTTPException(status_code=404, detail=f"Group {group_id} not found")
@@ -203,6 +260,83 @@ def delete_group(
     return ApiResponse(
         data=GroupPublic.model_validate(group),
         message="Group archived successfully.",
+    )
+
+
+# schedule group level
+
+
+@router.post(
+    "/academics/groups/{group_id}/schedule-level",
+    response_model=ApiResponse[dict],
+    status_code=201,
+    summary="Schedule a new level for an existing group",
+)
+def schedule_group_level(
+    group_id: int,
+    body: ScheduleGroupLevelRequest,
+    _user: User = Depends(require_admin),
+    svc: GroupService = Depends(get_group_service),
+):
+    """
+    Schedule a new level for an existing group.
+    Creates GroupLevel record and generates 5 sessions.
+    """
+    from app.modules.academics.schemas import ScheduleGroupLevelInput
+
+    data = ScheduleGroupLevelInput(
+        group_id=group_id,
+        level_number=body.level_number,
+        instructor_id=body.instructor_id,
+        price_override=body.price_override,
+        start_date=body.start_date,
+    )
+
+    level, sessions = svc.schedule_group_level(data)
+
+    return ApiResponse(
+        data={
+            "level_id": level.id,
+            "level_number": level.level_number,
+            "group_id": level.group_id,
+            "sessions_created": len(sessions),
+            "sessions": [{"id": s.id, "session_number": s.session_number, "date": s.session_date.isoformat()} for s in sessions],
+        },
+        message=f"Level {level.level_number} scheduled for group {group_id} with {len(sessions)} sessions.",
+    )
+
+
+# progress group level
+
+
+@router.post(
+    "/academics/groups/{group_id}/progress-level",
+    response_model=ApiResponse[ProgressGroupLevelResult],
+    status_code=200,
+    summary="Progress group to next level",
+)
+def progress_group_level(
+    group_id: int,
+    body: ProgressGroupLevelRequest,
+    _user: User = Depends(require_admin),
+    svc: GroupService = Depends(get_group_service),
+):
+    """
+    Progress a group to the next level.
+    Completes current level, creates new level, migrates enrollments.
+    """
+    from app.modules.academics.schemas import ProgressGroupLevelInput
+
+    data = ProgressGroupLevelInput(
+        group_id=group_id,
+        price_override=body.price_override,
+    )
+
+    result = svc.progress_group_level(data)
+
+    return ApiResponse(
+        data=result,
+        message=result.message,
     )
 
 

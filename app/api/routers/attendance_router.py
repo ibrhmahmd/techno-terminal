@@ -11,12 +11,11 @@ Role policy:
   POST → require_admin
 
 MarkAttendanceRequest body:
-    { "student_statuses": { "12": "present", "13": "absent", "14": "late" } }
-Keys are student IDs (as strings — JSON requirement), values are AttendanceStatus strings.
+    { "entries": [{"student_id": 12, "status": "present"}, ...] }
 """
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 from app.api.schemas.common import ApiResponse
 from app.api.dependencies import require_admin, get_attendance_service
@@ -26,6 +25,7 @@ from app.modules.attendance import (
     SessionAttendanceRowDTO,
     MarkAttendanceResponseDTO,
 )
+from app.modules.attendance.schemas.attendance_schemas import StudentAttendanceItem
 
 router = APIRouter(tags=["Attendance"])
 
@@ -33,10 +33,22 @@ router = APIRouter(tags=["Attendance"])
 class MarkAttendanceRequest(BaseModel):
     """
     Body for POST /attendance/session/{session_id}/mark.
-    student_statuses maps student_id → status string ("present" | "absent" | "late" | "excused").
+    Replaces dict with strictly typed list of attendance entries.
     """
+    entries: list[StudentAttendanceItem] = Field(
+        ...,
+        min_length=1,
+        description="List of student attendance entries to mark"
+    )
 
-    student_statuses: dict[int, str]
+    @field_validator('entries')
+    @classmethod
+    def validate_unique_students(cls, entries: list[StudentAttendanceItem]) -> list[StudentAttendanceItem]:
+        """Ensure no duplicate student IDs in the request."""
+        student_ids = [e.student_id for e in entries]
+        if len(student_ids) != len(set(student_ids)):
+            raise ValueError("Duplicate student IDs found in attendance entries")
+        return entries
 
 
 # get session roster with attendance status
@@ -62,8 +74,8 @@ def get_session_attendance(
     summary="Mark / update attendance for a session",
     description=(
         "Bulk upsert attendance for a session. "
-        "Pass a dict of student_id → status. "
-        "Students not in the dict are left unchanged (not set to absent)."
+        "Pass a list of attendance entries. "
+        "Students not in the list are left unchanged (not set to absent)."
     ),
 )
 def mark_attendance(
@@ -74,7 +86,7 @@ def mark_attendance(
 ):
     result = svc.mark_session_attendance(
         session_id=session_id,
-        student_statuses=body.student_statuses,
+        entries=body.entries,
         marked_by_user_id=current_user.id,
     )
     return ApiResponse(

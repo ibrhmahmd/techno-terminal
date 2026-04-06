@@ -232,6 +232,7 @@ class SessionService:
     def cancel_session(self, session_id: int) -> CourseSession:
         """
         Flags session as cancelled.
+        Updates all attendance records for this session to 'cancelled' status.
         Cascades the session number downwards onto future sessions so numbering isn't broken.
         Appends exactly one new session at the tail to maintain course density compliance.
         """
@@ -248,6 +249,14 @@ class SessionService:
             cs.status = "cancelled"
             old_number = cs.session_number
             cs.session_number = 0  # detach from strictly ordered numbering
+            
+            # Update all attendances for this session to 'cancelled'
+            from app.modules.attendance.models.attendance_models import Attendance
+            stmt_attendance = select(Attendance).where(Attendance.session_id == session_id)
+            attendances = session.exec(stmt_attendance).all()
+            for att in attendances:
+                att.status = "cancelled"
+                session.add(att)
             
             # Find future sessions to slide numbers down by 1
             stmt_future = select(CourseSession).where(
@@ -288,6 +297,82 @@ class SessionService:
             
             session.add(replacement)
             session.add(cs)
+            session.commit()
+            session.refresh(cs)
+            return cs
+
+    def reactivate_session(self, session_id: int) -> CourseSession:
+        """
+        Reactivate a previously cancelled session.
+        Restores session by shifting future sessions up by 1.
+        Deletes the replacement session that was created at cancellation.
+        Restores attendance records to 'present' status.
+        """
+        from sqlmodel import select
+        from datetime import timedelta
+        
+        with get_session() as session:
+            cs = session.get(CourseSession, session_id)
+            if not cs:
+                raise NotFoundError(f"Session {session_id} not found")
+            if cs.status != "cancelled":
+                raise BusinessRuleError(f"Session {session_id} is not cancelled (status: {cs.status})")
+            
+            # Get the replacement session (the one with the highest session_number for this level)
+            stmt_replacement = select(CourseSession).where(
+                CourseSession.group_id == cs.group_id,
+                CourseSession.level_number == cs.level_number,
+                CourseSession.status != "cancelled"
+            ).order_by(CourseSession.session_number.desc())
+            replacement = session.exec(stmt_replacement).first()
+            
+            # Find the gap in session numbers to determine where to reinsert
+            # Get all active sessions ordered by session_number
+            stmt_all = select(CourseSession).where(
+                CourseSession.group_id == cs.group_id,
+                CourseSession.level_number == cs.level_number,
+                CourseSession.status != "cancelled",
+                CourseSession.id != cs.id
+            ).order_by(CourseSession.session_number.asc())
+            all_sessions = session.exec(stmt_all).all()
+            
+            # Find the first gap in numbering
+            expected_number = 1
+            for s in all_sessions:
+                if s.session_number > expected_number:
+                    break
+                expected_number += 1
+            
+            # Shift future sessions up by 1 (in reverse order to avoid conflicts)
+            stmt_future = select(CourseSession).where(
+                CourseSession.group_id == cs.group_id,
+                CourseSession.level_number == cs.level_number,
+                CourseSession.session_number >= expected_number,
+                CourseSession.status != "cancelled"
+            ).order_by(CourseSession.session_number.desc())
+            
+            future_sessions = session.exec(stmt_future).all()
+            for fs in future_sessions:
+                fs.session_number += 1
+                session.add(fs)
+            
+            # Restore the cancelled session
+            cs.session_number = expected_number
+            cs.status = "scheduled"
+            session.add(cs)
+            
+            # Delete the replacement session if it exists
+            if replacement:
+                session.delete(replacement)
+            
+            # Restore attendances to 'present' status
+            from app.modules.attendance.models.attendance_models import Attendance
+            stmt_attendance = select(Attendance).where(Attendance.session_id == session_id)
+            attendances = session.exec(stmt_attendance).all()
+            for att in attendances:
+                att.status = "present"
+                session.add(att)
+            
             session.commit()
             session.refresh(cs)
             return cs
