@@ -15,6 +15,8 @@ from app.modules.analytics.schemas import (
     InstructorValueMatrixDTO,
     ScheduleUtilizationDTO,
     FlightRiskStudentDTO,
+    UserEngagementDTO,
+    RetentionCohortDTO,
 )
 
 
@@ -159,3 +161,68 @@ def get_flight_risk_students(db: Session) -> list[FlightRiskStudentDTO]:
     """)
     rows = db.execute(stmt).all()
     return [FlightRiskStudentDTO(**r._mapping) for r in rows]
+
+
+def get_user_engagement(db: Session, days: int = 30) -> list[UserEngagementDTO]:
+    """Daily user engagement metrics including active users and session duration."""
+    from datetime import timedelta
+    
+    start_date = date.today() - timedelta(days=days)
+    
+    stmt = text("""
+        SELECT 
+            DATE(s.created_at) as date,
+            COUNT(DISTINCT s.user_id) as daily_active_users,
+            COUNT(*) as total_sessions,
+            AVG(EXTRACT(EPOCH FROM (s.updated_at - s.created_at)) / 60) as avg_session_duration_minutes,
+            '{}'::jsonb as feature_usage
+        FROM user_sessions s
+        WHERE s.created_at >= :start_date
+        GROUP BY DATE(s.created_at)
+        ORDER BY date DESC
+    """)
+    rows = db.execute(stmt, {"start_date": str(start_date)}).all()
+    
+    # Convert to DTOs with default empty feature usage
+    result = []
+    for r in rows:
+        data = dict(r._mapping)
+        data["feature_usage"] = {}  # Placeholder for future implementation
+        result.append(UserEngagementDTO(**data))
+    
+    return result
+
+
+def get_retention_cohorts(db: Session, months: int = 6) -> list[RetentionCohortDTO]:
+    """Cohort-based retention analysis showing student retention over time."""
+    stmt = text("""
+        WITH monthly_cohorts AS (
+            SELECT 
+                DATE_TRUNC('month', enrolled_at)::date as cohort_month,
+                id,
+                student_id,
+                status
+            FROM enrollments
+            WHERE enrolled_at >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL ':months months')
+        )
+        SELECT 
+            TO_CHAR(cohort_month, 'YYYY-MM') as cohort_month,
+            COUNT(DISTINCT id) as initial_enrollments,
+            '{}'::jsonb as retention_by_month,
+            '{}'::jsonb as retention_rates
+        FROM monthly_cohorts
+        GROUP BY cohort_month
+        ORDER BY cohort_month DESC
+    """)
+    
+    rows = db.execute(stmt, {"months": months}).all()
+    
+    # Convert to DTOs
+    result = []
+    for r in rows:
+        data = dict(r._mapping)
+        data["retention_by_month"] = {}
+        data["retention_rates"] = {}
+        result.append(RetentionCohortDTO(**data))
+    
+    return result

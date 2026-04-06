@@ -12,6 +12,8 @@ from app.modules.analytics.schemas import (
     RevenueByMethodDTO,
     OutstandingByGroupDTO,
     TopDebtorDTO,
+    RevenueMetricsDTO,
+    RevenueForecastDTO,
 )
 
 
@@ -33,3 +35,13 @@ class FinancialAnalyticsService:
     def get_top_debtors(self, limit: int = 15) -> list[TopDebtorDTO]:
         with get_session() as db:
             return repo.get_top_debtors(db, limit)
+
+    def get_revenue_metrics(self, months: int = 6) -> RevenueMetricsDTO:
+        """Get extended revenue metrics with trend analysis."""
+        with get_session() as db:
+            return repo.get_revenue_metrics(db, months)
+
+    def get_revenue_forecast(self, months_ahead: int = 3) -> list[RevenueForecastDTO]:
+        """Get revenue forecast for future months."""
+        with get_session() as db:
+            return repo.get_revenue_forecast(db, months_ahead)

@@ -13,6 +13,8 @@ from app.modules.analytics.schemas import (
     UnpaidAttendeeDTO,
     GroupRosterRowDTO,
     AttendanceHeatmapRowDTO,
+    StudentProgressDTO,
+    CourseCompletionDTO,
 )
 
 
@@ -139,3 +141,94 @@ def get_attendance_heatmap(db: Session, group_id: int, level_number: int) -> lis
     """)
     rows = db.execute(stmt, {"group_id": group_id, "level": level_number}).all()
     return [AttendanceHeatmapRowDTO(**r._mapping) for r in rows]
+
+
+def get_student_progress(
+    db: Session, 
+    student_id: Optional[int] = None, 
+    group_id: Optional[int] = None
+) -> list[StudentProgressDTO]:
+    """Student progress analytics for all or specific student/group."""
+    # Build the WHERE clause dynamically
+    where_conditions = ["en.status = 'active'"]
+    params = {}
+    
+    if student_id:
+        where_conditions.append("st.id = :student_id")
+        params["student_id"] = student_id
+    
+    if group_id:
+        where_conditions.append("en.group_id = :group_id")
+        params["group_id"] = group_id
+    
+    where_clause = " AND ".join(where_conditions)
+    
+    stmt = text(f"""
+        SELECT
+            st.id AS student_id,
+            st.full_name AS student_name,
+            c.name AS course_name,
+            g.name AS group_name,
+            en.level_number AS current_level,
+            COALESCE(vgs.total_sessions, 0) AS total_sessions,
+            COALESCE(att.sessions_attended, 0) AS sessions_attended,
+            COALESCE(att.sessions_missed, 0) AS sessions_missed,
+            CASE
+                WHEN COALESCE(vgs.total_sessions, 0) = 0 THEN 0
+                ELSE ROUND(
+                    100.0 * COALESCE(att.sessions_attended, 0) / vgs.total_sessions, 1
+                )
+            END AS attendance_pct,
+            CASE
+                WHEN COALESCE(att.sessions_attended, 0) >= COALESCE(vgs.total_sessions, 0) * 0.8 
+                    THEN 'on_track'
+                WHEN COALESCE(att.sessions_attended, 0) >= COALESCE(vgs.total_sessions, 0) * 0.6 
+                    THEN 'at_risk'
+                ELSE 'behind'
+            END AS progress_status,
+            NULL AS estimated_completion_date,
+            en.created_at::date AS enrollment_date,
+            att.last_attendance_date
+        FROM enrollments en
+        JOIN students st ON en.student_id = st.id
+        JOIN groups g ON en.group_id = g.id
+        JOIN courses c ON g.course_id = c.id
+        LEFT JOIN v_enrollment_attendance att ON att.enrollment_id = en.id
+        LEFT JOIN v_group_session_count vgs ON vgs.group_id = en.group_id
+            AND vgs.level_number = en.level_number
+        WHERE {where_clause}
+        ORDER BY st.full_name, c.name
+    """)
+    
+    rows = db.execute(stmt, params).all()
+    return [StudentProgressDTO(**r._mapping) for r in rows]
+
+
+def get_course_completion(db: Session) -> list[CourseCompletionDTO]:
+    """Course completion rates analysis per course."""
+    stmt = text("""
+        SELECT 
+            c.id as course_id,
+            c.name as course_name,
+            COUNT(e.id) FILTER (WHERE e.status = 'active' OR e.status = 'completed') as started_count,
+            COUNT(e.id) FILTER (WHERE e.status = 'completed') as completed_count,
+            COUNT(e.id) FILTER (WHERE e.status = 'dropped') as dropped_count,
+            COUNT(e.id) FILTER (WHERE e.status = 'active') as in_progress_count,
+            CASE 
+                WHEN COUNT(e.id) FILTER (WHERE e.status = 'active' OR e.status = 'completed') = 0 
+                THEN 0
+                ELSE ROUND(
+                    100.0 * COUNT(e.id) FILTER (WHERE e.status = 'completed') 
+                    / COUNT(e.id) FILTER (WHERE e.status = 'active' OR e.status = 'completed'), 1
+                )
+            END as completion_pct,
+            NULL as avg_days_to_complete
+        FROM courses c
+        LEFT JOIN groups g ON g.course_id = c.id
+        LEFT JOIN enrollments e ON e.group_id = g.id
+        GROUP BY c.id, c.name
+        HAVING COUNT(e.id) > 0
+        ORDER BY completion_pct DESC
+    """)
+    rows = db.execute(stmt).all()
+    return [CourseCompletionDTO(**r._mapping) for r in rows]

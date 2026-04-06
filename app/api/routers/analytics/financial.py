@@ -17,6 +17,8 @@ from app.modules.analytics.schemas import (
     RevenueByMethodDTO,
     OutstandingByGroupDTO,
     TopDebtorDTO,
+    RevenueMetricsDTO,
+    RevenueForecastDTO,
 )
 from app.modules.analytics.services.financial_service import FinancialAnalyticsService
 
@@ -78,3 +80,31 @@ def get_top_debtors(
 ):
     """Returns students with highest outstanding balances."""
     return ApiResponse(data=svc.get_top_debtors(limit))
+
+
+@router.get(
+    "/analytics/finance/revenue-metrics",
+    response_model=ApiResponse[RevenueMetricsDTO],
+    summary="Get extended revenue metrics with trend analysis",
+)
+def get_revenue_metrics(
+    months: int = Query(6, ge=1, le=24, description="Number of months to analyze"),
+    _user: User = Depends(require_admin),
+    svc: FinancialAnalyticsService = Depends(get_financial_analytics_service),
+):
+    """Returns extended revenue metrics including trend analysis and monthly breakdown."""
+    return ApiResponse(data=svc.get_revenue_metrics(months))
+
+
+@router.get(
+    "/analytics/finance/revenue-forecast",
+    response_model=ApiResponse[list[RevenueForecastDTO]],
+    summary="Get revenue forecast for future months",
+)
+def get_revenue_forecast(
+    months_ahead: int = Query(3, ge=1, le=12, description="Number of months to forecast"),
+    _user: User = Depends(require_admin),
+    svc: FinancialAnalyticsService = Depends(get_financial_analytics_service),
+):
+    """Returns revenue forecast for future months based on historical trends."""
+    return ApiResponse(data=svc.get_revenue_forecast(months_ahead))

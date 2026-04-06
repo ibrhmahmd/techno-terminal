@@ -21,6 +21,8 @@ from app.modules.analytics.schemas import (
     InstructorValueMatrixDTO,
     ScheduleUtilizationDTO,
     FlightRiskStudentDTO,
+    UserEngagementDTO,
+    RetentionCohortDTO,
 )
 from app.modules.analytics.services.bi_service import BIAnalyticsService
 
@@ -117,3 +119,31 @@ def get_flight_risk_students(
 ):
     """Returns students likely to drop out based on attendance/debt patterns."""
     return ApiResponse(data=svc.get_flight_risk_students())
+
+
+@router.get(
+    "/analytics/bi/user-engagement",
+    response_model=ApiResponse[list[UserEngagementDTO]],
+    summary="Get user engagement metrics",
+)
+def get_user_engagement(
+    days: int = Query(30, ge=1, le=90, description="Number of days to analyze"),
+    _user: User = Depends(require_admin),
+    svc: BIAnalyticsService = Depends(get_bi_analytics_service),
+):
+    """Returns daily user engagement metrics including active users and session duration."""
+    return ApiResponse(data=svc.get_user_engagement(days))
+
+
+@router.get(
+    "/analytics/bi/retention-analysis",
+    response_model=ApiResponse[list[RetentionCohortDTO]],
+    summary="Get cohort-based retention analysis",
+)
+def get_retention_analysis(
+    months: int = Query(6, ge=1, le=12, description="Number of months for cohort analysis"),
+    _user: User = Depends(require_admin),
+    svc: BIAnalyticsService = Depends(get_bi_analytics_service),
+):
+    """Returns cohort-based retention analysis showing student retention over time."""
+    return ApiResponse(data=svc.get_retention_cohorts(months))

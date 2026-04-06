@@ -15,6 +15,8 @@ from app.modules.analytics.schemas import (
     InstructorValueMatrixDTO,
     ScheduleUtilizationDTO,
     FlightRiskStudentDTO,
+    UserEngagementDTO,
+    RetentionCohortDTO,
 )
 
 
@@ -52,3 +54,13 @@ class BIAnalyticsService:
     def get_flight_risk_students(self) -> list[FlightRiskStudentDTO]:
         with get_session() as db:
             return repo.get_flight_risk_students(db)
+
+    def get_user_engagement(self, days: int = 30) -> list[UserEngagementDTO]:
+        """Get user engagement metrics for the specified number of days."""
+        with get_session() as db:
+            return repo.get_user_engagement(db, days)
+
+    def get_retention_cohorts(self, months: int = 6) -> list[RetentionCohortDTO]:
+        """Get cohort-based retention analysis."""
+        with get_session() as db:
+            return repo.get_retention_cohorts(db, months)

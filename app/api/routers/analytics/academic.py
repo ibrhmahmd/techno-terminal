@@ -18,6 +18,8 @@ from app.modules.analytics.schemas import (
     UnpaidAttendeeDTO,
     GroupRosterRowDTO,
     AttendanceHeatmapRowDTO,
+    StudentProgressDTO,
+    CourseCompletionDTO,
 )
 from app.modules.analytics.services.academic_service import AcademicAnalyticsService
 
@@ -88,3 +90,34 @@ def get_attendance_heatmap(
 ):
     """Returns attendance heatmap (student x date matrix) for a group."""
     return ApiResponse(data=svc.get_attendance_heatmap(group_id, level_number))
+
+
+@router.get(
+    "/analytics/academics/student-progress",
+    response_model=ApiResponse[list[StudentProgressDTO]],
+    summary="Get student progress analytics",
+)
+def get_student_progress(
+    student_id: Optional[int] = Query(None, description="Filter by specific student ID"),
+    group_id: Optional[int] = Query(None, description="Filter by specific group ID"),
+    _user: User = Depends(require_admin),
+    svc: AcademicAnalyticsService = Depends(get_academic_analytics_service),
+):
+    """Returns student progress analytics including attendance % and progress status.
+    
+    Can be filtered by student_id and/or group_id, or returns all active enrollments if no filters provided.
+    """
+    return ApiResponse(data=svc.get_student_progress(student_id, group_id))
+
+
+@router.get(
+    "/analytics/academics/course-completion",
+    response_model=ApiResponse[list[CourseCompletionDTO]],
+    summary="Get course completion rates",
+)
+def get_course_completion(
+    _user: User = Depends(require_admin),
+    svc: AcademicAnalyticsService = Depends(get_academic_analytics_service),
+):
+    """Returns course completion rates analysis per course."""
+    return ApiResponse(data=svc.get_course_completion())

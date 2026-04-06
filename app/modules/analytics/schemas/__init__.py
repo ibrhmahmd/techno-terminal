@@ -9,12 +9,16 @@ from .financial_schemas import (
     RevenueByMethodDTO,
     OutstandingByGroupDTO,
     TopDebtorDTO,
+    RevenueMetricsDTO,
+    RevenueForecastDTO,
 )
 from .academic_schemas import (
     TodaySessionDTO,
     UnpaidAttendeeDTO,
     GroupRosterRowDTO,
     AttendanceHeatmapRowDTO,
+    StudentProgressDTO,
+    CourseCompletionDTO,
 )
 from .competition_schemas import (
     CompetitionFeeSummaryDTO,
@@ -27,6 +31,8 @@ from .bi_schemas import (
     InstructorValueMatrixDTO,
     ScheduleUtilizationDTO,
     FlightRiskStudentDTO,
+    UserEngagementDTO,
+    RetentionCohortDTO,
 )
 
 __all__ = [
@@ -35,12 +41,16 @@ __all__ = [
     "RevenueByMethodDTO",
     "OutstandingByGroupDTO",
     "TopDebtorDTO",
+    "RevenueMetricsDTO",
+    "RevenueForecastDTO",
 
     # Academic
     "TodaySessionDTO",
     "UnpaidAttendeeDTO",
     "GroupRosterRowDTO",
     "AttendanceHeatmapRowDTO",
+    "StudentProgressDTO",
+    "CourseCompletionDTO",
 
     # Competition
     "CompetitionFeeSummaryDTO",
@@ -53,4 +63,6 @@ __all__ = [
     "InstructorValueMatrixDTO",
     "ScheduleUtilizationDTO",
     "FlightRiskStudentDTO",
+    "UserEngagementDTO",
+    "RetentionCohortDTO",
 ]
