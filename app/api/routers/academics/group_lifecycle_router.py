@@ -3,7 +3,7 @@ app/api/routers/academics/group_lifecycle.py
 ───────────────────────────────────────────
 Router for group lifecycle and history endpoints.
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 
 from app.api.schemas.common import ApiResponse
 from app.api.dependencies import require_any, require_admin, get_group_service, get_group_history_service, get_group_level_service, get_group_analytics_service
@@ -17,6 +17,7 @@ from app.api.schemas.academics.group_analytics import (
     GroupEnrollmentHistoryResponseDTO,
     GroupInstructorHistoryResponseDTO,
 )
+from app.api.schemas.academics.group_lifecycle import CancelLevelInput
 
 router = APIRouter(tags=["Academics — Group Lifecycle"])
 
@@ -24,6 +25,7 @@ router = APIRouter(tags=["Academics — Group Lifecycle"])
 @router.get(
     "/academics/groups/{group_id}/history",
     response_model=ApiResponse[dict],
+    
     summary="Get full lifecycle history for a group",
 )
 def get_group_lifecycle_history(
@@ -279,5 +281,43 @@ def get_group_instructors_analytics(
     - Assignment date ranges
     - Current instructor designation
     """
+    history = svc.get_instructor_history(group_id)
+    return ApiResponse(data=history)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ALIAS ENDPOINTS (for frontend compatibility)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@router.get(
+    "/academics/groups/{group_id}/enrollment-history",
+    response_model=ApiResponse[GroupEnrollmentHistoryResponseDTO],
+    summary="Get enrollment history (alias for /enrollments/analytics)",
+)
+def get_group_enrollment_history_alias(
+    group_id: int,
+    status: str | None = Query(None, description="Filter by status (active, completed, dropped)"),
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(100, ge=1, le=500, description="Maximum number of records"),
+    _user: User = Depends(require_any),
+    svc: GroupAnalyticsService = Depends(get_group_analytics_service),
+):
+    """Alias for /enrollments/analytics - returns enrollment history."""
+    history = svc.get_enrollment_history(group_id, status, skip, limit)
+    return ApiResponse(data=history)
+
+
+@router.get(
+    "/academics/groups/{group_id}/instructor-history",
+    response_model=ApiResponse[GroupInstructorHistoryResponseDTO],
+    summary="Get instructor history (alias for /instructors/analytics)",
+)
+def get_group_instructor_history_alias(
+    group_id: int,
+    _user: User = Depends(require_any),
+    svc: GroupAnalyticsService = Depends(get_group_analytics_service),
+):
+    """Alias for /instructors/analytics - returns instructor assignment history."""
     history = svc.get_instructor_history(group_id)
     return ApiResponse(data=history)

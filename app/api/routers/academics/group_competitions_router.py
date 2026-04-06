@@ -204,3 +204,24 @@ def withdraw_from_competition(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get(
+    "/academics/groups/{group_id}/competitions/analytics",
+    response_model=ApiResponse[GroupCompetitionHistoryResponseDTO],
+    summary="Get full competition participation history",
+)
+def get_group_competitions_analytics(
+    group_id: int,
+    _user: User = Depends(require_any),
+    svc: GroupAnalyticsService = Depends(get_group_analytics_service),
+):
+    """
+    Returns full competition participation history including:
+    - All competition participations for the group
+    - Team and category details
+    - Entry/exit dates and placement results
+    - Active vs completed status
+    """
+    history = svc.get_competition_history(group_id)
+    return ApiResponse(data=history)

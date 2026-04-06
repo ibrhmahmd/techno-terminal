@@ -58,6 +58,7 @@ def get_enriched_group_by_id(session: Session, group_id: int) -> EnrichedGroupDT
             g.default_time_start,
             g.default_time_end,
             g.max_capacity,
+            g.notes,
             g.status
         FROM groups g
         JOIN courses c ON g.course_id = c.id
@@ -82,6 +83,7 @@ def get_enriched_groups(session: Session) -> list[EnrichedGroupDTO]:
             g.default_time_start,
             g.default_time_end,
             g.max_capacity,
+            g.notes,
             g.status
         FROM groups g
         JOIN courses c ON g.course_id = c.id
@@ -106,6 +108,7 @@ def get_enriched_groups_by_date(session: Session, target_date: str) -> list[Enri
             g.default_time_start,
             g.default_time_end,
             g.max_capacity,
+            g.notes,
             g.status
         FROM groups g
         JOIN courses c ON g.course_id = c.id

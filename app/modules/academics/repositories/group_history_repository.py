@@ -242,6 +242,8 @@ def get_group_enrollments_with_details(
     return session.exec(stmt).all()
 
 
+from sqlalchemy import case
+
 def get_group_enrollment_stats(session: Session, group_id: int) -> dict:
     """
     Get enrollment statistics for a group.
@@ -252,9 +254,9 @@ def get_group_enrollment_stats(session: Session, group_id: int) -> dict:
     stmt = (
         select(
             func.count().label("total"),
-            func.sum(func.case((Enrollment.status == "active", 1), else_=0)).label("active"),
-            func.sum(func.case((Enrollment.status == "completed", 1), else_=0)).label("completed"),
-            func.sum(func.case((Enrollment.status == "dropped", 1), else_=0)).label("dropped"),
+            func.sum(case((Enrollment.status == "active", 1), else_=0)).label("active"),
+            func.sum(case((Enrollment.status == "completed", 1), else_=0)).label("completed"),
+            func.sum(case((Enrollment.status == "dropped", 1), else_=0)).label("dropped"),
         )
         .where(Enrollment.group_id == group_id)
     )
@@ -272,14 +274,14 @@ def get_enrollment_payments(session: Session, enrollment_id: int) -> float:
     """
     Get total payments made for an enrollment.
     """
-    from app.modules.finance.models.finance_models import Payment
+    from app.modules.finance.finance_models import Payment
     
     stmt = (
         select(func.coalesce(func.sum(Payment.amount), 0))
         .where(Payment.enrollment_id == enrollment_id)
-        .where(Payment.status == "completed")
+        .where(Payment.transaction_type == "payment")
     )
-    return session.exec(stmt).scalar() or 0.0
+    return session.exec(stmt).one() or 0.0
 
 
 def get_group_instructors_summary(

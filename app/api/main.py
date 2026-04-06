@@ -21,6 +21,8 @@ from app.api.routers.academics import (
     courses_router,
     groups_router,
     sessions_router,
+    group_lifecycle_router,
+    group_competitions_router,
 )
 from app.api.routers.analytics import (
     academic_router,
@@ -65,6 +67,8 @@ def create_app() -> FastAPI:
     app.include_router(courses_router,  prefix="/api/v1", tags=["Academics — Courses"])
     app.include_router(groups_router,    prefix="/api/v1", tags=["Academics — Groups"])
     app.include_router(sessions_router,  prefix="/api/v1", tags=["Academics — Sessions"])
+    app.include_router(group_lifecycle_router, prefix="/api/v1", tags=["Academics — Group Lifecycle"])
+    app.include_router(group_competitions_router, prefix="/api/v1", tags=["Academics — Group Competitions"])
     app.include_router(attendance_router.router, prefix="/api/v1", tags=["Attendance"])
     # Phase 5.4 — Transactions
     app.include_router(enrollments_router.router, prefix="/api/v1", tags=["Enrollments"])

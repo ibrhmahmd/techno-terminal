@@ -5,18 +5,34 @@ Groups router.
 
 Endpoints for group management.
 """
-from fastapi import APIRouter, Depends, Query
+
+from datetime import date
+
+from fastapi import APIRouter, Depends, Query, HTTPException, Path
 
 from app.api.schemas.common import ApiResponse, PaginatedResponse
-from app.api.schemas.academics.group import GroupPublic, GroupListItem
-from app.api.schemas.academics.session import SessionPublic
-from app.api.dependencies import require_admin, require_any, get_group_service, get_session_service
+from app.api.schemas.academics.group import (
+    GroupPublic,
+    GroupListItem,
+    EnrichedGroupPublic,
+)
+from app.api.schemas.academics.session import (
+    SessionPublic,
+    GenerateLevelSessionsRequest,
+)
+from app.api.dependencies import (
+    require_admin,
+    require_any,
+    get_group_service,
+    get_session_service,
+)
 from app.modules.academics.schemas import ScheduleGroupInput, UpdateGroupDTO
 from app.modules.auth import User
 from app.modules.academics.services.group_service import GroupService
 from app.modules.academics.services.session_service import SessionService
 
 router = APIRouter(tags=["Academics — Groups"])
+
 
 # list all active groups
 @router.get(
@@ -40,6 +56,26 @@ def list_groups(
     )
 
 
+# get enriched groups (with instructor and course names) - MUST come before /{group_id}
+@router.get(
+    "/academics/groups/enriched",
+    response_model=ApiResponse[list[EnrichedGroupPublic]],
+    summary="Get all active groups with instructor and course names",
+)
+def list_enriched_groups(
+    _user: User = Depends(require_any),
+    svc: GroupService = Depends(get_group_service),
+):
+    groups = svc.get_all_active_groups_enriched()
+    
+    if not groups:
+        return ApiResponse(data=[])
+    
+    return ApiResponse(
+        data=[EnrichedGroupPublic.model_validate(g.model_dump(mode="json")) for g in groups]
+    )
+
+
 # get group by ID
 @router.get(
     "/academics/groups/{group_id}",
@@ -53,6 +89,26 @@ def get_group(
 ):
     group = svc.get_group_by_id(group_id)
     return ApiResponse(data=GroupPublic.model_validate(group))
+
+
+# get enriched group by ID
+@router.get(
+    "/academics/groups/{group_id}/enriched",
+    response_model=ApiResponse[EnrichedGroupPublic],
+    summary="Get enriched group by ID",
+)
+def get_enriched_group(
+    group_id: int,
+    _user: User = Depends(require_any),
+    svc: GroupService = Depends(get_group_service),
+):
+
+    group = svc.get_enriched_group_by_id(group_id)
+
+    if not group:
+        raise HTTPException(status_code=404, detail=f"Group {group_id} not found")
+
+    return ApiResponse(data=EnrichedGroupPublic.model_validate(group.model_dump(mode="json")))
 
 
 # create group
@@ -121,11 +177,9 @@ def progress_group_level(
     group = svc.progress_group_level(group_id)
     return ApiResponse(
         data=GroupPublic.model_validate(group),
-        message=f"Group progressed to level {group.level_number} successfully."
+        message=f"Group progressed to level {group.level_number} successfully.",
     )
 
-<<<<<<< HEAD:app/api/routers/academics/groups.py
-=======
 
 # delete group (soft delete)
 
@@ -237,8 +291,6 @@ def list_groups_by_type(
 
 
 # get groups by course
-
-
 @router.get(
     "/academics/groups/by-course/{course_id}",
     response_model=PaginatedResponse[EnrichedGroupPublic],
@@ -254,11 +306,12 @@ def list_groups_by_course(
     svc: GroupService = Depends(get_group_service),
 ):
     """Get all groups associated with a specific course."""
-    results, total = svc.get_groups_by_course(course_id, include_inactive, level_number, skip, limit)
+    results, total = svc.get_groups_by_course(
+        course_id, include_inactive, level_number, skip, limit
+    )
     return PaginatedResponse(
         data=[EnrichedGroupPublic.model_validate(g) for g in results],
         total=total,
         skip=skip,
         limit=limit,
     )
->>>>>>> c219772 (refactor(academics): restructure academics module with new routers):app/api/routers/academics/groups_router.py
