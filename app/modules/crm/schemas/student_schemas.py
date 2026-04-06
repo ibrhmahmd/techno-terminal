@@ -1,72 +1,101 @@
 """
-
 app/modules/crm/schemas/student_schemas.py
 ───────────────────────────────────────────
-
 Pydantic DTOs scoped to Student operations.
 """
-from datetime import date
-
+from datetime import date, datetime
+from enum import Enum
 from typing import Optional
 
+from pydantic import BaseModel, Field
 
-from pydantic import BaseModel
 
+class StudentStatus(str, Enum):
+    """Enum for student enrollment status."""
+    ACTIVE = "active"
+    WAITING = "waiting"
+    INACTIVE = "inactive"
+    GRADUATED = "graduated"
 
 
 class RegisterStudentDTO(BaseModel):
     """
-
     Input for CRMService.register_student().
-
     Streamlit date_input returns datetime.date; APIs may send ISO date strings.
     """
     full_name: str
-
     date_of_birth: Optional[date] = None
-
     gender: Optional[str] = None  # 'male' | 'female'
-
     phone: Optional[str] = None
-
     notes: Optional[str] = None
-
+    # NEW: Optional status on registration (defaults to active)
+    status: Optional[str] = "active"
 
 
 class UpdateStudentDTO(BaseModel):
     """
-
     Input for CRMService.update_student().
-
     All fields are optional; only provided fields will be written.
     """
-
     full_name: Optional[str] = None
-
     date_of_birth: Optional[date] = None
-
     gender: Optional[str] = None
-
     phone: Optional[str] = None
+    notes: Optional[str] = None
+    is_active: Optional[bool] = None  # Deprecated but kept for compatibility
+    status: Optional[str] = None  # NEW
 
+
+# NEW DTO for status updates
+class UpdateStudentStatusDTO(BaseModel):
+    """Input for updating student status with audit notes."""
+    status: str
+    notes: Optional[str] = Field(
+        default=None,
+        description="Optional notes explaining the status change (e.g., 'Waiting for Level 2 group')"
+    )
+
+
+# NEW DTO for waiting list priority updates
+class SetWaitingPriorityDTO(BaseModel):
+    """Input for setting student priority on waiting list."""
+    priority: int = Field(..., ge=1, le=1000, description="Priority number (1 = highest priority)")
     notes: Optional[str] = None
 
-    is_active: Optional[bool] = None
+
+class StudentResponseDTO(BaseModel):
+    """Output DTO for student data including status."""
+    id: int
+    full_name: str
+    date_of_birth: Optional[date] = None
+    gender: Optional[str] = None
+    phone: Optional[str] = None
+    notes: Optional[str] = None
+    is_active: bool  # Deprecated but kept for backward compatibility
+    status: str  # NEW: Current status
+    waiting_since: Optional[datetime] = None  # NEW
+    waiting_priority: Optional[int] = None  # NEW
+    waiting_notes: Optional[str] = None  # NEW
+    status_history: list[dict] = []  # NEW
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
+class StudentStatusSummaryDTO(BaseModel):
+    """Output DTO for student status counts."""
+    total: int
+    active: int
+    waiting: int
+    inactive: int
+    graduated: int
 
 
 class RegisterStudentCommandDTO(BaseModel):
     """
-
     Unified command DTO encompassing the student payload, parent relationship,
-
     and audit context for full CQRS-style registration.
     """
-
     student_data: RegisterStudentDTO
-
     parent_id: Optional[int] = None
-
     relationship: Optional[str] = None
-
     created_by_user_id: Optional[int] = None
-

@@ -2,7 +2,7 @@ from datetime import date, datetime
 
 from app.db.connection import get_session
 from app.shared.datetime_utils import date_at_utc_midnight
-from app.modules.crm.models.student_models import Student
+from app.modules.crm.models.student_models import Student, StudentStatus
 from app.modules.crm.schemas.student_schemas import UpdateStudentDTO, RegisterStudentCommandDTO
 import app.modules.crm.repositories.student_repository as repo
 import app.modules.crm.repositories.parent_repository as parent_repository
@@ -106,3 +106,133 @@ class StudentService:
     def get_parent_students(self, parent_id: int) -> list[Student]:
         with get_session() as session:
             return repo.get_students_by_parent_id(session, parent_id)
+
+    # ── NEW: Status Management Methods ────────────────────────────────────────────
+
+    def update_student_status(
+        self,
+        student_id: int,
+        new_status: StudentStatus,
+        user_id: int | None = None,
+        notes: str | None = None
+    ) -> Student:
+        """Update student status with validation and audit logging."""
+        with get_session() as session:
+            # Validate status transition
+            student = repo.get_student_by_id(session, student_id)
+            if not student:
+                raise NotFoundError(f"Student with ID {student_id} not found")
+            
+            # Perform update with audit
+            updated = repo.update_student_status(
+                session, student_id, new_status, user_id, notes
+            )
+            if not updated:
+                raise NotFoundError(f"Student with ID {student_id} not found")
+            
+            apply_update_audit(updated)
+            session.commit()
+            session.refresh(updated)
+            return updated
+
+    def toggle_student_status(
+        self,
+        student_id: int,
+        user_id: int | None = None,
+        notes: str | None = None
+    ) -> Student:
+        """Toggle between active and waiting status."""
+        with get_session() as session:
+            student = repo.get_student_by_id(session, student_id)
+            if not student:
+                raise NotFoundError(f"Student with ID {student_id} not found")
+            
+            # Determine new status based on current state
+            if student.status == StudentStatus.ACTIVE:
+                new_status = StudentStatus.WAITING
+            elif student.status == StudentStatus.WAITING:
+                new_status = StudentStatus.ACTIVE
+            else:
+                raise ValueError(
+                    f"Cannot toggle status from {student.status}. "
+                    "Only active/waiting transitions are supported."
+                )
+            
+            return self.update_student_status(student_id, new_status, user_id, notes)
+
+    def get_waiting_list(
+        self,
+        skip: int = 0,
+        limit: int = 200,
+        order_by_priority: bool = True
+    ) -> list[Student]:
+        """Get students on waiting list."""
+        with get_session() as session:
+            return list(repo.get_waiting_list(session, skip, limit, order_by_priority))
+
+    def set_waiting_priority(
+        self,
+        student_id: int,
+        priority: int,
+        user_id: int | None = None
+    ) -> Student:
+        """Set priority for a student on the waiting list."""
+        with get_session() as session:
+            student = repo.set_waiting_priority(session, student_id, priority)
+            if not student:
+                raise NotFoundError(
+                    f"Student {student_id} not found or not on waiting list"
+                )
+            
+            # Add audit note
+            history = student.status_history or []
+            if isinstance(history, str):
+                import json
+                history = json.loads(history) if history else []
+            
+            history.append({
+                "timestamp": datetime.utcnow().isoformat(),
+                "changed_by": user_id,
+                "action": "priority_change",
+                "new_priority": priority
+            })
+            student.status_history = history
+            
+            apply_update_audit(student)
+            session.commit()
+            session.refresh(student)
+            return student
+
+    def get_students_by_status(
+        self,
+        status: StudentStatus,
+        skip: int = 0,
+        limit: int = 200
+    ) -> list[Student]:
+        """Get students by their enrollment status."""
+        with get_session() as session:
+            return list(repo.get_students_by_status(session, status, skip, limit))
+
+    def get_student_status_summary(self) -> dict:
+        """Get counts of students by status."""
+        with get_session() as session:
+            return {
+                "total": repo.count_students(session, active_only=False),
+                "active": repo.count_students_by_status(session, StudentStatus.ACTIVE),
+                "waiting": repo.count_students_by_status(session, StudentStatus.WAITING),
+                "inactive": repo.count_students_by_status(session, StudentStatus.INACTIVE),
+                "graduated": repo.count_students_by_status(session, StudentStatus.GRADUATED),
+            }
+
+    def get_student_status_history(self, student_id: int) -> list[dict]:
+        """Get status change history for a student."""
+        with get_session() as session:
+            student = repo.get_student_by_id(session, student_id)
+            if not student:
+                raise NotFoundError(f"Student with ID {student_id} not found")
+            
+            history = student.status_history or []
+            if isinstance(history, str):
+                import json
+                return json.loads(history) if history else []
+            return history if isinstance(history, list) else []

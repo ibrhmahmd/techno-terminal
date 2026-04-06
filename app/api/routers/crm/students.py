@@ -5,13 +5,21 @@ Students router.
 
 Endpoints for student management.
 """
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 
 from app.api.schemas.common import ApiResponse, PaginatedResponse
 from app.api.schemas.crm.student import StudentPublic, StudentListItem
 from app.api.schemas.crm.parent import ParentPublic
 from app.api.dependencies import require_admin, require_any, get_student_service
-from app.modules.crm.schemas import RegisterStudentCommandDTO, UpdateStudentDTO
+from app.modules.crm.schemas import (
+    RegisterStudentCommandDTO, 
+    UpdateStudentDTO,
+    UpdateStudentStatusDTO,
+    SetWaitingPriorityDTO,
+    StudentResponseDTO,
+    StudentStatusSummaryDTO,
+    StudentStatus,
+)
 from app.modules.auth import User
 from app.modules.crm.services.student_service import StudentService
 from app.shared.exceptions import NotFoundError
@@ -114,3 +122,162 @@ def get_student_parents(
         ParentPublic.model_validate(link.parent) for link in links if link.parent
     ]
     return ApiResponse(data=parents)
+
+
+# ── NEW: Student Status Management Endpoints ─────────────────────────────────
+
+@router.patch(
+    "/students/{student_id}/status",
+    response_model=ApiResponse[StudentResponseDTO],
+    summary="Update student enrollment status",
+    description="Update student status (active/waiting/inactive/graduated) with optional audit notes."
+)
+def update_student_status(
+    student_id: int,
+    body: UpdateStudentStatusDTO,
+    current_user: User = Depends(require_admin),
+    svc: StudentService = Depends(get_student_service),
+):
+    try:
+        status_enum = StudentStatus(body.status)
+        student = svc.update_student_status(
+            student_id=student_id,
+            new_status=status_enum,
+            user_id=current_user.id,
+            notes=body.notes
+        )
+        return ApiResponse(
+            data=student,
+            message=f"Student status updated to {body.status}"
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail=f"Student {student_id} not found")
+
+
+@router.post(
+    "/students/{student_id}/status/toggle",
+    response_model=ApiResponse[StudentResponseDTO],
+    summary="Toggle student status between active and waiting",
+    description="Convenience endpoint to quickly toggle between active and waiting states."
+)
+def toggle_student_status(
+    student_id: int,
+    notes: str | None = None,
+    current_user: User = Depends(require_admin),
+    svc: StudentService = Depends(get_student_service),
+):
+    try:
+        student = svc.toggle_student_status(
+            student_id=student_id,
+            user_id=current_user.id,
+            notes=notes
+        )
+        return ApiResponse(
+            data=student,
+            message=f"Student status toggled to {student.status}"
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail=f"Student {student_id} not found")
+
+
+@router.get(
+    "/students/waiting-list",
+    response_model=ApiResponse[list[StudentResponseDTO]],
+    summary="Get waiting list",
+    description="Retrieve students on the waiting list, ordered by priority and wait time."
+)
+def get_waiting_list(
+    skip: int = 0,
+    limit: int = 200,
+    order_by_priority: bool = True,
+    current_user: User = Depends(require_admin),
+    svc: StudentService = Depends(get_student_service),
+):
+    students = svc.get_waiting_list(skip, limit, order_by_priority)
+    return ApiResponse(data=students, message=f"Retrieved {len(students)} students from waiting list")
+
+
+@router.patch(
+    "/students/{student_id}/waiting-priority",
+    response_model=ApiResponse[StudentResponseDTO],
+    summary="Set waiting list priority",
+    description="Set priority for a student on the waiting list (1 = highest)."
+)
+def set_waiting_priority(
+    student_id: int,
+    body: SetWaitingPriorityDTO,
+    current_user: User = Depends(require_admin),
+    svc: StudentService = Depends(get_student_service),
+):
+    try:
+        student = svc.set_waiting_priority(
+            student_id=student_id,
+            priority=body.priority,
+            user_id=current_user.id
+        )
+        return ApiResponse(
+            data=student,
+            message=f"Waiting priority set to {body.priority}"
+        )
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail=f"Student {student_id} not found or not on waiting list")
+
+
+@router.get(
+    "/students/by-status/{status}",
+    response_model=ApiResponse[list[StudentResponseDTO]],
+    summary="Get students by status",
+    description="Retrieve students filtered by their enrollment status."
+)
+def get_students_by_status(
+    status: str,
+    skip: int = 0,
+    limit: int = 200,
+    current_user: User = Depends(require_admin),
+    svc: StudentService = Depends(get_student_service),
+):
+    try:
+        status_enum = StudentStatus(status)
+        students = svc.get_students_by_status(status_enum, skip, limit)
+        return ApiResponse(
+            data=students,
+            message=f"Retrieved {len(students)} {status} students"
+        )
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid status: {status}")
+
+
+@router.get(
+    "/students/status-summary",
+    response_model=ApiResponse[StudentStatusSummaryDTO],
+    summary="Get student status summary",
+    description="Get counts of students by enrollment status."
+)
+def get_student_status_summary(
+    current_user: User = Depends(require_admin),
+    svc: StudentService = Depends(get_student_service),
+):
+    summary = svc.get_student_status_summary()
+    return ApiResponse(data=summary)
+
+
+@router.get(
+    "/students/{student_id}/status-history",
+    response_model=ApiResponse[list[dict]],
+    summary="Get student status history",
+    description="Retrieve audit log of status changes for a student."
+)
+def get_student_status_history(
+    student_id: int,
+    current_user: User = Depends(require_admin),
+    svc: StudentService = Depends(get_student_service),
+):
+    try:
+        history = svc.get_student_status_history(student_id)
+        return ApiResponse(data=history)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail=f"Student {student_id} not found")
