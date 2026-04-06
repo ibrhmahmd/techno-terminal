@@ -150,6 +150,36 @@ def complete_group_level(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.post(
+    "/academics/groups/{group_id}/levels/{level_number}/cancel",
+    response_model=ApiResponse[dict],
+    summary="Cancel a group level",
+)
+def cancel_group_level_endpoint(
+    group_id: int,
+    level_number: int,
+    body: CancelLevelInput = Body(...),
+    _user: User = Depends(require_admin),
+    svc: GroupLevelService = Depends(get_group_level_service),
+):
+    """
+    Cancel a group level that hasn't been completed yet.
+    Requires admin privileges.
+    """
+    try:
+        cancelled_level = svc.cancel_level(group_id, level_number, body.reason)
+        return ApiResponse(
+            data={
+                "level_id": cancelled_level.id,
+                "level_number": cancelled_level.level_number,
+                "status": cancelled_level.status,
+            },
+            message=f"Level {level_number} cancelled successfully.",
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.get(
     "/academics/groups/{group_id}/courses/history",
     response_model=ApiResponse[list[dict]],

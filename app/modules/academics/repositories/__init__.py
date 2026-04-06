@@ -25,6 +25,10 @@ from .group_repository import (
     increment_group_level,
     get_enriched_groups,
     get_enriched_groups_by_date,
+    get_enriched_group_by_id,
+    search_groups,
+    get_groups_by_type,
+    get_groups_by_course,
 )
 
 from .session_repository import (
@@ -71,6 +75,10 @@ __all__ = [
     "increment_group_level",
     "get_enriched_groups",
     "get_enriched_groups_by_date",
+    "get_enriched_group_by_id",
+    "search_groups",
+    "get_groups_by_type",
+    "get_groups_by_course",
     
     # Session Repository
     "create_session",
@@ -94,3 +102,4 @@ __all__ = [
     "get_group_instructors_summary",
     "get_group_competition_participations",
 ]
+

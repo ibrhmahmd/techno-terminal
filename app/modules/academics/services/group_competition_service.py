@@ -144,6 +144,47 @@ class GroupCompetitionService:
             session.refresh(updated)
             return updated
 
+    def withdraw_from_competition(
+        self, participation_id: int, reason: str | None = None
+    ) -> dict:
+        """
+        Withdraw from a competition.
+        
+        Args:
+            participation_id: ID of the participation record
+            reason: Optional reason for withdrawal
+            
+        Returns:
+            Dict with withdrawal details
+            
+        Raises:
+            ValueError: If participation not found or cannot be withdrawn
+        """
+        from datetime import datetime
+        
+        with get_session() as session:
+            participation = repo.get_participation_by_id(session, participation_id)
+            if not participation:
+                raise ValueError(f"Participation {participation_id} not found")
+            
+            # Check if already completed or withdrawn
+            if participation.is_active == False:
+                raise ValueError("Already withdrawn or completed")
+            
+            # Mark as inactive (withdrawn)
+            participation.is_active = False
+            participation.left_at = datetime.utcnow()
+            participation.notes = reason or participation.notes
+            
+            updated = repo.update_participation(session, participation)
+            session.commit()
+            
+            return {
+                "id": updated.id,
+                "status": "withdrawn",
+                "withdrawn_at": updated.left_at,
+            }
+
     def link_existing_team(self, group_id: int, team_id: int) -> dict:
         """
         Link an existing team to a group (if not already linked).

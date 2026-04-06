@@ -56,3 +56,9 @@ class DailyScheduleItem(BaseModel):
     @classmethod
     def parse_time(cls, value):
         return time_to_str(value)
+
+
+class GenerateLevelSessionsRequest(BaseModel):
+    """Input for generating level sessions (without group_id which comes from path)."""
+    level_number: int
+    start_date: Optional[date] = None

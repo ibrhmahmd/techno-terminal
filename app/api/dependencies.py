@@ -126,6 +126,9 @@ from app.modules.crm.services.student_service import StudentService
 from app.modules.crm.services.parent_service import ParentService
 from app.modules.academics.services.course_service import CourseService
 from app.modules.academics.services.group_service import GroupService
+from app.modules.academics.services.group_history_service import GroupHistoryService
+from app.modules.academics.services.group_level_service import GroupLevelService
+from app.modules.academics.services.group_competition_service import GroupCompetitionService
 from app.modules.academics.services.session_service import SessionService
 from app.modules.academics.services.group_analytics_service import GroupAnalyticsService
 from app.modules.enrollments.services.enrollment_service import EnrollmentService
@@ -149,6 +152,21 @@ def get_course_service() -> CourseService:
 
 def get_group_service() -> GroupService:
     return GroupService()
+
+
+def get_group_history_service() -> GroupHistoryService:
+    """Returns a fresh GroupHistoryService instance per request."""
+    return GroupHistoryService()
+
+
+def get_group_level_service() -> GroupLevelService:
+    """Returns a fresh GroupLevelService instance per request."""
+    return GroupLevelService()
+
+
+def get_group_competition_service() -> GroupCompetitionService:
+    """Returns a fresh GroupCompetitionService instance per request."""
+    return GroupCompetitionService()
 
 
 def get_session_service() -> SessionService:

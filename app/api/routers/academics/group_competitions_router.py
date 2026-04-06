@@ -174,3 +174,33 @@ def complete_competition_participation(
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.delete(
+    "/academics/groups/{group_id}/competitions/{participation_id}",
+    response_model=ApiResponse[dict],
+    summary="Withdraw from competition",
+)
+def withdraw_from_competition(
+    group_id: int,
+    participation_id: int,
+    reason: str | None = None,
+    _user: User = Depends(require_admin),
+    svc: GroupCompetitionService = Depends(get_group_competition_service),
+):
+    """
+    Withdraw from a competition.
+    Requires admin privileges.
+    """
+    try:
+        result = svc.withdraw_from_competition(participation_id, reason)
+        return ApiResponse(
+            data={
+                "participation_id": result["id"],
+                "status": result["status"],
+                "withdrawn_at": result["withdrawn_at"],
+            },
+            message="Successfully withdrew from competition.",
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))

@@ -6,6 +6,8 @@ Exports all SQLModel entities for the academics module.
 from .course_models import Course, CourseBase
 from .group_models import Group, GroupBase
 from .session_models import CourseSession, CourseSessionBase
+from .group_level_models import GroupLevel, GroupCourseHistory, GroupCompetitionParticipation
+
 
 __all__ = [
     "Course",
@@ -14,4 +16,7 @@ __all__ = [
     "GroupBase",
     "CourseSession",
     "CourseSessionBase",
+    "GroupLevel",
+    "GroupCourseHistory",
+    "GroupCompetitionParticipation",
 ]

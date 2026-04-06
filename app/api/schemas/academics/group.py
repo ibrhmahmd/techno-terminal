@@ -53,3 +53,28 @@ class GroupListItem(BaseModel):
     @classmethod
     def parse_time(cls, value):
         return time_to_str(value)
+
+
+class EnrichedGroupPublic(BaseModel):
+    """
+    Group profile with denormalized instructor and course names.
+    Returned by enriched group endpoints.
+    """
+    id: int
+    group_name: str
+    course_name: str
+    instructor_name: str
+    level_number: int
+    default_day: Optional[str] = None
+    default_time_start: Optional[str] = None
+    default_time_end: Optional[str] = None
+    max_capacity: Optional[int] = None
+    notes: Optional[str] = None
+    status: str
+
+    model_config = {"from_attributes": True}
+    
+    @field_validator("default_time_start", "default_time_end", mode="before")
+    @classmethod
+    def parse_time(cls, value):
+        return time_to_str(value)

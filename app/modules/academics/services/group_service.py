@@ -82,6 +82,10 @@ class GroupService:
         with get_session() as session:
             return repo.get_group_by_id(session, group_id)
 
+    def get_enriched_group_by_id(self , group: Group) -> EnrichedGroupDTO:
+        with get_session() as session:
+            return repo.get_enriched_group_by_id(session, group.id)
+            
     def update_group(self, group_id: int, data: UpdateGroupDTO) -> Group:
         with get_session() as session:
             group = repo.get_group_by_id(session, group_id)
@@ -95,3 +99,42 @@ class GroupService:
             session.commit()
             session.refresh(group)
             return group
+
+    def search_groups(
+        self,
+        query: str,
+        status: str | None = None,
+        skip: int = 0,
+        limit: int = 20
+    ) -> tuple[list[Group], int]:
+        """Search groups by name with optional status filter."""
+        with get_session() as session:
+            results, total = repo.search_groups(session, query, status, skip, limit)
+            return list(results), total
+
+    def get_groups_by_type(
+        self,
+        group_type: str,
+        status: str | None = None,
+        skip: int = 0,
+        limit: int = 50
+    ) -> tuple[list[Group], int]:
+        """Get groups filtered by type."""
+        with get_session() as session:
+            results, total = repo.get_groups_by_type(session, group_type, status, skip, limit)
+            return list(results), total
+
+    def get_groups_by_course(
+        self,
+        course_id: int,
+        include_inactive: bool = False,
+        level_number: int | None = None,
+        skip: int = 0,
+        limit: int = 50
+    ) -> tuple[list[Group], int]:
+        """Get all groups for a specific course."""
+        with get_session() as session:
+            results, total = repo.get_groups_by_course(
+                session, course_id, include_inactive, level_number, skip, limit
+            )
+            return list(results), total
