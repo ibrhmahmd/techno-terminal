@@ -82,9 +82,9 @@ class GroupService:
         with get_session() as session:
             return repo.get_group_by_id(session, group_id)
 
-    def get_enriched_group_by_id(self , group: Group) -> EnrichedGroupDTO:
+    def get_enriched_group_by_id(self, group_id: int) -> EnrichedGroupDTO | None:
         with get_session() as session:
-            return repo.get_enriched_group_by_id(session, group.id)
+            return repo.get_enriched_group_by_id(session, group_id)
             
     def update_group(self, group_id: int, data: UpdateGroupDTO) -> Group:
         with get_session() as session:

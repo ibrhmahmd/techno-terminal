@@ -31,6 +31,30 @@ from .group_repository import (
     get_groups_by_course,
 )
 
+
+
+from .group_competition_repository import (
+    create_participation,
+    get_participation_by_id,
+    list_group_participations,
+    list_team_participations,
+    complete_participation,
+    update_participation,
+    get_active_participation_for_team,
+)
+
+
+
+from .group_level_repository import (
+    list_group_levels,
+    get_current_group_level,
+    get_group_level_by_id,
+    get_group_level_by_number,
+    update_group_level,
+    complete_group_level,
+    cancel_group_level
+)
+
 from .session_repository import (
     create_session,
     delete_session,
@@ -79,6 +103,26 @@ __all__ = [
     "search_groups",
     "get_groups_by_type",
     "get_groups_by_course",
+    
+    # Group Levels Repository
+    "list_group_levels",
+    "get_current_group_level",
+    "get_group_level_by_id",
+    "get_group_level_by_number",
+    "update_group_level",
+    "complete_group_level",
+    "cancel_group_level",
+    
+
+
+    # group competition repository
+    "create_participation",
+    "get_participation_by_id",
+    "list_group_participations",
+    "list_team_participations",
+    "complete_participation",
+    "update_participation",
+    "get_active_participation_for_team",
     
     # Session Repository
     "create_session",
