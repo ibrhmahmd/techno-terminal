@@ -4,6 +4,7 @@ from app.shared.audit_utils import apply_create_audit
 from app.shared.datetime_utils import utc_now
 from app.modules.crm import crm_service as crm_srv
 import app.modules.academics as acad_srv
+from app.modules.academics.models.group_models import Group
 from app.modules.enrollments.models.enrollment_models import Enrollment
 from app.modules.enrollments.schemas.enrollment_schemas import (
     EnrollStudentInput,
