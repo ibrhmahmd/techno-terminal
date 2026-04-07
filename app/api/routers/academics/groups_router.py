@@ -22,6 +22,7 @@ from app.api.schemas.academics.session import (
     SessionPublic,
     GenerateLevelSessionsRequest,
 )
+from app.api.schemas.academics.grouped import GroupedGroupsResponse, GroupedItem
 from app.api.dependencies import (
     require_admin,
     require_any,
@@ -29,6 +30,7 @@ from app.api.dependencies import (
     get_session_service,
 )
 from app.modules.academics.schemas import ScheduleGroupInput, UpdateGroupDTO, ProgressGroupLevelResult
+from app.modules.academics.schemas.grouped_schemas import GroupedGroupsResult
 from app.modules.auth import User
 from app.modules.academics.services.group_service import GroupService
 from app.modules.academics.services.session_service import SessionService
@@ -75,6 +77,101 @@ def list_enriched_groups(
     
     return ApiResponse(
         data=[EnrichedGroupPublic.model_validate(g.model_dump(mode="json")) for g in groups]
+    )
+
+
+# get groups grouped by a specific field
+@router.get(
+    "/academics/groups/grouped",
+    response_model=ApiResponse[GroupedGroupsResponse],
+    summary="Get groups grouped by a specific field",
+)
+def list_groups_grouped(
+    group_by: str = Query(..., description="Field to group by: day, course, instructor, status"),
+    skip: int = Query(0, ge=0, description="Pagination offset"),
+    limit: int = Query(50, ge=1, le=200, description="Page size"),
+    search: str | None = Query(None, description="Search term for filtering"),
+    _user: User = Depends(require_any),
+    svc: GroupService = Depends(get_group_service),
+):
+    """
+    Returns groups grouped by a specified field with pagination support.
+    
+    Query params:
+    - group_by: Field to group results by (required: day, course, instructor, status)
+    - skip: Number of records to skip for pagination
+    - limit: Maximum number of groups to return per request
+    - search: Optional search term to filter groups
+    """
+    result = svc.get_groups_grouped(
+        group_by=group_by,
+        skip=skip,
+        limit=limit,
+        search=search
+    )
+    
+    return ApiResponse(
+        data=GroupedGroupsResponse(
+            groups=[
+                GroupedItem(
+                    key=item.key,
+                    label=item.label,
+                    count=item.count,
+                    groups=[EnrichedGroupPublic.model_validate(g).model_dump() for g in item.groups]
+                )
+                for item in result.groups
+            ],
+            total=result.total,
+            group_by=result.group_by,
+        )
+    )
+
+
+# get groups by course
+@router.get(
+    "/academics/groups/course/{course_id}",
+    response_model=PaginatedResponse[GroupListItem],
+    summary="Get groups by course",
+)
+def get_groups_by_course(
+    course_id: int,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    _user: User = Depends(require_any),
+    svc: GroupService = Depends(get_group_service),
+):
+    results = svc.get_groups_by_course(course_id)
+    page = results[skip : skip + limit]
+    return PaginatedResponse(
+        data=[GroupListItem.model_validate(g) for g in page],
+        total=len(results),
+        skip=skip,
+        limit=limit,
+    )
+
+
+
+
+
+# get archived groups pagenated
+@router.get(
+    "/academics/groups/archived",
+    response_model=PaginatedResponse[GroupListItem],
+    summary="Get archived groups pagenated",
+)
+def list_archived_groups(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    _user: User = Depends(require_any),
+    svc: GroupService = Depends(get_group_service),
+):
+    results = svc.get_all_archived_groups()
+    page = results[skip : skip + limit]
+    return PaginatedResponse(
+        data=[GroupListItem.model_validate(g) for g in page],
+        total=len(results),
+        skip=skip,
+        limit=limit,
     )
 
 
@@ -238,9 +335,7 @@ def progress_group_level(
     )
 
 
-# delete group (soft delete)
-
-
+# delete group
 @router.delete(
     "/academics/groups/{group_id}",
     response_model=ApiResponse[GroupPublic],
@@ -263,86 +358,7 @@ def delete_group(
     )
 
 
-# schedule group level
-
-
-@router.post(
-    "/academics/groups/{group_id}/schedule-level",
-    response_model=ApiResponse[dict],
-    status_code=201,
-    summary="Schedule a new level for an existing group",
-)
-def schedule_group_level(
-    group_id: int,
-    body: ScheduleGroupLevelRequest,
-    _user: User = Depends(require_admin),
-    svc: GroupService = Depends(get_group_service),
-):
-    """
-    Schedule a new level for an existing group.
-    Creates GroupLevel record and generates 5 sessions.
-    """
-    from app.modules.academics.schemas import ScheduleGroupLevelInput
-
-    data = ScheduleGroupLevelInput(
-        group_id=group_id,
-        level_number=body.level_number,
-        instructor_id=body.instructor_id,
-        price_override=body.price_override,
-        start_date=body.start_date,
-    )
-
-    level, sessions = svc.schedule_group_level(data)
-
-    return ApiResponse(
-        data={
-            "level_id": level.id,
-            "level_number": level.level_number,
-            "group_id": level.group_id,
-            "sessions_created": len(sessions),
-            "sessions": [{"id": s.id, "session_number": s.session_number, "date": s.session_date.isoformat()} for s in sessions],
-        },
-        message=f"Level {level.level_number} scheduled for group {group_id} with {len(sessions)} sessions.",
-    )
-
-
-# progress group level
-
-
-@router.post(
-    "/academics/groups/{group_id}/progress-level",
-    response_model=ApiResponse[ProgressGroupLevelResult],
-    status_code=200,
-    summary="Progress group to next level",
-)
-def progress_group_level(
-    group_id: int,
-    body: ProgressGroupLevelRequest,
-    _user: User = Depends(require_admin),
-    svc: GroupService = Depends(get_group_service),
-):
-    """
-    Progress a group to the next level.
-    Completes current level, creates new level, migrates enrollments.
-    """
-    from app.modules.academics.schemas import ProgressGroupLevelInput
-
-    data = ProgressGroupLevelInput(
-        group_id=group_id,
-        price_override=body.price_override,
-    )
-
-    result = svc.progress_group_level(data)
-
-    return ApiResponse(
-        data=result,
-        message=result.message,
-    )
-
-
 # generate level sessions manually
-
-
 @router.post(
     "/academics/groups/{group_id}/generate-sessions",
     response_model=ApiResponse[list[SessionPublic]],
@@ -373,8 +389,6 @@ def generate_level_sessions(
 
 
 # search groups
-
-
 @router.get(
     "/academics/groups/search",
     response_model=PaginatedResponse[GroupListItem],
@@ -399,8 +413,6 @@ def search_groups(
 
 
 # get groups by type
-
-
 @router.get(
     "/academics/groups/by-type/{group_type}",
     response_model=PaginatedResponse[GroupListItem],

@@ -8,10 +8,36 @@ from datetime import datetime
 from app.db.connection import get_session
 from app.modules.academics.models.group_level_models import GroupCompetitionParticipation
 from app.modules.academics import repositories as repo
+from app.modules.academics.schemas.team_schemas import TeamReadDTO
 
 
 class GroupCompetitionService:
     """Service for managing group participation in competitions."""
+
+    def get_teams_by_group(
+        self,
+        group_id: int,
+        include_inactive: bool = False,
+        skip: int = 0,
+        limit: int = 50
+    ) -> tuple[list[TeamReadDTO], int]:
+        """
+        Get paginated list of teams for a group.
+        
+        Args:
+            group_id: The group ID to filter by
+            include_inactive: Whether to include deleted teams
+            skip: Number of records to skip (pagination)
+            limit: Maximum records to return (pagination)
+            
+        Returns:
+            Tuple of (list of TeamReadDTO, total count)
+        """
+        with get_session() as session:
+            teams, total = repo.get_teams_by_group(
+                session, group_id, include_inactive, skip, limit
+            )
+            return [TeamReadDTO.model_validate(t) for t in teams], total
 
     def register_team(
         self,

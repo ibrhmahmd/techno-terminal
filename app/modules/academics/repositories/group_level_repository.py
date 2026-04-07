@@ -3,8 +3,8 @@ app/modules/academics/repositories/group_level_repository.py
 ─────────────────────────────────────────────────────────────
 Repository functions for Group Levels (OTS Levels).
 """
-from typing import Sequence
-from sqlmodel import Session, select
+from typing import Sequence, Optional
+from sqlmodel import Session, select, func
 from app.modules.academics.models.group_level_models import GroupLevel
 
 
@@ -48,6 +48,46 @@ def list_group_levels(
     
     stmt = stmt.order_by(GroupLevel.level_number.asc())
     return session.exec(stmt).all()
+
+
+def get_levels_by_group(
+    session: Session,
+    group_id: int,
+    status: Optional[str] = None,
+    include_inactive: bool = False,
+    skip: int = 0,
+    limit: int = 50
+) -> tuple[list[GroupLevel], int]:
+    """
+    Get paginated list of levels for a group.
+    
+    Args:
+        session: Database session
+        group_id: The group ID
+        status: Filter by status (active, completed, cancelled)
+        include_inactive: Include inactive levels
+        skip: Number of records to skip
+        limit: Maximum records to return
+        
+    Returns:
+        Tuple of (levels list, total count)
+    """
+    stmt = select(GroupLevel).where(GroupLevel.group_id == group_id)
+    
+    if status:
+        stmt = stmt.where(GroupLevel.status == status)
+    elif not include_inactive:
+        stmt = stmt.where(GroupLevel.status == "active")
+    
+    # Get total count
+    count_stmt = select(func.count()).select_from(stmt.subquery())
+    total = session.exec(count_stmt).one()
+    
+    # Get paginated results
+    stmt = stmt.order_by(GroupLevel.level_number).offset(skip).limit(limit)
+    results = list(session.exec(stmt).all())
+    
+    return results, total
 
 
 def update_group_level(session: Session, level: GroupLevel) -> GroupLevel:

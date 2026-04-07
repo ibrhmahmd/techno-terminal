@@ -5,7 +5,7 @@ Router for group lifecycle and history endpoints.
 """
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 
-from app.api.schemas.common import ApiResponse
+from app.api.schemas.common import ApiResponse, PaginatedResponse
 from app.api.dependencies import require_any, require_admin, get_group_service, get_group_history_service, get_group_level_service, get_group_analytics_service
 from app.modules.auth import User
 from app.modules.academics.services.group_service import GroupService
@@ -18,6 +18,7 @@ from app.api.schemas.academics.group_analytics import (
     GroupInstructorHistoryResponseDTO,
 )
 from app.api.schemas.academics.group_lifecycle import CancelLevelInput
+from app.api.schemas.academics.group_level import GroupLevelPublic
 
 router = APIRouter(tags=["Academics — Group Lifecycle"])
 
@@ -47,36 +48,45 @@ def get_group_lifecycle_history(
 
 @router.get(
     "/academics/groups/{group_id}/levels",
-    response_model=ApiResponse[list[dict]],
+    response_model=PaginatedResponse[GroupLevelPublic],
     summary="List all level snapshots for a group",
 )
 def list_group_levels(
     group_id: int,
     status: str | None = None,
     include_inactive: bool = False,
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(50, ge=1, le=200, description="Maximum records to return"),
     _user: User = Depends(require_any),
     svc: GroupLevelService = Depends(get_group_level_service),
 ):
     """
-    Returns all level snapshots for a group.
+    Returns paginated level snapshots for a group.
     Query params:
     - status: Filter by status (active, completed, cancelled)
     - include_inactive: Include inactive levels if True
+    - skip: Number of records to skip (pagination)
+    - limit: Maximum number of records to return
     """
-    levels = svc.get_level_history(group_id)
+    levels, total = svc.get_paginated_levels(
+        group_id=group_id,
+        status=status,
+        include_inactive=include_inactive,
+        skip=skip,
+        limit=limit
+    )
     
-    # Apply filters
-    if status:
-        levels = [l for l in levels if l.status == status]
-    elif not include_inactive:
-        levels = [l for l in levels if l.status == "active"]
-    
-    return ApiResponse(data=levels)
+    return PaginatedResponse(
+        data=[GroupLevelPublic.model_validate(l) for l in levels],
+        total=total,
+        skip=skip,
+        limit=limit,
+    )
 
 
 @router.get(
     "/academics/groups/{group_id}/levels/{level_number}",
-    response_model=ApiResponse[dict],
+    response_model=ApiResponse[GroupLevelPublic],
     summary="Get specific level details",
 )
 def get_group_level(
@@ -85,35 +95,11 @@ def get_group_level(
     _user: User = Depends(require_any),
     svc: GroupLevelService = Depends(get_group_level_service),
 ):
-    """Returns details for a specific level snapshot."""
-    from app.db.connection import get_session
-    from app.modules.academics.repositories import get_group_level_by_number
-    from app.modules.academics.models import Course
-    from app.modules.hr.hr_models import Employee
-    
-    with get_session() as session:
-        level = get_group_level_by_number(session, group_id, level_number)
-        if not level:
-            raise HTTPException(status_code=404, detail=f"Level {level_number} not found for group {group_id}")
-        
-        course = session.get(Course, level.course_id)
-        instructor = session.get(Employee, level.instructor_id) if level.instructor_id else None
-        
-        return ApiResponse(data={
-            "id": level.id,
-            "group_id": level.group_id,
-            "level_number": level.level_number,
-            "course_id": level.course_id,
-            "course_name": course.name if course else None,
-            "instructor_id": level.instructor_id,
-            "instructor_name": instructor.full_name if instructor else None,
-            "sessions_planned": level.sessions_planned,
-            "price_override": float(level.price_override) if level.price_override else None,
-            "status": level.status,
-            "effective_from": level.effective_from,
-            "effective_to": level.effective_to,
-            "created_at": level.created_at,
-        })
+    """
+    Returns detailed level information including course and instructor names.
+    """
+    level = svc.get_level_by_number(group_id, level_number)
+    return ApiResponse(data=GroupLevelPublic.model_validate(level))
 
 
 @router.post(

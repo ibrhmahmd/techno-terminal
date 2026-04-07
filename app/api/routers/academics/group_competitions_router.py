@@ -5,13 +5,14 @@ Router for group-centric competition APIs.
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.api.schemas.common import ApiResponse
+from app.api.schemas.common import ApiResponse, PaginatedResponse
 from app.api.dependencies import require_any, require_admin, get_group_competition_service, get_team_service, get_group_analytics_service
 from app.modules.auth import User
 from app.modules.academics.services.group_competition_service import GroupCompetitionService
 from app.modules.academics.services.group_analytics_service import GroupAnalyticsService
 from app.modules.competitions.services.team_service import TeamService
 from app.api.schemas.academics.group_analytics import GroupCompetitionHistoryResponseDTO
+from app.api.schemas.academics.team import TeamPublic
 
 router = APIRouter(tags=["Academics — Group Competitions"])
 
@@ -39,42 +40,38 @@ def list_group_competitions(
 
 @router.get(
     "/academics/groups/{group_id}/teams",
-    response_model=ApiResponse[list[dict]],
+    response_model=PaginatedResponse[TeamPublic],
     summary="List teams linked to a group",
 )
 def list_group_teams(
     group_id: int,
     include_inactive: bool = Query(False, description="Include inactive/deleted teams"),
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(50, ge=1, le=200, description="Maximum records to return"),
     _user: User = Depends(require_any),
-    svc: TeamService = Depends(get_team_service),
+    svc: GroupCompetitionService = Depends(get_group_competition_service),
 ):
     """
-    Returns all teams linked to a group.
+    Returns paginated list of teams linked to a group.
     
     Query params:
     - include_inactive: Include teams marked as deleted if True
+    - skip: Number of records to skip (pagination)
+    - limit: Maximum number of records to return
     """
-    from app.db.connection import get_session
-    from sqlmodel import select
-    from app.modules.competitions.models.team_models import Team
+    teams, total = svc.get_teams_by_group(
+        group_id=group_id,
+        include_inactive=include_inactive,
+        skip=skip,
+        limit=limit
+    )
     
-    with get_session() as session:
-        stmt = select(Team).where(Team.group_id == group_id)
-        if not include_inactive:
-            stmt = stmt.where(Team.is_deleted == False)
-        
-        teams = session.exec(stmt).all()
-        return ApiResponse(data=[
-            {
-                "id": t.id,
-                "team_name": t.team_name,
-                "group_id": t.group_id,
-                "coach_id": t.coach_id,
-                "created_at": t.created_at,
-                "is_deleted": t.is_deleted,
-            }
-            for t in teams
-        ])
+    return PaginatedResponse(
+        data=[TeamPublic.model_validate(t) for t in teams],
+        total=total,
+        skip=skip,
+        limit=limit,
+    )
 
 
 @router.post(

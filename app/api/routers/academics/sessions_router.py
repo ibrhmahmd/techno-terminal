@@ -15,8 +15,6 @@ from app.api.dependencies import require_admin, require_any, get_session_service
 from app.modules.academics.schemas import AddExtraSessionInput, UpdateSessionDTO
 from app.modules.auth import User
 from app.modules.academics.services.session_service import SessionService
-from app.db.connection import get_session
-from app.modules.academics.models import CourseSession
 
 router = APIRouter(tags=["Academics — Sessions"])
 
@@ -65,13 +63,11 @@ def add_extra_session(
 def get_session_endpoint(
     session_id: int,
     _user: User = Depends(require_any),
+    svc: SessionService = Depends(get_session_service),
 ):
-    with get_session() as db:
-        cs = db.get(CourseSession, session_id)
-        if not cs:
-            from fastapi import HTTPException
-            raise HTTPException(status_code=404, detail="Session not found")
-        return ApiResponse(data=SessionPublic.model_validate(cs))
+    """Returns session details."""
+    session = svc.get_session_by_id(session_id)
+    return ApiResponse(data=SessionPublic.model_validate(session))
 
 
 # update a session

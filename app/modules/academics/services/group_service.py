@@ -15,6 +15,7 @@ from app.modules.academics.schemas import (
     ScheduleGroupInput, UpdateGroupDTO, EnrichedGroupDTO,
     ScheduleGroupLevelInput, ProgressGroupLevelInput, ProgressGroupLevelResult,
 )
+from app.modules.academics.schemas.grouped_schemas import GroupedItemDTO, GroupedGroupsResult
 from app.modules.academics.helpers.time_helpers import fmt_12h, next_weekday, validate_times
 from app.modules.academics.helpers.session_planning import create_sessions_in_session
 from app.modules.academics import repositories as repo
@@ -333,6 +334,12 @@ class GroupService:
             results, total = repo.get_groups_by_type(session, group_type, status, skip, limit)
             return list(results), total
 
+
+    def get_all_archived_groups(self, include_inactive: bool = False) -> list[Group]:
+        """Get all archived groups."""
+        with get_session() as session:
+            return list(repo.get_all_archived_groups(session, include_inactive))
+
     def get_groups_by_course(
         self,
         course_id: int,
@@ -347,6 +354,99 @@ class GroupService:
                 session, course_id, include_inactive, level_number, skip, limit
             )
             return list(results), total
+
+    def get_groups_grouped(
+        self,
+        group_by: str,
+        skip: int = 0,
+        limit: int = 50,
+        search: str | None = None
+    ) -> GroupedGroupsResult:
+        """
+        Get groups grouped by a specific field with pagination.
+        
+        Args:
+            group_by: Field to group by (day, course, instructor, status)
+            skip: Number of records to skip
+            limit: Maximum records to return
+            search: Optional search term
+            
+        Returns:
+            GroupedGroupsResult with grouped items and metadata
+            
+        Raises:
+            ValueError: If group_by is not a valid field
+        """
+        # Validate group_by field
+        valid_fields = {"day", "course", "instructor", "status"}
+        if group_by not in valid_fields:
+            raise ValueError(f"Invalid group_by field. Must be one of: {valid_fields}")
+        
+        with get_session() as session:
+            # Get all active groups with enrichment
+            groups = repo.get_enriched_groups(session)
+            
+            # Apply search filter if provided
+            if search:
+                search_lower = search.lower()
+                groups = [
+                    g for g in groups
+                    if search_lower in g.group_name.lower()
+                    or search_lower in (g.course_name or "").lower()
+                    or search_lower in (g.instructor_name or "").lower()
+                ]
+            
+            # Group the results
+            grouped_data: dict[str, dict] = {}
+            
+            for group in groups:
+                # Determine the key based on group_by field
+                if group_by == "day":
+                    key = (group.default_day or "unspecified").lower()
+                    label = group.default_day or "Unspecified"
+                elif group_by == "course":
+                    key = str(group.course_id)
+                    label = group.course_name or "Unknown Course"
+                elif group_by == "instructor":
+                    key = str(group.instructor_id) if group.instructor_id else "none"
+                    label = group.instructor_name or "No Instructor"
+                elif group_by == "status":
+                    key = group.status.lower()
+                    label = group.status.title()
+                else:
+                    continue
+                
+                if key not in grouped_data:
+                    grouped_data[key] = {
+                        "key": key,
+                        "label": label,
+                        "groups": []
+                    }
+                grouped_data[key]["groups"].append(group)
+            
+            # Convert to DTOs and apply pagination
+            all_items = [
+                GroupedItemDTO(
+                    key=item["key"],
+                    label=item["label"],
+                    count=len(item["groups"]),
+                    groups=item["groups"]
+                )
+                for item in grouped_data.values()
+            ]
+            
+            # Sort by label for consistent ordering
+            all_items.sort(key=lambda x: x.label)
+            
+            # Apply pagination at the group level
+            total_groups = len(all_items)
+            paginated_items = all_items[skip : skip + limit]
+            
+            return GroupedGroupsResult(
+                groups=paginated_items,
+                total=total_groups,
+                group_by=group_by
+            )
 
     def delete_group_by_id(self, group_id: int) -> Group:
         """Delete a group by ID."""

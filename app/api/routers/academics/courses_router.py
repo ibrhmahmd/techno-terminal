@@ -135,3 +135,21 @@ def update_course(
 ):
     course = svc.update_course(course_id, body)
     return ApiResponse(data=CoursePublic.model_validate(course))
+
+
+# soft delete (archive) a course
+@router.delete(
+    "/academics/courses/{course_id}",
+    response_model=ApiResponse[CoursePublic],
+    summary="Soft delete (archive) a course",
+)
+def delete_course(
+    course_id: int,
+    _user: User = Depends(require_admin),
+    svc: CourseService = Depends(get_course_service),
+):
+    course = svc.update_course(course_id, UpdateCourseDTO(is_active=False))
+    return ApiResponse(
+        data=CoursePublic.model_validate(course),
+        message="Course archived successfully.",
+    )

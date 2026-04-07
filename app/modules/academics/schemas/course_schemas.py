@@ -3,7 +3,7 @@ app/modules/academics/schemas/course_schemas.py
 ────────────────────────────────────────────────
 Input DTOs and typed read models for the Course entity.
 """
-from typing import Optional
+from typing import Optional, Literal
 from pydantic import BaseModel, field_validator
 from app.shared.validators import validate_positive_amount
 
@@ -18,6 +18,17 @@ class AddNewCourseInput(BaseModel):
     notes: Optional[str] = None
     price_per_level: float
     sessions_per_level: int
+
+    @field_validator("category")
+    @classmethod
+    def category_valid(cls, v: Optional[str]) -> Optional[str]:
+        """Validate category against database CHECK constraint."""
+        if v is not None:
+            allowed = {"software", "hardware", "steam", "other"}
+            if v not in allowed:
+                from app.shared.exceptions import ValidationError
+                raise ValidationError(f"Category must be one of: {', '.join(sorted(allowed))}")
+        return v
 
     @field_validator("price_per_level")
     @classmethod
@@ -43,6 +54,17 @@ class UpdateCourseDTO(BaseModel):
     price_per_level: Optional[float] = None
     sessions_per_level: Optional[int] = None
     is_active: Optional[bool] = None
+
+    @field_validator("category")
+    @classmethod
+    def category_valid(cls, v: Optional[str]) -> Optional[str]:
+        """Validate category against database CHECK constraint."""
+        if v is not None:
+            allowed = {"software", "hardware", "steam", "other"}
+            if v not in allowed:
+                from app.shared.exceptions import ValidationError
+                raise ValidationError(f"Category must be one of: {', '.join(sorted(allowed))}")
+        return v
 
     @field_validator("price_per_level")
     @classmethod

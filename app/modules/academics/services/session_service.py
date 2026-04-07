@@ -17,6 +17,25 @@ from app.modules.academics import repositories as repo
 
 
 class SessionService:
+    def get_session_by_id(self, session_id: int) -> CourseSession:
+        """
+        Get a session by ID.
+        
+        Args:
+            session_id: The session ID
+            
+        Returns:
+            CourseSession entity
+            
+        Raises:
+            NotFoundError: If session not found
+        """
+        with get_session() as session:
+            cs = session.get(CourseSession, session_id)
+            if not cs:
+                raise NotFoundError(f"Session {session_id} not found")
+            return cs
+
     def generate_level_sessions(
         self, data: GenerateLevelSessionsInput
     ) -> list[CourseSession]:
