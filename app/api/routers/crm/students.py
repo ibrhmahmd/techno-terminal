@@ -93,7 +93,7 @@ def create_student(
         message="Student registered successfully.",
     )
 
-
+# Update student profile
 @router.patch(
     "/students/{student_id}",
     response_model=ApiResponse[StudentPublic],
@@ -108,7 +108,7 @@ def update_student(
     student = svc.update_student(student_id, body)
     return ApiResponse(data=StudentPublic.model_validate(student))
 
-
+# Get all parents linked to a student
 @router.get(
     "/students/{student_id}/parents",
     response_model=ApiResponse[list[ParentPublic]],
