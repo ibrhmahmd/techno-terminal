@@ -21,8 +21,12 @@ COPY app/ ./app/
 COPY alembic/ ./alembic/
 COPY alembic.ini ./
 
+# Copy start script and make it executable
+COPY start.sh ./
+RUN chmod +x start.sh
+
 # Expose port (Railway sets PORT env var)
 EXPOSE 8000
 
-# Start command using shell form for proper env var expansion
-CMD ["sh", "-c", "gunicorn app.api.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8000} --workers 2"]
+# Start using the script
+CMD ["./start.sh"]
