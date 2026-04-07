@@ -9,9 +9,27 @@ from app.shared.constants import PaymentMethod
 from app.shared.validators import validate_positive_amount
 
 
+class ReceiptLineInput(BaseModel):
+    """One charge line for create_receipt_with_charge_lines (no receipt_id yet)."""
+
+    student_id: int
+    enrollment_id: Optional[int] = None
+    team_member_id: Optional[int] = None   # Set for competition payments — links to TeamMember
+    amount: float
+    payment_type: str = "course_level"
+    discount: float = 0.0
+    notes: Optional[str] = None
+
+    @field_validator("amount")
+    @classmethod
+    def amount_positive(cls, v: float) -> float:
+        validate_positive_amount(v, field="amount")
+        return v
+
+
 class OpenReceiptInput(BaseModel):
     """Input for finance_service.open_receipt()."""
-    guardian_id: Optional[int] = None
+    payer_name: Optional[str] = None
     method: PaymentMethod | str = "cash"
     received_by_user_id: Optional[int] = None
     notes: Optional[str] = None
@@ -47,3 +65,19 @@ class IssueRefundInput(BaseModel):
     def amount_positive(cls, v: float) -> float:
         validate_positive_amount(v, field="refund amount")
         return v
+
+
+class UnpaidCompFeeItem(BaseModel):
+    """
+    Output DTO for unpaid competition fee records.
+    Used by Financial Desk to render checkbox payment lines.
+    """
+    team_member_id: int      # FK to mark fee paid
+    team_id: int
+    team_name: str
+    competition_name: str
+    category_name: str
+    member_share: float      # Snapshotted amount at registration
+    student_id: int
+
+    model_config = {"from_attributes": True}

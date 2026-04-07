@@ -27,14 +27,12 @@ def render_receipt_detail(receipt_id: int):
 
     # Header info
     parent_name = "—"
-    if r.guardian_id:
-        from app.modules.crm.crm_repository import get_guardian_by_id
-        from app.db.connection import get_session
+    if r.parent_id:
+        from app.modules.crm import get_parent_by_id
 
-        with get_session() as db:
-            g = get_guardian_by_id(db, r.guardian_id)
-            if g:
-                parent_name = g.full_name
+        g = get_parent_by_id(r.parent_id)
+        if g:
+            parent_name = g.full_name
 
     st.markdown(
         f"**Receipt #:** `{r.receipt_number or 'N/A'}` | "
@@ -101,7 +99,7 @@ def render_receipt_detail(receipt_id: int):
                     )
 
                     bal_str = (
-                        f"| New balance: {result['new_balance']:.0f} EGP"
+                        f"| New account balance: {result['new_balance']:.0f} EGP"
                         if result.get("new_balance") is not None
                         else ""
                     )

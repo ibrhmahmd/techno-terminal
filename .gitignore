@@ -31,3 +31,6 @@ etl_log.txt
 # Data (raw data is not version controlled)
 data/raw/
 data/processed/
+.idea/modules.xml
+.idea/techno_data_ Copy.iml
+.idea/vcs.xml

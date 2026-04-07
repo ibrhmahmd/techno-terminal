@@ -8,7 +8,7 @@ Phase 4 implements the full accounting layer: receipts, payment lines, balance t
 
 **Key Deliverables:**
 
-- Point-of-sale receipt creation (one receipt can cover multiple children of the same guardian)
+- Point-of-sale receipt creation (one receipt can cover multiple children of the same parent)
 - Line-item payment recording per enrollment
 - Live balance lookup via `v_enrollment_balance` database view
 - Refund issuance tracked as negative-direction payment lines
@@ -23,7 +23,7 @@ Phase 4 implements the full accounting layer: receipts, payment lines, balance t
 - `app/ui/pages/7_Finance.py` (NEW)
 - `app/ui/components/student_detail.py` (UPDATED — balance column)
 - `app/ui/components/parent_detail.py` (UPDATED — financial overview block)
-- `app/modules/crm/service.py` (UPDATED — `get_guardian_students`)
+- `app/modules/crm/service.py` (UPDATED — `get_parent_students`)
 
 ---
 
@@ -31,7 +31,7 @@ Phase 4 implements the full accounting layer: receipts, payment lines, balance t
 
 ### Receipt ≠ Payment
 
-A `Receipt` is the transaction header (guardian, method, date, receipt number).
+A `Receipt` is the transaction header (parent, method, date, receipt number).
 A `Payment` is a single line item on the receipt — one per student, per enrollment.
 
 This means a parent paying for two children generates:
@@ -54,8 +54,8 @@ Never stored as a column. The `v_enrollment_balance` view handles this.
 | Value | Meaning |
 |---|---|
 | `'charge'` | New obligation added (student owes X EGP) |
-| `'payment'` | Money received from guardian (settles the obligation) |
-| `'refund'` | Money returned to guardian (increases outstanding balance) |
+| `'payment'` | Money received from parent (settles the obligation) |
+| `'refund'` | Money returned to parent (increases outstanding balance) |
 
 All `amount` values are stored **positive**. The `transaction_type` sets the direction.
 
@@ -76,7 +76,7 @@ class Receipt(SQLModel, table=True):
     __table_args__ = {"extend_existing": True}
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    guardian_id: Optional[int] = Field(default=None, foreign_key="guardians.id")
+    parent_id: Optional[int] = Field(default=None, foreign_key="parents.id")
     payment_method: Optional[str] = None  # cash | card | transfer | online
     received_by: Optional[int] = Field(default=None, foreign_key="users.id")
     receipt_number: Optional[str] = None  # set after insert: TK-YYYY-XXXXX
@@ -105,7 +105,7 @@ class Payment(SQLModel, table=True):
 
 | Function | Description |
 |---|---|
-| `create_receipt(db, guardian_id, method, received_by, paid_at, notes)` | Inserts receipt header row |
+| `create_receipt(db, parent_id, method, received_by, paid_at, notes)` | Inserts receipt header row |
 | `set_receipt_number(db, receipt_id)` | Updates `receipt_number` to `TK-YYYY-{id:05d}` |
 | `get_receipt(db, receipt_id)` | Returns `Receipt | None` |
 | `get_receipt_with_lines(db, receipt_id)` | Returns `{receipt, lines: [Payment]}` |
@@ -121,7 +121,7 @@ class Payment(SQLModel, table=True):
 
 | Function | Description |
 |---|---|
-| `open_receipt(guardian_id, method, received_by_user_id, notes)` | Creates receipt + generates receipt number |
+| `open_receipt(parent_id, method, received_by_user_id, notes)` | Creates receipt + generates receipt number |
 | `add_charge_line(receipt_id, student_id, enrollment_id, amount, ...)` | Validates enrollment active, inserts payment line |
 | `finalize_receipt(receipt_id)` | Validates ≥1 line, returns summary dict |
 | `issue_refund(enrollment_id, amount, reason, received_by_user_id)` | Opens new receipt, adds refund line, returns updated balance |
@@ -148,9 +148,9 @@ Three tabs:
 
 **💵 New Receipt tab flow:**
 
-1. Search for guardian (name or phone)
+1. Search for parent (name or phone)
 2. Select payment method (cash / card / transfer / online)
-3. For each active child of that guardian, expand their active enrollments
+3. For each active child of that parent, expand their active enrollments
 4. Check which enrollments to pay → enter amount per enrollment (pre-filled with outstanding balance)
 5. Review receipt summary (student, enrollment, amount)
 6. Click **Finalize Receipt** → creates receipt + payment lines atomically
@@ -170,7 +170,7 @@ Three tabs:
 
 Read-only receipt detail view:
 
-- Shows receipt header (number, guardian, method, date)
+- Shows receipt header (number, parent, method, date)
 - Shows all payment lines (student, enrollment, type, amount)
 - Shows total collected
 - Refund expander: select an enrollment line → enter amount + reason → issues a refund receipt
@@ -196,7 +196,7 @@ Read-only receipt detail view:
 
 ```text
 UI: finance_overview.py
-  └──► finance.service.open_receipt(guardian_id, method, received_by)
+  └──► finance.service.open_receipt(parent_id, method, received_by)
          │
          ├──► finance.repository.create_receipt()    [inserts row]
          │
@@ -226,7 +226,7 @@ UI: finance_overview.py
 - [x] `app/ui/pages/7_Finance.py` — router
 - [x] `app/ui/components/finance_overview.py` — 3-tab UI
 - [x] `app/ui/components/finance_receipt.py` — receipt detail + refund
-- [x] `app/modules/crm/service.py` — `get_guardian_students` added
+- [x] `app/modules/crm/service.py` — `get_parent_students` added
 - [x] `app/ui/components/student_detail.py` — balance column + Pay Now button
 - [x] `app/ui/components/parent_detail.py` — financial overview + Create Receipt button
 - [x] Daily Summary receipt table wired to receipt detail navigation

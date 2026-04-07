@@ -1,8 +1,8 @@
-# Techno Kids — Requirements Analysis
+# Techno Terminal — Requirements Analysis
 
 ## 1. Company Overview
 
-**Techno Kids / Techno Future KFS** is a tech and robotics education center for children and teens. It offers courses in software (HTML, CSS, JS, Scratch, Database), hardware/robotics (EV3, WEDO, Spike, Arduino), and STEAM fields. The center also participates in international competitions (FLL, Robofest, Afro-Asian Forum, etc.).
+**Techno Terminal / Techno Terminal  KFS** is a tech and robotics education center for children and teens. It offers courses in software (HTML, CSS, JS, Scratch, Database), hardware/robotics (EV3, WEDO, Spike, Arduino), and STEAM fields. The center also participates in international competitions (FLL, Robofest, Afro-Asian Forum, etc.).
 
 ---
 
@@ -10,13 +10,13 @@
 
 ### 2.1 Students
 
-- A student is a child/teen registered by their parent/guardian.
+- A student is a child/teen registered by their parent/parent.
 - A student has: name, date of birth, gender, and enrollment history.
-- **Contact info** (phone, whatsapp) belongs to the **guardian**, not the student.
+- **Contact info** (phone, whatsapp) belongs to the **parent**, not the student.
 - A student can be in **multiple groups** simultaneously (different courses).
 - A student can **move freely** between groups (any course, any level).
 - The system must track a student's **full history**: every group, every session attended, every payment, every competition.
-- **Siblings**: Detected via `guardian_id`. Students sharing the same guardian are siblings. The system **auto-detects and flags** siblings. The admin decides whether to apply a discount (50 EGP off per level for both).
+- **Siblings**: Detected via `parent_id`. Students sharing the same parent are siblings. The system **auto-detects and flags** siblings. The admin decides whether to apply a discount (50 EGP off per level for both).
 
 ### 2.2 Groups
 
@@ -109,9 +109,9 @@
 ### Registering a New Student
 
 1. Parent calls or visits.
-2. System admin creates or finds the **guardian** record (name, phone, whatsapp).
-3. System admin creates the **student** record linked to the guardian.
-4. System checks for **siblings** (other students with the same guardian) and flags if found.
+2. System admin creates or finds the **parent** record (name, phone, whatsapp).
+3. System admin creates the **student** record linked to the parent.
+4. System checks for **siblings** (other students with the same parent) and flags if found.
 5. System admin finds a suitable group based on: course interest, age, skill level, schedule.
 6. Student is enrolled in the group. Payment amount is set.
 

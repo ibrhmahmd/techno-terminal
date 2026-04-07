@@ -1,0 +1,51 @@
+# Techno Terminal — Project Intelligence
+
+## Critical Implementation Paths
+
+### Testing Strategy
+- **Test Organization:** Phased by module (Auth → Error Handling → CRM → Enrollments → Finance → Attendance → Academics → Competitions → HR → Analytics)
+- **Fixture Pattern:** `client`, `admin_token`, `admin_headers`, `db_session` in `conftest.py`
+- **JWT Handling:** Real Supabase token in `conftest.py` (expires ~1 hour, regenerate via `scripts/get_test_jwt.py`)
+- **Transaction Isolation:** Each test rolls back DB changes via `get_session()` context manager
+- **Mocking:** `tests/utils/jwt_mocks.py` for expired/invalid token scenarios
+
+### API Patterns
+- **Router Structure:** Split packages by domain (`analytics/`, `academics/`, `crm/`)
+- **DTOs:** All responses typed with Pydantic — no `list[dict]` or `Any`
+- **DI Pattern:** Services via `Depends()` factories in `dependencies.py`
+- **Error Handling:** Standardized `ErrorResponse` envelope with `success`, `error`, `message` fields
+- **Auth:** Supabase JWT verification with `require_admin` and `require_any` dependencies
+
+### Database Patterns
+- **Connection:** `get_session()` context manager with auto-commit/rollback
+- **Schema:** Hybrid workflow — `db/schema.sql` for greenfield, `db/migrations/*.sql` for upgrades
+- **Models:** SQLModel ORM with `expire_on_commit=False`
+- **JSONB Columns:** Use distinct Python names (`employee_metadata`, `profile_metadata`) to avoid SQLAlchemy reserved word conflict
+
+## User Preferences & Workflow
+
+- **No inline validators/helpers in schema files** — use `app/shared/validators.py` or `app/shared/datetime_utils.py`
+- **Minimal, focused edits** — prefer single-line changes when sufficient
+- **Test before commit** — verify tests pass after JWT updates
+- **Git commits** — logical grouping: `test(phase-X)`, `fix(module)`, `docs`, `chore`
+
+## Known Challenges
+
+1. **JWT Token Expiry:** Tests fail with 401 when token expires — regenerate via script
+2. **Pydantic Validation:** `datetime.time` fields need `time_to_str` conversion in schemas
+3. **Decimal + float:** Always cast `float()` on monetary columns from DB
+4. **NotFoundError vs NotFound:** Exception handler returns `NotFoundError`, HTTPException returns `NotFound` — tests accommodate both
+
+## Tool Usage Patterns
+
+- **Fast Context (`code_search`):** Use first for exploring unfamiliar code areas
+- **Parallel tool calls:** Batch independent reads, keep destructive commands sequential
+- **Tests as verification:** Run targeted tests before full suite
+- **Commit frequently:** After each logical fix or test addition
+
+## File Locations
+
+- **Tests:** `tests/test_*.py` (11 modules, 161 tests)
+- **JWT Token:** `tests/conftest.py` line 34
+- **Testing Plan:** `docs/planning/TESTING_STRATEGY_PLAN.md`
+- **Memory Bank:** `docs/MEMORY_BANK.md` (primary handoff doc)

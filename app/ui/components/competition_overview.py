@@ -3,7 +3,9 @@ import pandas as pd
 from datetime import date
 
 from app.modules.competitions import competition_service as comp_srv
-from app.modules.auth import auth_service as auth_srv
+from app.modules.competitions import team_service as team_srv
+from app.modules.competitions import CreateCompetitionInput, RegisterTeamInput, PayCompetitionFeeInput
+from app.modules.hr import hr_service as hr_srv
 from app.modules.crm import crm_service as crm_srv
 from app.modules.enrollments import enrollment_service as enroll_srv
 
@@ -37,9 +39,13 @@ def render_competition_overview():
                 col_save, col_cancel = st.columns(2)
                 if col_save.button("✅ Save Competition", type="primary"):
                     try:
-                        comp_srv.create_competition(
-                            c_name, c_edition, c_date, c_location, c_notes
-                        )
+                        comp_srv.create_competition(CreateCompetitionInput(
+                            name=c_name,
+                            edition=c_edition or None,
+                            competition_date=c_date,
+                            location=c_location or None,
+                            notes=c_notes or None,
+                        ))
                         st.success(f"Competition '{c_name}' created!")
                         st.session_state["show_new_comp"] = False
                         st.rerun()
@@ -125,18 +131,18 @@ def render_competition_overview():
                     format_func=lambda c: c.category_name,
                     key="team_cat",
                 )
-                teams = comp_srv.list_teams(sel_cat.id)
+                teams = team_srv.list_teams(sel_cat.id)
 
                 if teams:
                     for team in teams:
-                        members = comp_srv.list_team_members(team.id)
-                        paid = sum(1 for m in members if m["fee_paid"])
+                        members = team_srv.list_team_members(team.id)
+                        paid = sum(1 for m in members if m.fee_paid)
                         with st.expander(
                             f"👥 {team.team_name} — {len(members)} members ({paid}/{len(members)} fees paid)"
                         ):
                             if members:
                                 st.dataframe(
-                                    pd.DataFrame(members)[
+                                    pd.DataFrame([m.model_dump() for m in members])[
                                         ["student_name", "fee_paid", "payment_id"]
                                     ].rename(
                                         columns={
@@ -156,12 +162,9 @@ def render_competition_overview():
                 st.divider()
                 with st.expander("➕ Register a New Team in this Category"):
                     t_name = st.text_input("Team Name *", key="t_name")
-                    t_fee = st.number_input(
-                        "Fee per Student (EGP)", min_value=0.0, step=50.0, key="t_fee"
-                    )
 
                     # Coach selection
-                    instructors = auth_srv.get_active_instructors()
+                    instructors = hr_srv.get_active_instructors()
                     t_coach = st.selectbox(
                         "Coach (optional)", 
                         options=[None] + instructors, 
@@ -171,22 +174,22 @@ def render_competition_overview():
                     t_coach_id = t_coach.id if t_coach else None
 
                     # Link to a group roster (optional, for student selection)
-                    from app.modules.academics import academics_service as acad_srv
+                    import app.modules.academics as acad_srv
 
                     all_groups = acad_srv.get_all_active_groups_enriched()
                     t_group = st.selectbox(
                         "Source Group (optional)",
                         options=[None] + all_groups,
-                        format_func=lambda g: "— Select group to pick students —" if g is None else f"{g['group_name']} ({g['course_name']})",
+                        format_func=lambda g: "— Select group to pick students —" if g is None else f"{g.group_name} ({g.course_name})",
                         key="t_group",
                     )
-                    t_group_id = t_group["id"] if t_group else None
+                    t_group_id = t_group.id if t_group else None
 
                     selected_student_ids = []
                     if t_group_id:
                         roster = enroll_srv.get_group_roster(t_group_id, None)
                         if roster:
-                            from app.modules.crm.crm_models import Student
+                            from app.modules.crm import Student
                             from app.db.connection import get_session
 
                             student_opts = {}
@@ -204,16 +207,15 @@ def render_competition_overview():
 
                     if st.button("✅ Register Team", type="primary"):
                         try:
-                            result = comp_srv.register_team(
+                            result = team_srv.register_team(RegisterTeamInput(
                                 category_id=sel_cat.id,
                                 team_name=t_name,
                                 student_ids=selected_student_ids,
                                 coach_id=t_coach_id,
                                 group_id=t_group_id,
-                                fee_per_student=t_fee or None,
-                            )
+                            ))
                             st.success(
-                                f"✅ Team '{result['team'].team_name}' registered with {result['members_added']} members!"
+                                f"✅ Team '{result.team.team_name}' registered with {result.members_added} members!"
                             )
                             st.rerun()
                         except Exception as e:
@@ -243,7 +245,7 @@ def render_competition_overview():
                     format_func=lambda c: c.category_name,
                     key="fee_cat",
                 )
-                teams2 = comp_srv.list_teams(sel_cat2.id)
+                teams2 = team_srv.list_teams(sel_cat2.id)
 
                 if not teams2:
                     st.info("No teams in this category.")
@@ -254,18 +256,18 @@ def render_competition_overview():
                         format_func=lambda t: t.team_name,
                         key="fee_team",
                     )
-                    members2 = comp_srv.list_team_members(sel_team2.id)
+                    members2 = team_srv.list_team_members(sel_team2.id)
 
                     if not members2:
                         st.info("No members in this team.")
                     else:
-                        fee = sel_team2.enrollment_fee_per_student or 0.0
+                        fee = members2[0].member_share
                         st.markdown(f"**Fee per student:** {fee:.0f} EGP")
 
                         for m in members2:
                             col_name, col_status, col_btn = st.columns([3, 2, 2])
-                            col_name.markdown(f"👤 {m['student_name']}")
-                            if m["fee_paid"]:
+                            col_name.markdown(f"👤 {m.student_name}")
+                            if m.fee_paid:
                                 col_status.success("✅ Paid")
                             else:
                                 col_status.warning("❌ Unpaid")
@@ -288,14 +290,14 @@ def render_competition_overview():
                                             from app.db.connection import get_session
 
                                             with get_session() as db:
-                                                from app.modules.competitions.competition_repository import (
+                                                from app.modules.competitions.repositories.competition_repository import (
                                                     mark_fee_paid,
                                                 )
 
                                                 mark_fee_paid(
                                                     db,
                                                     sel_team2.id,
-                                                    m["student_id"],
+                                                    m.student_id,
                                                     None,
                                                 )
                                             st.success("✅ Granted!")
@@ -315,12 +317,12 @@ def render_competition_overview():
                                     ):
                                         with st.container():
                                             g_q = st.text_input(
-                                                f"Parent/Parent for {m['student_name']} (name/phone)",
+                                                f"Parent/Parent for {m.student_name} (name/phone)",
                                                 key=f"fee_gq_{m['student_id']}",
                                             )
-                                        guardian_id = None
+                                        parent_id = None
                                         if g_q and len(g_q) >= 2:
-                                            gs = crm_srv.search_guardians(g_q)
+                                            gs = crm_srv.search_parents(g_q)
                                             if gs:
                                                 sel_g = st.selectbox(
                                                     "Select Parent",
@@ -328,7 +330,7 @@ def render_competition_overview():
                                                     format_func=lambda g: f"{g.full_name} ({g.phone_primary})",
                                                     key=f"fee_gsel_{m['student_id']}",
                                                 )
-                                                guardian_id = sel_g.id
+                                                parent_id = sel_g.id
 
                                         fc1, fc2 = st.columns(2)
                                         if fc1.button(
@@ -337,14 +339,14 @@ def render_competition_overview():
                                             type="primary",
                                         ):
                                             try:
-                                                result = comp_srv.pay_competition_fee(
+                                                result = team_srv.pay_competition_fee(PayCompetitionFeeInput(
                                                     team_id=sel_team2.id,
-                                                    student_id=m["student_id"],
-                                                    guardian_id=guardian_id,
+                                                    student_id=m.student_id,
+                                                    parent_id=parent_id,
                                                     received_by_user_id=None,
-                                                )
+                                                ))
                                                 st.success(
-                                                    f"✅ Fee paid! Receipt: {result['receipt_number']} | {result['amount']:.0f} EGP"
+                                                    f"✅ Fee paid! Receipt: {result.receipt_number} | {result.amount:.0f} EGP"
                                                 )
                                                 del st.session_state[
                                                     f"fee_paying_{m['student_id']}"

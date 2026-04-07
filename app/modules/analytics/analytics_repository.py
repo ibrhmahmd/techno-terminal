@@ -58,25 +58,26 @@ def get_today_sessions(db: Session, target_date: Optional[date] = None) -> list[
 def get_today_unpaid_attendees(
     db: Session, target_date: Optional[date] = None
 ) -> list[dict]:
-    """Students who attended today but have an outstanding balance on any enrollment."""
+    """Students who attended today but have debt (P6: account balance < 0) on any enrollment."""
     if target_date is None:
         target_date = date.today()
     stmt = text("""
         SELECT DISTINCT
             st.id AS student_id,
             st.full_name AS student_name,
-            g.full_name AS guardian_name,
+            g.full_name AS parent_name,
             g.phone_primary,
-            SUM(vb.balance) OVER (PARTITION BY st.id) AS total_balance
+            SUM(CASE WHEN vb.balance < 0 THEN -vb.balance ELSE 0 END)
+                OVER (PARTITION BY st.id) AS total_balance
         FROM attendance a
         JOIN sessions s ON a.session_id = s.id
         JOIN students st ON a.student_id = st.id
         JOIN v_enrollment_balance vb ON vb.student_id = st.id
-        LEFT JOIN student_guardians sg ON sg.student_id = st.id AND sg.is_primary = TRUE
-        LEFT JOIN guardians g ON g.id = sg.guardian_id
+        LEFT JOIN student_parents sg ON sg.student_id = st.id AND sg.is_primary = TRUE
+        LEFT JOIN parents g ON g.id = sg.parent_id
         WHERE s.session_date = :target_date
           AND a.status IN ('present', 'late')
-          AND vb.balance > 0
+          AND vb.balance < 0
         ORDER BY total_balance DESC
     """)
     rows = db.execute(stmt, {"target_date": str(target_date)}).all()
@@ -122,18 +123,18 @@ def get_revenue_by_method(db: Session, start: date, end: date) -> list[dict]:
 
 
 def get_outstanding_by_group(db: Session) -> list[dict]:
-    """Sum of unpaid balances per active group."""
+    """Sum of debt (EGP) per active group — P6: balance < 0 means owes."""
     stmt = text("""
         SELECT
             g.id AS group_id,
             g.name AS group_name,
             c.name AS course_name,
             COUNT(DISTINCT vb.student_id) AS students_with_balance,
-            SUM(vb.balance) AS total_outstanding
+            SUM(CASE WHEN vb.balance < 0 THEN -vb.balance ELSE 0 END) AS total_outstanding
         FROM v_enrollment_balance vb
         JOIN groups g ON vb.group_id = g.id
         JOIN courses c ON g.course_id = c.id
-        WHERE vb.balance > 0 AND g.status = 'active'
+        WHERE vb.balance < 0 AND g.status = 'active'
         GROUP BY g.id, g.name, c.name
         ORDER BY total_outstanding DESC
     """)
@@ -142,19 +143,19 @@ def get_outstanding_by_group(db: Session) -> list[dict]:
 
 
 def get_top_debtors(db: Session, limit: int = 10) -> list[dict]:
-    """Students with the highest combined outstanding balances."""
+    """Students with the highest combined debt (P6: positive EGP owed)."""
     stmt = text("""
         SELECT
             st.id AS student_id,
             st.full_name AS student_name,
-            g.full_name AS guardian_name,
+            g.full_name AS parent_name,
             g.phone_primary,
-            SUM(vb.balance) AS total_outstanding
+            SUM(CASE WHEN vb.balance < 0 THEN -vb.balance ELSE 0 END) AS total_outstanding
         FROM v_enrollment_balance vb
         JOIN students st ON vb.student_id = st.id
-        LEFT JOIN student_guardians sg ON sg.student_id = st.id AND sg.is_primary = TRUE
-        LEFT JOIN guardians g ON g.id = sg.guardian_id
-        WHERE vb.balance > 0
+        LEFT JOIN student_parents sg ON sg.student_id = st.id AND sg.is_primary = TRUE
+        LEFT JOIN parents g ON g.id = sg.parent_id
+        WHERE vb.balance < 0
         GROUP BY st.id, st.full_name, g.full_name, g.phone_primary
         ORDER BY total_outstanding DESC
         LIMIT :limit
@@ -181,9 +182,10 @@ def get_group_roster(db: Session, group_id: int, level_number: int) -> list[dict
             CASE
                 WHEN COALESCE(vgs.total_sessions, 0) = 0 THEN 0
                 ELSE ROUND(
-                    100.0 * COALESCE(att.sessions_attended, 0) / vgs.total_sessions, 1
+                    100.0 * COALESCE(att.sessions_attended, 0) / NULLIF(vgs.total_sessions, 0), 1
                 )
-            END AS attendance_pct
+            END AS attendance_pct,
+            (COALESCE(vb.balance, 0) >= 0) AS has_paid_current_level
         FROM enrollments en
         JOIN students st ON en.student_id = st.id
         LEFT JOIN v_enrollment_balance vb ON vb.enrollment_id = en.id
@@ -233,9 +235,9 @@ def get_competition_fee_summary(db: Session) -> list[dict]:
             cp.competition_date,
             COUNT(DISTINCT t.id) AS team_count,
             COUNT(DISTINCT tm.id) AS member_count,
-            COALESCE(SUM(t.enrollment_fee_per_student) FILTER (WHERE tm.fee_paid = TRUE), 0) AS fees_collected,
-            COALESCE(SUM(t.enrollment_fee_per_student) FILTER (WHERE tm.fee_paid = FALSE
-                AND t.enrollment_fee_per_student IS NOT NULL), 0) AS fees_outstanding
+            COALESCE(SUM(tm.member_share) FILTER (WHERE tm.fee_paid = TRUE), 0) AS fees_collected,
+            COALESCE(SUM(tm.member_share) FILTER (WHERE tm.fee_paid = FALSE
+                AND tm.member_share IS NOT NULL), 0) AS fees_outstanding
         FROM competitions cp
         LEFT JOIN competition_categories cc ON cc.competition_id = cp.id
         LEFT JOIN teams t ON t.category_id = cc.id
@@ -295,6 +297,95 @@ def get_instructor_performance(db: Session) -> list[dict]:
         WHERE u.role = 'instructor'
         GROUP BY emp.id, emp.full_name
         ORDER BY active_students DESC
+    """)
+    rows = db.execute(stmt).all()
+    return [dict(r._mapping) for r in rows]
+
+def get_level_retention_funnel(db: Session) -> list[dict]:
+    """How many students survive from Level 1 onwards in each course."""
+    stmt = text("""
+        SELECT c.name as course_name, 
+               e.level_number, 
+               COUNT(e.id) as student_count
+        FROM enrollments e
+        JOIN groups g ON e.group_id = g.id
+        JOIN courses c ON g.course_id = c.id
+        WHERE e.status != 'dropped'
+        GROUP BY c.name, e.level_number
+        ORDER BY c.name, e.level_number
+    """)
+    rows = db.execute(stmt).all()
+    return [dict(r._mapping) for r in rows]
+
+def get_instructor_value_matrix(db: Session) -> list[dict]:
+    """Instructor Revenue vs Average Attendance (Retention marker)."""
+    stmt = text("""
+        WITH InstructorRev AS (
+            SELECT g.instructor_id,
+                   SUM(vb.total_paid) as generated_revenue
+            FROM v_enrollment_balance vb
+            JOIN groups g ON vb.group_id = g.id
+            GROUP BY g.instructor_id
+        ),
+        InstructorAtt AS (
+            SELECT g.instructor_id,
+                   AVG(CASE WHEN vgs.total_sessions > 0
+                       THEN 100.0 * COALESCE(att.sessions_attended, 0) / vgs.total_sessions
+                       ELSE 0 END) as avg_attendance_pct
+            FROM enrollments en
+            JOIN groups g ON en.group_id = g.id
+            LEFT JOIN v_enrollment_attendance att ON att.enrollment_id = en.id
+            LEFT JOIN v_group_session_count vgs ON vgs.group_id = en.group_id AND vgs.level_number = en.level_number
+            GROUP BY g.instructor_id
+        )
+        SELECT e.full_name as instructor_name,
+               COALESCE(r.generated_revenue, 0) as total_revenue,
+               ROUND(COALESCE(a.avg_attendance_pct, 0), 1) as avg_attendance_pct
+        FROM employees e
+        JOIN users u ON u.employee_id = e.id
+        LEFT JOIN InstructorRev r ON r.instructor_id = e.id
+        LEFT JOIN InstructorAtt a ON a.instructor_id = e.id
+        WHERE u.role = 'instructor'
+    """)
+    rows = db.execute(stmt).all()
+    return [dict(r._mapping) for r in rows]
+
+def get_schedule_utilization(db: Session) -> list[dict]:
+    """Slot heatmaps showing filled vs max capacity."""
+    stmt = text("""
+        SELECT
+            g.default_day as day,
+            CAST(g.default_time_start AS TEXT) as time_start,
+            COUNT(e.id) as total_enrolled,
+            COALESCE(SUM(g.max_capacity), 1) as total_capacity,
+            ROUND(100.0 * COUNT(e.id) / NULLIF(SUM(g.max_capacity), 0), 1) as utilization_pct
+        FROM groups g
+        LEFT JOIN enrollments e ON e.group_id = g.id AND e.status = 'active'
+        WHERE g.status = 'active' AND g.default_day IS NOT NULL AND g.default_time_start IS NOT NULL
+        GROUP BY g.default_day, g.default_time_start
+        ORDER BY g.default_day, g.default_time_start
+    """)
+    rows = db.execute(stmt).all()
+    return [dict(r._mapping) for r in rows]
+
+def get_flight_risk_students(db: Session) -> list[dict]:
+    """Students who both owe money AND have missed multiple sessions."""
+    stmt = text("""
+        SELECT
+            st.full_name as student_name,
+            c.name as course_name,
+            -vb.balance AS amount_owed,
+            att.sessions_missed
+        FROM enrollments en
+        JOIN students st ON en.student_id = st.id
+        JOIN groups g ON en.group_id = g.id
+        JOIN courses c ON g.course_id = c.id
+        JOIN v_enrollment_balance vb ON vb.enrollment_id = en.id
+        JOIN v_enrollment_attendance att ON att.enrollment_id = en.id
+        WHERE en.status = 'active'
+          AND vb.balance < 0
+          AND att.sessions_missed > 0
+        ORDER BY att.sessions_missed DESC, amount_owed DESC
     """)
     rows = db.execute(stmt).all()
     return [dict(r._mapping) for r in rows]

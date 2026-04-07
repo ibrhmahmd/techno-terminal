@@ -4,17 +4,17 @@
 
 ## 1. Scope & Objective
 
-Phase 2 builds the core data entry systems for the people (Guardians & Students) and the curriculum (Courses & Groups).
+Phase 2 builds the core data entry systems for the people (Parents & Students) and the curriculum (Courses & Groups).
 
 **Key Deliverables:**
 
-- Ability to register Guardians and Students (with Sibling detection).
+- Ability to register Parents and Students (with Sibling detection).
 - Ability to define Courses (e.g., CSS L1) and schedule Groups (e.g., Fridays 2-4 PM).
 - Streamlit pages for data entry, search, and tabular listing.
 
 **Modules Touched:**
 
-- `app/modules/crm/` (Guardians, Students)
+- `app/modules/crm/` (Parents, Students)
 - `app/modules/academics/` (Courses, Groups)
 - `app/ui/pages/` (Streamlit CRM pages)
 
@@ -24,13 +24,13 @@ Phase 2 builds the core data entry systems for the people (Guardians & Students)
 
 ### `app/modules/crm/models.py`
 
-**Mission:** SQLModel definitions mapping directly to the `guardians`, `students`, and `student_guardians` tables.
+**Mission:** SQLModel definitions mapping directly to the `parents`, `students`, and `student_parents` tables.
 
 **Properties/Fields:**
 
-- `Guardian`: `id`, `full_name`, `phone_primary`, `phone_secondary`, `email`, `relation`, `notes`, `created_at`, `updated_at`
+- `Parent`: `id`, `full_name`, `phone_primary`, `phone_secondary`, `email`, `relation`, `notes`, `created_at`, `updated_at`
 - `Student`: `id`, `full_name`, `birth_date`, `school_name`, `gender`, `is_active`, `notes`, `created_at`, `updated_at`
-- `StudentGuardian`: `student_id` (FK), `guardian_id` (FK), `relationship`, `is_primary_contact`, `created_at`
+- `StudentParent`: `student_id` (FK), `parent_id` (FK), `relationship`, `is_primary_contact`, `created_at`
 
 *(Note: Every model requires `__table_args__ = {"extend_existing": True}` for Streamlit compatibility).*
 
@@ -40,12 +40,12 @@ Phase 2 builds the core data entry systems for the people (Guardians & Students)
 
 **Functions:**
 
-- `create_guardian(session, guardian: Guardian) -> Guardian`
-- `get_guardian(session, guardian_id: int) -> Guardian | None`
-- `search_guardians(session, query: str) -> list[Guardian]` — *Uses `ILIKE` on name/phone.*
+- `create_parent(session, parent: Parent) -> Parent`
+- `get_parent(session, parent_id: int) -> Parent | None`
+- `search_parents(session, query: str) -> list[Parent]` — *Uses `ILIKE` on name/phone.*
 - `create_student(session, student: Student) -> Student`
-- `link_guardian(session, student_id: int, guardian_id: int, relation: str, is_primary: bool)`
-- `get_student_with_guardians(session, student_id: int)` — *Queries the `v_students` view.*
+- `link_parent(session, student_id: int, parent_id: int, relation: str, is_primary: bool)`
+- `get_student_with_parents(session, student_id: int)` — *Queries the `v_students` view.*
 - `get_siblings(session, student_id: int) -> list[dict]` — *Queries the `v_siblings` view.*
 
 ### `app/modules/crm/service.py`
@@ -54,10 +54,10 @@ Phase 2 builds the core data entry systems for the people (Guardians & Students)
 
 **Functions:**
 
-- `register_guardian(data: dict) -> Guardian`
+- `register_parent(data: dict) -> Parent`
   - *Logic*: Validates phone number format. Checks for existing phone to avoid duplicate accounts.
-- `register_student(student_data: dict, guardian_id: int, relation: str) -> Student`
-  - *Logic*: Opens session. Calls `repo.create_student()`. Calls `repo.link_guardian()` ensuring `is_primary=True` for the first linked guardian. Commits transaction automatically via `get_session()`.
+- `register_student(student_data: dict, parent_id: int, relation: str) -> Student`
+  - *Logic*: Opens session. Calls `repo.create_student()`. Calls `repo.link_parent()` ensuring `is_primary=True` for the first linked parent. Commits transaction automatically via `get_session()`.
 - `find_siblings(student_id: int) -> list[dict]`
   - *Logic*: Returns formatted sibling data for the UI using the database view.
 
@@ -102,15 +102,15 @@ Phase 2 builds the core data entry systems for the people (Guardians & Students)
 
 **UI Note:** Streamlit automatically orders the sidebar navigation alphabetically by filename. We use numbered prefixes to control the order.
 
-### `app/ui/pages/1_Guardian_Management.py`
+### `app/ui/pages/1_Parent_Management.py`
 
 **Mission:** Screen to add new parents or search existing ones.
 
 - **Components:**
   - Search bar (by phone/name).
   - Data table (`st.dataframe`) listing search results.
-  - Sidebar or Expander containing the "Add New Guardian" form (`st.form`).
-- **Interactions:** Calls `crm.service.search_guardians()` and `crm.service.register_guardian()`.
+  - Sidebar or Expander containing the "Add New Parent" form (`st.form`).
+- **Interactions:** Calls `crm.service.search_parents()` and `crm.service.register_parent()`.
 
 ### `app/ui/pages/2_Student_Management.py`
 
@@ -118,9 +118,9 @@ Phase 2 builds the core data entry systems for the people (Guardians & Students)
 
 - **Components:**
   - Multi-step conceptually, but executed in one UI form:
-    1. Select existing Guardian (or prompt to create one first).
+    1. Select existing Parent (or prompt to create one first).
     2. Enter Student details.
-  - "Student Profile" view showing linked guardians and a "Detected Siblings" alert.
+  - "Student Profile" view showing linked parents and a "Detected Siblings" alert.
 - **Interactions:** Calls `crm.service.register_student()`.
 
 ### `app/ui/pages/3_Course_Management.py`
@@ -139,15 +139,15 @@ Phase 2 builds the core data entry systems for the people (Guardians & Students)
 
 ```text
 UI: 2_🎓_Student_Management.py
- └──► crm.service.register_student(student_data, guardian_id)
+ └──► crm.service.register_student(student_data, parent_id)
        │
        ├──► db.connection.get_session() [OPENS TRANSACTION]
        │
        ├──► crm.repository.create_student(session, student_data)
        │     └──► DB INSERT INTO students
        │
-       ├──► crm.repository.link_guardian(session, student_id, guardian_id)
-       │     └──► DB INSERT INTO student_guardians
+       ├──► crm.repository.link_parent(session, student_id, parent_id)
+       │     └──► DB INSERT INTO student_parents
        │
        └──► [TRANSACTION COMMITS / CLOSES ON SUCCESS]
 ```
@@ -177,18 +177,18 @@ def schedule_group(course_id: int, instructor_id: int, start: time, end: time) -
 To prevent excessive UI re-runs, group database writes inside `st.form`.
 
 ```python
-# app/ui/pages/1_Guardian_Management.py
+# app/ui/pages/1_Parent_Management.py
 import streamlit as st
 from app.modules.crm import service as crm_srv
 
-with st.form("new_guardian_form", clear_on_submit=True):
+with st.form("new_parent_form", clear_on_submit=True):
     name = st.text_input("Full Name")
     phone = st.text_input("Primary Phone")
     
-    if st.form_submit_button("Register Guardian"):
+    if st.form_submit_button("Register Parent"):
         try:
-            new_guardian = crm_srv.register_guardian({"full_name": name, "phone_primary": phone})
-            st.success(f"Successfully registered {new_guardian.full_name}!")
+            new_parent = crm_srv.register_parent({"full_name": name, "phone_primary": phone})
+            st.success(f"Successfully registered {new_parent.full_name}!")
         except ValueError as e:
             st.error(str(e))
 ```
@@ -203,7 +203,7 @@ with st.form("new_guardian_form", clear_on_submit=True):
 - [ ] `app/modules/academics/models.py`
 - [ ] `app/modules/academics/repository.py`
 - [ ] `app/modules/academics/service.py`
-- [ ] `app/ui/pages/1_Guardian_Management.py`
+- [ ] `app/ui/pages/1_Parent_Management.py`
 - [ ] `app/ui/pages/2_Student_Management.py`
 - [ ] `app/ui/pages/3_Course_Management.py`
 - [ ] UI gracefully handles Database Integrity Errors (e.g., duplicate phone numbers).

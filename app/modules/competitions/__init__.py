@@ -1,59 +1,70 @@
-from .competition_service import (
-    get_student_competitions,
-    create_competition,
-    list_competitions,
-    update_competition,
-    delete_competition,
-    add_category,
-    list_categories,
-    update_category,
-    delete_category,
-    register_team,
-    list_teams,
-    update_team,
-    delete_team,
-    add_team_member_to_existing,
-    remove_team_member,
-    list_team_members,
-    pay_competition_fee,
-    get_competition_summary,
-    unmark_team_fee_for_payment,
-)
-from .competition_models import Competition, CompetitionCategory, Team, TeamMember
-from .competition_schemas import (
+"""
+app/modules/competitions/__init__.py
+───────────────────────────────────
+Public API Facade for the Competitions module.
+Exposes both service classes and shared schema types.
+UI components import the two singletons below.
+"""
+
+from .services.competition_service import CompetitionService
+from .services.team_service import TeamService
+
+from .models.competition_models import Competition, CompetitionCategory
+from .models.team_models import Team, TeamMember
+
+from .schemas import (
+    # Basic DTOs
+    CompetitionDTO,
+    CompetitionCategoryDTO,
+    TeamDTO,
+    TeamMemberDTO,
+    # Input Commands
     CreateCompetitionInput,
     AddCategoryInput,
     RegisterTeamInput,
     PayCompetitionFeeInput,
+    # Outputs
+    StudentCompetitionDTO,
+    TeamRegistrationResultDTO,
+    AddTeamMemberResultDTO,
+    TeamMemberRosterDTO,
+    PayCompetitionFeeResponseDTO,
+    CompetitionSummaryDTO,
+    CategoryWithTeamsDTO,
+    TeamWithMembersDTO,
 )
 
+# ── UI Singletons (one per service class — correct, no patch) ─────────────────
+competition_service = CompetitionService()
+team_service        = TeamService()
+
 __all__ = [
-    "get_student_competitions",
-    "create_competition",
-    "list_competitions",
-    "update_competition",
-    "delete_competition",
-    "add_category",
-    "list_categories",
-    "update_category",
-    "delete_category",
-    "register_team",
-    "list_teams",
-    "update_team",
-    "delete_team",
-    "add_team_member_to_existing",
-    "remove_team_member",
-    "list_team_members",
-    "pay_competition_fee",
-    "get_competition_summary",
-    "unmark_team_fee_for_payment",
+    # Service Classes
+    "CompetitionService",
+    "TeamService",
+    # UI Singletons
+    "competition_service",
+    "team_service",
+    # Models
     "Competition",
     "CompetitionCategory",
     "Team",
     "TeamMember",
-    # DTOs
+    # Schemas
+    "CompetitionDTO",
+    "CompetitionCategoryDTO",
+    "TeamDTO",
+    "TeamMemberDTO",
     "CreateCompetitionInput",
     "AddCategoryInput",
     "RegisterTeamInput",
     "PayCompetitionFeeInput",
+    "StudentCompetitionDTO",
+    "TeamRegistrationResultDTO",
+    "AddTeamMemberResultDTO",
+    "TeamMemberRosterDTO",
+    "PayCompetitionFeeResponseDTO",
+    "CompetitionSummaryDTO",
+    "CategoryWithTeamsDTO",
+    "TeamWithMembersDTO",
 ]

@@ -14,6 +14,9 @@ from typing import Literal, TypeAlias
 # Shared type alias for database IDs to make intent clear in signatures
 ID: TypeAlias = int
 
+# Supabase-backed accounts (staff provisioning, password reset)
+MIN_PASSWORD_LENGTH: int = 12
+
 # ── Finance ───────────────────────────────────────────────────────────────────
 
 PaymentMethod: TypeAlias = Literal["cash", "card", "transfer", "online"]
@@ -30,10 +33,24 @@ EnrollmentStatus: TypeAlias = Literal[
 
 # ── Attendance ────────────────────────────────────────────────────────────────
 
-AttendanceStatus: TypeAlias = Literal["present", "absent", "late", "excused"]
-ATTENDANCE_STATUSES: list[AttendanceStatus] = ["present", "absent", "late", "excused"]
+AttendanceStatus: TypeAlias = Literal["present", "absent", "late", "excused", "cancelled"]
+ATTENDANCE_STATUSES: list[AttendanceStatus] = ["present", "absent", "late", "excused", "cancelled"]
 
 # ── Academics ─────────────────────────────────────────────────────────────────
 
 GroupStatus: TypeAlias = Literal["active", "inactive", "completed"]
 GROUP_STATUSES: list[GroupStatus] = ["active", "inactive", "completed"]
+
+# Default number of sessions per group level
+DEFAULT_SESSIONS_PER_LEVEL: int = 5
+
+# ── HR / Employees ────────────────────────────────────────────────────────────
+
+EmploymentType: TypeAlias = Literal["full_time", "part_time", "contract"]
+EMPLOYMENT_TYPES: list[EmploymentType] = ["full_time", "part_time", "contract"]
+
+_EMPLOYMENT_TYPE_SET = frozenset(EMPLOYMENT_TYPES)
+
+
+def is_valid_employment_type(value: str | None) -> bool:
+    return value is None or value in _EMPLOYMENT_TYPE_SET

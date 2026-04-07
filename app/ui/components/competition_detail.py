@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
 from app.modules.competitions import competition_service as comp_srv
-from app.modules.auth.auth_repository import get_employee_by_id
+from app.modules.competitions import team_service as team_srv
+from app.modules.hr.hr_service import get_employee_by_id
 from app.db.connection import get_session
 
 
@@ -14,8 +15,8 @@ def render_competition_detail(competition_id: int):
             st.rerun()
         return
 
-    comp = comp_data["competition"]
-    categories = comp_data["categories"]
+    comp = comp_data.competition
+    categories = comp_data.categories
 
     col1, col2 = st.columns([1, 4])
     with col1:
@@ -70,8 +71,8 @@ def render_competition_detail(competition_id: int):
 
     with get_session() as db:
         for cat_data in categories:
-            cat = cat_data["category"]
-            teams = cat_data["teams"]
+            cat = cat_data.category
+            teams = cat_data.teams
 
             cat_col, del_cat_col = st.columns([5, 1])
             with cat_col:
@@ -89,18 +90,18 @@ def render_competition_detail(competition_id: int):
                 st.markdown("*No teams registered in this category.*")
             else:
                 for t_data in teams:
-                    team = t_data["team"]
-                    members = t_data["members"]
+                    team = t_data.team
+                    members = t_data.members
 
                     coach_name = "—"
                     if team.coach_id:
-                        coach = get_employee_by_id(db, team.coach_id)
+                        coach = get_employee_by_id(team.coach_id)
                         if coach:
                             coach_name = coach.full_name
 
                     fee = (
-                        f"{team.enrollment_fee_per_student:.0f} EGP"
-                        if team.enrollment_fee_per_student
+                        f"{summary.competition.fee_per_student:.0f} EGP"
+                        if summary.competition.fee_per_student
                         else "Free"
                     )
                     paid_count = sum(1 for m in members if m.fee_paid)
@@ -115,11 +116,11 @@ def render_competition_detail(competition_id: int):
                             )
                         with t_col2:
                             if st.button("🗑️ Delete Team", key=f"del_team_{team.id}"):
-                                comp_srv.delete_team(team.id)
+                                team_srv.delete_team(team.id)
                                 st.rerun()
 
                         if members:
-                            from app.modules.crm.crm_models import Student
+                            from app.modules.crm import Student
 
                             member_list = []
                             for m in members:
@@ -148,9 +149,9 @@ def render_competition_detail(competition_id: int):
                             "Search Student by Name", key=f"am_q_{team.id}"
                         )
                         if am_search and len(am_search) >= 2:
-                            from app.modules.crm.crm_repository import search_students
+                            from app.modules.crm import search_students
 
-                            results = search_students(db, am_search)
+                            results = search_students(am_search)
                             if results:
                                 existing_ids = [m.student_id for m in members]
                                 available = [
@@ -171,7 +172,7 @@ def render_competition_detail(competition_id: int):
                                         type="primary",
                                     ):
                                         try:
-                                            comp_srv.add_team_member_to_existing(
+                                            team_srv.add_team_member_to_existing(
                                                 team.id, sel_s.id
                                             )
                                             st.success("Member added!")

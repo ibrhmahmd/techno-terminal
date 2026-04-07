@@ -1,7 +1,7 @@
 import streamlit as st
 from app.db.connection import get_session
-from app.modules.crm.crm_models import Student
-from app.modules.attendance import attendance_service as att_srv
+from app.modules.crm import Student
+import app.modules.attendance as att_srv
 
 # Toggle cycle: unset -> present -> absent -> unset
 NEXT_STATE = {
@@ -44,20 +44,26 @@ def render_attendance_grid(sessions: list, roster: list):
         for sess in sessions:
             att_records = att_srv.get_session_roster_with_attendance(sess.id)
             for r in att_records:
-                if r["status"]:
-                    db_state[(r["student_id"], sess.id)] = r["status"]
+                if r.status:
+                    db_state[(r.student_id, sess.id)] = r.status
         st.session_state[grid_key] = db_state
 
     current_state = st.session_state[grid_key]
 
-    # Pre-fetch student names
+    # Pre-fetch student names and payment status
     student_map = {}
     with get_session() as db:
+        from sqlalchemy import text
         for enr in roster:
             s_obj = db.get(Student, enr.student_id)
-            student_map[enr.student_id] = (
-                s_obj.full_name if s_obj else f"Student #{enr.student_id}"
-            )
+            name = s_obj.full_name if s_obj else f"Student #{enr.student_id}"
+            
+            stmt = text("SELECT balance FROM v_enrollment_balance WHERE enrollment_id = :eid")
+            bal_result = db.execute(stmt, {"eid": enr.id}).scalar()
+            has_paid = (bal_result if bal_result is not None else 0) >= 0
+            badge = "🟢 [PAID]" if has_paid else "🔴 [UNPAID]"
+            
+            student_map[enr.student_id] = f"{badge} {name}"
 
     # Build the view grid
     st.markdown("#### Attendance")
@@ -65,9 +71,9 @@ def render_attendance_grid(sessions: list, roster: list):
     st.caption("Click a student's name to view their profile in Student Management.")
 
     # Pre-fetch instructor names
-    from app.modules.auth import auth_service as auth_srv
+    from app.modules.hr import hr_service as hr_srv
 
-    instructors = auth_srv.get_active_instructors()
+    instructors = hr_srv.get_active_instructors()
     inst_map = {i.id: i.full_name for i in instructors}
 
     # Construct columns headers
@@ -75,47 +81,59 @@ def render_attendance_grid(sessions: list, roster: list):
     cols[0].markdown("**Student Name**")
     for i, sess in enumerate(sessions):
         actual_instructor_name = inst_map.get(sess.actual_instructor_id, "Unassigned")
-        header_html = f"**S{sess.session_number}**<br/><small>{actual_instructor_name}</small><br/><small>{sess.session_date}</small>"
+        is_cancelled = getattr(sess, "status", None) == "cancelled"
+        if is_cancelled:
+            header_html = f"<s>**Cancelled (was {sess.session_number})**</s><br/><small>{actual_instructor_name}</small><br/><small><s>{sess.session_date}</s></small>"
+        else:
+            header_html = f"**Session {sess.session_number}**<br/><small>{actual_instructor_name}</small><br/><small>{sess.session_date}</small>"
+            
         cols[i + 1].markdown(
             header_html,
             unsafe_allow_html=True,
         )
 
-        # Delete logic with confirmation state
+        # Edit, Delete, and Cancel buttons mapped perfectly into cell row spaces
         delete_key = f"del_confirm_{sess.id}"
+        cancel_key = f"cancel_confirm_{sess.id}"
         if delete_key not in st.session_state:
             st.session_state[delete_key] = False
+        if cancel_key not in st.session_state:
+            st.session_state[cancel_key] = False
 
-        if not st.session_state[delete_key]:
-            if cols[i + 1].button(
-                "🗑️ Del",
-                key=f"del_init_{sess.id}",
-                use_container_width=True,
-                help="Delete Session",
-            ):
+        bc1, bc2, bc3 = cols[i + 1].columns(3)
+        from app.ui.components.forms.edit_session_form import render_edit_session_form
+
+        if not st.session_state[delete_key] and not st.session_state[cancel_key]:
+            if bc1.button("✏️", key=f"edit_sess_{sess.id}", use_container_width=True, help="Edit"):
+                render_edit_session_form(sess.id)
+            if bc2.button("🚫", key=f"cancel_init_{sess.id}", use_container_width=True, help="Cancel Session (Cascades)", disabled=is_cancelled):
+                st.session_state[cancel_key] = True
+                st.rerun()
+            if bc3.button("🗑️", key=f"del_init_{sess.id}", use_container_width=True, help="Delete Session"):
                 st.session_state[delete_key] = True
                 st.rerun()
-        else:
-            if cols[i + 1].button(
-                "Confirm?",
-                key=f"del_yes_{sess.id}",
-                type="primary",
-                use_container_width=True,
-            ):
+        elif st.session_state[cancel_key]:
+            if bc1.button("❌", key=f"cnl_no_{sess.id}", use_container_width=True, help="Abort"):
+                st.session_state[cancel_key] = False
+                st.rerun()
+            if bc3.button("⚠️", key=f"cnl_yes_{sess.id}", type="primary", use_container_width=True, help="Confirm Cancel"):
+                import app.modules.academics as acad_srv
+                acad_srv.cancel_session(sess.id)
+                st.session_state[cancel_key] = False
+                st.rerun()
+        elif st.session_state[delete_key]:
+            if bc1.button("❌", key=f"del_no_{sess.id}", use_container_width=True, help="Abort"):
+                st.session_state[delete_key] = False
+                st.rerun()
+            if bc3.button("⚠️", key=f"del_yes_{sess.id}", type="primary", use_container_width=True, help="Confirm Delete"):
+                import app.modules.academics as acad_srv
                 try:
-                    from app.modules.academics import academics_service as acad_srv
-
                     acad_srv.delete_session(sess.id)
-                    del st.session_state[delete_key]
+                    st.session_state[delete_key] = False
                     st.rerun()
                 except Exception as e:
                     st.error("Clear attendance first")
                     st.session_state[delete_key] = False
-            if cols[i + 1].button(
-                "Cancel", key=f"del_no_{sess.id}", use_container_width=True
-            ):
-                st.session_state[delete_key] = False
-                st.rerun()
 
     # Render rows
     for enr in roster:
@@ -136,7 +154,8 @@ def render_attendance_grid(sessions: list, roster: list):
             # Button key
             btn_key = f"btn_{sid}_{sess.id}"
 
-            if row_cols[i + 1].button(label, key=btn_key, use_container_width=True):
+            is_cancelled = getattr(sess, "status", None) == "cancelled"
+            if row_cols[i + 1].button(label, key=btn_key, use_container_width=True, disabled=is_cancelled):
                 # Toggle
                 current_state[(sid, sess.id)] = NEXT_STATE[state]
                 st.rerun()
@@ -157,7 +176,7 @@ def render_attendance_grid(sessions: list, roster: list):
 
                 if sess_payload:
                     res = att_srv.mark_session_attendance(sess.id, sess_payload, None)
-                    total_saved += res["marked"]
+                    total_saved += res.marked
 
             st.success(f"Successfully saved {total_saved} attendance records.")
         except Exception as e:

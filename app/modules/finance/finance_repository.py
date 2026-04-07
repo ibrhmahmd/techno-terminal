@@ -1,8 +1,9 @@
-from datetime import datetime, date
-from typing import Sequence, Optional
+from datetime import date, datetime, timedelta
+from typing import Optional
 from sqlmodel import Session, select
 from sqlalchemy import text
 from app.modules.finance.finance_models import Receipt, Payment
+from app.shared.datetime_utils import utc_now, date_at_utc_midnight
 
 
 # ── Receipt ──────────────────────────────────────────────────────────────────
@@ -10,19 +11,19 @@ from app.modules.finance.finance_models import Receipt, Payment
 
 def create_receipt(
     db: Session,
-    guardian_id: Optional[int],
+    payer_name: Optional[str],
     method: str,
     received_by: Optional[int],
     paid_at: Optional[datetime] = None,
     notes: Optional[str] = None,
 ) -> Receipt:
     r = Receipt(
-        guardian_id=guardian_id,
+        payer_name=payer_name,
         payment_method=method,
         received_by=received_by,
-        paid_at=paid_at or datetime.utcnow(),
+        paid_at=paid_at or utc_now(),
         notes=notes,
-        created_at=datetime.utcnow(),
+        created_at=utc_now(),
     )
     db.add(r)
     db.flush()
@@ -32,9 +33,10 @@ def create_receipt(
 def set_receipt_number(db: Session, receipt_id: int) -> Receipt:
     r = db.get(Receipt, receipt_id)
     if r:
-        year = r.created_at.year if r.created_at else datetime.utcnow().year
+        year = r.created_at.year if r.created_at else utc_now().year
         r.receipt_number = f"TK-{year}-{receipt_id:05d}"
         db.add(r)
+        db.flush()
     return r
 
 
@@ -67,19 +69,72 @@ def list_receipts_by_date(db: Session, target_date: date) -> list[dict]:
         SELECT
             r.id,
             r.receipt_number,
-            g.full_name AS guardian_name,
+            r.payer_name AS parent_name,
             r.payment_method,
             r.paid_at,
             COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type IN ('payment','charge')), 0)
             - COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type = 'refund'), 0) AS total
         FROM receipts r
-        LEFT JOIN guardians g ON r.guardian_id = g.id
         LEFT JOIN payments p ON p.receipt_id = r.id
         WHERE DATE(r.paid_at) = :target_date
-        GROUP BY r.id, g.full_name
+        GROUP BY r.id, r.payer_name
         ORDER BY r.paid_at DESC
     """)
     rows = db.execute(stmt, {"target_date": str(target_date)}).all()
+    return [dict(row._mapping) for row in rows]
+
+
+def search_receipts(
+    db: Session,
+    from_date: date,
+    to_date: date,
+    *,
+    payer_name_contains: Optional[str] = None,
+    student_id: Optional[int] = None,
+    receipt_number_contains: Optional[str] = None,
+    limit: int = 200,
+) -> list[dict]:
+    """
+    Receipts with line totals in [from_date, to_date] (inclusive, by paid_at in UTC).
+    Optional filters: payer_name, student (any line on receipt), partial receipt_number (ILIKE).
+    Uses half-open [start, end) on timestamptz so idx_receipts_paid_at can be used.
+    """
+    fd_start = date_at_utc_midnight(from_date)
+    td_end = date_at_utc_midnight(to_date) + timedelta(days=1)
+    where_clauses = ["r.paid_at >= :fd_start AND r.paid_at < :td_end"]
+    params: dict = {"fd_start": fd_start, "td_end": td_end, "limit": limit}
+
+    if payer_name_contains:
+        where_clauses.append("r.payer_name ILIKE :pnam")
+        params["pnam"] = f"%{payer_name_contains.strip()}%"
+    if student_id is not None:
+        where_clauses.append(
+            "EXISTS (SELECT 1 FROM payments pstu WHERE pstu.receipt_id = r.id AND pstu.student_id = :sid)"
+        )
+        params["sid"] = student_id
+    pat = (receipt_number_contains or "").strip()
+    if pat:
+        where_clauses.append("r.receipt_number ILIKE :rpat")
+        params["rpat"] = f"%{pat}%"
+
+    where_sql = " AND ".join(where_clauses)
+    stmt = text(f"""
+        SELECT
+            r.id,
+            r.receipt_number,
+            r.payer_name AS parent_name,
+            r.payment_method,
+            r.paid_at,
+            COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type IN ('payment','charge')), 0)
+            - COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type = 'refund'), 0) AS total
+        FROM receipts r
+        LEFT JOIN payments p ON p.receipt_id = r.id
+        WHERE {where_sql}
+        GROUP BY r.id, r.receipt_number, r.payer_name, r.payment_method, r.paid_at
+        ORDER BY r.paid_at DESC
+        LIMIT :limit
+    """)
+    rows = db.execute(stmt, params).all()
     return [dict(row._mapping) for row in rows]
 
 
@@ -106,7 +161,7 @@ def add_payment_line(
         payment_type=payment_type,
         discount_amount=discount,
         notes=notes,
-        created_at=datetime.utcnow(),
+        created_at=utc_now(),
     )
     db.add(p)
     db.flush()
@@ -141,7 +196,7 @@ def list_unpaid_enrollments(db: Session, group_id: int) -> list[dict]:
         SELECT vb.enrollment_id, vb.student_id, s.full_name AS student_name, vb.balance
         FROM v_enrollment_balance vb
         JOIN students s ON vb.student_id = s.id
-        WHERE vb.group_id = :gid AND vb.balance > 0
+        WHERE vb.group_id = :gid AND vb.balance < 0
         ORDER BY s.full_name
     """)
     rows = db.execute(stmt, {"gid": group_id}).all()

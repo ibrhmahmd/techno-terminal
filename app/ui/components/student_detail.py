@@ -1,17 +1,16 @@
 import streamlit as st
 import pandas as pd
-from app.modules.crm.crm_repository import get_student_by_id, get_student_guardians
+from app.modules.crm import crm_service
 from app.modules.enrollments import get_student_enrollments
 from app.modules.attendance import get_attendance_summary
 from app.modules.academics import get_group_by_id
 from app.modules.finance import finance_service as fin_srv
-from app.modules.competitions import competition_service as comp_srv
+from app.modules.competitions import team_service as comp_srv
 from app.db.connection import get_session
 
 
 def render_student_detail(student_id: int):
-    with get_session() as db:
-        student = get_student_by_id(db, student_id)
+    student = crm_service.get_student_by_id(student_id)
 
     if not student:
         st.error("Student not found.")
@@ -37,54 +36,30 @@ def render_student_detail(student_id: int):
     c_ph.markdown(f"**Phone:** {student.phone or 'N/A'}")
 
     if student.notes:
-        st.info(f"**Notes:** {student.notes}")
+        with st.expander("💬 View Notes"):
+            st.write(student.notes)
 
-    with st.expander("✏️ Edit Student Information"):
-        with st.form(f"edit_student_{student.id}"):
-            c1, c2 = st.columns(2)
-            with c1:
-                es_name = st.text_input("Full Name *", value=student.full_name)
-                es_dob = st.date_input("Date of Birth", value=student.date_of_birth)
-            with c2:
-                es_phone = st.text_input("Phone (Personal)", value=student.phone or "")
-                es_gender = st.selectbox("Gender", ["male", "female"], index=0 if student.gender == "male" else (1 if student.gender == "female" else 0))
-            
-            es_notes = st.text_area("Notes", value=student.notes or "")
-            
-            if st.form_submit_button("Save Changes", type="primary"):
-                from app.modules.crm import crm_service as crm_srv
-                try:
-                    crm_srv.update_student(student.id, {
-                        "full_name": es_name.strip(),
-                        "phone": es_phone.strip() or None,
-                        "gender": es_gender,
-                        "date_of_birth": es_dob,
-                        "notes": es_notes.strip() or None
-                    })
-                    st.success("Student details updated!")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Failed to update: {e}")
+    from app.ui.components.forms.edit_student_form import render_edit_student_form
+    render_edit_student_form(student)
 
     st.divider()
 
     # 1. Parent Info
     st.markdown("#### Parent/Parent Details")
 
-    with get_session() as db:
-        parents = get_student_guardians(db, student_id)
+    parents = crm_service.get_student_parents(student_id)
 
-        if parents:
-            # Sort so primary is always first
-            parents.sort(key=lambda x: not x.is_primary)
-            for g_link in parents:
-                g = g_link.guardian
-                badge = "🏆 Primary" if g_link.is_primary else "Secondary"
-                st.markdown(
-                    f"**{g.full_name}** ({g_link.relationship}) — {badge}  \n📞 {g.phone_primary} | {g.phone_secondary or ''}"
-                )
-        else:
-            st.warning("No parent linked.")
+    if parents:
+        # Sort so primary is always first
+        parents.sort(key=lambda x: not x.is_primary)
+        for g_link in parents:
+            g = g_link.parent
+            badge = "🏆 Primary" if g_link.is_primary else "Secondary"
+            st.markdown(
+                f"**{g.full_name}** ({g_link.relationship}) — {badge}  \n📞 {g.phone_primary} | {g.phone_secondary or ''}"
+            )
+    else:
+        st.warning("No parent linked.")
 
     st.divider()
 
@@ -96,16 +71,19 @@ def render_student_detail(student_id: int):
     if enrollments:
         # Build enriched view for enrollments
         enr_data = []
+        has_debt = False
         for e in enrollments:
             g = get_group_by_id(e.group_id)
             group_name = g.name if g else f"Group #{e.group_id}"
 
             # Fetch attendance summary for this enrollment
             att_summary = get_attendance_summary(e.id)
-            att_str = f"✅ {att_summary.get('sessions_attended', 0)}   ❌ {att_summary.get('sessions_missed', 0)}"
+            att_str = f"✅ {att_summary.sessions_attended}   ❌ {att_summary.sessions_missed}"
 
             balance_data = fin_srv.get_enrollment_balance(e.id)
             balance = balance_data["balance"] if balance_data else None
+            if e.status == "active" and balance is not None and balance < 0:
+                has_debt = True
 
             enr_data.append(
                 {
@@ -116,17 +94,16 @@ def render_student_detail(student_id: int):
                     "Discount": f"-{e.discount_applied} EGP"
                     if e.discount_applied
                     else "-",
-                    "Balance": f"{balance:.0f} EGP" if balance is not None else "—",
+                    "Acct balance": f"{balance:.0f} EGP" if balance is not None else "—",
                     "Attendance": att_str,
                     "Enrolled On": str(e.enrolled_at) if e.enrolled_at else "",
                 }
             )
 
+        st.caption("Account balance: negative = debt owed, positive = credit (P6).")
         st.dataframe(pd.DataFrame(enr_data), hide_index=True, use_container_width=True)
 
-        # If any enrollment has an outstanding balance, show Pay Now shortcut
-        outstanding = [e for e in enrollments if e.status == "active"]
-        if outstanding:
+        if has_debt:
             if st.button("💰 Go to Finance — Create Receipt", use_container_width=True):
                 st.switch_page("pages/0_Dashboard.py")
     else:

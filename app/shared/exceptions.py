@@ -1,7 +1,7 @@
 """
 app/shared/exceptions.py
 ────────────────────────
-Typed exception hierarchy for the Techno Kids CRM.
+Typed exception hierarchy for the Techno Terminal.
 
 All service-layer errors must raise one of these classes instead of the
 built-in ValueError.  This lets the UI (and the future REST API layer)

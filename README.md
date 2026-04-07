@@ -53,7 +53,7 @@ docs/
 | Phase | Status | Description |
 |---|---|---|
 | Phase 1 | 🔄 In Progress | Core Foundation & Security (Auth, DB, UI Shell) |
-| Phase 2 | ⏳ Pending | CRM Core (Guardians, Students, Courses, Groups) |
+| Phase 2 | ⏳ Pending | CRM Core (Parents, Students, Courses, Groups) |
 | Phase 3 | ⏳ Pending | Daily Operations (Enrollments, Sessions, Attendance) |
 | Phase 4 | ⏳ Pending | Financial Ledger (Receipts, Payments, Balances) |
 | Phase 5 | ⏳ Pending | Competitions & Teams |

@@ -1,5 +1,6 @@
--- Techno Kids — PostgreSQL Schema v3.2
+-- Techno Terminal  — PostgreSQL Schema v3.3
 -- 15 tables, 5 views, 23 indexes
+-- v3.3: users — Supabase auth (supabase_uid), roles admin/instructor/system_admin; seed via app (see db/README.md)
 -- CHANGES FROM v3.2:
 --   [T1]  Changed `sessions.group_id` ON DELETE CASCADE to RESTRICT
 --   [T2]  Changed `payments.receipt_id` ON DELETE CASCADE to RESTRICT
@@ -7,7 +8,7 @@
 --   [T4]  Changed `CHECK (amount > 0)` to `!= 0` to allow refunds
 --   [T5]  Added `transaction_type` to payments ('charge', 'payment', 'refund')
 --   [T6]  Made `attendance.enrollment_id` NOT NULL
---   [T7]  Replaced `students.guardian_id` with `student_guardians` junction table
+--   [T7]  Replaced `students.parent_id` with `student_parents` junction table
 --
 -- Tables ordered by dependency (referenced tables first).
 -- =============================================================================
@@ -25,10 +26,10 @@ DROP TABLE IF EXISTS groups CASCADE;
 DROP TABLE IF EXISTS courses CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 DROP TABLE IF EXISTS employees CASCADE;
-DROP TABLE IF EXISTS student_guardians CASCADE;
+DROP TABLE IF EXISTS student_parents CASCADE;
 DROP TABLE IF EXISTS students CASCADE;
-DROP TABLE IF EXISTS guardians CASCADE;
-CREATE TABLE guardians (
+DROP TABLE IF EXISTS parents CASCADE;
+CREATE TABLE parents (
     id SERIAL PRIMARY KEY,
     full_name TEXT NOT NULL,
     phone_primary TEXT,
@@ -36,34 +37,52 @@ CREATE TABLE guardians (
     email TEXT,
     relation TEXT,
     notes TEXT,
-    created_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE employees (
     id SERIAL PRIMARY KEY,
     full_name TEXT NOT NULL,
-    phone TEXT,
+    phone TEXT NOT NULL,
     email TEXT,
+    national_id TEXT NOT NULL,
+    university TEXT NOT NULL,
+    major TEXT NOT NULL,
+    is_graduate BOOLEAN NOT NULL DEFAULT FALSE,
     job_title TEXT,
-    employment_type TEXT CHECK (employment_type IN ('part_time', 'contract')),
+    employment_type TEXT NOT NULL CHECK (
+        employment_type IN ('full_time', 'part_time', 'contract')
+    ),
     monthly_salary DECIMAL(10, 2),
-    contract_percentage DECIMAL(5, 2) DEFAULT 25.00,
+    contract_percentage DECIMAL(5, 2),
     is_active BOOLEAN DEFAULT TRUE,
     hired_at DATE,
-    created_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ,
-    metadata JSONB DEFAULT '{}'
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    metadata JSONB DEFAULT '{}',
+    CONSTRAINT employees_contract_pct_check CHECK (
+        (
+            employment_type != 'contract'
+            AND contract_percentage IS NULL
+        )
+        OR (employment_type = 'contract')
+    ),
+    CONSTRAINT uq_employees_national_id UNIQUE (national_id),
+    CONSTRAINT uq_employees_phone UNIQUE (phone),
+    CONSTRAINT uq_employees_email UNIQUE (email)
 );
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     username TEXT UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,
+    supabase_uid TEXT UNIQUE NOT NULL,
     employee_id INTEGER REFERENCES employees(id) ON DELETE
     SET NULL,
-        role TEXT NOT NULL CHECK (role IN ('admin', 'system_admin')),
+        role TEXT NOT NULL CHECK (
+            role IN ('admin', 'instructor', 'system_admin')
+        ),
         is_active BOOLEAN DEFAULT TRUE,
         last_login TIMESTAMPTZ,
-        created_at TIMESTAMPTZ
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE students (
     id SERIAL PRIMARY KEY,
@@ -75,18 +94,18 @@ CREATE TABLE students (
     is_active BOOLEAN DEFAULT TRUE,
     created_by INTEGER REFERENCES users(id) ON DELETE
     SET NULL,
-        created_at TIMESTAMPTZ,
-        updated_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         metadata JSONB DEFAULT '{}'
 );
-CREATE TABLE student_guardians (
+CREATE TABLE student_parents (
     student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    guardian_id INTEGER NOT NULL REFERENCES guardians(id) ON DELETE CASCADE,
+    parent_id INTEGER NOT NULL REFERENCES parents(id) ON DELETE CASCADE,
     relationship TEXT,
     -- 'father', 'mother', etc.
     is_primary BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMPTZ,
-    PRIMARY KEY (student_id, guardian_id)
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (student_id, parent_id)
 );
 CREATE TABLE courses (
     id SERIAL PRIMARY KEY,
@@ -97,9 +116,10 @@ CREATE TABLE courses (
     price_per_level DECIMAL(10, 2) CHECK (price_per_level > 0),
     sessions_per_level INTEGER DEFAULT 5 CHECK (sessions_per_level > 0),
     description TEXT,
+    notes TEXT,
     is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE groups (
     id SERIAL PRIMARY KEY,
@@ -114,8 +134,9 @@ CREATE TABLE groups (
         max_capacity INTEGER CHECK (max_capacity > 0),
         status TEXT DEFAULT 'active' CHECK (status IN ('active', 'completed', 'cancelled')),
         started_at DATE,
-        created_at TIMESTAMPTZ,
-        updated_at TIMESTAMPTZ,
+        notes TEXT,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         metadata JSONB DEFAULT '{}',
         CHECK (
             default_time_start IS NULL
@@ -136,7 +157,10 @@ CREATE TABLE sessions (
         is_substitute BOOLEAN DEFAULT FALSE,
         is_extra_session BOOLEAN DEFAULT FALSE,
         notes TEXT,
-        created_at TIMESTAMPTZ,
+        status TEXT DEFAULT 'scheduled' CHECK (
+            status IN ('scheduled', 'completed', 'cancelled')
+        ),
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         CHECK (
             start_time IS NULL
             OR end_time IS NULL
@@ -159,8 +183,8 @@ CREATE TABLE enrollments (
         notes TEXT,
         created_by INTEGER REFERENCES users(id) ON DELETE
     SET NULL,
-        created_at TIMESTAMPTZ,
-        updated_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         metadata JSONB DEFAULT '{}'
 );
 CREATE UNIQUE INDEX idx_enrollments_active_unique ON enrollments(student_id, group_id)
@@ -180,17 +204,16 @@ CREATE TABLE attendance (
 );
 CREATE TABLE receipts (
     id SERIAL PRIMARY KEY,
-    guardian_id INTEGER REFERENCES guardians(id) ON DELETE
-    SET NULL,
-        payment_method TEXT CHECK (
-            payment_method IN ('cash', 'card', 'transfer', 'online')
-        ),
-        received_by INTEGER REFERENCES users(id) ON DELETE
+    payer_name TEXT,
+    payment_method TEXT CHECK (
+        payment_method IN ('cash', 'card', 'transfer', 'online')
+    ),
+    received_by INTEGER REFERENCES users(id) ON DELETE
     SET NULL,
         receipt_number TEXT UNIQUE,
         notes TEXT,
         paid_at TIMESTAMPTZ,
-        created_at TIMESTAMPTZ
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE payments (
     id SERIAL PRIMARY KEY,
@@ -207,7 +230,7 @@ CREATE TABLE payments (
         ),
         discount_amount DECIMAL(10, 2) DEFAULT 0 CHECK (discount_amount >= 0),
         notes TEXT,
-        created_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         metadata JSONB DEFAULT '{}'
 );
 CREATE TABLE competitions (
@@ -217,7 +240,7 @@ CREATE TABLE competitions (
     competition_date DATE,
     location TEXT,
     notes TEXT,
-    created_at TIMESTAMPTZ
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE competition_categories (
     id SERIAL PRIMARY KEY,
@@ -234,7 +257,7 @@ CREATE TABLE teams (
         coach_id INTEGER REFERENCES employees(id) ON DELETE
     SET NULL,
         enrollment_fee_per_student DECIMAL(10, 2) CHECK (enrollment_fee_per_student > 0),
-        created_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         metadata JSONB DEFAULT '{}'
 );
 CREATE TABLE team_members (
@@ -247,10 +270,10 @@ CREATE TABLE team_members (
         UNIQUE(team_id, student_id)
 );
 -- Indexes
-CREATE INDEX idx_guardians_phone ON guardians(phone_primary)
+CREATE INDEX idx_parents_phone ON parents(phone_primary)
 WHERE phone_primary IS NOT NULL;
-CREATE INDEX idx_student_guardians_student ON student_guardians(student_id);
-CREATE INDEX idx_student_guardians_guardian ON student_guardians(guardian_id);
+CREATE INDEX idx_student_parents_student ON student_parents(student_id);
+CREATE INDEX idx_student_parents_parent ON student_parents(parent_id);
 CREATE INDEX idx_students_active ON students(is_active)
 WHERE is_active = TRUE;
 CREATE INDEX idx_students_name ON students(full_name);
@@ -271,10 +294,29 @@ CREATE INDEX idx_attendance_enrollment ON attendance(enrollment_id);
 CREATE INDEX idx_payments_student ON payments(student_id);
 CREATE INDEX idx_payments_enrollment ON payments(enrollment_id);
 CREATE INDEX idx_payments_receipt ON payments(receipt_id);
+CREATE INDEX idx_receipts_paid_at ON receipts(paid_at DESC);
 CREATE INDEX idx_comp_categories_comp ON competition_categories(competition_id);
 CREATE INDEX idx_teams_category ON teams(category_id);
 CREATE INDEX idx_team_members_team ON team_members(team_id);
 CREATE INDEX idx_team_members_student ON team_members(student_id);
+CREATE UNIQUE INDEX idx_users_supabase_uid ON users(supabase_uid);
+-- Audit (D4): bump updated_at on UPDATE (mirrors db/migrations/005_audit_d4_timestamps.sql)
+CREATE OR REPLACE FUNCTION tf_set_updated_at() RETURNS TRIGGER AS $$ BEGIN NEW.updated_at = CURRENT_TIMESTAMP;
+RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER trg_parents_updated_at BEFORE
+UPDATE ON parents FOR EACH ROW EXECUTE PROCEDURE tf_set_updated_at();
+CREATE TRIGGER trg_employees_updated_at BEFORE
+UPDATE ON employees FOR EACH ROW EXECUTE PROCEDURE tf_set_updated_at();
+CREATE TRIGGER trg_students_updated_at BEFORE
+UPDATE ON students FOR EACH ROW EXECUTE PROCEDURE tf_set_updated_at();
+CREATE TRIGGER trg_courses_updated_at BEFORE
+UPDATE ON courses FOR EACH ROW EXECUTE PROCEDURE tf_set_updated_at();
+CREATE TRIGGER trg_groups_updated_at BEFORE
+UPDATE ON groups FOR EACH ROW EXECUTE PROCEDURE tf_set_updated_at();
+CREATE TRIGGER trg_enrollments_updated_at BEFORE
+UPDATE ON enrollments FOR EACH ROW EXECUTE PROCEDURE tf_set_updated_at();
 -- Views
 CREATE OR REPLACE VIEW v_students AS
 SELECT s.id,
@@ -291,12 +333,12 @@ SELECT s.id,
     s.created_at,
     s.updated_at,
     s.metadata,
-    g.full_name AS primary_guardian_name,
-    g.phone_primary AS primary_guardian_phone
+    g.full_name AS primary_parent_name,
+    g.phone_primary AS primary_parent_phone
 FROM students s
-    LEFT JOIN student_guardians sg ON s.id = sg.student_id
+    LEFT JOIN student_parents sg ON s.id = sg.student_id
     AND sg.is_primary = TRUE
-    LEFT JOIN guardians g ON sg.guardian_id = g.id;
+    LEFT JOIN parents g ON sg.parent_id = g.id;
 CREATE OR REPLACE VIEW v_enrollment_balance AS
 SELECT e.id AS enrollment_id,
     e.student_id,
@@ -316,7 +358,7 @@ SELECT e.id AS enrollment_id,
         ),
         0
     ) AS total_paid,
-    (e.amount_due - e.discount_applied) - (
+    (
         COALESCE(
             SUM(p.amount) FILTER (
                 WHERE p.transaction_type IN ('payment', 'charge')
@@ -328,7 +370,7 @@ SELECT e.id AS enrollment_id,
             ),
             0
         )
-    ) AS balance
+    ) - (e.amount_due - e.discount_applied) AS balance
 FROM enrollments e
     LEFT JOIN payments p ON p.enrollment_id = e.id
 GROUP BY e.id;
@@ -347,9 +389,9 @@ SELECT sg1.student_id AS student_id,
     s1.full_name AS student_name,
     sg2.student_id AS sibling_id,
     s2.full_name AS sibling_name,
-    sg1.guardian_id
-FROM student_guardians sg1
-    JOIN student_guardians sg2 ON sg1.guardian_id = sg2.guardian_id
+    sg1.parent_id
+FROM student_parents sg1
+    JOIN student_parents sg2 ON sg1.parent_id = sg2.parent_id
     AND sg1.student_id < sg2.student_id
     JOIN students s1 ON sg1.student_id = s1.id
     JOIN students s2 ON sg2.student_id = s2.id
@@ -368,30 +410,28 @@ SELECT group_id,
 FROM sessions
 GROUP BY group_id,
     level_number;
--- Seed
+-- Seed (optional local employee row). Login users are created in Supabase and mapped via app/db/seed.py.
 INSERT INTO employees (
         full_name,
+        phone,
+        national_id,
+        university,
+        major,
+        is_graduate,
         job_title,
         employment_type,
+        contract_percentage,
         created_at
     )
 VALUES (
-        'System Administrator',
+        'Admin',
+        '0000000000',
+        '00000000000000',
+        'Unassigned',
+        'Unassigned',
+        FALSE,
         'admin',
         'part_time',
-        NOW()
-    );
-INSERT INTO users (
-        username,
-        password_hash,
-        employee_id,
-        role,
-        created_at
-    )
-VALUES (
-        'admin',
-        'CHANGE_ME_ON_FIRST_LOGIN',
-        1,
-        'admin',
+        NULL,
         NOW()
     );

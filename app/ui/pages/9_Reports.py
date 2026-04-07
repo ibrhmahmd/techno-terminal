@@ -4,10 +4,10 @@ from datetime import date, timedelta
 from calendar import monthrange
 
 from app.ui.components.auth_guard import require_auth
-from app.modules.analytics import analytics_service as analytics_srv
-from app.modules.academics import academics_service as acad_srv
+import app.modules.analytics as analytics_srv
+import app.modules.academics as acad_srv
 
-st.set_page_config(page_title="Reports - Techno Kids", layout="wide")
+st.set_page_config(page_title="Reports - Techno Terminal", layout="wide")
 require_auth()
 
 st.title("📊 Reports & Analytics")
@@ -57,14 +57,10 @@ with tab_fin:
     with col1:
         st.subheader("💳 Revenue by Payment Method")
         if rev_by_method:
-            df_m = pd.DataFrame(rev_by_method)
+            df_m = pd.DataFrame([x.model_dump() for x in rev_by_method])
             df_m["net_revenue"] = df_m["net_revenue"].apply(float)
             total = df_m["net_revenue"].sum()
             st.metric("Total Collected", f"{total:,.0f} EGP")
-            chart = df_m.set_index("payment_method")[["net_revenue"]]
-            chart.index.name = "Method"
-            chart.columns = ["Revenue (EGP)"]
-            st.bar_chart(chart)
             st.dataframe(
                 df_m.rename(
                     columns={
@@ -82,7 +78,7 @@ with tab_fin:
     with col2:
         st.subheader("📈 Daily Revenue Trend")
         if rev_by_date:
-            df_d = pd.DataFrame(rev_by_date)
+            df_d = pd.DataFrame([x.model_dump() for x in rev_by_date])
             df_d["net_revenue"] = df_d["net_revenue"].apply(float)
             df_d = df_d.set_index("day")
             df_d.columns = ["Revenue (EGP)"]
@@ -94,7 +90,7 @@ with tab_fin:
     st.divider()
     st.subheader("🔴 Outstanding Balances by Group")
     if outstanding:
-        df_out = pd.DataFrame(outstanding)
+        df_out = pd.DataFrame([x.model_dump() for x in outstanding])
         df_out["total_outstanding"] = df_out["total_outstanding"].apply(float)
         df_out = df_out.rename(
             columns={
@@ -119,12 +115,12 @@ with tab_fin:
     st.divider()
     st.subheader("👤 Top Debtors")
     if debtors:
-        df_debt = pd.DataFrame(debtors)
+        df_debt = pd.DataFrame([x.model_dump() for x in debtors])
         df_debt["total_outstanding"] = df_debt["total_outstanding"].apply(float)
         df_debt = df_debt.rename(
             columns={
                 "student_name": "Student",
-                "guardian_name": "Parent",
+                "parent_name": "Parent",
                 "phone_primary": "Phone",
                 "total_outstanding": "Owed (EGP)",
             }
@@ -138,7 +134,7 @@ with tab_fin:
         )
         if event_debt.selection.rows:
             sel_idx = event_debt.selection.rows[0]
-            st.session_state["nav_target_student_id"] = debtors[sel_idx]["student_id"]
+            st.session_state["nav_target_student_id"] = debtors[sel_idx].student_id
             st.switch_page("pages/1_Directory.py")
     else:
         st.info("No debtors found.")
@@ -150,7 +146,8 @@ with tab_fin:
 with tab_acad:
     st.subheader("🎓 Group Roster Report")
     st.caption(
-        "Select a group and level to see the full student roster with attendance % and balance."
+        "Select a group and level to see the full student roster with attendance % and "
+        "account balance (P6: negative = debt)."
     )
 
     show_inactive = st.checkbox("Show inactive/archived groups", key="acad_inactive")
@@ -172,14 +169,14 @@ with tab_acad:
 
         roster = analytics_srv.get_group_roster(sel_group.id, sel_level)
         if roster:
-            df_roster = pd.DataFrame(roster)
+            df_roster = pd.DataFrame([x.model_dump() for x in roster])
             df_roster["balance"] = df_roster["balance"].apply(float)
             df_roster["attendance_pct"] = df_roster["attendance_pct"].apply(float)
             df_roster = df_roster.rename(
                 columns={
                     "student_name": "Student",
                     "enrollment_status": "Status",
-                    "balance": "Balance (EGP)",
+                    "balance": "Acct balance (EGP)",
                     "sessions_attended": "Present",
                     "sessions_missed": "Absent",
                     "total_sessions": "Total Sessions",
@@ -207,7 +204,7 @@ with tab_comp:
     st.subheader("🏆 Competition Fee Summary")
     fee_summary = analytics_srv.get_competition_fee_summary()
     if fee_summary:
-        df_comp = pd.DataFrame(fee_summary)
+        df_comp = pd.DataFrame([x.model_dump() for x in fee_summary])
         df_comp["fees_collected"] = df_comp["fees_collected"].apply(float)
         df_comp["fees_outstanding"] = df_comp["fees_outstanding"].apply(float)
         df_comp["competition_date"] = df_comp["competition_date"].astype(str)
@@ -271,11 +268,11 @@ with tab_heatmap:
 
         heat_data = analytics_srv.get_attendance_heatmap(sel_group_h.id, sel_level_h)
         if heat_data:
-            df_heat = pd.DataFrame(heat_data)
+            df_heat = pd.DataFrame([x.model_dump() for x in heat_data])
 
             # Pivot: rows = student, columns = session_number + date
             df_heat["session_label"] = df_heat.apply(
-                lambda r: f"S{int(r['session_number'])}\n{str(r['session_date'])[:10]}",
+                lambda r: f"Session {int(r['session_number'])}\n{str(r['session_date'])[:10]}",
                 axis=1,
             )
 
@@ -321,66 +318,21 @@ with tab_heatmap:
 with tab_bi:
     st.subheader("📈 Business Intelligence")
     st.caption("Deep analytics on growth, retention, and instructor performance.")
+    
+    from app.ui.components.charts.retention_funnel import render_retention_funnel
+    from app.ui.components.charts.instructor_matrix import render_instructor_matrix
+    from app.ui.components.charts.schedule_utilization import render_schedule_utilization
+    from app.ui.components.charts.financial_risk import render_financial_risk
 
     bi_col1, bi_col2 = st.columns(2, gap="large")
 
     with bi_col1:
-        st.markdown("#### 🌱 Enrollment Growth")
-        days = st.slider("Timeframe (Days)", min_value=7, max_value=365, value=30, step=7)
-        cutoff = date.today() - timedelta(days=days)
-        growth_data = analytics_srv.get_new_enrollments_trend(cutoff)
+        render_retention_funnel()
+        st.divider()
+        render_schedule_utilization()
         
-        if growth_data:
-            df_growth = pd.DataFrame(growth_data)
-            df_growth = df_growth.set_index("day")
-            st.bar_chart(df_growth)
-            
-            total_new = df_growth["new_enrollments"].sum()
-            st.metric(f"New Enrollments (Last {days} days)", total_new)
-        else:
-            st.info("No new enrollments in this timeframe.")
 
     with bi_col2:
-        st.markdown("#### 🎯 Course Retention rates")
-        retention = analytics_srv.get_retention_metrics()
-        
-        if retention:
-            df_ret = pd.DataFrame(retention)
-            df_ret["retention_rate"] = df_ret.apply(
-                lambda row: (row["active_count"] / row["total_enrollments"]) * 100 if row["total_enrollments"] > 0 else 0, 
-                axis=1
-            )
-            df_ret = df_ret.sort_values(by="retention_rate", ascending=False)
-            
-            st.dataframe(
-                df_ret[["course_name", "active_count", "dropped_count", "retention_rate"]].rename(
-                    columns={
-                        "course_name": "Course",
-                        "active_count": "Active",
-                        "dropped_count": "Dropped",
-                        "retention_rate": "Retention (%)"
-                    }
-                ).style.format({"Retention (%)": "{:.1f}%"}),
-                hide_index=True,
-                use_container_width=True
-            )
-        else:
-            st.info("No retention data.")
-
-    st.divider()
-    
-    st.markdown("#### 👨‍🏫 Instructor Performance Metrics")
-    perf = analytics_srv.get_instructor_performance()
-    
-    if perf:
-        df_perf = pd.DataFrame(perf)
-        df_perf = df_perf.rename(
-            columns={
-                "instructor_name": "Instructor",
-                "active_groups": "Active Groups",
-                "active_students": "Total Active Students"
-            }
-        )
-        st.dataframe(df_perf, hide_index=True, use_container_width=True)
-    else:
-        st.info("No active instructors data.")
+        render_instructor_matrix()
+        st.divider()
+        render_financial_risk()

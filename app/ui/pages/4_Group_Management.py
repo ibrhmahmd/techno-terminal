@@ -3,7 +3,7 @@ from app.ui.components.auth_guard import require_auth
 from app.ui.components.group_overview import render_group_overview
 from app.ui.components.group_detail import render_group_detail
 
-st.set_page_config(page_title="Group Management", layout="wide")
+st.set_page_config(page_title="Group Management - Techno Terminal", layout="wide")
 require_auth()
 
 st.title("🗂️ Group Management")

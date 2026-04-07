@@ -4,7 +4,7 @@
 
 We need an internal admin tool for a tech education center. Key needs:
 
-- Data entry forms (students, guardians, enrollments, payments)
+- Data entry forms (students, parents, enrollments, payments)
 - Tabular data views (attendance sheets, financial ledgers)
 - Simple dashboards (revenue by month, group attendance %)
 - Used by 2–10 admin staff concurrently, on desktop/laptop browsers
@@ -51,7 +51,7 @@ We need an internal admin tool for a tech education center. Key needs:
 
 - Only the changed component re-renders (not the full page)
 - Forms retain state naturally across navigation — no session hacks needed
-- Clean component model: `StudentCard`, `GuardianForm`, `AttendanceTable` are real reusable components
+- Clean component model: `StudentCard`, `ParentForm`, `AttendanceTable` are real reusable components
 - Clean migration path from Streamlit (same Python services underneath)
 
 **Cons:**
