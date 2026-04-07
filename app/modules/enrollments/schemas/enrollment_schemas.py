@@ -45,3 +45,17 @@ class EnrollmentDTO(EnrollmentBase):
     updated_at: Optional[datetime] = None
     created_by: Optional[int] = None
     enrollment_metadata: Optional[dict[str, Any]] = None
+
+
+class StudentEnrollmentSummaryDTO(BaseModel):
+    """Summary DTO for student enrollment in a group level."""
+    student_id: int
+    student_name: str
+    enrollment_id: int
+    level_number: int
+    status: str
+    sessions_attended: int
+    sessions_total: int
+    payment_status: str  # "paid", "due", "partial"
+    amount_due: float
+    discount_applied: float

@@ -10,10 +10,10 @@ Role policy:
   READ  -> require_any
   WRITE -> require_admin
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from app.api.schemas.common import ApiResponse
-from app.api.schemas.enrollments.enrollment import EnrollmentPublic
+from app.api.schemas.enrollments.enrollment import EnrollmentPublic, StudentEnrollmentSummaryPublic
 from app.api.dependencies import require_admin, require_any, get_enrollment_service
 from app.modules.enrollments.schemas.enrollment_schemas import EnrollStudentInput, TransferStudentInput
 from app.modules.auth import User
@@ -97,3 +97,23 @@ def get_student_enrollments(
 ):
     enrollments = svc.get_student_enrollments(student_id)
     return ApiResponse(data=[EnrollmentPublic.model_validate(e) for e in enrollments])
+
+
+# get group enrollments summary
+@router.get(
+    "/enrollments/group/{group_id}/students-summary",
+    response_model=ApiResponse[list[StudentEnrollmentSummaryPublic]],
+    summary="Get student enrollments summary for a group",
+)
+def get_group_enrollments_summary(
+    group_id: int,
+    level: int = Query(None, description="Filter to a specific level number"),
+    _user: User = Depends(require_any),
+    svc: EnrollmentService = Depends(get_enrollment_service),
+):
+    """
+    Returns summary of all student enrollments for a group.
+    Includes attendance counts and payment status.
+    """
+    summaries = svc.get_enrollments_summary_by_group(group_id, level_number=level)
+    return ApiResponse(data=[StudentEnrollmentSummaryPublic.model_validate(s) for s in summaries])

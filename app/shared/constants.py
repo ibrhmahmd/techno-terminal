@@ -38,8 +38,8 @@ ATTENDANCE_STATUSES: list[AttendanceStatus] = ["present", "absent", "late", "exc
 
 # ── Academics ─────────────────────────────────────────────────────────────────
 
-GroupStatus: TypeAlias = Literal["active", "inactive", "completed"]
-GROUP_STATUSES: list[GroupStatus] = ["active", "inactive", "completed"]
+GroupStatus: TypeAlias = Literal["active", "inactive", "completed", "archived"]
+GROUP_STATUSES: list[GroupStatus] = ["active", "inactive", "completed", "archived"]
 
 # Default number of sessions per group level
 DEFAULT_SESSIONS_PER_LEVEL: int = 5

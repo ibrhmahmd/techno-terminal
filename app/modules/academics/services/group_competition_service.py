@@ -112,6 +112,7 @@ class GroupCompetitionService:
                     from app.modules.competitions.models.competition_models import CompetitionCategory
                     category = session.get(CompetitionCategory, p.category_id)
                 
+                # this needs to be wrapped in a DTO
                 result.append({
                     "participation_id": p.id,
                     "competition_id": p.competition_id,

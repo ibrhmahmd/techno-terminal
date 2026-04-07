@@ -86,6 +86,9 @@ def create_student(
     _user: User = Depends(require_admin),
     svc: StudentService = Depends(get_student_service),
 ):
+    # Normalize frontend-sent 0 values to None
+    if body.parent_id == 0:
+        body.parent_id = None
     # register_student returns (student, siblings) — drop siblings here
     student, _siblings = svc.register_student(body)
     return ApiResponse(

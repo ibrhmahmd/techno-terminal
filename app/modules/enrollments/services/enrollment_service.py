@@ -9,6 +9,7 @@ from app.modules.enrollments.schemas.enrollment_schemas import (
     EnrollStudentInput,
     TransferStudentInput,
     EnrollmentDTO,
+    StudentEnrollmentSummaryDTO,
 )
 from app.shared.exceptions import NotFoundError, BusinessRuleError, ConflictError
 import app.modules.enrollments.repositories.enrollment_repository as repo
@@ -133,6 +134,82 @@ class EnrollmentService:
                 session, group_id=group_id, level_number=level_number, status="active"
             )
             return [EnrollmentDTO.model_validate(e) for e in enrollments]
+
+
+    def get_enrollments_summary_by_group(
+        self, group_id: int, level_number: int | None = None
+    ) -> list[StudentEnrollmentSummaryDTO]:
+        """
+        Get enrollment summary for all students in a group.
+        Includes attendance counts and payment status.
+        """
+        with get_session() as session:
+            from app.modules.enrollments.models.enrollment_models import Enrollment
+            from app.modules.crm.models import Student
+            from app.modules.academics.models import GroupLevel
+            from sqlmodel import select
+            from app.modules.attendance.repositories import attendance_repository
+
+            # Get all enrollments for the group (excluding dropped by default)
+            stmt = select(Enrollment, Student).join(
+                Student, Enrollment.student_id == Student.id
+            ).where(Enrollment.group_id == group_id)
+
+            if level_number:
+                stmt = stmt.where(Enrollment.level_number == level_number)
+            else:
+                # Get enrollments for the group's current level
+                group = session.get(Group, group_id)
+                if group:
+                    stmt = stmt.where(Enrollment.level_number == group.level_number)
+
+            # Exclude dropped enrollments
+            stmt = stmt.where(Enrollment.status != "dropped")
+
+            results = session.exec(stmt).all()
+
+            summary_list = []
+            for enrollment, student in results:
+                # Get attendance summary
+                attendance_summary = attendance_repository.get_enrollment_attendance(
+                    session, enrollment.id
+                )
+
+                # Get sessions total from group level
+                level = session.exec(
+                    select(GroupLevel).where(
+                        GroupLevel.group_id == group_id,
+                        GroupLevel.level_number == enrollment.level_number
+                    )
+                ).first()
+                sessions_total = level.sessions_planned if level else 0
+
+                # Calculate payment status
+                amount_due = float(enrollment.amount_due or 0)
+                discount = float(enrollment.discount_applied or 0)
+                # Simple payment status logic - can be enhanced with actual payment queries
+                if amount_due <= 0:
+                    payment_status = "paid"
+                elif discount > 0 and amount_due <= discount:
+                    payment_status = "paid"
+                else:
+                    payment_status = "due"
+
+                summary = StudentEnrollmentSummaryDTO(
+                    student_id=student.id,
+                    student_name=student.name or "Unknown",
+                    enrollment_id=enrollment.id,
+                    level_number=enrollment.level_number,
+                    status=enrollment.status,
+                    sessions_attended=attendance_summary.sessions_attended,
+                    sessions_total=sessions_total,
+                    payment_status=payment_status,
+                    amount_due=amount_due,
+                    discount_applied=discount,
+                )
+                summary_list.append(summary)
+
+            return summary_list
 
 
     def get_student_enrollments(self, student_id: int) -> list[EnrollmentDTO]:

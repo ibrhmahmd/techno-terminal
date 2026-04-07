@@ -358,6 +358,25 @@ def delete_group(
     )
 
 
+# archive group
+@router.patch(
+    "/academics/groups/{group_id}/archive",
+    response_model=ApiResponse[GroupPublic],
+    summary="Archive a group",
+)
+def archive_group(
+    group_id: int,
+    _user: User = Depends(require_admin),
+    svc: GroupService = Depends(get_group_service),
+):
+    """Archive a group by setting status to 'archived'. Enrollments remain active."""
+    group = svc.archive_group(group_id)
+    return ApiResponse(
+        data=GroupPublic.model_validate(group),
+        message="Group archived successfully.",
+    )
+
+
 # generate level sessions manually
 @router.post(
     "/academics/groups/{group_id}/generate-sessions",

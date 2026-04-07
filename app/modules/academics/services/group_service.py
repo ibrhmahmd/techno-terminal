@@ -448,6 +448,20 @@ class GroupService:
                 group_by=group_by
             )
 
+    def archive_group(self, group_id: int) -> Group:
+        """Archive a group by setting status to 'archived'."""
+        with get_session() as session:
+            group = session.get(Group, group_id)
+            if not group:
+                raise NotFoundError(f"Group {group_id} not found.")
+            
+            group.status = "archived"
+            apply_update_audit(group)
+            session.add(group)
+            session.commit()
+            session.refresh(group)
+            return group
+
     def delete_group_by_id(self, group_id: int) -> Group:
         """Delete a group by ID."""
         with get_session() as session:
