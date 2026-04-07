@@ -209,7 +209,7 @@ Notes:
 - Appends a replacement tail session (+7 days from last session).
 - Session number is set to 0 (detached from ordering).
 
-### 8) Reactivate a cancelled session
+### 7) Reactivate a cancelled session
 **POST** `/api/v1/academics/sessions/{session_id}/reactivate`  
 Auth: `require_admin`
 
@@ -250,7 +250,7 @@ Example success response:
 }
 ```
 
-### 7) Mark substitute instructor
+### 8) Mark substitute instructor
 **POST** `/api/v1/academics/sessions/{session_id}/substitute`  
 Auth: `require_admin`
 

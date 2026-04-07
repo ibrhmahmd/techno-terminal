@@ -246,10 +246,27 @@ Response:
 Errors:
 - `401`, `403`, `404`, `422`
 
+### 7) Delete (archive) a course
+**DELETE** `/api/v1/academics/courses/{course_id}`  
+Auth: `require_admin`
+
+Path params:
+- `course_id` (integer, required)
+
+Response:
+- `200 OK` -> `ApiResponse<CoursePublic>`
+
+Errors:
+- `401`, `403`, `404`, `422`
+
+Notes:
+- Soft delete: Sets `is_active = false` rather than removing the record.
+- Preserves historical data integrity.
+
 ---
 
 ## Router Notes
 
-- This router currently exposes **6 endpoints**.
+- This router currently exposes **7 endpoints**.
 - Course stats endpoints use service-level aggregation from the `v_course_stats` view.
 - Route ordering: `/stats` and `/groups` are defined before `/{course_id}` to prevent path parameter shadowing.
