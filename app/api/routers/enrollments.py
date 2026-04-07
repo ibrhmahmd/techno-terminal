@@ -21,7 +21,7 @@ from app.modules.enrollments.services.enrollment_service import EnrollmentServic
 
 router = APIRouter(tags=["Enrollments"])
 
-
+# create enrollment (enroll a student in a group)
 @router.post(
     "/enrollments",
     response_model=ApiResponse[EnrollmentPublic],
@@ -45,7 +45,7 @@ def enroll_student(
         message=msg
     )
 
-
+# delete an enrollments 
 @router.delete(
     "/enrollments/{enrollment_id}",
     response_model=ApiResponse[EnrollmentPublic],
@@ -62,7 +62,7 @@ def drop_enrollment(
         message="Enrollment dropped successfully."
     )
 
-
+# transfer a student 
 @router.post(
     "/enrollments/transfer",
     response_model=ApiResponse[EnrollmentPublic],
@@ -81,7 +81,7 @@ def transfer_student(
         message="Student transferred successfully."
     )
 
-
+# Get student enrollment history"
 @router.get(
     "/enrollments/student/{student_id}",
     response_model=ApiResponse[list[EnrollmentPublic]],
