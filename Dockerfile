@@ -1,4 +1,5 @@
 # Railway deployment Dockerfile
+# Cache-bust: v2 (hardcoded port 8000)
 FROM python:3.11-slim
 
 WORKDIR /app
