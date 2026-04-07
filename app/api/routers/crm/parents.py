@@ -17,7 +17,7 @@ from app.shared.exceptions import NotFoundError
 
 router = APIRouter(prefix="/crm", tags=["CRM — Parents"])
 
-
+# Search by name or phone (min 2 chars). Empty → all parents
 @router.get(
     "/parents",
     response_model=PaginatedResponse[ParentListItem],
@@ -46,7 +46,7 @@ def list_parents(
         limit=limit,
     )
 
-
+# Get parent by ID
 @router.get(
     "/parents/{parent_id}",
     response_model=ApiResponse[ParentPublic],
@@ -63,6 +63,7 @@ def get_parent(
     return ApiResponse(data=ParentPublic.model_validate(parent))
 
 
+# Register a new parent
 @router.post(
     "/parents",
     response_model=ApiResponse[ParentPublic],
@@ -81,6 +82,7 @@ def create_parent(
     )
 
 
+# Update parent profile
 @router.patch(
     "/parents/{parent_id}",
     response_model=ApiResponse[ParentPublic],
@@ -96,6 +98,7 @@ def update_parent(
     return ApiResponse(data=ParentPublic.model_validate(parent))
 
 
+# Delete parent by ID
 @router.delete(
     "/parents/{parent_id}",
     response_model=ApiResponse[ParentPublic],
