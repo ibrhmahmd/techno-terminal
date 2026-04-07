@@ -2,7 +2,7 @@
 
 Router source: `app/api/routers/academics/courses.py`  
 Mounted prefix: `/api/v1`  
-Router base paths: `/academics/courses`, `/academics/courses/{course_id}`, `/academics/courses/{course_id}/price`, `/academics/courses/stats`, `/academics/courses/{course_id}/stats`, `/academics/courses/{course_id}/groups`
+Router base paths: `/academics/courses`, `/academics/courses/{course_id}`, `/academics/courses/{course_id}/stats`, `/academics/courses/{course_id}/groups`
 
 ---
 
@@ -63,16 +63,6 @@ Validation:
 - if provided, `price_per_level` must be `> 0`
 - if provided, `sessions_per_level` must be `>= 1`
 
-#### UpdateCoursePriceInput
-```json
-{
-  "new_price": 1750.0
-}
-```
-
-Validation:
-- `new_price` required, must be `> 0`
-
 ### Response DTOs
 
 #### CoursePublic
@@ -88,7 +78,7 @@ Validation:
 }
 ```
 
-#### CourseStatsPublic
+#### CourseStatsDTO
 ```json
 {
   "course_id": 1,
@@ -97,24 +87,6 @@ Validation:
   "active_groups": 3,
   "total_students_ever": 120,
   "active_students": 45
-}
-```
-
-#### EnrichedGroupPublic (used by course groups endpoint)
-```json
-{
-  "id": 10,
-  "name": "Saturday 2:00 PM - Robotics Fundamentals",
-  "course_id": 1,
-  "course_name": "Robotics Fundamentals",
-  "instructor_id": 7,
-  "instructor_name": "Ahmed Hassan",
-  "level_number": 1,
-  "max_capacity": 15,
-  "default_day": "Saturday",
-  "default_time_start": "14:00:00",
-  "default_time_end": "16:00:00",
-  "is_active": true
 }
 ```
 
@@ -213,7 +185,39 @@ Example request:
 }
 ```
 
-### 3) Get a course by ID
+### 3) Get aggregate stats for a single course
+**GET** `/api/v1/academics/courses/{course_id}/stats`  
+Auth: `require_any`
+
+Path params:
+- `course_id` (integer, required)
+
+Response:
+- `200 OK` -> `ApiResponse<CourseStatsDTO>`
+
+Errors:
+- `401`, `403`, `404`, `422`
+
+### 4) Get all groups for a specific course
+**GET** `/api/v1/academics/courses/{course_id}/groups`  
+Auth: `require_any`
+
+Path params:
+- `course_id` (integer, required)
+
+Query:
+- `include_inactive` (optional, default `false`): Include inactive groups
+- `level_number` (optional, > 0): Filter by level number
+- `skip` (optional, default `0`, `>= 0`)
+- `limit` (optional, default `50`, `>= 1`, `<= 200`)
+
+Response:
+- `200 OK` -> `PaginatedResponse<GroupListItem>`
+
+Errors:
+- `401`, `403`, `404`, `422`
+
+### 5) Get a course by ID
 **GET** `/api/v1/academics/courses/{course_id}`  
 Auth: `require_any`
 
@@ -226,37 +230,7 @@ Response:
 Errors:
 - `401`, `403`, `404`, `422`
 
-### 4) Soft delete a course
-**DELETE** `/api/v1/academics/courses/{course_id}`  
-Auth: `require_admin`
-
-Path params:
-- `course_id` (integer, required)
-
-Response:
-- `200 OK` -> `ApiResponse<CoursePublic>`
-
-Errors:
-- `401`, `403`, `404`, `422`
-
-Example response:
-```json
-{
-  "success": true,
-  "data": {
-    "id": 1,
-    "name": "AI Foundations",
-    "category": "STEM",
-    "description": "Intro to AI concepts",
-    "price_per_level": 1800.0,
-    "sessions_per_level": 10,
-    "is_active": false
-  },
-  "message": "Course archived successfully."
-}
-```
-
-### 5) Update a course
+### 6) Update a course
 **PATCH** `/api/v1/academics/courses/{course_id}`  
 Auth: `require_admin`
 
@@ -272,62 +246,10 @@ Response:
 Errors:
 - `401`, `403`, `404`, `422`
 
-### 6) Update course price
-**PATCH** `/api/v1/academics/courses/{course_id}/price`  
-Auth: `require_admin`
-
-Path params:
-- `course_id` (integer, required)
-
-Request body:
-- `UpdateCoursePriceInput`
-
-Response:
-- `200 OK` -> `ApiResponse<CoursePublic>`
-
-Errors:
-- `401`, `403`, `404`, `422`
-
-### 7) Get aggregate stats for all courses
-**GET** `/api/v1/academics/courses/stats`  
-Auth: `require_any`
-
-Response:
-- `200 OK` -> `ApiResponse<list<CourseStatsPublic>>`
-
-Errors:
-- `401`, `403`
-
-### 8) Get aggregate stats for a single course
-**GET** `/api/v1/academics/courses/{course_id}/stats`  
-Auth: `require_any`
-
-Path params:
-- `course_id` (integer, required)
-
-Response:
-- `200 OK` -> `ApiResponse<CourseStatsPublic>`
-
-Errors:
-- `401`, `403`, `404`, `422`
-
-### 9) Get all groups for a specific course
-**GET** `/api/v1/academics/courses/{course_id}/groups`  
-Auth: `require_any`
-
-Path params:
-- `course_id` (integer, required)
-
-Response:
-- `200 OK` -> `ApiResponse<list<EnrichedGroupPublic>>`
-
-Errors:
-- `401`, `403`, `422`
-
 ---
 
 ## Router Notes
 
-- This router currently exposes **9 endpoints**.
+- This router currently exposes **6 endpoints**.
 - Course stats endpoints use service-level aggregation from the `v_course_stats` view.
-- Soft delete is implemented by setting `is_active = false` (not hard delete).
+- Route ordering: `/stats` and `/groups` are defined before `/{course_id}` to prevent path parameter shadowing.

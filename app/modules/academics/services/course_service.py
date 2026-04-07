@@ -64,6 +64,14 @@ class CourseService:
         with get_session() as session:
             return repo.get_all_course_stats(session)
 
+    def get_course_by_id(self, course_id: int) -> Course:
+        """Get a single course by ID."""
+        with get_session() as session:
+            course = repo.get_course_by_id(session, course_id)
+            if not course:
+                raise NotFoundError(f"Course {course_id} not found.")
+            return course
+
     def get_course_stats(self, course_id: int) -> CourseStatsDTO | None:
         """
         Returns aggregate stats for a single course from v_course_stats.
