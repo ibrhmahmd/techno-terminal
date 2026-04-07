@@ -1,6 +1,4 @@
-# Techno Terminal — CRM & Operations System
-
-Internal admin system for Techno Terminal / Techno Terminal  KFS tech education center.
+# Techno Terminal
 
 ## Stack
 
