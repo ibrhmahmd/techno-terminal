@@ -24,5 +24,5 @@ COPY alembic.ini ./
 # Expose port (Railway sets PORT env var)
 EXPOSE 8000
 
-# Start command
-CMD gunicorn app.api.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8000} --workers 2
+# Start command using shell form for proper env var expansion
+CMD ["sh", "-c", "gunicorn app.api.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8000} --workers 2"]
