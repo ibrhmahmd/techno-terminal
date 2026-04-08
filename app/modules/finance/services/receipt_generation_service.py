@@ -1,0 +1,326 @@
+"""
+app/modules/finance/services/receipt_generation_service.py
+─────────────────────────────────────────────────────────
+Automated receipt generation with template support.
+"""
+from datetime import datetime
+from typing import Optional, List, Dict, Any
+from decimal import Decimal
+
+from sqlmodel import select
+
+from app.db.connection import get_session
+from app.modules.finance.finance_models import Receipt, Payment
+from app.modules.finance.models.balance_models import PaymentAllocation
+from app.api.schemas.finance.receipt import BatchGenerateResponse
+from app.modules.enrollments.models.enrollment_models import Enrollment
+from app.modules.academics.models.group_models import Group
+from app.modules.crm.models.student_models import Student
+from app.shared.exceptions import NotFoundError
+
+
+class ReceiptGenerationService:
+    """Service for generating formatted receipts."""
+    
+    def __init__(self, db = None):
+        """Initialize with optional database session."""
+        self._db = db
+        self._own_session = db is None
+    
+    def _get_db(self):
+        """Get or create database session."""
+        if self._db is None:
+            self._db = get_session().__enter__()
+        return self._db
+    
+    def __del__(self):
+        """Cleanup session if owned."""
+        if self._own_session and self._db:
+            self._db.close()
+    
+    def generate_receipt_text(
+        self,
+        receipt_id: int,
+        template_name: str = 'standard',
+        include_balance: bool = True
+    ) -> str:
+        """
+        Generate a text receipt from receipt data.
+        
+        Args:
+            receipt_id: Receipt ID to generate
+            template_name: Template to use (standard, detailed)
+            include_balance: Include remaining balance
+            
+        Returns:
+            Formatted receipt text
+        """
+        db = self._get_db()
+        
+        # Fetch receipt with all related data
+        receipt = db.get(Receipt, receipt_id)
+        if not receipt:
+            raise NotFoundError(f"Receipt with ID {receipt_id} not found")
+        
+        # Get payments with allocations
+        payments_data = db.exec(
+            select(Payment, PaymentAllocation, Enrollment, Group)
+            .outerjoin(PaymentAllocation, PaymentAllocation.payment_id == Payment.id)
+            .outerjoin(Enrollment, PaymentAllocation.enrollment_id == Enrollment.id)
+            .outerjoin(Group, Enrollment.group_id == Group.id if Enrollment else None)
+            .where(Payment.receipt_id == receipt_id)
+        ).all()
+        
+        if not payments_data:
+            raise NotFoundError(f"No payments found for receipt {receipt_id}")
+        
+        # Get student info from first payment
+        first_payment = payments_data[0][0]
+        student = db.get(Student, first_payment.student_id)
+        
+        # Build payment lines
+        payment_lines = []
+        total_discount = Decimal('0.00')
+        
+        for payment, allocation, enrollment, group in payments_data:
+            description = self._build_description(payment, allocation, enrollment, group)
+            
+            line_discount = Decimal(str(payment.discount_amount or 0))
+            total_discount += line_discount
+            
+            payment_lines.append({
+                'description': description,
+                'amount': float(payment.amount),
+                'discount': float(line_discount),
+                'net_amount': float(Decimal(str(payment.amount)) - line_discount)
+            })
+        
+        # Calculate totals
+        subtotal = sum(line['amount'] for line in payment_lines)
+        total = subtotal - float(total_discount)
+        
+        # Get balance if requested
+        balance_remaining = 0.0
+        if include_balance and student:
+            from app.modules.finance.services.balance_service import BalanceService
+            balance_service = BalanceService(db)
+            try:
+                balance = balance_service.get_quick_balance(student.id)
+                if balance.net_balance < 0:
+                    balance_remaining = abs(balance.net_balance)
+            except:
+                pass  # Balance calculation failed, continue without
+        
+        # Render based on template
+        if template_name == 'detailed':
+            return self._render_detailed_template(
+                receipt=receipt,
+                student=student,
+                payment_lines=payment_lines,
+                subtotal=subtotal,
+                total_discount=float(total_discount),
+                total=total,
+                balance_remaining=balance_remaining
+            )
+        else:
+            return self._render_standard_template(
+                receipt=receipt,
+                student=student,
+                payment_lines=payment_lines,
+                subtotal=subtotal,
+                total_discount=float(total_discount),
+                total=total,
+                balance_remaining=balance_remaining
+            )
+    
+    def _build_description(
+        self,
+        payment: Payment,
+        allocation: Optional[PaymentAllocation],
+        enrollment: Optional[Enrollment],
+        group: Optional[Group]
+    ) -> str:
+        """Build human-readable payment description."""
+        
+        if payment.payment_type == 'course_level' and enrollment and group:
+            return f"Course Fee - {group.name} (Level {enrollment.level_number})"
+        elif payment.payment_type == 'competition':
+            return "Competition Fee"
+        elif payment.payment_type == 'refund':
+            return "Refund"
+        elif payment.transaction_type == 'charge':
+            return "Additional Charge"
+        else:
+            return "Payment"
+    
+    def _render_standard_template(
+        self,
+        receipt: Receipt,
+        student: Optional[Student],
+        payment_lines: List[Dict[str, Any]],
+        subtotal: float,
+        total_discount: float,
+        total: float,
+        balance_remaining: float
+    ) -> str:
+        """Render standard receipt template."""
+        
+        lines_text = "\n".join([
+            f"{line['description'][:40].ljust(40)} ${line['amount']:.2f}"
+            for line in payment_lines
+        ])
+        
+        balance_section = ""
+        if balance_remaining > 0:
+            balance_section = f"\nRemaining Balance: ${balance_remaining:.2f}\n"
+        
+        template = f"""
+{'='*50}
+RECEIPT #: {receipt.receipt_number or 'N/A'}
+Date: {receipt.paid_at.strftime('%Y-%m-%d %H:%M') if receipt.paid_at else 'N/A'}
+{'='*50}
+
+Student: {student.full_name if student else 'Unknown'}
+Payer: {receipt.payer_name or (student.full_name if student else 'Unknown')}
+
+{'-'*50}
+DESCRIPTION{' '*31}AMOUNT
+{'-'*50}
+{lines_text}
+{'-'*50}
+Subtotal:{' '*38}${subtotal:.2f}
+Discount:{' '*38}${total_discount:.2f}
+{'-'*50}
+TOTAL PAID:{' '*36}${total:.2f}
+{'-'*50}
+
+Payment Method: {receipt.payment_method or 'N/A'}
+{balance_section}
+Thank you for your payment!
+{'='*50}
+"""
+        
+        return template.strip()
+    
+    def _render_detailed_template(
+        self,
+        receipt: Receipt,
+        student: Optional[Student],
+        payment_lines: List[Dict[str, Any]],
+        subtotal: float,
+        total_discount: float,
+        total: float,
+        balance_remaining: float
+    ) -> str:
+        """Render detailed receipt template."""
+        
+        items_text = "\n\n".join([
+            f"Item: {line['description']}\n"
+            f"  Amount: ${line['amount']:.2f}\n"
+            f"  Discount: ${line['discount']:.2f}\n"
+            f"  Net: ${line['net_amount']:.2f}"
+            for line in payment_lines
+        ])
+        
+        balance_section = ""
+        if balance_remaining > 0:
+            balance_section = f"\nREMAINING BALANCE: ${balance_remaining:.2f}\n"
+        
+        template = f"""
+{'='*50}
+DETAILED RECEIPT #: {receipt.receipt_number or 'N/A'}
+Date: {receipt.paid_at.strftime('%Y-%m-%d %H:%M') if receipt.paid_at else 'N/A'}
+{'='*50}
+
+STUDENT INFORMATION
+{'-'*50}
+Name: {student.full_name if student else 'Unknown'}
+Student ID: {student.id if student else 'N/A'}
+
+PAYMENT DETAILS
+{'-'*50}
+{items_text}
+{'-'*50}
+Subtotal:{' '*38}${subtotal:.2f}
+Total Discounts:{' '*32}${total_discount:.2f}
+{'-'*50}
+TOTAL PAID:{' '*36}${total:.2f}
+{'-'*50}
+
+Payment Method: {receipt.payment_method or 'N/A'}
+Receipt #: {receipt.receipt_number or 'N/A'}
+{balance_section}
+This receipt was generated on {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}.
+{'='*50}
+"""
+        
+        return template.strip()
+    
+    def mark_receipt_sent(
+        self,
+        receipt_id: int,
+        parent_email: Optional[str] = None
+    ) -> Receipt:
+        """
+        Mark a receipt as sent to parent.
+        
+        Args:
+            receipt_id: Receipt ID
+            parent_email: Email address receipt was sent to
+            
+        Returns:
+            Updated receipt
+        """
+        db = self._get_db()
+        
+        receipt = db.get(Receipt, receipt_id)
+        if not receipt:
+            raise NotFoundError(f"Receipt with ID {receipt_id} not found")
+        
+        receipt.sent_to_parent = True
+        receipt.sent_at = datetime.utcnow()
+        if parent_email:
+            receipt.parent_email = parent_email
+        
+        db.add(receipt)
+        db.commit()
+        db.refresh(receipt)
+        
+        return receipt
+    
+    def generate_batch_receipts(
+        self,
+        receipt_ids: List[int],
+        template_name: str = 'standard'
+    ) -> BatchGenerateResponse:
+        """
+        Generate receipts for multiple IDs.
+        
+        Args:
+            receipt_ids: List of receipt IDs
+            template_name: Template to use
+            
+        Returns:
+            BatchGenerateResponse with list of generated receipts
+        """
+        receipts = []
+        
+        for receipt_id in receipt_ids:
+            try:
+                content = self.generate_receipt_text(receipt_id, template_name)
+                receipts.append({
+                    'receipt_id': receipt_id,
+                    'content': content
+                })
+            except Exception as e:
+                receipts.append({
+                    'receipt_id': receipt_id,
+                    'content': f"Error: {str(e)}"
+                })
+        
+        return BatchGenerateResponse(receipts=receipts)
+
+
+def get_receipt_generation_service(db = None):
+    """Factory function to create ReceiptGenerationService instance."""
+    return ReceiptGenerationService(db)

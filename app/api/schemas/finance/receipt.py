@@ -4,7 +4,7 @@ app/api/schemas/finance/receipt.py
 Public-facing Receipt DTOs.
 """
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import BaseModel
 
@@ -90,3 +90,26 @@ class IssueRefundRequest(BaseModel):
     amount: float
     reason: str
     method: str = "cash"
+
+
+class GenerateReceiptRequest(BaseModel):
+    """Request schema for receipt generation."""
+    template_name: str = "standard"
+    include_balance: bool = True
+
+
+class MarkReceiptSentRequest(BaseModel):
+    """Request schema for marking receipt as sent."""
+    parent_email: Optional[str] = None
+
+
+class BatchGenerateRequest(BaseModel):
+    """Request schema for batch receipt generation."""
+    receipt_ids: List[int]
+    template_name: str = "standard"
+
+
+class BatchGenerateResponse(BaseModel):
+    """Response schema for batch generation."""
+    receipt_id: int
+    content: str

@@ -10,12 +10,12 @@ from app.api.middleware.logging_middleware import logging_middleware
 from app.api.routers import auth_router
 from app.api.routers import attendance_router
 from app.api.routers import enrollments_router
-from app.api.routers import finance_router
 from app.api.routers import competitions_router
 from app.api.routers import hr_router
 from app.api.routers.crm import (
     students_router,
     parents_router,
+    students_history_router,
 )
 from app.api.routers.academics import (
     courses_router,
@@ -30,7 +30,12 @@ from app.api.routers.analytics import (
     competition_router,
     bi_router,
 )
-# Domain routers — uncommented as each phase is implemented:
+from app.api.routers.finance import (
+    balance_router,
+    receipt_router,
+    finance_router
+
+)
 
 
 def create_app() -> FastAPI:
@@ -72,7 +77,11 @@ def create_app() -> FastAPI:
     app.include_router(attendance_router.router, prefix="/api/v1", tags=["Attendance"])
     # Phase 5.4 — Transactions
     app.include_router(enrollments_router.router, prefix="/api/v1", tags=["Enrollments"])
-    app.include_router(finance_router.router,     prefix="/api/v1", tags=["Finance"])
+    # Finance routers (balance and receipt are already APIRouter objects)
+    app.include_router(balance_router,     prefix="/api/v1", tags=["Student Balance"])
+    app.include_router(receipt_router,     prefix="/api/v1", tags=["Receipts"])
+    # Student History & Activity
+    app.include_router(students_history_router,     prefix="/api/v1", tags=["Student History"])
     # Phase 5.5 — Auxiliary
     app.include_router(competitions_router.router, prefix="/api/v1", tags=["Competitions"])
     app.include_router(hr_router.router,           prefix="/api/v1", tags=["HR"])
