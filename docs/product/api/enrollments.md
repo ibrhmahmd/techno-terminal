@@ -34,28 +34,46 @@ Authorization: Bearer <access_token>
 {
   "student_id": "integer (required)",
   "group_id": "integer (required)",
-  "level_number": "integer (required)",
-  "discount_applied": "number (default: 0)",
+  "amount_due": "number (optional) - calculated from course price if not provided",
+  "discount": "number (default: 0) - discount amount applied",
   "notes": "string (optional)",
-  "created_by": "integer (optional)"
+  "created_by": "integer (optional) - set automatically from current user"
 }
 ```
+
+**Note:** `level_number` is automatically set from the group's current level.
 
 ### TransferStudentInput
 ```json
 {
-  "student_id": "integer (required)",
-  "from_group_id": "integer (required)",
-  "to_group_id": "integer (required)",
-  "transfer_date": "date (optional) - YYYY-MM-DD",
-  "notes": "string (optional)"
+  "from_enrollment_id": "integer (required) - enrollment ID to transfer from",
+  "to_group_id": "integer (required) - target group ID",
+  "created_by": "integer (optional) - set automatically from current user"
 }
 ```
+
+**Note:** The transfer looks up the source enrollment by ID, then creates a new enrollment in the target group with the same student and balance.
 
 ### ApplyDiscountInput
 ```json
 {
   "discount_amount": "number (default: 50.0)"
+}
+```
+
+### StudentEnrollmentSummaryPublic
+```json
+{
+  "student_id": 1,
+  "student_name": "John Doe",
+  "enrollment_id": 1,
+  "level_number": 1,
+  "status": "active",
+  "sessions_attended": 3,
+  "sessions_total": 5,
+  "payment_status": "due",
+  "amount_due": 1500.0,
+  "discount_applied": 0.0
 }
 ```
 
@@ -143,7 +161,8 @@ Authorization: Bearer <access_token>
 **Path Parameters:**
 - `enrollment_id` - integer (required)
 
-**Request Body:** `ApplyDiscountInput`
+**Query Parameters:**
+- `discount_amount` - number (optional, default: 50.0)
 
 **Response (200):** `ApiResponse<EnrollmentPublic>`
 
@@ -156,25 +175,8 @@ Authorization: Bearer <access_token>
 
 ---
 
-### 6. Mark enrollment as completed
-**POST** `/api/v1/enrollments/{enrollment_id}/complete`
-
-**Path Parameters:**
-- `enrollment_id` - integer (required)
-
-**Response (200):** `ApiResponse<EnrollmentPublic>`
-
-**Error Response (422):** `HTTPValidationError`
-
-**Notes:**
-- Changes status from "active" to "completed"
-- Use when student finishes all sessions for their level
-- Preserves enrollment record for history
-
----
-
-### 7. Get group roster (enrollments by group)
-**GET** `/api/v1/enrollments/group/{group_id}`
+### 6. Get group roster (enrollments by group)
+**GET** `/api/v1/enrollments/group/{group_id}/students-summary`
 
 **Path Parameters:**
 - `group_id` - integer (required)
@@ -182,11 +184,12 @@ Authorization: Bearer <access_token>
 **Query Parameters:**
 - `level` - integer (optional) - Filter by level number
 
-**Response (200):** `ApiResponse<list<EnrollmentPublic>>`
+**Response (200):** `ApiResponse<list<StudentEnrollmentSummaryPublic>>`
 
 **Error Response (422):** `HTTPValidationError`
 
 **Notes:**
-- Returns only active enrollments for the group
+- Returns summary of all student enrollments for the group
+- Includes attendance counts and payment status
 - Optional level filter for multi-level groups
 - Useful for attendance sheets and roster views

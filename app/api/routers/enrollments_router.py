@@ -99,6 +99,29 @@ def get_student_enrollments(
     return ApiResponse(data=[EnrollmentPublic.model_validate(e) for e in enrollments])
 
 
+# apply sibling discount to enrollment
+@router.post(
+    "/enrollments/{enrollment_id}/discount",
+    response_model=ApiResponse[EnrollmentPublic],
+    summary="Apply sibling discount to enrollment",
+)
+def apply_sibling_discount(
+    enrollment_id: int,
+    discount_amount: float = 50.0,
+    _user: User = Depends(require_admin),
+    svc: EnrollmentService = Depends(get_enrollment_service),
+):
+    """
+    Apply a sibling/family discount to an active enrollment.
+    Discount is added to existing discount_applied field.
+    """
+    updated = svc.apply_sibling_discount(enrollment_id, discount_amount)
+    return ApiResponse(
+        data=EnrollmentPublic.model_validate(updated),
+        message=f"Discount of {discount_amount} applied successfully."
+    )
+
+
 # get group enrollments summary
 @router.get(
     "/enrollments/group/{group_id}/students-summary",
