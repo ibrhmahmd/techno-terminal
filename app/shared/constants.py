@@ -33,8 +33,8 @@ EnrollmentStatus: TypeAlias = Literal[
 
 # ── Attendance ────────────────────────────────────────────────────────────────
 
-AttendanceStatus: TypeAlias = Literal["present", "absent", "late", "excused", "cancelled"]
-ATTENDANCE_STATUSES: list[AttendanceStatus] = ["present", "absent", "late", "excused", "cancelled"]
+AttendanceStatus: TypeAlias = Literal["present", "absent", "cancelled"]
+ATTENDANCE_STATUSES: list[AttendanceStatus] = ["present", "absent", "cancelled"]
 
 # ── Academics ─────────────────────────────────────────────────────────────────
 

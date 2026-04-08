@@ -22,8 +22,8 @@ class GroupLevelPublic(BaseModel):
     sessions_planned: int
     price_override: Optional[float] = None
     status: str
-    effective_from: Optional[date] = None
-    effective_to: Optional[date] = None
+    effective_from: Optional[datetime] = None
+    effective_to: Optional[datetime] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

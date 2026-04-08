@@ -9,6 +9,7 @@ from sqlmodel import SQLModel, Field
 
 class CourseSessionBase(SQLModel):
     group_id: int = Field(foreign_key="groups.id")
+    group_level_id: Optional[int] = Field(default=None, foreign_key="group_levels.id")
     level_number: int
     session_number: int
     session_date: date

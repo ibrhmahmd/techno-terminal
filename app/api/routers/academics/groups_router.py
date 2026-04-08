@@ -34,8 +34,14 @@ from app.modules.academics.schemas.grouped_schemas import GroupedGroupsResult
 from app.modules.auth import User
 from app.modules.academics.services.group_service import GroupService
 from app.modules.academics.services.session_service import SessionService
+from app.modules.academics.services.group_lifecycle_service import GroupLifecycleService
 
 router = APIRouter(tags=["Academics — Groups"])
+
+
+def get_lifecycle_service() -> GroupLifecycleService:
+    """Dependency provider for GroupLifecycleService."""
+    return GroupLifecycleService()
 
 
 # list all active groups
@@ -220,13 +226,40 @@ def get_enriched_group(
 def create_group(
     body: ScheduleGroupInput,
     _user: User = Depends(require_admin),
-    svc: GroupService = Depends(get_group_service),
+    lifecycle_svc: GroupLifecycleService = Depends(get_lifecycle_service),
 ):
-    # schedule_group returns (group, sessions) — sessions accessible via /groups/{id}/sessions
-    group, _sessions = svc.schedule_group(body)
+    """
+    Create a new group with Level 1 and sessions.
+    This is an atomic operation - all or nothing.
+    """
+    from app.modules.academics.schemas.scheduling_dtos import (
+        CreateGroupWithLevelDTO, CreateGroupDTO
+    )
+    
+    # Convert input to new DTO format
+    create_data = CreateGroupWithLevelDTO(
+        group_input=CreateGroupDTO(
+            course_id=body.course_id,
+            instructor_id=body.instructor_id,
+            default_day=body.default_day,
+            default_time_start=body.default_time_start,
+            default_time_end=body.default_time_end,
+            max_capacity=body.max_capacity,
+            notes=body.notes,
+        )
+    )
+    
+    result = lifecycle_svc.create_group_with_first_level(create_data)
+    
+    # Get the group to return compatible response
+    from app.modules.academics.models import Group
+    from app.db.connection import get_session
+    with get_session() as session:
+        group = session.get(Group, result.group_id)
+    
     return ApiResponse(
         data=GroupPublic.model_validate(group),
-        message="Group scheduled successfully.",
+        message=f"Group created with Level 1 and {result.sessions_count} sessions.",
     )
 
 
@@ -314,25 +347,32 @@ def progress_group_level(
     group_id: int,
     body: ProgressGroupLevelRequest,
     _user: User = Depends(require_admin),
-    svc: GroupService = Depends(get_group_service),
+    lifecycle_svc: GroupLifecycleService = Depends(get_lifecycle_service),
 ):
     """
     Progress a group to the next level.
     Completes current level, creates new level, migrates enrollments.
     """
-    from app.modules.academics.schemas import ProgressGroupLevelInput
+    from app.modules.academics.schemas.scheduling_dtos import ProgressLevelDTO
 
-    data = ProgressGroupLevelInput(
+    data = ProgressLevelDTO(
         group_id=group_id,
         price_override=body.price_override,
+        auto_migrate_enrollments=True,
     )
 
-    result = svc.progress_group_level(data)
+    result = lifecycle_svc.progress_to_next_level(data)
 
-    return ApiResponse(
-        data=result,
+    # Convert to legacy result format for API compatibility
+    legacy_result = ProgressGroupLevelResult(
+        old_level_number=result.old_level_number,
+        new_level_number=result.new_level_number,
+        enrollments_migrated=result.enrollments_migrated,
+        sessions_created=result.sessions_created,
         message=result.message,
     )
+
+    return ApiResponse(data=legacy_result, message=result.message)
 
 
 # delete group

@@ -38,8 +38,7 @@ class GroupService:
                 raise NotFoundError(f"Course with ID {data.course_id} not found.")
 
             auto_name = (
-                f"{data.default_day} "
-                f"{fmt_12h(data.default_time_start)} - {course.name}"
+                f"{course.name} - {data.default_day} {fmt_12h(data.default_time_start)}"
             )
             group = Group(
                 name=auto_name,
@@ -86,14 +85,26 @@ class GroupService:
             if group.status != "active":
                 raise BusinessRuleError(f"Group {data.group_id} is not active (status: {group.status})")
 
-            # 2. Check if level already exists
-            existing_level = repo.get_group_level_by_number(
-                session, data.group_id, data.level_number
+            # 2. Check if any levels exist for this group (lazy-create logic)
+            existing_levels = repo.list_group_levels(
+                session, data.group_id, include_inactive=True
             )
-            if existing_level:
-                raise BusinessRuleError(
-                    f"Level {data.level_number} already exists for group {data.group_id}"
+            if not existing_levels:
+                # No levels exist yet - only allow level 1 to be created first
+                if data.level_number != 1:
+                    raise BusinessRuleError(
+                        f"Group {data.group_id} has no levels. Level 1 must be created first."
+                    )
+                # Level 1 can be created - continue to create it
+            else:
+                # Levels exist - check if this specific level already exists
+                existing_level = repo.get_group_level_by_number(
+                    session, data.group_id, data.level_number
                 )
+                if existing_level:
+                    raise BusinessRuleError(
+                        f"Level {data.level_number} already exists for group {data.group_id}"
+                    )
 
             # 3. Get course for pricing
             course = session.get(Course, group.course_id)
