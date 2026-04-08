@@ -8,15 +8,12 @@ NEXT_STATE = {
     None: "present",
     "present": "absent",
     "absent": None,
-    "late": None,  # clicking late/excused resets
-    "excused": None,
 }
 
 STATE_EMOJI = {
     "present": "✅",
     "absent": "❌",
-    "late": "🕒",
-    "excused": "➖",
+    "cancelled": "🚫",
     None: "◻️",
 }
 

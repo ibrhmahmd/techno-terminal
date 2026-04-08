@@ -15,7 +15,7 @@ class StudentAttendanceUpdate(BaseModel):
     Single student attendance update.
     """
     student_id: int
-    status: Literal["present", "absent", "late", "excused"]
+    status: Literal["present", "absent", "cancelled"]
 
 
 class MarkAttendanceRequest(BaseModel):

@@ -6,13 +6,13 @@ Typed input and output DTOs for the Attendance service layer.
 from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
-AttendanceStatus = Literal["present", "absent", "late", "excused", "cancelled"]
+AttendanceStatus = Literal["present", "absent", "cancelled"]
 
 
 class StudentAttendanceItem(BaseModel):
     """Individual student attendance entry for marking."""
     student_id: int = Field(..., gt=0, description="Student ID must be positive")
-    status: AttendanceStatus = Field(..., description="Attendance status: present, absent, late, or excused")
+    status: AttendanceStatus = Field(..., description="Attendance status: present, absent, or cancelled")
 
 
 class MarkAttendanceInput(BaseModel):

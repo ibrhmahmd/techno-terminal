@@ -132,7 +132,7 @@ CREATE TABLE groups (
         default_time_start TIME,
         default_time_end TIME,
         max_capacity INTEGER CHECK (max_capacity > 0),
-        status TEXT DEFAULT 'active' CHECK (status IN ('active', 'completed', 'cancelled')),
+        status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'completed', 'archived')),
         started_at DATE,
         notes TEXT,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
@@ -195,7 +195,7 @@ CREATE TABLE attendance (
     session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE RESTRICT,
     enrollment_id INTEGER NOT NULL REFERENCES enrollments(id) ON DELETE RESTRICT,
     status TEXT NOT NULL CHECK (
-        status IN ('present', 'absent', 'late', 'excused')
+        status IN ('present', 'absent', 'cancelled')
     ),
     marked_by INTEGER REFERENCES users(id) ON DELETE
     SET NULL,

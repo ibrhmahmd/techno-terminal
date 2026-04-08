@@ -13,7 +13,7 @@ class AttendanceLogInput(BaseModel):
     Input for logging employee attendance.
     """
     employee_id: int
-    status: str  # present, absent, late, early_departure
+    status: str  # present, absenti 
     check_in: Optional[datetime] = None
     check_out: Optional[datetime] = None
     notes: Optional[str] = None

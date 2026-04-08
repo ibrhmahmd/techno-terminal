@@ -16,6 +16,6 @@ class Attendance(SQLModel, table=True):
     student_id: int = Field(foreign_key="students.id")
     session_id: int = Field(foreign_key="sessions.id")
     enrollment_id: int = Field(foreign_key="enrollments.id")
-    status: AttendanceStatus = Field(sa_column=Column(String))  # CHECK: present / absent / late / excused
+    status: AttendanceStatus = Field(sa_column=Column(String))  # CHECK: present / absent / cancelled
     marked_by: Optional[int] = Field(default=None, foreign_key="users.id")
     marked_at: Optional[datetime] = None
