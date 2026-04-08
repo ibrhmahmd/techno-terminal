@@ -198,7 +198,7 @@ class EnrollmentService:
 
                 summary = StudentEnrollmentSummaryDTO(
                     student_id=student.id,
-                    student_name=student.name or "Unknown",
+                    student_name=student.full_name or "Unknown",
                     enrollment_id=enrollment.id,
                     level_number=enrollment.level_number,
                     status=enrollment.status,
