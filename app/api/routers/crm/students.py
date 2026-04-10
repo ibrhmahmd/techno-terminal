@@ -57,23 +57,6 @@ def list_students(
     )
 
 
-# Get student by ID
-@router.get(
-    "/students/{student_id}",
-    response_model=ApiResponse[StudentPublic],
-    summary="Get student by ID",
-)
-def get_student(
-    student_id: int,
-    _user: User = Depends(require_any),
-    svc: StudentService = Depends(get_student_service),
-):
-    student = svc.get_student_by_id(student_id)
-    if student is None:
-        raise NotFoundError("Student not found")
-    return ApiResponse(data=StudentPublic.model_validate(student))
-
-
 # Register a new student
 @router.post(
     "/students",
@@ -96,6 +79,86 @@ def create_student(
         message="Student registered successfully.",
     )
 
+
+# ── Static/Semi-static routes (must be before /{student_id}) ─────────────────
+
+# Get waiting list
+@router.get(
+    "/students/waiting-list",
+    response_model=ApiResponse[list[StudentResponseDTO]],
+    summary="Get waiting list",
+    description="Retrieve students on the waiting list, ordered by priority and wait time."
+)
+def get_waiting_list(
+    skip: int = 0,
+    limit: int = 200,
+    order_by_priority: bool = True,
+    current_user: User = Depends(require_admin),
+    svc: StudentService = Depends(get_student_service),
+):
+    students = svc.get_waiting_list(skip, limit, order_by_priority)
+    return ApiResponse(data=students, message=f"Retrieved {len(students)} students from waiting list")
+
+
+# Get students by status
+@router.get(
+    "/students/by-status/{status}",
+    response_model=ApiResponse[list[StudentResponseDTO]],
+    summary="Get students by status",
+    description="Retrieve students filtered by their enrollment status."
+)
+def get_students_by_status(
+    status: str,
+    skip: int = 0,
+    limit: int = 200,
+    current_user: User = Depends(require_admin),
+    svc: StudentService = Depends(get_student_service),
+):
+    try:
+        status_enum = StudentStatus(status)
+        students = svc.get_students_by_status(status_enum, skip, limit)
+        return ApiResponse(
+            data=students,
+            message=f"Retrieved {len(students)} {status} students"
+        )
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid status: {status}")
+
+
+# Get student status summary
+@router.get(
+    "/students/status-summary",
+    response_model=ApiResponse[StudentStatusSummaryDTO],
+    summary="Get student status summary",
+    description="Get counts of students by enrollment status."
+)
+def get_student_status_summary(
+    current_user: User = Depends(require_admin),
+    svc: StudentService = Depends(get_student_service),
+):
+    summary = svc.get_student_status_summary()
+    return ApiResponse(data=summary)
+
+
+# ── Dynamic routes with {student_id} path parameter ─────────────────────────
+
+# Get student by ID
+@router.get(
+    "/students/{student_id}",
+    response_model=ApiResponse[StudentPublic],
+    summary="Get student by ID",
+)
+def get_student(
+    student_id: int,
+    _user: User = Depends(require_any),
+    svc: StudentService = Depends(get_student_service),
+):
+    student = svc.get_student_by_id(student_id)
+    if student is None:
+        raise NotFoundError("Student not found")
+    return ApiResponse(data=StudentPublic.model_validate(student))
+
+
 # Update student profile
 @router.patch(
     "/students/{student_id}",
@@ -110,6 +173,7 @@ def update_student(
 ):
     student = svc.update_student(student_id, body)
     return ApiResponse(data=StudentPublic.model_validate(student))
+
 
 # Get all parents linked to a student
 @router.get(
@@ -130,7 +194,7 @@ def get_student_parents(
     return ApiResponse(data=parents)
 
 
-# ── NEW: Student Status Management Endpoints ─────────────────────────────────
+# ── Student Status Management Endpoints ─────────────────────────────────────
 
 # Update student enrollment status
 @router.patch(
@@ -192,23 +256,6 @@ def toggle_student_status(
         raise HTTPException(status_code=404, detail=f"Student {student_id} not found")
 
 
-# Get waiting list
-@router.get(
-    "/students/waiting-list",
-    response_model=ApiResponse[list[StudentResponseDTO]],
-    summary="Get waiting list",
-    description="Retrieve students on the waiting list, ordered by priority and wait time."
-)
-def get_waiting_list(
-    skip: int = 0,
-    limit: int = 200,
-    order_by_priority: bool = True,
-    current_user: User = Depends(require_admin),
-    svc: StudentService = Depends(get_student_service),
-):
-    students = svc.get_waiting_list(skip, limit, order_by_priority)
-    return ApiResponse(data=students, message=f"Retrieved {len(students)} students from waiting list")
-
 # Set waiting list priority
 @router.patch(
     "/students/{student_id}/waiting-priority",
@@ -235,45 +282,6 @@ def set_waiting_priority(
     except NotFoundError:
         raise HTTPException(status_code=404, detail=f"Student {student_id} not found or not on waiting list")
 
-# Get students by status
-@router.get(
-    "/students/by-status/{status}",
-    response_model=ApiResponse[list[StudentResponseDTO]],
-    summary="Get students by status",
-    description="Retrieve students filtered by their enrollment status."
-)
-def get_students_by_status(
-    status: str,
-    skip: int = 0,
-    limit: int = 200,
-    current_user: User = Depends(require_admin),
-    svc: StudentService = Depends(get_student_service),
-):
-    try:
-        status_enum = StudentStatus(status)
-        students = svc.get_students_by_status(status_enum, skip, limit)
-        return ApiResponse(
-            data=students,
-            message=f"Retrieved {len(students)} {status} students"
-        )
-    except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid status: {status}")
-
-
-# Get student status summary
-@router.get(
-    "/students/status-summary",
-    response_model=ApiResponse[StudentStatusSummaryDTO],
-    summary="Get student status summary",
-    description="Get counts of students by enrollment status."
-)
-def get_student_status_summary(
-    current_user: User = Depends(require_admin),
-    svc: StudentService = Depends(get_student_service),
-):
-    summary = svc.get_student_status_summary()
-    return ApiResponse(data=summary)
-
 
 # Get student status history
 @router.get(
@@ -292,6 +300,7 @@ def get_student_status_history(
         return ApiResponse(data=history)
     except NotFoundError:
         raise HTTPException(status_code=404, detail=f"Student {student_id} not found")
+
 
 # Delete student by ID
 @router.delete(
