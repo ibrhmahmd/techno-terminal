@@ -10,3 +10,14 @@ services:
         sync: false  # Set manually in Render dashboard
       - key: PYTHON_VERSION
         value: 3.11.0
+
+
+
+
+
+
+
+
+
+
+
