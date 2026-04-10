@@ -188,7 +188,7 @@ def get_student_progress(
             END AS progress_status,
             NULL AS estimated_completion_date,
             en.created_at::date AS enrollment_date,
-            att.last_attendance_date
+            NULL AS last_attendance_date
         FROM enrollments en
         JOIN students st ON en.student_id = st.id
         JOIN groups g ON en.group_id = g.id
