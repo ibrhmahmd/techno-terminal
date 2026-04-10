@@ -1,6 +1,22 @@
 # Finance API Reference
 
-Base path: `/api/v1/finance`
+Comprehensive API documentation for financial operations including receipts, balance management, refunds, and competition fees.
+
+**Base path:** `/api/v1`
+
+---
+
+## Module Overview
+
+| Module | File | Endpoints | Description |
+|--------|------|-----------|-------------|
+| **Balance Operations** | [balance.md](./finance/balance.md) | 6 | Student balance inquiry, adjustments, credit |
+| **Receipt Management** | [receipts.md](./finance/receipts.md) | 7 | Receipt creation, generation, PDF |
+| **Refunds & Credits** | [refunds.md](./finance/refunds.md) | 3 | Refund processing, risk preview |
+| **Competition Fees** | [competition.md](./finance/competition.md) | 1 | Unpaid competition fees |
+| **Schema Reference** | [schemas.md](./finance/schemas.md) | - | All DTOs and schemas |
+
+**Total: 17 endpoints**
 
 ---
 
@@ -320,3 +336,39 @@ Authorization: Bearer <access_token>
 - Analyzes receipt for potential overpayments
 - Returns risk items with projected balances
 - Helps prevent accidental overpayments
+
+---
+
+## Quick Reference
+
+### All Endpoints Summary
+
+| # | Method | Path | Auth | Description |
+|---|--------|------|------|-------------|
+| 1 | POST | `/finance/receipts` | Admin | Create receipt |
+| 2 | GET | `/finance/receipts` | Admin | Search receipts |
+| 3 | GET | `/finance/receipts/{id}` | Any | Get receipt |
+| 4 | GET | `/finance/receipts/{id}/pdf` | Any | Download PDF |
+| 5 | POST | `/finance/refunds` | Admin | Issue refund |
+| 6 | GET | `/finance/balance/student/{id}` | Any | Student balance |
+| 7 | GET | `/finance/competition-fees/student/{id}` | Any | Competition fees |
+| 8 | POST | `/finance/receipts/preview-risk` | Admin | Risk preview |
+| 9 | GET | `/students/{id}/balance` | Any | Full balance |
+| 10 | GET | `/students/{id}/balance/enrollments/{eid}` | Any | Enrollment balance |
+| 11 | GET | `/balance/unpaid-enrollments` | Any | Unpaid list |
+| 12 | GET | `/students/{id}/balance/credit` | Any | Credit balance |
+| 13 | POST | `/students/{id}/balance/adjust` | Admin | Adjust balance |
+| 14 | GET | `/students/{id}/balance/summary` | Any | Quick summary |
+| 15 | GET | `/receipts/{id}/generate` | Any | Generate text |
+| 16 | POST | `/receipts/{id}/mark-sent` | Admin | Mark sent |
+| 17 | POST | `/receipts/batch-generate` | Admin | Batch generate |
+
+---
+
+## Additional Documentation
+
+- **[Balance Operations](./finance/balance.md)** - Complete balance endpoint details
+- **[Receipt Management](./finance/receipts.md)** - Receipt creation and generation
+- **[Refunds & Credits](./finance/refunds.md)** - Refund processing and risk assessment
+- **[Competition Fees](./finance/competition.md)** - Competition fee endpoints
+- **[Schema Reference](./finance/schemas.md)** - All DTOs and types
