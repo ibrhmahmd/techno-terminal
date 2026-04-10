@@ -59,7 +59,14 @@ def get_enriched_group_by_id(session: Session, group_id: int) -> EnrichedGroupDT
             g.default_time_end,
             g.max_capacity,
             g.notes,
-            g.status
+            g.status,
+            (
+                SELECT COUNT(*) 
+                FROM enrollments e2 
+                WHERE e2.group_id = g.id 
+                AND e2.level_number = g.level_number 
+                AND e2.status = 'active'
+            ) AS current_student_count
         FROM groups g
         JOIN courses c ON g.course_id = c.id
         LEFT JOIN employees e ON g.instructor_id = e.id
@@ -84,7 +91,14 @@ def get_enriched_groups(session: Session) -> list[EnrichedGroupDTO]:
             g.default_time_end,
             g.max_capacity,
             g.notes,
-            g.status
+            g.status,
+            (
+                SELECT COUNT(*) 
+                FROM enrollments e2 
+                WHERE e2.group_id = g.id 
+                AND e2.level_number = g.level_number 
+                AND e2.status = 'active'
+            ) AS current_student_count
         FROM groups g
         JOIN courses c ON g.course_id = c.id
         LEFT JOIN employees e ON g.instructor_id = e.id
@@ -109,7 +123,14 @@ def get_enriched_groups_by_date(session: Session, target_date: str) -> list[Enri
             g.default_time_end,
             g.max_capacity,
             g.notes,
-            g.status
+            g.status,
+            (
+                SELECT COUNT(*) 
+                FROM enrollments e2 
+                WHERE e2.group_id = g.id 
+                AND e2.level_number = g.level_number 
+                AND e2.status = 'active'
+            ) AS current_student_count
         FROM groups g
         JOIN courses c ON g.course_id = c.id
         LEFT JOIN employees e ON g.instructor_id = e.id

@@ -90,3 +90,4 @@ class EnrichedGroupDTO(BaseModel):
     max_capacity: Optional[int] = None
     notes: Optional[str] = None
     status: str
+    current_student_count: int 
