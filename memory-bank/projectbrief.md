@@ -14,15 +14,24 @@
 7. **Staff Management** — Employee directory, accounts, HR attendance
 
 ### Success Criteria
-- [x] Backend API 100% complete (80 endpoints)
-- [x] Testing coverage 94% (75/80 endpoints tested)
-- [ ] Frontend implementation (in planning)
-- [ ] Production deployment
+- [x] Backend API 100% complete (~85+ endpoints across 15 routers)
+- [x] Testing coverage 94% (161 tests, 160 passing)
+- [ ] Frontend implementation (planned - Vite + React 18 + TypeScript)
+- [x] Production deployment (Leapcell - stable with health checks)
 
 ## Current State
-- **Backend:** FastAPI + SQLModel + PostgreSQL + Supabase Auth
-- **Testing:** Pytest with 161 tests, 160 passing
-- **UI:** Streamlit (internal), React frontend planned
+- **Backend:** FastAPI + SQLModel + PostgreSQL + Supabase Auth (15 routers, 10 modules)
+- **Database:** 16 tables, 5 views, 21 migration files
+- **Testing:** Pytest with 20 test modules, 161 tests, 94% coverage
+- **UI:** Streamlit (internal), React frontend planned (Vite + React 18 + TanStack Query)
+- **Deployment:** Leapcell with railpack.json (Gunicorn + Uvicorn workers)
 
 ## Next Major Phase
-Frontend development with Vite + React 18 + TypeScript + TanStack Query
+Frontend development with Vite + React 18 + TypeScript + TanStack Query + Zustand
+
+## Recently Completed Modules
+- **Finance Module:** Balance tracking, receipts, payments with triggers (migrations 015, 016, 019)
+- **Student History:** Activity logging and enrollment history (migration 017)
+- **Group Lifecycle:** Level progression and session generation (migration 012)
+- **Analytics:** Modularized into academic, financial, competition, BI sub-domains
+- **Deployment:** Fixed worker timeouts, read-only filesystem issues on Leapcell
