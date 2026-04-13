@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from app.api.schemas.common import ApiResponse, PaginatedResponse
 from app.api.schemas.crm.student import StudentPublic, StudentListItem
 from app.api.schemas.crm.parent import ParentPublic
+from app.api.schemas.crm.student_details import StudentWithDetails, SiblingInfo
 from app.api.dependencies import require_admin, require_any, get_student_service
 from app.modules.crm.schemas import (
     RegisterStudentCommandDTO, 
@@ -319,3 +320,59 @@ def delete_student_by_id(
         return ApiResponse(data=None, message="Student deleted successfully.")
     except NotFoundError:
         raise HTTPException(status_code=404, detail=f"Student {student_id} not found")
+
+
+# ── NEW: Student Detail Endpoints ────────────────────────────────────────────
+
+@router.get(
+    "/students/{student_id}/details",
+    response_model=ApiResponse[StudentWithDetails],
+    summary="Get student with full details",
+    description="Get complete student profile including parent info, enrollments, balance summary, and siblings."
+)
+def get_student_details(
+    student_id: int,
+    current_user: User = Depends(require_any),
+    svc: StudentService = Depends(get_student_service),
+):
+    """
+    Get comprehensive student details including:
+    - Core student information
+    - Primary parent contact
+    - Active enrollments with group/course details
+    - Balance summary (total due, discounts, paid, net balance)
+    - Siblings sharing the same parent
+    """
+    try:
+        details = svc.get_student_with_details(student_id)
+        return ApiResponse(data=details)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail=f"Student {student_id} not found")
+
+
+@router.get(
+    "/students/{student_id}/siblings",
+    response_model=ApiResponse[list[SiblingInfo]],
+    summary="Get student's siblings",
+    description="Get list of siblings who share the same parent(s). Returns empty array if no siblings."
+)
+def get_student_siblings(
+    student_id: int,
+    current_user: User = Depends(require_any),
+    svc: StudentService = Depends(get_student_service),
+):
+    """
+    Get siblings for a student.
+    
+    Returns siblings who share the same parent(s), including:
+    - Student ID and name
+    - Age and gender
+    - Parent information
+    - Enrollment count
+    
+    Returns empty array [] if:
+    - Student has no linked parent
+    - Student is an only child
+    """
+    siblings = svc.get_student_siblings_enhanced(student_id)
+    return ApiResponse(data=siblings)
