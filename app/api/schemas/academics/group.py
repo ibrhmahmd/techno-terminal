@@ -64,7 +64,9 @@ class EnrichedGroupPublic(BaseModel):
     """
     id: int
     group_name: str
+    course_id: int
     course_name: str
+    instructor_id: Optional[int] = None
     instructor_name: str
     level_number: int
     default_day: Optional[str] = None

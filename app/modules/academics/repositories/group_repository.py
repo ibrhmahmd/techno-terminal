@@ -45,13 +45,17 @@ def increment_group_level(session: Session, group_id: int) -> Group | None:
         group.level_number += 1
         session.add(group)
     return group
+
+
 def get_enriched_group_by_id(session: Session, group_id: int) -> EnrichedGroupDTO | None:
     """Returns a single enriched group by ID."""
     stmt = text(f"""
         SELECT
             g.id,
             g.name AS group_name,
+            g.course_id,
             c.name AS course_name,
+            g.instructor_id,
             COALESCE(e.full_name, '{INSTRUCTOR_PLACEHOLDER}') AS instructor_name,
             g.level_number,
             g.default_day,
@@ -83,7 +87,9 @@ def get_enriched_groups(session: Session) -> list[EnrichedGroupDTO]:
         SELECT
             g.id,
             g.name AS group_name,
+            g.course_id,
             c.name AS course_name,
+            g.instructor_id,
             COALESCE(e.full_name, '{INSTRUCTOR_PLACEHOLDER}') AS instructor_name,
             g.level_number,
             g.default_day,
@@ -115,7 +121,9 @@ def get_enriched_groups_by_date(session: Session, target_date: str) -> list[Enri
         SELECT DISTINCT
             g.id,
             g.name AS group_name,
+            g.course_id,
             c.name AS course_name,
+            g.instructor_id,
             COALESCE(e.full_name, '{INSTRUCTOR_PLACEHOLDER}') AS instructor_name,
             g.level_number,
             g.default_day,

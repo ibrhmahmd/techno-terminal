@@ -81,7 +81,9 @@ class EnrichedGroupDTO(BaseModel):
     """Typed read model for enriched group SQL query rows."""
     id: int
     group_name: str
+    course_id: int
     course_name: str
+    instructor_id: Optional[int] = None
     instructor_name: str
     level_number: int
     default_day: Optional[str] = None
