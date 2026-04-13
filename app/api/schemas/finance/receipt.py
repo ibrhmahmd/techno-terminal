@@ -77,12 +77,22 @@ class RefundResultPublic(BaseModel):
     new_balance: Optional[float] = None
 
 
+class ReceiptLineRequest(BaseModel):
+    """Input for creating a receipt line (ID assigned by database)."""
+    student_id: int
+    enrollment_id: Optional[int] = None
+    amount: float
+    payment_type: str = "course_level"
+    discount: float = 0.0
+    notes: Optional[str] = None
+
+
 class CreateReceiptRequest(BaseModel):
     payer_name: Optional[str] = None
     method: str = "cash"
     notes: Optional[str] = None
     allow_credit: bool = True
-    lines: list[ReceiptLinePublic]
+    lines: list[ReceiptLineRequest]
 
 
 class IssueRefundRequest(BaseModel):

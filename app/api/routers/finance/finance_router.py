@@ -21,6 +21,7 @@ from app.api.schemas.finance.receipt import (
     RefundResultPublic,
     CreateReceiptRequest,
     IssueRefundRequest,
+    ReceiptLineRequest,
 )
 from app.api.schemas.finance.balance import FinancialSummaryPublic
 from app.api.dependencies import require_admin, require_any, get_finance_module
@@ -46,11 +47,24 @@ def create_receipt(
     current_user: User = Depends(require_admin),
     finance=Depends(get_finance_module),
 ):
+    # Convert API DTOs to internal service DTOs
+    service_lines = [
+        ReceiptLineInput(
+            student_id=line.student_id,
+            enrollment_id=line.enrollment_id,
+            amount=line.amount,
+            payment_type=line.payment_type,
+            discount=line.discount,
+            notes=line.notes,
+        )
+        for line in body.lines
+    ]
+    
     result = finance.create_receipt_with_charge_lines(
         payer_name=body.payer_name,
         method=body.method,
         received_by_user_id=current_user.id,
-        lines=body.lines,
+        lines=service_lines,
         notes=body.notes,
         allow_credit=body.allow_credit,
     )
@@ -176,9 +190,9 @@ def get_unpaid_competition_fees(
 
 
 # preview overpayment risk
-class PreviewRiskRequest(BaseModel):
+class PreviewOverpaymentRequest(BaseModel):
     """Request to preview overpayment risk for receipt lines."""
-    lines: list[ReceiptLineInput]
+    lines: list[ReceiptLineRequest]
 
 
 class OverpaymentRiskItem(BaseModel):
@@ -199,14 +213,27 @@ class OverpaymentRiskItem(BaseModel):
     summary="Preview overpayment risk",
 )
 def preview_overpayment_risk(
-    body: PreviewRiskRequest,
+    body: PreviewOverpaymentRequest,
     _user: User = Depends(require_admin),
     finance=Depends(get_finance_module),
 ):
     """
     Returns lines that would create/increase credit before creating a receipt.
     """
-    risk_rows = finance.preview_overpayment_risk(lines=body.lines)
+    # Convert API DTOs to internal service DTOs
+    service_lines = [
+        ReceiptLineInput(
+            student_id=line.student_id,
+            enrollment_id=line.enrollment_id,
+            amount=line.amount,
+            payment_type=line.payment_type,
+            discount=line.discount,
+            notes=line.notes,
+        )
+        for line in body.lines
+    ]
+    
+    risk_rows = finance.preview_overpayment_risk(lines=service_lines)
     return ApiResponse(data=[OverpaymentRiskItem.model_validate(r) for r in risk_rows])
 
 
