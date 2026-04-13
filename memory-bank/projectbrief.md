@@ -21,7 +21,7 @@
 
 ## Current State
 - **Backend:** FastAPI + SQLModel + PostgreSQL + Supabase Auth (15 routers, 10 modules)
-- **Database:** 16 tables, 5 views, 21 migration files // review the db and migrations directory fir better context about the db or use the subabase mcp for quering 
+- **Database:** 30 tables (16 core + 14 history/tracking), 12 views, 21 migrations // review the db and migrations directory fir better context about the db or use the subabase mcp for quering 
 - **Testing:** Pytest with 20 test modules, 161 tests, 94% coverage
 - **UI:** Streamlit (internal), React frontend planned (Vite + React 18 + TanStack Query)
 - **Deployment:** Leapcell with railpack.json (Gunicorn + Uvicorn workers)

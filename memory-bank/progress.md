@@ -68,9 +68,10 @@ Production hardening: CI/CD, monitoring, performance optimization
 - **finance/**: 4 router modules (balance, receipts, finance)
 - **standalone**: attendance, auth, competitions, enrollments, HR
 
-### Database Design
-- **16 tables** with proper relationships and constraints
-- **5 views** for complex queries
+### Database Design (Verified via Supabase)
+- **30 tables:** 16 core + 14 history/tracking (attendance to student_payment_history)
+- **12 views:** v_students to v_unpaid_enrollments
+- **All tables/ documented** with column counts in techContext.md
 - **21 migrations** with triggers and check constraints
 - **Hybrid schema approach**: `schema.sql` + `migrations/*.sql`
 

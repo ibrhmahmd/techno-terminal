@@ -28,36 +28,57 @@ PDF_LOGO_PATH            # Optional PDF branding
 
 ## Database Schema
 
-### Table Inventory (16 Tables)
+### Table Inventory (30 Tables - Verified via Supabase)
 
-| Table | Purpose | Key Relationships |
-|-------|---------|-------------------|
-| **parents** | Parent/guardian directory | student_parents (M:M) |
-| **students** | Student profiles | enrollments, attendance, payments |
-| **student_parents** | Junction: students ↔ parents | M:M relationship with metadata |
-| **employees** | Staff directory | users, groups (instructor), sessions |
-| **users** | System accounts (linked to Supabase) | employees, audit fields |
-| **courses** | Course catalog | groups |
-| **groups** | Course sections/cohorts | course, instructor, sessions, enrollments |
-| **sessions** | Individual class meetings | group, attendance |
-| **enrollments** | Student-group registrations | student, group, payments |
-| **attendance** | Session attendance tracking | student, session, enrollment |
-| **receipts** | Payment receipts | payments |
-| **payments** | Financial transactions | receipt, student, enrollment |
-| **competitions** | Competition events | competition_categories |
-| **competition_categories** | Competition divisions | competition, teams |
-| **teams** | Competition teams | category, group, team_members |
-| **team_members** | Students in teams | team, student |
+| # | Table | Columns | Purpose | Category |
+|---|-------|---------|---------|----------|
+| 1 | **attendance** | 7 | Session attendance tracking | Core |
+| 2 | **competition_categories** | 4 | Competition divisions | Core |
+| 3 | **competitions** | 8 | Competition events | Core |
+| 4 | **courses** | 10 | Course catalog | Core |
+| 5 | **employees** | 17 | Staff directory | Core |
+| 6 | **enrollments** | 14 | Student-group registrations | Core |
+| 7 | **groups** | 15 | Course sections/cohorts | Core |
+| 8 | **parents** | 9 | Parent/guardian directory | Core |
+| 9 | **payments** | 11 | Financial transactions | Core |
+| 10 | **receipts** | 14 | Payment receipts | Core |
+| 11 | **sessions** | 14 | Individual class meetings | Core |
+| 12 | **student_parents** | 5 | Junction: students ↔ parents | Core |
+| 13 | **students** | 16 | Student profiles | Core |
+| 14 | **team_members** | 5 | Students in teams | Core |
+| 15 | **teams** | 11 | Competition teams | Core |
+| 16 | **users** | 8 | System accounts (Supabase) | Core |
+| 17 | **enrollment_balance_history** | 10 | Historical balance changes | History |
+| 18 | **enrollment_level_history** | 10 | Level progression tracking | History |
+| 19 | **generated_receipts** | 11 | Generated receipt records | History |
+| 20 | **group_competition_participation** | 12 | Group-competition linkage | History |
+| 21 | **group_course_history** | 9 | Course assignment history | History |
+| 22 | **group_levels** | 14 | Group level progression | History |
+| 23 | **payment_allocations** | 10 | Payment distribution | History |
+| 24 | **receipt_templates** | 13 | Configurable templates | History |
+| 25 | **student_activity_log** | 10 | Audit trail of actions | History |
+| 26 | **student_balances** | 7 | Current balance snapshot | History |
+| 27 | **student_competition_history** | 14 | Competition participation | History |
+| 28 | **student_credits** | 10 | Credit balance tracking | History |
+| 29 | **student_enrollment_history** | 15 | Enrollment lifecycle | History |
+| 30 | **student_payment_history** | 20 | Payment transaction history | History |
 
-### View Inventory (5 Views)
+### View Inventory (12 Views)
 
-| View | Purpose |
-|------|---------|
-| **v_students** | Student details with aggregated info |
-| **v_enrollment_balance** | Real-time balance per enrollment |
-| **v_enrollment_attendance** | Attendance stats per enrollment |
-| **v_siblings** | Sibling relationships for families |
-| **v_group_session_count** | Session counts per group |
+| # | View | Columns | Purpose |
+|---|------|---------|---------|
+| 1 | **v_students** | 13 | Student details with aggregated info |
+| 2 | **v_enrollment_balance** | 9 | Real-time balance per enrollment |
+| 3 | **v_enrollment_attendance** | 3 | Attendance stats per enrollment |
+| 4 | **v_siblings** | 5 | Sibling relationships for families |
+| 5 | **v_group_session_count** | 5 | Session counts per group |
+| 6 | **v_course_stats** | 6 | Course-level statistics |
+| 7 | **v_daily_collections** | 7 | Daily payment collections summary |
+| 8 | **v_payment_allocations_detailed** | 17 | Detailed payment allocation view |
+| 9 | **v_student_activity_timeline** | 13 | Chronological student activity |
+| 10 | **v_student_financial_summary** | 13 | Student financial overview |
+| 11 | **v_student_payment_history** | 26 | Payment history with details |
+| 12 | **v_unpaid_enrollments** | 16 | Unpaid enrollment listing |
 
 ### Key Database Features
 
