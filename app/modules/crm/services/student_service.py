@@ -241,3 +241,80 @@ class StudentService:
         """Delete a student by ID."""
         with get_session() as session:
             return repo.delete_student_by_id(session, student_id)
+
+    # ── NEW: Student Detail Methods ──────────────────────────────────────────────
+
+    def get_student_with_details(self, student_id: int) -> "StudentWithDetails":
+        """
+        Get complete student profile with relationships and balance summary.
+        
+        Returns StudentWithDetails DTO including:
+        - Core student fields
+        - Primary parent information
+        - Active enrollments with group/course details
+        - Balance summary (total_due, discounts, paid, net_balance)
+        - Siblings sharing the same parent
+        """
+        from datetime import datetime
+        from app.api.schemas.crm.student_details import (
+            StudentWithDetails, ParentInfo, StudentBalanceSummary
+        )
+        
+        with get_session() as session:
+            # Get student with primary parent
+            student_with_parent = repo.get_student_with_parent(session, student_id)
+            if not student_with_parent:
+                raise NotFoundError(f"Student with ID {student_id} not found")
+            
+            student, primary_parent = student_with_parent
+            
+            # Get enrollments with group/course info
+            enrollments_data = repo.get_student_enrollments_with_details(session, student_id)
+            
+            # Get balance summary
+            balance_data = repo.get_student_balance_summary(session, student_id)
+            
+            # Get siblings
+            siblings_data = repo.get_student_siblings_with_details(session, student_id)
+            
+            # Calculate age if DOB exists
+            age = None
+            if student.date_of_birth:
+                today = datetime.now()
+                age = today.year - student.date_of_birth.year
+                if (today.month, today.day) < (student.date_of_birth.month, student.date_of_birth.day):
+                    age -= 1
+            
+            # Build and return DTO
+            return StudentWithDetails(
+                id=student.id,
+                full_name=student.full_name,
+                date_of_birth=student.date_of_birth,
+                age=age,
+                gender=student.gender,
+                phone=student.phone,
+                notes=student.notes,
+                status=str(student.status) if student.status else "active",
+                is_active=student.is_active,
+                waiting_since=student.waiting_since,
+                waiting_priority=student.waiting_priority,
+                waiting_notes=student.waiting_notes,
+                created_at=student.created_at,
+                updated_at=student.updated_at,
+                primary_parent=ParentInfo.model_validate(primary_parent) if primary_parent else None,
+                enrollments=enrollments_data,
+                balance_summary=balance_data if balance_data else StudentBalanceSummary(),
+                siblings=siblings_data,
+            )
+
+    def get_student_siblings_enhanced(self, student_id: int) -> "list[SiblingInfo]":
+        """
+        Get siblings with detailed information including enrollment counts.
+        
+        Returns list of SiblingInfo DTOs who share the same parent(s).
+        """
+        from app.api.schemas.crm.student_details import SiblingInfo
+        
+        with get_session() as session:
+            siblings = repo.get_student_siblings_with_details(session, student_id)
+            return siblings
