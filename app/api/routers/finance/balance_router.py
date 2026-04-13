@@ -4,7 +4,7 @@ app/api/routers/finance/balance_router.py
 API endpoints for student balance operations.
 """
 from decimal import Decimal
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query, status 
 
@@ -84,10 +84,10 @@ def get_enrollment_balance(
 
 
 @router.get(
-    "/balance/unpaid-enrollments",
-    response_model=PaginatedResponse[UnpaidEnrollmentResponse],
+    "/enrollments/unpaid",
+    response_model=PaginatedResponse[List[UnpaidEnrollmentResponse]],
     summary="List unpaid enrollments",
-    description="Get all unpaid enrollments, optionally filtered by group."
+    description="List all enrollments with outstanding balances, optionally filtered by group.",
 )
 def list_unpaid_enrollments(
     group_id: Optional[int] = Query(None, description="Filter by specific group"),
@@ -97,18 +97,15 @@ def list_unpaid_enrollments(
     svc = Depends(get_balance_service),
 ):
     """
-    List all unpaid enrollments with balance details.
+    Returns enrollments with remaining_balance > 0 (sorted by amount descending).
     
     Query params:
     - group_id: Optional filter by group
     - skip: Pagination offset
     - limit: Maximum results (default 50)
     """
-    unpaid = svc.list_unpaid_enrollments(group_id)
-    
-    # Apply pagination manually since we're getting a list
-    total = len(unpaid)
-    paginated = unpaid[skip:skip + limit]
+    # Service now handles pagination internally (Issue M1 fixed)
+    paginated, total = svc.list_unpaid_enrollments(group_id, skip=skip, limit=limit)
     
     return PaginatedResponse(
         data=paginated,

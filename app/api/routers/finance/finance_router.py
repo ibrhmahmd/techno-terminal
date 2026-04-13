@@ -93,6 +93,15 @@ def search_receipts(
     _user: User = Depends(require_admin),
     finance=Depends(get_finance_module),
 ):
+    # Validate date range doesn't exceed 90 days (Issue M3)
+    max_days = 90
+    date_range = (to_date - from_date).days
+    if date_range > max_days:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Date range too large. Maximum allowed is {max_days} days. Requested: {date_range} days."
+        )
+    
     results = finance.search_receipts(
         from_date=from_date,
         to_date=to_date,

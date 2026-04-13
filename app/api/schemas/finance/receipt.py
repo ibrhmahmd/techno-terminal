@@ -99,17 +99,53 @@ class GenerateReceiptRequest(BaseModel):
 
 
 class MarkReceiptSentRequest(BaseModel):
-    """Request schema for marking receipt as sent."""
+    """Request to mark a receipt as sent to parent."""
     parent_email: Optional[str] = None
 
 
 class BatchGenerateRequest(BaseModel):
-    """Request schema for batch receipt generation."""
-    receipt_ids: List[int]
+    """Request to generate multiple receipts in batch."""
+    receipt_ids: list[int]
     template_name: str = "standard"
 
 
-class BatchGenerateResponse(BaseModel):
-    """Response schema for batch generation."""
+class ReceiptGeneratedDTO(BaseModel):
+    """Structured response for receipt generation with content and metadata."""
     receipt_id: int
     content: str
+    template_name: str
+    include_balance: bool
+    generated_at: datetime
+    content_type: str = "text/plain"
+
+
+class BatchReceiptResultDTO(BaseModel):
+    """Result item for batch receipt generation with explicit success/error tracking."""
+    receipt_id: int
+    success: bool
+    content: Optional[str] = None  # Populated if success=True
+    error_message: Optional[str] = None  # Populated if success=False
+    error_code: Optional[str] = None  # 'not_found', 'generation_failed', 'invalid_template', etc.
+
+
+class BatchGenerateResponse(BaseModel):
+    """Response item for batch receipt generation (legacy, use BatchReceiptResultDTO)."""
+    receipt_id: int
+    content: str  # Either receipt text or error message
+
+
+class ReceiptFinalizedDTO(BaseModel):
+    """Result of finalizing a receipt with charge lines.
+    
+    This provides a typed structure for the receipt finalization response,
+    ensuring all required fields are present and properly typed.
+    """
+    receipt_id: int
+    receipt_number: str
+    payment_method: str
+    paid_at: datetime
+    lines: list[ReceiptLinePublic]
+    total: float
+    payment_ids: list[int]
+
+    model_config = {"from_attributes": True}

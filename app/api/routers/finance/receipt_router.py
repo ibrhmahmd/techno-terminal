@@ -13,6 +13,8 @@ from app.api.schemas.finance.receipt import (
     MarkReceiptSentRequest,
     BatchGenerateRequest,
     BatchGenerateResponse,
+    BatchReceiptResultDTO,
+    ReceiptGeneratedDTO,
 )
 from app.modules.auth.models import User
 from app.modules.finance.services.receipt_generation_service import get_receipt_generation_service
@@ -25,40 +27,58 @@ router = APIRouter(tags=["Receipts"])
 
 @router.get(
     "/receipts/{receipt_id}/generate",
-    response_class=Response,
+    response_model=ApiResponse[ReceiptGeneratedDTO],
     summary="Generate receipt",
-    description="Generate a formatted receipt as plain text."
+    description="Generate a formatted receipt. Returns structured JSON by default. Use ?as_text=true for plain text."
 )
 def generate_receipt(
     receipt_id: int,
     template_name: str = Query("standard", description="Template to use (standard, detailed)"),
     include_balance: bool = Query(True, description="Include remaining balance"),
+    as_text: bool = Query(False, description="Return as plain text response instead of JSON"),
     current_user: User = Depends(require_any),
     svc = Depends(get_receipt_generation_service),
 ):
     """
-    Generate a formatted receipt.
+    Generates a formatted receipt.
     
-    Returns plain text receipt with:
+    By default returns structured JSON with content and metadata (Issue M2 fixed).
+    Set ?as_text=true to get plain text response for backward compatibility.
+    
+    The receipt includes:
     - Receipt number and date
-    - Student and payer information
-    - Payment line items
-    - Totals and discounts
+    - Payer name
+    - Line items with amounts
+    - Total amount
     - Payment method
     - Remaining balance (if requested)
     """
+    from datetime import datetime
+    
     content = svc.generate_receipt_text(
         receipt_id=receipt_id,
         template_name=template_name,
         include_balance=include_balance
     )
     
-    return Response(
-        content=content,
-        media_type="text/plain",
-        headers={
-            "Content-Disposition": f'inline; filename="receipt_{receipt_id}.txt"'
-        }
+    # Issue M2: Return structured JSON by default
+    if as_text:
+        return Response(
+            content=content,
+            media_type="text/plain",
+            headers={
+                "Content-Disposition": f'inline; filename="receipt_{receipt_id}.txt"'
+            }
+        )
+    
+    return ApiResponse(
+        data=ReceiptGeneratedDTO(
+            receipt_id=receipt_id,
+            content=content,
+            template_name=template_name,
+            include_balance=include_balance,
+            generated_at=datetime.utcnow()
+        )
     )
 
 
@@ -91,30 +111,14 @@ def mark_receipt_sent(
 
 @router.post(
     "/receipts/batch-generate",
-    response_model=ApiResponse[List[BatchGenerateResponse]],
+    response_model=ApiResponse[List[BatchReceiptResultDTO]],
     summary="Batch generate receipts",
-    description="Generate multiple receipts at once."
+    description="Generate multiple receipts in a single batch operation. Returns structured results with explicit success/error tracking.",
+    dependencies=[Depends(require_admin)],
 )
 def batch_generate_receipts(
     request: BatchGenerateRequest,
-    current_user: User = Depends(require_admin),
     svc = Depends(get_receipt_generation_service),
 ):
-    """
-    Generate receipts for multiple receipt IDs.
-    Useful for end-of-day batch processing.
-    """
-    results = svc.generate_batch_receipts(
-        receipt_ids=request.receipt_ids,
-        template_name=request.template_name
-    )
-    
-    response_data = [
-        BatchGenerateResponse(receipt_id=rid, content=content)
-        for rid, content in results.items()
-    ]
-    
-    return ApiResponse(
-        data=response_data,
-        message=f"Generated {len(response_data)} receipts"
-    )
+    results = svc.generate_batch_receipts(request.receipt_ids, request.template_name)
+    return ApiResponse(success=True, data=results)
