@@ -9,7 +9,7 @@ from typing import Optional, List
 from pydantic import BaseModel
 
 
-class ReceiptCreatedPublic(BaseModel):
+class ReceiptCreationResponse(BaseModel):
     """
     Response returned when a new receipt is created.
     """
@@ -22,7 +22,12 @@ class ReceiptCreatedPublic(BaseModel):
     payment_ids: list[int]
 
 
-class ReceiptLinePublic(BaseModel):
+# Backward compatibility alias (deprecated, use ReceiptCreationResponse)
+ReceiptCreatedPublic = ReceiptCreationResponse
+
+
+class ReceiptLineResponse(BaseModel):
+    """Receipt line item returned in responses."""
     id: int
     student_id: int
     enrollment_id: Optional[int] = None
@@ -35,7 +40,8 @@ class ReceiptLinePublic(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class ReceiptHeaderPublic(BaseModel):
+class ReceiptHeaderResponse(BaseModel):
+    """Receipt header information returned in responses."""
     id: int
     receipt_number: Optional[str] = None
     payer_name: Optional[str] = None
@@ -46,19 +52,20 @@ class ReceiptHeaderPublic(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class ReceiptDetailPublic(BaseModel):
-    """
-    Full detail including lines.
-    """
-    receipt: ReceiptHeaderPublic
-    lines: list[ReceiptLinePublic]
+# Backward compatibility aliases (deprecated, use ReceiptLineResponse and ReceiptHeaderResponse)
+ReceiptLinePublic = ReceiptLineResponse
+ReceiptHeaderPublic = ReceiptHeaderResponse
+
+
+class ReceiptDetailResponse(BaseModel):
+    """Full receipt detail including header and lines."""
+    receipt: ReceiptHeaderResponse
+    lines: list[ReceiptLineResponse]
     total: float
 
 
 class ReceiptListItem(BaseModel):
-    """
-    Slim receipt for search endpoints.
-    """
+    """Slim receipt for search/list endpoints."""
     id: int
     receipt_number: Optional[str] = None
     payer_name: Optional[str] = None
@@ -68,13 +75,16 @@ class ReceiptListItem(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class RefundResultPublic(BaseModel):
-    """
-    Result of issuing a refund.
-    """
+class RefundResponse(BaseModel):
+    """Response after issuing a refund."""
     receipt_number: Optional[str] = None
     refunded_amount: float
     new_balance: Optional[float] = None
+
+
+# Backward compatibility aliases (deprecated, use ReceiptDetailResponse and RefundResponse)
+ReceiptDetailPublic = ReceiptDetailResponse
+RefundResultPublic = RefundResponse
 
 
 class ReceiptLineRequest(BaseModel):
@@ -119,8 +129,8 @@ class BatchGenerateRequest(BaseModel):
     template_name: str = "standard"
 
 
-class ReceiptGeneratedDTO(BaseModel):
-    """Structured response for receipt generation with content and metadata."""
+class ReceiptGenerationResponse(BaseModel):
+    """Response after generating a receipt with content and metadata."""
     receipt_id: int
     content: str
     template_name: str
@@ -129,8 +139,8 @@ class ReceiptGeneratedDTO(BaseModel):
     content_type: str = "text/plain"
 
 
-class BatchReceiptResultDTO(BaseModel):
-    """Result item for batch receipt generation with explicit success/error tracking."""
+class BatchReceiptItem(BaseModel):
+    """Single result item for batch receipt generation."""
     receipt_id: int
     success: bool
     content: Optional[str] = None  # Populated if success=True
@@ -139,23 +149,29 @@ class BatchReceiptResultDTO(BaseModel):
 
 
 class BatchGenerateResponse(BaseModel):
-    """Response item for batch receipt generation (legacy, use BatchReceiptResultDTO)."""
+    """Response item for batch receipt generation (legacy, use BatchReceiptItem)."""
     receipt_id: int
     content: str  # Either receipt text or error message
 
 
 class ReceiptFinalizedDTO(BaseModel):
-    """Result of finalizing a receipt with charge lines.
+    """Internal result of finalizing a receipt with charge lines.
     
     This provides a typed structure for the receipt finalization response,
     ensuring all required fields are present and properly typed.
+    Note: This is an internal DTO; API responses use ReceiptCreationResponse.
     """
     receipt_id: int
     receipt_number: str
     payment_method: str
     paid_at: datetime
-    lines: list[ReceiptLinePublic]
+    lines: list[ReceiptLineResponse]
     total: float
     payment_ids: list[int]
 
     model_config = {"from_attributes": True}
+
+
+# Backward compatibility aliases (deprecated, use ReceiptGenerationResponse and BatchReceiptItem)
+ReceiptGeneratedDTO = ReceiptGenerationResponse
+BatchReceiptResultDTO = BatchReceiptItem
