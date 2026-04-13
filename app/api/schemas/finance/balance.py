@@ -9,10 +9,8 @@ from typing import Optional
 from pydantic import BaseModel
 
 
-class FinancialSummaryPublic(BaseModel):
-    """
-    Financial summary per enrollment returned from v_enrollment_balance.
-    """
+class StudentBalanceResponse(BaseModel):
+    """Financial summary per enrollment returned from v_enrollment_balance."""
     student_id: int
     group_id: int
     enrollment_id: int
@@ -33,8 +31,8 @@ class BalanceAdjustmentRequest(BaseModel):
     notes: Optional[str] = None
 
 
-class UnpaidEnrollmentResponse(BaseModel):
-    """Response schema for unpaid enrollment listing."""
+class UnpaidEnrollmentItem(BaseModel):
+    """Single item for unpaid enrollment listing."""
     enrollment_id: int
     student_id: int
     student_name: str
@@ -66,7 +64,7 @@ class EnrollmentBalanceResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class BalanceAdjustmentResponseDTO(BaseModel):
+class BalanceAdjustmentResponse(BaseModel):
     """Response after adjusting a student balance."""
     student_id: int
     previous_balance: float
@@ -80,7 +78,7 @@ class BalanceAdjustmentResponseDTO(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class StudentBalanceSummaryDTO(BaseModel):
+class BalanceSummaryResponse(BaseModel):
     """Quick balance summary for dashboard display."""
     student_id: int
     net_balance: float
@@ -91,3 +89,10 @@ class StudentBalanceSummaryDTO(BaseModel):
     as_of_date: datetime
 
     model_config = {"from_attributes": True}
+
+
+# Backward compatibility aliases (deprecated, use new Response names)
+FinancialSummaryPublic = StudentBalanceResponse
+UnpaidEnrollmentResponse = UnpaidEnrollmentItem
+BalanceAdjustmentResponseDTO = BalanceAdjustmentResponse
+StudentBalanceSummaryDTO = BalanceSummaryResponse
