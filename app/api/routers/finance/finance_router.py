@@ -15,15 +15,15 @@ from pydantic import BaseModel
 
 from app.api.schemas.common import ApiResponse
 from app.api.schemas.finance.receipt import (
-    ReceiptCreatedPublic,
-    ReceiptDetailPublic,
+    ReceiptCreationResponse,
+    ReceiptDetailResponse,
     ReceiptListItem,
-    RefundResultPublic,
+    RefundResponse,
     CreateReceiptRequest,
     IssueRefundRequest,
     ReceiptLineRequest,
 )
-from app.api.schemas.finance.balance import FinancialSummaryPublic
+from app.api.schemas.finance.balance import StudentBalanceResponse
 from app.api.dependencies import require_admin, require_any, get_finance_module
 from app.modules.finance.finance_schemas import ReceiptLineInput
 from app.modules.auth import User
@@ -38,7 +38,7 @@ router = APIRouter(tags=["Finance"])
 # create a new receipt
 @router.post(
     "/finance/receipts",
-    response_model=ApiResponse[ReceiptCreatedPublic],
+    response_model=ApiResponse[ReceiptCreationResponse],
     status_code=201,
     summary="Create a new receipt",
 )
@@ -69,7 +69,7 @@ def create_receipt(
         allow_credit=body.allow_credit,
     )
     return ApiResponse(
-        data=ReceiptCreatedPublic.model_validate(result),
+        data=ReceiptCreationResponse.model_validate(result),
         message="Receipt created successfully.",
     )
 
@@ -77,7 +77,7 @@ def create_receipt(
 # get receipt by ID
 @router.get(
     "/finance/receipts/{receipt_id}",
-    response_model=ApiResponse[ReceiptDetailPublic],
+    response_model=ApiResponse[ReceiptDetailResponse],
     summary="Get receipt details",
 )
 def get_receipt(
@@ -88,7 +88,7 @@ def get_receipt(
     detail = finance.get_receipt_detail(receipt_id)
     if detail is None:
         raise NotFoundError("Receipt not found")
-    return ApiResponse(data=ReceiptDetailPublic.model_validate(detail))
+    return ApiResponse(data=ReceiptDetailResponse.model_validate(detail))
 
 
 # search receipts
@@ -130,7 +130,7 @@ def search_receipts(
 # issue a refund
 @router.post(
     "/finance/refunds",
-    response_model=ApiResponse[RefundResultPublic],
+    response_model=ApiResponse[RefundResponse],
     summary="Issue a refund",
 )
 def issue_refund(
@@ -146,7 +146,7 @@ def issue_refund(
         method=body.method,
     )
     return ApiResponse(
-        data=RefundResultPublic.model_validate(result),
+        data=RefundResponse.model_validate(result),
         message="Refund issued successfully.",
     )
 
@@ -154,7 +154,7 @@ def issue_refund(
 # get student balances
 @router.get(
     "/finance/balance/student/{student_id}",
-    response_model=ApiResponse[list[FinancialSummaryPublic]],
+    response_model=ApiResponse[list[StudentBalanceResponse]],
     summary="Get student balances",
 )
 def get_student_balance(
@@ -164,7 +164,7 @@ def get_student_balance(
 ):
     balances = finance.get_student_financial_summary(student_id)
     return ApiResponse(
-        data=[FinancialSummaryPublic.model_validate(b) for b in balances]
+        data=[StudentBalanceResponse.model_validate(b) for b in balances]
     )
 
 

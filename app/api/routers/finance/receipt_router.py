@@ -13,8 +13,8 @@ from app.api.schemas.finance.receipt import (
     MarkReceiptSentRequest,
     BatchGenerateRequest,
     BatchGenerateResponse,
-    BatchReceiptResultDTO,
-    ReceiptGeneratedDTO,
+    BatchReceiptItem,
+    ReceiptGenerationResponse,
 )
 from app.modules.auth.models import User
 from app.modules.finance.services.receipt_generation_service import get_receipt_generation_service
@@ -27,7 +27,7 @@ router = APIRouter(tags=["Receipts"])
 
 @router.get(
     "/receipts/{receipt_id}/generate",
-    response_model=ApiResponse[ReceiptGeneratedDTO],
+    response_model=ApiResponse[ReceiptGenerationResponse],
     summary="Generate receipt",
     description="Generate a formatted receipt. Returns structured JSON by default. Use ?as_text=true for plain text."
 )
@@ -72,7 +72,7 @@ def generate_receipt(
         )
     
     return ApiResponse(
-        data=ReceiptGeneratedDTO(
+        data=ReceiptGenerationResponse(
             receipt_id=receipt_id,
             content=content,
             template_name=template_name,
@@ -111,7 +111,7 @@ def mark_receipt_sent(
 
 @router.post(
     "/receipts/batch-generate",
-    response_model=ApiResponse[List[BatchReceiptResultDTO]],
+    response_model=ApiResponse[List[BatchReceiptItem]],
     summary="Batch generate receipts",
     description="Generate multiple receipts in a single batch operation. Returns structured results with explicit success/error tracking.",
     dependencies=[Depends(require_admin)],

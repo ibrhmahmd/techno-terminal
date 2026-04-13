@@ -12,9 +12,9 @@ from app.api.dependencies import require_any, require_admin
 from app.api.schemas.common import ApiResponse, PaginatedResponse
 from app.api.schemas.finance.balance import (
     BalanceAdjustmentRequest,
-    UnpaidEnrollmentResponse,
+    UnpaidEnrollmentItem,
     EnrollmentBalanceResponse,
-    BalanceAdjustmentResponseDTO,
+    BalanceAdjustmentResponse,
 )
 from app.modules.auth.models import User
 from app.modules.finance.services.balance_service import get_balance_service
@@ -85,7 +85,7 @@ def get_enrollment_balance(
 
 @router.get(
     "/enrollments/unpaid",
-    response_model=PaginatedResponse[List[UnpaidEnrollmentResponse]],
+    response_model=PaginatedResponse[List[UnpaidEnrollmentItem]],
     summary="List unpaid enrollments",
     description="List all enrollments with outstanding balances, optionally filtered by group.",
 )
@@ -141,7 +141,7 @@ def get_student_credit(
 
 @router.post(
     "/students/{student_id}/balance/adjust",
-    response_model=ApiResponse[BalanceAdjustmentResponseDTO],
+    response_model=ApiResponse[BalanceAdjustmentResponse],
     summary="Adjust student balance",
     description="Manually adjust a student's balance (requires admin or finance role).",
     status_code=status.HTTP_200_OK,
