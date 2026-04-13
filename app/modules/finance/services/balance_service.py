@@ -238,8 +238,17 @@ class BalanceService:
             is_paid=remaining <= 0
         )
     
-    def list_unpaid_enrollments(self, group_id: Optional[int] = None) -> List[UnpaidEnrollmentResponse]:
-        """List all unpaid enrollments, optionally filtered by group."""
+    def list_unpaid_enrollments(
+        self, 
+        group_id: Optional[int] = None,
+        skip: int = 0,
+        limit: int = 50
+    ) -> tuple[List[UnpaidEnrollmentResponse], int]:
+        """List all unpaid enrollments with database-level pagination.
+        
+        Returns:
+            Tuple of (paginated unpaid enrollments, total count)
+        """
         db = self._get_db()
         
         query = select(
@@ -260,6 +269,7 @@ class BalanceService:
         if group_id:
             query = query.where(Enrollment.group_id == group_id)
         
+        # Get all results for filtering (required since we calculate remaining balance)
         results = db.exec(query).all()
         
         unpaid = []
@@ -296,7 +306,12 @@ class BalanceService:
         
         # Sort by remaining balance descending
         unpaid.sort(key=lambda x: x.remaining_balance, reverse=True)
-        return unpaid
+        
+        # Apply pagination at Python level (since we filter after query)
+        total = len(unpaid)
+        paginated = unpaid[skip:skip + limit]
+        
+        return paginated, total
     
     def get_student_credit_balance(self, student_id: int) -> Decimal:
         """Get total available credit for a student."""

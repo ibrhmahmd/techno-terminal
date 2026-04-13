@@ -218,6 +218,22 @@ def get_daily_collections(db: Session, target_date: date) -> list[dict]:
     return [dict(row._mapping) for row in rows]
 
 
+def get_total_refunded_for_payment(db: Session, original_payment_id: int) -> float:
+    """
+    Sum of all refund amounts issued against an original payment.
+    Used to validate that refund amount doesn't exceed original payment.
+    """
+    stmt = text("""
+        SELECT COALESCE(SUM(p.amount), 0)
+        FROM payments p
+        JOIN receipts r ON p.receipt_id = r.id
+        WHERE p.transaction_type = 'refund'
+        AND p.original_payment_id = :pid
+    """)
+    result = db.execute(stmt, {"pid": original_payment_id}).scalar()
+    return float(result or 0.0)
+
+
 # ── RepositoryProtocol aliases ────────────────────────────────────────────────
 # Primary entity: Receipt
 get_by_id = get_receipt
