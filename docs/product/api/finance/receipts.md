@@ -68,19 +68,33 @@ Admin role required
 **201 Created**
 ```json
 {
+  "success": true,
   "data": {
-    "id": 123,
+    "receipt_id": 123,
     "receipt_number": "RCP-2026-00123",
-    "payer_name": "John Smith",
+    "payment_method": "card",
+    "paid_at": "2026-04-09T14:30:00Z",
+    "lines": 1,
     "total": 150.00,
-    "method": "card",
-    "created_at": "2026-04-09T14:30:00Z",
     "payment_ids": [45]
   },
-  "message": "Receipt created successfully.",
-  "error": null
+  "message": "Receipt created successfully."
 }
 ```
+
+### Response Schema
+
+#### ReceiptFinalizedDTO
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `receipt_id` | integer | Receipt ID |
+| `receipt_number` | string | Generated receipt number |
+| `payment_method` | string | Payment method used |
+| `paid_at` | datetime | Payment timestamp |
+| `lines` | integer | Count of charge lines |
+| `total` | float | Total amount |
+| `payment_ids` | integer[] | IDs of created payment records |
 
 ---
 
@@ -166,6 +180,10 @@ Admin role required
 | `receipt_number` | string | No | null | Filter by receipt number (partial match) |
 | `limit` | integer | No | 200 | Max results (1-1000) |
 
+**Date Range Limit:**
+- Maximum allowed range is **90 days** (Issue M3 fix)
+- Exceeding this limit returns HTTP 422
+
 ### Example Request
 ```
 GET /finance/receipts?from_date=2026-04-01&to_date=2026-04-30&limit=50
@@ -190,6 +208,15 @@ GET /finance/receipts?from_date=2026-04-01&to_date=2026-04-30&limit=50
 }
 ```
 
+**422 Unprocessable Content** - Date range exceeds 90-day limit
+```json
+{
+  "success": false,
+  "error": "ValidationError",
+  "message": "Date range too large. Maximum allowed is 90 days. Requested: 120 days."
+}
+```
+
 ---
 
 ## Generate Receipt (Text)
@@ -204,34 +231,55 @@ GET /receipts/{receipt_id}/generate
 ### Authentication
 Any authenticated user
 
-### Path Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `receipt_id` | integer | Receipt unique identifier |
-
 ### Query Parameters
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| `template_name` | string | No | "standard" | Template to use: standard, detailed |
+| `template_name` | string | No | "standard" | Template: "standard" or "detailed" |
 | `include_balance` | boolean | No | true | Include remaining balance |
+| `as_text` | boolean | No | false | Return plain text instead of JSON |
 
-### Response
+### Response (JSON - Default)
 
-**200 OK** - Returns `text/plain` content
+**200 OK** (application/json)
+```json
+{
+  "success": true,
+  "data": {
+    "receipt_id": 123,
+    "content": "RECEIPT #RCP-2026-00123\nDate: 2026-04-09\nPayer: John Smith\n\nPayment for Mathematics Level 2: 150.00\nTotal: 150.00",
+    "template_name": "standard",
+    "include_balance": true,
+    "generated_at": "2026-04-13T08:35:00Z",
+    "content_type": "text/plain"
+  }
+}
+```
 
+### Response (Plain Text - Legacy)
+
+**200 OK** (text/plain) - Use `?as_text=true`
 ```
 RECEIPT #RCP-2026-00123
 Date: 2026-04-09
 Payer: John Smith
 
-Mathematics Level 2 ............ $150.00
-
-TOTAL .......................... $150.00
-Payment Method: Card
-Remaining Balance: $0.00
+Payment for Mathematics Level 2: 150.00
+Total: 150.00
 ```
+
+### Response Schema
+
+#### ReceiptGeneratedDTO
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `receipt_id` | integer | Receipt ID |
+| `content` | string | Formatted receipt text |
+| `template_name` | string | Template used |
+| `include_balance` | boolean | Balance included flag |
+| `generated_at` | datetime | Generation timestamp |
+| `content_type` | string | Always "text/plain" |
 
 ---
 
@@ -324,7 +372,7 @@ Admin role required
 
 ## Batch Generate Receipts
 
-Generate multiple receipts at once for batch processing.
+Generate multiple receipts at once for bulk operations. Returns structured results with explicit success/error status for each receipt.
 
 ### Endpoint
 ```
@@ -336,10 +384,10 @@ Admin role required
 
 ### Request Body
 
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| `receipt_ids` | array | Yes | - | List of receipt IDs to generate |
-| `template_name` | string | No | "standard" | Template to use |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `receipt_ids` | array | Yes | List of receipt IDs to generate |
+| `template_name` | string | No | Template: "standard" or "detailed" (default: "standard") |
 
 ### Example Request
 ```json
@@ -354,20 +402,31 @@ Admin role required
 **200 OK**
 ```json
 {
+  "success": true,
   "data": [
     {
       "receipt_id": 123,
-      "content": "RECEIPT #RCP-2026-00123..."
+      "success": true,
+      "content": "RECEIPT #RCP-2026-00123...",
+      "error_message": null,
+      "error_code": null
     },
     {
       "receipt_id": 124,
-      "content": "RECEIPT #RCP-2026-00124..."
+      "success": false,
+      "content": null,
+      "error_message": "Receipt 124 not found",
+      "error_code": "not_found"
     },
     {
       "receipt_id": 125,
-      "content": "Error: Receipt not found"
+      "success": true,
+      "content": "RECEIPT #RCP-2026-00125...",
+      "error_message": null,
+      "error_code": null
     }
   ],
+  "message": "Batch generation completed"
   "message": "Generated 3 receipts",
   "error": null
 }

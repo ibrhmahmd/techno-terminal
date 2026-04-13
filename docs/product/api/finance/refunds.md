@@ -50,6 +50,7 @@ Admin role required
 **200 OK**
 ```json
 {
+  "success": true,
   "data": {
     "refund_id": 67,
     "payment_id": 45,
@@ -59,10 +60,25 @@ Admin role required
     "new_balance": 100.00,
     "processed_at": "2026-04-09T14:30:00Z"
   },
-  "message": "Refund issued successfully.",
-  "error": null
+  "message": "Refund issued successfully."
 }
 ```
+
+### Validation Error
+
+**422 Unprocessable Content** - Refund amount exceeds available amount
+```json
+{
+  "success": false,
+  "error": "BusinessRuleError",
+  "message": "Refund amount (100.00) exceeds available amount (50.00). Original payment: 150.00, already refunded: 100.00"
+}
+```
+
+**Validation Logic:**
+- Refund amount cannot exceed: `original_payment_amount - already_refunded_amount`
+- Prior refunds are tracked and summed automatically
+- Clear error message includes: requested amount, available amount, original payment, already refunded
 
 ### Field Descriptions
 

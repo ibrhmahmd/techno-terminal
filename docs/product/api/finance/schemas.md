@@ -140,6 +140,97 @@ Response after balance adjustment.
 
 ## Receipt Schemas
 
+### ReceiptFinalizedDTO
+
+**File:** `app/api/schemas/finance/receipt.py`
+
+Response after creating a receipt with charge lines. Replaces raw dict return (Issue C1 fix).
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `receipt_id` | integer | Yes | Receipt ID |
+| `receipt_number` | string | Yes | Generated receipt number |
+| `payment_method` | string | Yes | Payment method used |
+| `paid_at` | datetime | Yes | Payment timestamp |
+| `lines` | integer | Yes | Count of charge lines |
+| `total` | float | Yes | Total amount |
+| `payment_ids` | List[int] | Yes | IDs of created payment records |
+
+**Example:**
+```json
+{
+  "receipt_id": 123,
+  "receipt_number": "RCP-2026-00123",
+  "payment_method": "cash",
+  "paid_at": "2026-04-13T08:30:00Z",
+  "lines": 1,
+  "total": 250.00,
+  "payment_ids": [45]
+}
+```
+
+---
+
+### ReceiptGeneratedDTO
+
+**File:** `app/api/schemas/finance/receipt.py`
+
+Structured response for receipt generation. Default format for `GET /receipts/{id}/generate` (Issue M2 fix).
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `receipt_id` | integer | Yes | Receipt ID |
+| `content` | string | Yes | Formatted receipt text |
+| `template_name` | string | Yes | Template used ("standard", "detailed") |
+| `include_balance` | boolean | Yes | Balance info included |
+| `generated_at` | datetime | Yes | Generation timestamp |
+| `content_type` | string | Yes | Always "text/plain" |
+
+**Example:**
+```json
+{
+  "receipt_id": 123,
+  "content": "RECEIPT #RCP-2026-00123\n...",
+  "template_name": "standard",
+  "include_balance": true,
+  "generated_at": "2026-04-13T08:35:00Z",
+  "content_type": "text/plain"
+}
+```
+
+**Usage:**
+- Default: Returns JSON with `ReceiptGeneratedDTO`
+- Legacy: Use `?as_text=true` for plain text response
+
+---
+
+### BatchReceiptResultDTO
+
+**File:** `app/api/schemas/finance/receipt.py`
+
+Individual result item for batch receipt generation. Part of structured batch response (Issue H2 fix).
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `receipt_id` | integer | Yes | Receipt ID |
+| `success` | boolean | Yes | Generation successful |
+| `content` | string \| null | Yes | Receipt content (null if error) |
+| `error_message` | string \| null | Yes | Error description (null if success) |
+| `error_code` | string \| null | Yes | Error code: `not_found`, `invalid`, `server_error` |
+
+**Example:**
+```json
+{
+  "receipt_id": 124,
+  "success": false,
+  "content": null,
+  "error_message": "Receipt 124 not found",
+  "error_code": "not_found"
+}
+```
+
+---
+
 ### CreateReceiptRequest
 
 **File:** `app/api/schemas/finance/receipt.py`
@@ -465,7 +556,7 @@ Refund request.
 
 **File:** `app/api/schemas/finance/receipt.py`
 
-Refund result.
+Refund result. Replaces raw dict return from `issue_refund()` (Issue C1 fix).
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -476,6 +567,19 @@ Refund result.
 | `reason` | string | Yes | Reason |
 | `new_balance` | float | Yes | New balance |
 | `processed_at` | datetime | Yes | Timestamp |
+
+**Example:**
+```json
+{
+  "refund_id": 67,
+  "payment_id": 45,
+  "amount": 50.00,
+  "method": "transfer",
+  "reason": "Student withdrawal",
+  "new_balance": 100.00,
+  "processed_at": "2026-04-09T14:30:00Z"
+}
+```
 
 ### StudentBalanceSummaryDTO
 
