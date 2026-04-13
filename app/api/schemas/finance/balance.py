@@ -89,10 +89,3 @@ class BalanceSummaryResponse(BaseModel):
     as_of_date: datetime
 
     model_config = {"from_attributes": True}
-
-
-# Backward compatibility aliases (deprecated, use new Response names)
-FinancialSummaryPublic = StudentBalanceResponse
-UnpaidEnrollmentResponse = UnpaidEnrollmentItem
-BalanceAdjustmentResponseDTO = BalanceAdjustmentResponse
-StudentBalanceSummaryDTO = BalanceSummaryResponse

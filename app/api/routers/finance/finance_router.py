@@ -24,6 +24,7 @@ from app.api.schemas.finance.receipt import (
     ReceiptLineRequest,
 )
 from app.api.schemas.finance.balance import StudentBalanceResponse
+from app.api.schemas.finance.risk import PreviewOverpaymentRequest, OverpaymentRiskResponse
 from app.api.dependencies import require_admin, require_any, get_finance_module
 from app.modules.finance.finance_schemas import ReceiptLineInput
 from app.modules.auth import User
@@ -189,27 +190,9 @@ def get_unpaid_competition_fees(
     )
 
 
-# preview overpayment risk
-class PreviewOverpaymentRequest(BaseModel):
-    """Request to preview overpayment risk for receipt lines."""
-    lines: list[ReceiptLineRequest]
-
-
-class OverpaymentRiskItem(BaseModel):
-    """Risk item showing potential credit/overpayment."""
-    student_id: int
-    enrollment_id: int
-    amount: float
-    debt_before: float
-    projected_balance: float
-    excess_credit: float
-
-    model_config = {"from_attributes": True}
-
-
 @router.post(
     "/finance/receipts/preview-risk",
-    response_model=ApiResponse[list[OverpaymentRiskItem]],
+    response_model=ApiResponse[list[OverpaymentRiskResponse]],
     summary="Preview overpayment risk",
 )
 def preview_overpayment_risk(
@@ -234,7 +217,7 @@ def preview_overpayment_risk(
     ]
     
     risk_rows = finance.preview_overpayment_risk(lines=service_lines)
-    return ApiResponse(data=[OverpaymentRiskItem.model_validate(r) for r in risk_rows])
+    return ApiResponse(data=[OverpaymentRiskResponse.model_validate(r) for r in risk_rows])
 
 
 from fastapi.responses import Response

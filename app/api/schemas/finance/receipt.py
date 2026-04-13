@@ -22,10 +22,6 @@ class ReceiptCreationResponse(BaseModel):
     payment_ids: list[int]
 
 
-# Backward compatibility alias (deprecated, use ReceiptCreationResponse)
-ReceiptCreatedPublic = ReceiptCreationResponse
-
-
 class ReceiptLineResponse(BaseModel):
     """Receipt line item returned in responses."""
     id: int
@@ -52,11 +48,6 @@ class ReceiptHeaderResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-# Backward compatibility aliases (deprecated, use ReceiptLineResponse and ReceiptHeaderResponse)
-ReceiptLinePublic = ReceiptLineResponse
-ReceiptHeaderPublic = ReceiptHeaderResponse
-
-
 class ReceiptDetailResponse(BaseModel):
     """Full receipt detail including header and lines."""
     receipt: ReceiptHeaderResponse
@@ -80,11 +71,6 @@ class RefundResponse(BaseModel):
     receipt_number: Optional[str] = None
     refunded_amount: float
     new_balance: Optional[float] = None
-
-
-# Backward compatibility aliases (deprecated, use ReceiptDetailResponse and RefundResponse)
-ReceiptDetailPublic = ReceiptDetailResponse
-RefundResultPublic = RefundResponse
 
 
 class ReceiptLineRequest(BaseModel):
@@ -170,8 +156,3 @@ class ReceiptFinalizedDTO(BaseModel):
     payment_ids: list[int]
 
     model_config = {"from_attributes": True}
-
-
-# Backward compatibility aliases (deprecated, use ReceiptGenerationResponse and BatchReceiptItem)
-ReceiptGeneratedDTO = ReceiptGenerationResponse
-BatchReceiptResultDTO = BatchReceiptItem

@@ -9,7 +9,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
-class CreditApplicationItemDTO(BaseModel):
+class CreditApplicationItem(BaseModel):
     """Individual credit application record."""
     credit_id: int = Field(..., description="ID of the credit record applied")
     amount_applied: float = Field(..., description="Amount applied from this credit")
@@ -18,7 +18,7 @@ class CreditApplicationItemDTO(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class ApplyCreditRequestDTO(BaseModel):
+class ApplyCreditRequest(BaseModel):
     """Request to apply credit to an enrollment."""
     student_id: int = Field(..., description="Student ID with available credit")
     enrollment_id: int = Field(..., description="Enrollment to apply credit to")
@@ -27,12 +27,12 @@ class ApplyCreditRequestDTO(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class ApplyCreditResponseDTO(BaseModel):
+class ApplyCreditResponse(BaseModel):
     """Response after applying credit to an enrollment."""
     student_id: int = Field(..., description="Student ID")
     enrollment_id: int = Field(..., description="Target enrollment ID")
     amount_applied: float = Field(..., description="Total amount applied")
-    credit_applications: List[CreditApplicationItemDTO] = Field(..., description="Individual credit applications")
+    credit_applications: List[CreditApplicationItem] = Field(..., description="Individual credit applications")
     enrollment_balance_after: float = Field(..., description="Enrollment balance after credit application")
     applied_at: datetime = Field(..., description="Timestamp of credit application")
     applied_by: Optional[int] = Field(None, description="User ID who performed the action")
@@ -40,7 +40,7 @@ class ApplyCreditResponseDTO(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class CreditBalanceResponseDTO(BaseModel):
+class CreditBalanceResponse(BaseModel):
     """Student credit balance response."""
     student_id: int = Field(..., description="Student ID")
     available_credit: float = Field(..., description="Total available credit amount")
@@ -49,7 +49,7 @@ class CreditBalanceResponseDTO(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class StudentCreditInfoDTO(BaseModel):
+class StudentCreditInfo(BaseModel):
     """Detailed student credit information."""
     credit_id: int = Field(..., description="Credit record ID")
     student_id: int = Field(..., description="Student ID")

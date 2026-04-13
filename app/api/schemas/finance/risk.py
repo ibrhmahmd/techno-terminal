@@ -8,16 +8,16 @@ financial risk calculations, strictly separated from router logic.
 """
 from pydantic import BaseModel
 
-from app.modules.finance.finance_schemas import ReceiptLineInput
+from app.api.schemas.finance.receipt import ReceiptLineRequest
 
 
-class PreviewRiskRequest(BaseModel):
+class PreviewOverpaymentRequest(BaseModel):
     """Request to preview overpayment risk for receipt lines."""
-    lines: list[ReceiptLineInput]
+    lines: list[ReceiptLineRequest]
 
 
-class OverpaymentRiskItem(BaseModel):
-    """Risk item showing potential credit/overpayment."""
+class OverpaymentRiskResponse(BaseModel):
+    """Response showing potential credit/overpayment for a line item."""
     student_id: int
     enrollment_id: int
     amount: float

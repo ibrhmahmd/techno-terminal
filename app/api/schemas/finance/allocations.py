@@ -9,7 +9,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
-class AllocationReversalResponseDTO(BaseModel):
+class AllocationReversalResponse(BaseModel):
     """Response after reversing a payment allocation."""
     original_allocation_id: int = Field(..., description="ID of the original allocation being reversed")
     reversal_allocation_id: int = Field(..., description="ID of the new reversal record")
@@ -21,7 +21,7 @@ class AllocationReversalResponseDTO(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class PaymentAllocationItemDTO(BaseModel):
+class PaymentAllocationItem(BaseModel):
     """Individual payment allocation item."""
     allocation_id: int = Field(..., description="Allocation record ID")
     payment_id: int = Field(..., description="Parent payment ID")
@@ -35,10 +35,10 @@ class PaymentAllocationItemDTO(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class PaymentAllocationsResponseDTO(BaseModel):
+class PaymentAllocationsResponse(BaseModel):
     """Response containing all allocations for a payment."""
     payment_id: int = Field(..., description="Payment ID")
-    allocations: List[PaymentAllocationItemDTO] = Field(..., description="List of allocations")
+    allocations: List[PaymentAllocationItem] = Field(..., description="List of allocations")
     total_allocated: float = Field(..., description="Sum of all allocated amounts")
     
     model_config = {"from_attributes": True}
