@@ -31,17 +31,17 @@
 
 ## 🚧 Remaining
 
-### Frontend (Not Started)
-- React + Vite + TypeScript setup
-- Component library selection
-- API client generation
-- Page routing
+### Frontend (✅ Complete)
+- React + Vite + TypeScript + TanStack Query implementation
+- Component library: [to be documented]
+- API client: Axios with interceptors
+- Page routing: React Router v6
 
 ### Production Readiness
-- CI/CD pipeline
-- Staging environment
-- Monitoring/logging
-- Performance optimization
+- ✅ Deployment: Leapcell with railpack.json
+- CI/CD pipeline (planned)
+- Enhanced monitoring/logging (planned)
+- Performance optimization (ongoing)
 
 ## Known Issues
 1. JWT tokens expire hourly (operational - regenerate via `scripts/get_test_jwt.py`)
@@ -49,7 +49,30 @@
 3. Deployment worker restarts occasionally (mitigated with 300s timeout)
 
 ## Next Milestone
-Frontend development kickoff (per docs/planning/FRONTEND_PLAN.md)
+Production hardening: CI/CD, monitoring, performance optimization
+
+## Architecture Effort Summary
+
+### Design Patterns Implemented (6 patterns)
+1. **Repository Pattern** - Pure data access across all modules
+2. **Service Layer Pattern** - Business logic encapsulation with DI
+3. **Dependency Injection** - FastAPI `Depends()` for all dependencies
+4. **DTO Pattern** - Pydantic models for all API I/O
+5. **Factory Pattern** - Service instantiation per request
+6. **Strategy Pattern** - Balance calculation algorithms
+
+### Modular Architecture (15 Routers, 10 Domains)
+- **academics/**: 6 router modules (courses, groups, sessions, lifecycle, competitions)
+- **analytics/**: 4 router modules (academic, financial, competition, BI)
+- **crm/**: 4 router modules (students, parents, history)
+- **finance/**: 4 router modules (balance, receipts, finance)
+- **standalone**: attendance, auth, competitions, enrollments, HR
+
+### Database Design
+- **16 tables** with proper relationships and constraints
+- **5 views** for complex queries
+- **21 migrations** with triggers and check constraints
+- **Hybrid schema approach**: `schema.sql` + `migrations/*.sql`
 
 ## Backend API (100% Complete)
 

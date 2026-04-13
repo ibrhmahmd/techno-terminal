@@ -27,10 +27,60 @@ PDF_LOGO_PATH            # Optional PDF branding
 ```
 
 ## Database Schema
-- **16 tables:** parents, employees, users, students, student_parents, courses, groups, sessions, enrollments, attendance, receipts, payments, competitions, competition_categories, teams, team_members
-- **5 views:** v_students, v_enrollment_balance, v_enrollment_attendance, v_siblings, v_group_session_count
-- **21 migrations:** in `db/migrations/` (002-021, sequential)
-- **Recent fixes:** Migration 020 (groups status constraint), 021 (attendance status constraint)
+
+### Table Inventory (16 Tables)
+
+| Table | Purpose | Key Relationships |
+|-------|---------|-------------------|
+| **parents** | Parent/guardian directory | student_parents (M:M) |
+| **students** | Student profiles | enrollments, attendance, payments |
+| **student_parents** | Junction: students ↔ parents | M:M relationship with metadata |
+| **employees** | Staff directory | users, groups (instructor), sessions |
+| **users** | System accounts (linked to Supabase) | employees, audit fields |
+| **courses** | Course catalog | groups |
+| **groups** | Course sections/cohorts | course, instructor, sessions, enrollments |
+| **sessions** | Individual class meetings | group, attendance |
+| **enrollments** | Student-group registrations | student, group, payments |
+| **attendance** | Session attendance tracking | student, session, enrollment |
+| **receipts** | Payment receipts | payments |
+| **payments** | Financial transactions | receipt, student, enrollment |
+| **competitions** | Competition events | competition_categories |
+| **competition_categories** | Competition divisions | competition, teams |
+| **teams** | Competition teams | category, group, team_members |
+| **team_members** | Students in teams | team, student |
+
+### View Inventory (5 Views)
+
+| View | Purpose |
+|------|---------|
+| **v_students** | Student details with aggregated info |
+| **v_enrollment_balance** | Real-time balance per enrollment |
+| **v_enrollment_attendance** | Attendance stats per enrollment |
+| **v_siblings** | Sibling relationships for families |
+| **v_group_session_count** | Session counts per group |
+
+### Key Database Features
+
+**Triggers (Migration 019)**
+- `update_student_balance()` - Auto-recalculates balance on payment changes
+- Materialized view refresh for performance
+
+**Check Constraints (Migrations 020, 021)**
+- `groups_status_check` - Validates status: active, inactive, completed, archived
+- `attendance_status_check` - Validates: present, absent, cancelled
+
+**Indexes**
+- `idx_enrollments_active_unique` - Prevents duplicate active enrollments per student/group
+- `receipts_paid_at_index` - Optimizes payment date range queries
+
+### Migration History (21 Files)
+Sequential migrations from 002-021 covering:
+- Supabase roles, employee identity, audit timestamps
+- Enrollment balance, parent-guardian rename
+- Competition fees, group lifecycle, waiting status
+- Balance tables, payment allocations, activity logging
+- Receipt enhancements, balance triggers, history views
+- Status constraint fixes (020, 021)
 
 ## Development Commands
 ```bash
