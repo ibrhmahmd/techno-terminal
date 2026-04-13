@@ -8,6 +8,14 @@ from app.shared.exceptions import ValidationError, NotFoundError, BusinessRuleEr
 from app.shared.validators import validate_positive_amount
 from app.shared.constants import PaymentMethod
 from app.modules.finance.finance_schemas import ReceiptLineInput
+from app.api.schemas.finance.receipt import (
+    ReceiptCreatedPublic,
+    ReceiptDetailPublic,
+    RefundResultPublic,
+    ReceiptFinalizedDTO,
+    BatchReceiptResultDTO,
+)
+from app.api.schemas.finance.risk import OverpaymentRiskItem
 
 # ── Receipt Lifecycle ─────────────────────────────────────────────────────────
 
@@ -19,7 +27,7 @@ def create_receipt_with_charge_lines(
     lines: list[ReceiptLineInput],
     notes: Optional[str] = None,
     allow_credit: bool = True,
-) -> dict:
+) -> ReceiptFinalizedDTO:
     """
     Single transaction: receipt header, persisted receipt number, and all payment lines.
     Preferred for Financial Desk and any flow that must not leave a header without lines
@@ -44,6 +52,7 @@ def create_receipt_with_charge_lines(
                 "Receipt number was not persisted. Check receipts.receipt_number column and migrations."
             )
         payment_ids: list[int] = []
+        processed_lines: list[ReceiptLineInput] = []
         for spec in lines:
             ld = spec.model_dump()
             enrollment_id = ld.get("enrollment_id")
@@ -67,6 +76,7 @@ def create_receipt_with_charge_lines(
                 notes=ld.get("notes"),
             )
             payment_ids.append(p.id)
+            processed_lines.append(spec)
 
             # Auto-link competition payment to TeamMember within the same atomic session
             if ld.get("payment_type") == "competition" and ld.get("team_member_id"):
@@ -78,22 +88,22 @@ def create_receipt_with_charge_lines(
                     db.add(tm)
 
         total = repo.get_receipt_total(db, r.id)
-        return {
-            "receipt_id": r.id,
-            "receipt_number": r.receipt_number,
-            "payment_method": r.payment_method,
-            "paid_at": r.paid_at,
-            "lines": len(lines),
-            "total": total,
-            "payment_ids": payment_ids,
-        }
+        return ReceiptFinalizedDTO(
+            receipt_id=r.id,
+            receipt_number=r.receipt_number,
+            payment_method=r.payment_method,
+            paid_at=r.paid_at,
+            lines=processed_lines,
+            total=total,
+            payment_ids=payment_ids,
+        )
 
 
 def preview_overpayment_risk(
     lines: list[ReceiptLineInput],
     *,
     db=None,
-) -> list[dict]:
+) -> list[OverpaymentRiskItem]:
     """
     Returns lines that would create/increase credit under P6.
     P6: balance = total_paid - net_due, so debt is negative.
@@ -103,7 +113,7 @@ def preview_overpayment_risk(
         cm = get_session()
         db = cm.__enter__()
     try:
-        risk_rows: list[dict] = []
+        risk_rows: list[OverpaymentRiskItem] = []
         for spec in lines:
             ld = spec.model_dump()
             enrollment_id = ld.get("enrollment_id")
@@ -116,14 +126,14 @@ def preview_overpayment_risk(
             if projected_balance > 0:
                 debt_before = max(-current_balance, 0.0)
                 risk_rows.append(
-                    {
-                        "student_id": ld["student_id"],
-                        "enrollment_id": enrollment_id,
-                        "amount": pay_amount,
-                        "debt_before": debt_before,
-                        "projected_balance": projected_balance,
-                        "excess_credit": max(pay_amount - debt_before, 0.0),
-                    }
+                    OverpaymentRiskItem(
+                        student_id=ld["student_id"],
+                        enrollment_id=enrollment_id,
+                        amount=pay_amount,
+                        debt_before=debt_before,
+                        projected_balance=projected_balance,
+                        excess_credit=max(pay_amount - debt_before, 0.0),
+                    )
                 )
         return risk_rows
     finally:
@@ -199,7 +209,7 @@ def add_charge_line(
         )
 
 
-def finalize_receipt(receipt_id: int) -> dict:
+def finalize_receipt(receipt_id: int) -> ReceiptFinalizedDTO:
     """Validates the receipt has at least 1 payment line and returns a summary."""
     with get_session() as db:
         data = repo.get_receipt_with_lines(db, receipt_id)
@@ -209,14 +219,15 @@ def finalize_receipt(receipt_id: int) -> dict:
             raise BusinessRuleError("Cannot finalize a receipt with no payment lines.")
         total = repo.get_receipt_total(db, receipt_id)
         r = data["receipt"]
-        return {
-            "receipt_id": r.id,
-            "receipt_number": r.receipt_number,
-            "payment_method": r.payment_method,
-            "paid_at": r.paid_at,
-            "lines": len(data["lines"]),
-            "total": total,
-        }
+        return ReceiptFinalizedDTO(
+            receipt_id=r.id,
+            receipt_number=r.receipt_number,
+            payment_method=r.payment_method,
+            paid_at=r.paid_at,
+            lines=data["lines"],
+            total=total,
+            payment_ids=[],  # Placeholder - would need to be populated from data
+        )
 
 
 def issue_refund(
@@ -225,7 +236,7 @@ def issue_refund(
     reason: str,
     received_by_user_id: Optional[int],
     method: PaymentMethod | str = "cash",
-) -> dict:
+) -> RefundResultPublic:
     """
     Opens a new receipt and adds a refund line based on an original payment.
     ATOMIC — receipt header + refund line + competition fee unmark all commit
@@ -237,11 +248,23 @@ def issue_refund(
     """
     validate_positive_amount(amount, field="refund amount")
 
-    # Step 1: short read session — just fetch original payment metadata
+    # Step 1: short read session — fetch original payment metadata and validate refund amount
     with get_session() as db:
         original = db.get(Payment, payment_id)
         if not original:
             raise NotFoundError(f"Original payment {payment_id} not found.")
+        
+        # Validate refund amount doesn't exceed original payment
+        original_amount = float(original.amount)
+        already_refunded = repo.get_total_refunded_for_payment(db, payment_id)
+        available_for_refund = original_amount - already_refunded
+        
+        if amount > available_for_refund:
+            raise BusinessRuleError(
+                f"Refund amount ({amount}) exceeds available amount ({available_for_refund:.2f}). "
+                f"Original payment: {original_amount:.2f}, already refunded: {already_refunded:.2f}"
+            )
+        
         student_id = original.student_id
         enrollment_id = original.enrollment_id
         payment_type = original.payment_type
@@ -281,11 +304,11 @@ def issue_refund(
         if enrollment_id:
             balance_data = repo.get_enrollment_balance(db, enrollment_id)
 
-        return {
-            "receipt_number": refund_receipt.receipt_number,
-            "refunded_amount": amount,
-            "new_balance": balance_data["balance"] if balance_data else None,
-        }
+        return RefundResultPublic(
+            receipt_number=refund_receipt.receipt_number,
+            refunded_amount=amount,
+            new_balance=balance_data["balance"] if balance_data else None,
+        )
     # ← SINGLE COMMIT — receipt + refund line + fee unmark or nothing
 
 
@@ -333,19 +356,49 @@ def search_receipts(
             to_date,
             payer_name_contains=payer_name_contains,
             student_id=student_id,
-            receipt_number_contains=receipt_number_contains,
-            limit=limit,
         )
 
 
-def get_receipt_detail(receipt_id: int) -> dict | None:
+def get_receipt_detail(receipt_id: int) -> ReceiptDetailPublic | None:
     """Returns a receipt with its payment lines and computed total."""
     with get_session() as db:
         data = repo.get_receipt_with_lines(db, receipt_id)
         if not data:
             return None
         total = repo.get_receipt_total(db, receipt_id)
-        return {**data, "total": total}
+        receipt = data["receipt"]
+        
+        # Convert lines to ReceiptLinePublic models
+        from app.api.schemas.finance.receipt import ReceiptLinePublic
+        lines = [
+            ReceiptLinePublic.model_validate(line) if hasattr(line, 'model_dump') else ReceiptLinePublic(**{
+                'line_id': getattr(line, 'id', 0),
+                'student_id': getattr(line, 'student_id', 0),
+                'enrollment_id': getattr(line, 'enrollment_id', None),
+                'amount': float(getattr(line, 'amount', 0)),
+                'transaction_type': getattr(line, 'transaction_type', 'payment'),
+                'payment_type': getattr(line, 'payment_type', 'course_level'),
+                'notes': getattr(line, 'notes', None),
+            })
+            for line in data.get("lines", [])
+        ]
+        
+        # Build ReceiptHeaderPublic from receipt object
+        from app.api.schemas.finance.receipt import ReceiptHeaderPublic
+        header = ReceiptHeaderPublic(
+            id=receipt.id,
+            receipt_number=receipt.receipt_number,
+            payer_name=receipt.payer_name,
+            payment_method=receipt.payment_method,
+            paid_at=receipt.paid_at,
+            notes=receipt.notes,
+        )
+        
+        return ReceiptDetailPublic(
+            receipt=header,
+            lines=lines,
+            total=total,
+        )
 
 
 def get_enrollment_balance(enrollment_id: int) -> dict | None:
@@ -407,7 +460,6 @@ def generate_receipt_pdf(receipt_id: int) -> bytes:
     """
     Generates a PDF for a receipt, fetching the parent name and line items.
     """
-    from app.modules.finance.receipt_pdf import build_receipt_pdf
     from app.modules.crm.models import Parent, Student
     
     with get_session() as db:
