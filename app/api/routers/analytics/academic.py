@@ -10,17 +10,16 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 
 from app.api.schemas.common import ApiResponse
-from app.api.schemas.analytics.dashboard import DashboardSummaryPublic
+from app.api.schemas.analytics import (
+    DashboardSummaryResponse,
+    UnpaidAttendeeItem,
+    GroupRosterItem,
+    AttendanceHeatmapItem,
+    StudentProgressItem,
+    CourseCompletionItem,
+)
 from app.api.dependencies import require_admin, get_academic_analytics_service
 from app.modules.auth import User
-
-from app.modules.analytics.schemas import (
-    UnpaidAttendeeDTO,
-    GroupRosterRowDTO,
-    AttendanceHeatmapRowDTO,
-    StudentProgressDTO,
-    CourseCompletionDTO,
-)
 from app.modules.analytics.services.academic_service import AcademicAnalyticsService
 
 router = APIRouter(tags=["Analytics — Academic"])
@@ -28,7 +27,7 @@ router = APIRouter(tags=["Analytics — Academic"])
 
 @router.get(
     "/analytics/dashboard/summary",
-    response_model=ApiResponse[DashboardSummaryPublic],
+    response_model=ApiResponse[DashboardSummaryResponse],
     summary="Get high-level dashboard aggregates",
 )
 def get_dashboard_summary(
@@ -40,7 +39,7 @@ def get_dashboard_summary(
     today_sessions = svc.get_today_sessions()
     
     return ApiResponse(
-        data=DashboardSummaryPublic(
+        data=DashboardSummaryResponse(
             active_enrollments=active_enrollments,
             today_sessions_count=len(today_sessions),
         ),
@@ -50,7 +49,7 @@ def get_dashboard_summary(
 
 @router.get(
     "/analytics/academics/unpaid-attendees",
-    response_model=ApiResponse[list[UnpaidAttendeeDTO]],
+    response_model=ApiResponse[list[UnpaidAttendeeItem]],
     summary="Get unpaid attendees for today",
 )
 def get_unpaid_attendees(
@@ -64,7 +63,7 @@ def get_unpaid_attendees(
 
 @router.get(
     "/analytics/academics/groups/{group_id}/roster",
-    response_model=ApiResponse[list[GroupRosterRowDTO]],
+    response_model=ApiResponse[list[GroupRosterItem]],
     summary="Get group roster",
 )
 def get_group_roster(
@@ -79,7 +78,7 @@ def get_group_roster(
 
 @router.get(
     "/analytics/academics/groups/{group_id}/heatmap",
-    response_model=ApiResponse[list[AttendanceHeatmapRowDTO]],
+    response_model=ApiResponse[list[AttendanceHeatmapItem]],
     summary="Get attendance heatmap for group",
 )
 def get_attendance_heatmap(
@@ -94,7 +93,7 @@ def get_attendance_heatmap(
 
 @router.get(
     "/analytics/academics/student-progress",
-    response_model=ApiResponse[list[StudentProgressDTO]],
+    response_model=ApiResponse[list[StudentProgressItem]],
     summary="Get student progress analytics",
 )
 def get_student_progress(
@@ -112,7 +111,7 @@ def get_student_progress(
 
 @router.get(
     "/analytics/academics/course-completion",
-    response_model=ApiResponse[list[CourseCompletionDTO]],
+    response_model=ApiResponse[list[CourseCompletionItem]],
     summary="Get course completion rates",
 )
 def get_course_completion(

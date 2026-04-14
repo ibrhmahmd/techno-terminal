@@ -9,17 +9,16 @@ from datetime import date
 from fastapi import APIRouter, Depends, Query
 
 from app.api.schemas.common import ApiResponse
+from app.api.schemas.analytics import (
+    RevenueByDateItem,
+    RevenueByMethodItem,
+    OutstandingByGroupItem,
+    TopDebtorItem,
+    RevenueMetricsResponse,
+    RevenueForecastItem,
+)
 from app.api.dependencies import require_admin, get_financial_analytics_service
 from app.modules.auth import User
-
-from app.modules.analytics.schemas import (
-    RevenueByDateDTO,
-    RevenueByMethodDTO,
-    OutstandingByGroupDTO,
-    TopDebtorDTO,
-    RevenueMetricsDTO,
-    RevenueForecastDTO,
-)
 from app.modules.analytics.services.financial_service import FinancialAnalyticsService
 
 router = APIRouter(tags=["Analytics — Financial"])
@@ -27,7 +26,7 @@ router = APIRouter(tags=["Analytics — Financial"])
 
 @router.get(
     "/analytics/finance/revenue-by-date",
-    response_model=ApiResponse[list[RevenueByDateDTO]],
+    response_model=ApiResponse[list[RevenueByDateItem]],
     summary="Get revenue breakdown by date",
 )
 def get_revenue_by_date(
@@ -42,7 +41,7 @@ def get_revenue_by_date(
 
 @router.get(
     "/analytics/finance/revenue-by-method",
-    response_model=ApiResponse[list[RevenueByMethodDTO]],
+    response_model=ApiResponse[list[RevenueByMethodItem]],
     summary="Get revenue breakdown by payment method",
 )
 def get_revenue_by_method(
@@ -57,7 +56,7 @@ def get_revenue_by_method(
 
 @router.get(
     "/analytics/finance/outstanding-by-group",
-    response_model=ApiResponse[list[OutstandingByGroupDTO]],
+    response_model=ApiResponse[list[OutstandingByGroupItem]],
     summary="Get outstanding balances by group",
 )
 def get_outstanding_by_group(
@@ -70,7 +69,7 @@ def get_outstanding_by_group(
 
 @router.get(
     "/analytics/finance/top-debtors",
-    response_model=ApiResponse[list[TopDebtorDTO]],
+    response_model=ApiResponse[list[TopDebtorItem]],
     summary="Get top debtors",
 )
 def get_top_debtors(
@@ -84,7 +83,7 @@ def get_top_debtors(
 
 @router.get(
     "/analytics/finance/revenue-metrics",
-    response_model=ApiResponse[RevenueMetricsDTO],
+    response_model=ApiResponse[RevenueMetricsResponse],
     summary="Get extended revenue metrics with trend analysis",
 )
 def get_revenue_metrics(
@@ -98,7 +97,7 @@ def get_revenue_metrics(
 
 @router.get(
     "/analytics/finance/revenue-forecast",
-    response_model=ApiResponse[list[RevenueForecastDTO]],
+    response_model=ApiResponse[list[RevenueForecastItem]],
     summary="Get revenue forecast for future months",
 )
 def get_revenue_forecast(
