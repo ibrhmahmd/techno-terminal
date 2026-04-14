@@ -23,7 +23,7 @@ Analytics endpoints for financial metrics: revenue tracking, outstanding balance
 | start | string (date) | Yes | Start date (YYYY-MM-DD) |
 | end | string (date) | Yes | End date (YYYY-MM-DD) |
 
-**Response (200):** `ApiResponse<list<RevenueByDateDTO>>`
+**Response (200):** `ApiResponse<list<RevenueByDateItem>>`
 
 **Error Responses:**
 - 422 Validation Error - Invalid date format or start > end
@@ -61,7 +61,7 @@ Analytics endpoints for financial metrics: revenue tracking, outstanding balance
 | start | string (date) | Yes | Start date (YYYY-MM-DD) |
 | end | string (date) | Yes | End date (YYYY-MM-DD) |
 
-**Response (200):** `ApiResponse<list<RevenueByMethodDTO>>`
+**Response (200):** `ApiResponse<list<RevenueByMethodItem>>`
 
 **Error Responses:**
 - 422 Validation Error - Invalid date format or start > end
@@ -100,7 +100,7 @@ Analytics endpoints for financial metrics: revenue tracking, outstanding balance
 
 **Authentication:** Admin required
 
-**Response (200):** `ApiResponse<list<OutstandingByGroupDTO>>`
+**Response (200):** `ApiResponse<list<OutstandingByGroupItem>>`
 
 **Example Response:**
 ```json
@@ -133,7 +133,7 @@ Analytics endpoints for financial metrics: revenue tracking, outstanding balance
 |------|------|----------|---------|-------------|-------------|
 | limit | integer | No | 15 | ge=1, le=100 | Number of results to return |
 
-**Response (200):** `ApiResponse<list<TopDebtorDTO>>`
+**Response (200):** `ApiResponse<list<TopDebtorItem>>`
 
 **Error Responses:**
 - 422 Validation Error - limit must be between 1 and 100
@@ -169,7 +169,7 @@ Analytics endpoints for financial metrics: revenue tracking, outstanding balance
 |------|------|----------|---------|-------------|-------------|
 | months | integer | No | 6 | ge=1, le=24 | Number of months to analyze |
 
-**Response (200):** `ApiResponse<RevenueMetricsDTO>`
+**Response (200):** `ApiResponse<RevenueMetricsResponse>`
 
 **Error Responses:**
 - 422 Validation Error - months must be between 1 and 24
@@ -210,7 +210,7 @@ Analytics endpoints for financial metrics: revenue tracking, outstanding balance
 |------|------|----------|---------|-------------|-------------|
 | months_ahead | integer | No | 3 | ge=1, le=12 | Number of months to forecast |
 
-**Response (200):** `ApiResponse<list<RevenueForecastDTO>>`
+**Response (200):** `ApiResponse<list<RevenueForecastItem>>`
 
 **Error Responses:**
 - 422 Validation Error - months_ahead must be between 1 and 12
@@ -241,7 +241,7 @@ Analytics endpoints for financial metrics: revenue tracking, outstanding balance
 
 ## Schemas
 
-### RevenueByDateDTO
+### RevenueByDateItem
 Daily revenue total.
 
 | Field | Type | Required | Description |
@@ -259,7 +259,7 @@ Daily revenue total.
 
 ---
 
-### RevenueByMethodDTO
+### RevenueByMethodItem
 Revenue grouped by payment method.
 
 | Field | Type | Required | Description |
@@ -279,7 +279,7 @@ Revenue grouped by payment method.
 
 ---
 
-### OutstandingByGroupDTO
+### OutstandingByGroupItem
 Outstanding balance summary per group.
 
 | Field | Type | Required | Description |
@@ -303,7 +303,7 @@ Outstanding balance summary per group.
 
 ---
 
-### TopDebtorDTO
+### TopDebtorItem
 Student with high outstanding balance.
 
 | Field | Type | Required | Description |
@@ -327,7 +327,7 @@ Student with high outstanding balance.
 
 ---
 
-### RevenueMetricsDTO
+### RevenueMetricsResponse
 Extended revenue metrics with trend analysis.
 
 | Field | Type | Required | Description |
@@ -340,7 +340,7 @@ Extended revenue metrics with trend analysis.
 | previous_period_revenue | float | Yes | Previous comparable period revenue |
 | revenue_change_pct | float | Yes | Percentage change vs previous |
 | trend_direction | string | Yes | "up", "down", or "stable" |
-| monthly_breakdown | list[RevenueByDateDTO] | Yes | Monthly revenue details |
+| monthly_breakdown | list[RevenueByDateItem] | Yes | Monthly revenue details |
 
 **Example:**
 ```json
@@ -362,7 +362,7 @@ Extended revenue metrics with trend analysis.
 
 ---
 
-### RevenueForecastDTO
+### RevenueForecastItem
 Revenue forecast for a future month.
 
 | Field | Type | Required | Description |

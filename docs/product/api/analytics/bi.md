@@ -22,7 +22,7 @@ Advanced analytics endpoints for business intelligence: trends, retention, perfo
 |------|------|----------|-------------|
 | cutoff | string (date) | No | Start date for trend analysis (YYYY-MM-DD). Defaults to 90 days ago. |
 
-**Response (200):** `ApiResponse<list<EnrollmentTrendDTO>>`
+**Response (200):** `ApiResponse<list<EnrollmentTrendItem>>`
 
 **Example Response:**
 ```json
@@ -51,7 +51,7 @@ Advanced analytics endpoints for business intelligence: trends, retention, perfo
 
 **Authentication:** Admin required
 
-**Response (200):** `ApiResponse<list<RetentionMetricsDTO>>`
+**Response (200):** `ApiResponse<list<RetentionMetricsResponse>>`
 
 **Example Response:**
 ```json
@@ -78,7 +78,7 @@ Advanced analytics endpoints for business intelligence: trends, retention, perfo
 
 **Authentication:** Admin required
 
-**Response (200):** `ApiResponse<list<InstructorPerformanceDTO>>`
+**Response (200):** `ApiResponse<list<InstructorPerformanceItem>>`
 
 **Example Response:**
 ```json
@@ -104,7 +104,7 @@ Advanced analytics endpoints for business intelligence: trends, retention, perfo
 
 **Authentication:** Admin required
 
-**Response (200):** `ApiResponse<list<LevelRetentionFunnelDTO>>`
+**Response (200):** `ApiResponse<list<LevelRetentionFunnelItem>>`
 
 **Example Response:**
 ```json
@@ -135,7 +135,7 @@ Advanced analytics endpoints for business intelligence: trends, retention, perfo
 
 **Authentication:** Admin required
 
-**Response (200):** `ApiResponse<list<InstructorValueMatrixDTO>>`
+**Response (200):** `ApiResponse<list<InstructorValueMatrixItem>>`
 
 **Example Response:**
 ```json
@@ -161,7 +161,7 @@ Advanced analytics endpoints for business intelligence: trends, retention, perfo
 
 **Authentication:** Admin required
 
-**Response (200):** `ApiResponse<list<ScheduleUtilizationDTO>>`
+**Response (200):** `ApiResponse<list<ScheduleUtilizationItem>>`
 
 **Example Response:**
 ```json
@@ -189,7 +189,7 @@ Advanced analytics endpoints for business intelligence: trends, retention, perfo
 
 **Authentication:** Admin required
 
-**Response (200):** `ApiResponse<list<FlightRiskStudentDTO>>`
+**Response (200):** `ApiResponse<list<FlightRiskStudentItem>>`
 
 **Example Response:**
 ```json
@@ -221,7 +221,7 @@ Advanced analytics endpoints for business intelligence: trends, retention, perfo
 |------|------|----------|---------|-------------|-------------|
 | days | integer | No | 30 | ge=1, le=90 | Number of days to analyze |
 
-**Response (200):** `ApiResponse<list<UserEngagementDTO>>`
+**Response (200):** `ApiResponse<list<UserEngagementItem>>`
 
 **Error Responses:**
 - 422 Validation Error - days must be between 1 and 90
@@ -261,7 +261,7 @@ Advanced analytics endpoints for business intelligence: trends, retention, perfo
 |------|------|----------|---------|-------------|-------------|
 | months | integer | No | 6 | ge=1, le=12 | Number of months for cohort analysis |
 
-**Response (200):** `ApiResponse<list<RetentionCohortDTO>>`
+**Response (200):** `ApiResponse<list<RetentionCohortItem>>`
 
 **Error Responses:**
 - 422 Validation Error - months must be between 1 and 12
@@ -294,7 +294,7 @@ Advanced analytics endpoints for business intelligence: trends, retention, perfo
 
 ## Schemas
 
-### EnrollmentTrendDTO
+### EnrollmentTrendItem
 Daily enrollment count for trend analysis.
 
 | Field | Type | Required | Description |
@@ -312,7 +312,7 @@ Daily enrollment count for trend analysis.
 
 ---
 
-### RetentionMetricsDTO
+### RetentionMetricsResponse
 Retention metrics per course.
 
 | Field | Type | Required | Description |
@@ -334,7 +334,7 @@ Retention metrics per course.
 
 ---
 
-### InstructorPerformanceDTO
+### InstructorPerformanceItem
 Performance metrics per instructor.
 
 | Field | Type | Required | Description |
@@ -354,7 +354,7 @@ Performance metrics per instructor.
 
 ---
 
-### LevelRetentionFunnelDTO
+### LevelRetentionFunnelItem
 Student count per level showing progression funnel.
 
 | Field | Type | Required | Description |
@@ -374,7 +374,7 @@ Student count per level showing progression funnel.
 
 ---
 
-### InstructorValueMatrixDTO
+### InstructorValueMatrixItem
 Revenue and attendance correlation per instructor.
 
 | Field | Type | Required | Description |
@@ -394,7 +394,7 @@ Revenue and attendance correlation per instructor.
 
 ---
 
-### ScheduleUtilizationDTO
+### ScheduleUtilizationItem
 Schedule slot utilization statistics.
 
 | Field | Type | Required | Description |
@@ -418,7 +418,7 @@ Schedule slot utilization statistics.
 
 ---
 
-### FlightRiskStudentDTO
+### FlightRiskStudentItem
 Student flagged as likely to drop out.
 
 | Field | Type | Required | Description |
@@ -440,7 +440,7 @@ Student flagged as likely to drop out.
 
 ---
 
-### UserEngagementDTO
+### UserEngagementItem
 Daily user engagement metrics.
 
 | Field | Type | Required | Description |
@@ -468,7 +468,7 @@ Daily user engagement metrics.
 
 ---
 
-### RetentionCohortDTO
+### RetentionCohortItem
 Cohort-based retention analysis.
 
 | Field | Type | Required | Description |

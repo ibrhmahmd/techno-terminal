@@ -17,7 +17,7 @@ Analytics endpoints for competition metrics: participation tracking and fee coll
 
 **Authentication:** Admin required
 
-**Response (200):** `ApiResponse<list<CompetitionFeeSummaryDTO>>`
+**Response (200):** `ApiResponse<list<CompetitionFeeSummaryResponse>>`
 
 **Example Response:**
 ```json
@@ -42,7 +42,7 @@ Analytics endpoints for competition metrics: participation tracking and fee coll
 
 ## Schemas
 
-### CompetitionFeeSummaryDTO
+### CompetitionFeeSummaryResponse
 Participation and fee summary for a competition.
 
 | Field | Type | Required | Description |

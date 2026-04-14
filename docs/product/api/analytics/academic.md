@@ -17,7 +17,7 @@ Analytics endpoints for academic metrics including enrollments, sessions, attend
 
 **Authentication:** Admin required
 
-**Response (200):** `ApiResponse<DashboardSummaryPublic>`
+**Response (200):** `ApiResponse<DashboardSummaryResponse>`
 
 **Example Response:**
 ```json
@@ -45,7 +45,7 @@ Analytics endpoints for academic metrics including enrollments, sessions, attend
 |------|------|----------|-------------|
 | target_date | string (date) | No | Filter date (YYYY-MM-DD). Defaults to today if not provided. |
 
-**Response (200):** `ApiResponse<list<UnpaidAttendeeDTO>>`
+**Response (200):** `ApiResponse<list<UnpaidAttendeeItem>>`
 
 **Example Response:**
 ```json
@@ -83,7 +83,7 @@ Analytics endpoints for academic metrics including enrollments, sessions, attend
 |------|------|----------|-------------|-------------|
 | level_number | integer | Yes | ge=1 | Level number within the group |
 
-**Response (200):** `ApiResponse<list<GroupRosterRowDTO>>`
+**Response (200):** `ApiResponse<list<GroupRosterItem>>`
 
 **Error Responses:**
 - 422 Validation Error - Invalid level_number
@@ -128,7 +128,7 @@ Analytics endpoints for academic metrics including enrollments, sessions, attend
 |------|------|----------|-------------|-------------|
 | level_number | integer | Yes | ge=1 | Level number within the group |
 
-**Response (200):** `ApiResponse<list<AttendanceHeatmapRowDTO>>`
+**Response (200):** `ApiResponse<list<AttendanceHeatmapItem>>`
 
 **Error Responses:**
 - 422 Validation Error - Invalid level_number
@@ -166,7 +166,7 @@ Analytics endpoints for academic metrics including enrollments, sessions, attend
 | student_id | integer | No | Filter by specific student ID |
 | group_id | integer | No | Filter by specific group ID |
 
-**Response (200):** `ApiResponse<list<StudentProgressDTO>>`
+**Response (200):** `ApiResponse<list<StudentProgressItem>>`
 
 **Example Response:**
 ```json
@@ -202,7 +202,7 @@ Analytics endpoints for academic metrics including enrollments, sessions, attend
 
 **Authentication:** Admin required
 
-**Response (200):** `ApiResponse<list<CourseCompletionDTO>>`
+**Response (200):** `ApiResponse<list<CourseCompletionItem>>`
 
 **Example Response:**
 ```json
@@ -228,7 +228,7 @@ Analytics endpoints for academic metrics including enrollments, sessions, attend
 
 ## Schemas
 
-### DashboardSummaryPublic
+### DashboardSummaryResponse
 High-level dashboard aggregates for admin view.
 
 | Field | Type | Required | Description |
@@ -246,7 +246,7 @@ High-level dashboard aggregates for admin view.
 
 ---
 
-### TodaySessionDTO
+### TodaySessionItem
 Detailed session information for today's schedule.
 
 | Field | Type | Required | Description |
@@ -268,7 +268,7 @@ Detailed session information for today's schedule.
 
 ---
 
-### UnpaidAttendeeDTO
+### UnpaidAttendeeItem
 Student attending sessions with outstanding balance.
 
 | Field | Type | Required | Description |
@@ -292,7 +292,7 @@ Student attending sessions with outstanding balance.
 
 ---
 
-### GroupRosterRowDTO
+### GroupRosterItem
 Single student entry in group roster with attendance stats.
 
 | Field | Type | Required | Description |
@@ -324,7 +324,7 @@ Single student entry in group roster with attendance stats.
 
 ---
 
-### AttendanceHeatmapRowDTO
+### AttendanceHeatmapItem
 Single cell in attendance heatmap (student x session).
 
 | Field | Type | Required | Description |
@@ -350,7 +350,7 @@ Single cell in attendance heatmap (student x session).
 
 ---
 
-### StudentProgressDTO
+### StudentProgressItem
 Student progress analytics for a specific enrollment.
 
 | Field | Type | Required | Description |
@@ -390,7 +390,7 @@ Student progress analytics for a specific enrollment.
 
 ---
 
-### CourseCompletionDTO
+### CourseCompletionItem
 Course completion rates analysis.
 
 | Field | Type | Required | Description |
