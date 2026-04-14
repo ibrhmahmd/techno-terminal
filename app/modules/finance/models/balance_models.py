@@ -32,7 +32,7 @@ class StudentBalance(StudentBalanceBase, table=True):
     updated_by: Optional[int] = Field(default=None, foreign_key="users.id")
 
 
-class StudentBalanceRead(StudentBalanceBase):
+class StudentBalanceItem(StudentBalanceBase):
     """DTO for reading student balance."""
     student_id: int
     updated_by: Optional[int] = None
@@ -61,7 +61,7 @@ class PaymentAllocation(PaymentAllocationBase, table=True):
     allocated_by: Optional[int] = Field(default=None, foreign_key="users.id")
 
 
-class PaymentAllocationRead(PaymentAllocationBase):
+class PaymentAllocationItem(PaymentAllocationBase):
     """DTO for reading payment allocation."""
     id: int
     payment_id: int
@@ -71,7 +71,7 @@ class PaymentAllocationRead(PaymentAllocationBase):
     allocated_by: Optional[int] = None
 
 
-class PaymentAllocationCreate(SQLModel):
+class PaymentAllocationInput(SQLModel):
     """DTO for creating payment allocation."""
     payment_id: int
     enrollment_id: Optional[int] = None
@@ -130,7 +130,7 @@ class StudentCredit(StudentCreditBase, table=True):
 
 # ── DTOs for Balance Operations ──────────────────────────────────────────────
 
-class EnrollmentBalanceDetail(SQLModel):
+class EnrollmentBalanceItem(SQLModel):
     """Detailed balance for a single enrollment."""
     enrollment_id: int
     group_id: int
@@ -142,23 +142,23 @@ class EnrollmentBalanceDetail(SQLModel):
     status: str  # 'paid', 'partial', 'unpaid'
 
 
-class StudentBalanceDTO(SQLModel):
+class StudentBalanceItem(SQLModel):
     """Complete student balance response."""
     student_id: int
     total_amount_due: float
     total_discounts: float
     total_paid: float
     net_balance: float  # negative = debt, positive = credit
-    enrollment_details: List[EnrollmentBalanceDetail]
+    enrollment_details: List[EnrollmentBalanceItem]
     as_of_date: datetime
 
 
-class PaymentAllocationResult(SQLModel):
+class PaymentAllocationResponse(SQLModel):
     """Result of payment allocation operation."""
     payment_id: int
     total_allocated: float
     credit_remaining: float
-    allocations: List[PaymentAllocationRead]
+    allocations: List[PaymentAllocationItem]
     credit_applied: bool
 
 

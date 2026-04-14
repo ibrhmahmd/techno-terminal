@@ -19,7 +19,7 @@ from app.api.schemas.finance.balance import (
 from app.modules.auth.models import User
 from app.modules.finance.services.balance_service import get_balance_service
 from app.modules.finance.models.balance_models import (
-    StudentBalanceDTO,
+    StudentBalanceItem,
     BalanceAdjustmentInput,
 )
 
@@ -31,7 +31,7 @@ router = APIRouter(tags=["Student Balance"])
 
 @router.get(
     "/students/{student_id}/balance",
-    response_model=ApiResponse[StudentBalanceDTO],
+    response_model=ApiResponse[StudentBalanceItem],
     summary="Get student balance",
     description="Retrieve comprehensive balance for a student including enrollment details."
 )

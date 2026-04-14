@@ -14,15 +14,15 @@ from app.modules.enrollments.models.enrollment_models import Enrollment
 from app.modules.finance.models.finance_models import Payment, Receipt
 from app.modules.finance.models.balance_models import (
     PaymentAllocation,
-    PaymentAllocationCreate,
-    PaymentAllocationResult,
+    PaymentAllocationInput,
+    PaymentAllocationResponse,
     StudentCredit,
 )
 from app.api.schemas.finance.credit import (
-    CreditApplicationItemDTO,
-    ApplyCreditResponseDTO,
+    CreditApplicationItem,
+    ApplyCreditResponse,
 )
-from app.api.schemas.finance.allocations import AllocationReversalResponseDTO
+from app.api.schemas.finance.allocations import AllocationReversalResponse
 from app.shared.errors import NotFoundError, BusinessRuleError
 
 
@@ -53,7 +53,7 @@ class PartialPaymentService:
         allocation_strategy: str = 'oldest_first',
         target_enrollment_ids: Optional[List[int]] = None,
         performed_by: Optional[int] = None
-    ) -> PaymentAllocationResult:
+    ) -> PaymentAllocationResponse:
         """
         Allocate a payment across student enrollments.
         
@@ -71,7 +71,7 @@ class PartialPaymentService:
             performed_by: User ID performing the allocation
             
         Returns:
-            PaymentAllocationResult with allocation details
+            PaymentAllocationResponse with allocation details
         """
         db = self._get_db()
         
@@ -151,7 +151,7 @@ class PartialPaymentService:
         
         db.commit()
         
-        return PaymentAllocationResult(
+        return PaymentAllocationResponse(
             payment_id=payment_id,
             total_allocated=float(amount - remaining),
             credit_remaining=float(remaining),
@@ -233,7 +233,7 @@ class PartialPaymentService:
         enrollment_id: int,
         amount: Optional[Decimal] = None,
         performed_by: Optional[int] = None
-    ) -> ApplyCreditResponseDTO:
+    ) -> ApplyCreditResponse:
         """
         Apply available credit to a specific enrollment.
         
@@ -244,7 +244,7 @@ class PartialPaymentService:
             performed_by: User performing the action
             
         Returns:
-            Dict with credit application details
+            ApplyCreditResponse with credit application details
         """
         db = self._get_db()
         
@@ -293,7 +293,7 @@ class PartialPaymentService:
             
             db.add(credit)
             
-            applications.append(CreditApplicationItemDTO(
+            applications.append(CreditApplicationItem(
                 credit_id=credit.id,
                 amount_applied=float(use_from_this),
                 credit_remaining=float(Decimal(str(credit.credit_amount)) - Decimal(str(credit.used_amount)))
@@ -307,7 +307,7 @@ class PartialPaymentService:
         
         db.commit()
         
-        return ApplyCreditResponseDTO(
+        return ApplyCreditResponse(
             student_id=student_id,
             enrollment_id=enrollment_id,
             amount_applied=float(apply_amount),
@@ -334,7 +334,7 @@ class PartialPaymentService:
         allocation_id: int,
         reason: str,
         performed_by: Optional[int] = None
-    ) -> AllocationReversalResponseDTO:
+    ) -> AllocationReversalResponse:
         """
         Reverse a payment allocation (for refunds/corrections).
         
@@ -344,7 +344,7 @@ class PartialPaymentService:
             performed_by: User performing the reversal
             
         Returns:
-            Dict with reversal details
+            AllocationReversalResponse with reversal details
         """
         db = self._get_db()
         
@@ -366,7 +366,7 @@ class PartialPaymentService:
         db.add(reversal)
         db.commit()
         
-        return AllocationReversalResponseDTO(
+        return AllocationReversalResponse(
             original_allocation_id=allocation_id,
             reversal_allocation_id=reversal.id,
             amount_reversed=allocation.allocated_amount,

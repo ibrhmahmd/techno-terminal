@@ -7,12 +7,20 @@ from app.modules.finance import finance_repository as repo
 from app.shared.exceptions import ValidationError, NotFoundError, BusinessRuleError
 from app.shared.validators import validate_positive_amount
 from app.shared.constants import PaymentMethod
-from app.modules.finance.finance_schemas import ReceiptLineInput
+from app.modules.finance.finance_schemas import (
+    ReceiptLineInput,
+    EnrollmentBalanceItem,
+    DailyCollectionItem,
+    DailyReceiptItem,
+    ReceiptSearchItem,
+    UnpaidCompFeeItem,
+)
 from app.api.schemas.finance.receipt import (
     ReceiptCreationResponse,
     ReceiptDetailResponse,
     RefundResponse,
     ReceiptFinalizedDTO,
+    ReceiptLineResponse,
     BatchReceiptItem,
 )
 from app.api.schemas.finance.risk import OverpaymentRiskResponse
@@ -52,7 +60,7 @@ def create_receipt_with_charge_lines(
                 "Receipt number was not persisted. Check receipts.receipt_number column and migrations."
             )
         payment_ids: list[int] = []
-        processed_lines: list[ReceiptLineInput] = []
+        processed_lines: list[ReceiptLineResponse] = []
         for spec in lines:
             ld = spec.model_dump()
             enrollment_id = ld.get("enrollment_id")
@@ -76,7 +84,18 @@ def create_receipt_with_charge_lines(
                 notes=ld.get("notes"),
             )
             payment_ids.append(p.id)
-            processed_lines.append(spec)
+            processed_lines.append(
+                ReceiptLineResponse(
+                    id=p.id,
+                    student_id=p.student_id,
+                    enrollment_id=p.enrollment_id,
+                    amount=float(p.amount),
+                    transaction_type=p.transaction_type,
+                    payment_type=p.payment_type,
+                    discount=float(p.discount_amount) if p.discount_amount else 0.0,
+                    notes=p.notes,
+                )
+            )
 
             # Auto-link competition payment to TeamMember within the same atomic session
             if ld.get("payment_type") == "competition" and ld.get("team_member_id"):
@@ -315,26 +334,60 @@ def issue_refund(
 # ── Balance & Reporting ───────────────────────────────────────────────────────
 
 
-def get_student_financial_summary(student_id: int) -> list[dict]:
+def get_student_financial_summary(student_id: int) -> list[EnrollmentBalanceItem]:
     """Returns all enrollment balances for a student."""
     with get_session() as db:
-        return repo.get_student_balances(db, student_id)
+        rows = repo.get_student_balances(db, student_id)
+        return [
+            EnrollmentBalanceItem(
+                enrollment_id=row.get('enrollment_id', 0),
+                student_id=row.get('student_id', student_id),
+                group_id=row.get('group_id', 0),
+                level_number=row.get('level_number', 0),
+                amount_due=float(row.get('amount_due', 0)),
+                discount_applied=float(row.get('discount_applied', 0)),
+                amount_paid=float(row.get('amount_paid', 0)),
+                remaining_balance=float(row.get('remaining_balance', 0)),
+                status=row.get('status', 'unknown'),
+            )
+            for row in rows
+        ]
 
 
-def get_daily_collections(target_date: Optional[date] = None) -> list[dict]:
+def get_daily_collections(target_date: Optional[date] = None) -> list[DailyCollectionItem]:
     """Sum of payments per payment method for a given date (defaults to today)."""
     if target_date is None:
         target_date = date.today()
     with get_session() as db:
-        return repo.get_daily_collections(db, target_date)
+        rows = repo.get_daily_collections(db, target_date)
+        return [
+            DailyCollectionItem(
+                payment_method=row.get('payment_method', 'unknown'),
+                total_amount=float(row.get('total_amount', 0)),
+                receipt_count=int(row.get('receipt_count', 0)),
+                target_date=target_date,
+            )
+            for row in rows
+        ]
 
 
-def get_daily_receipts(target_date: Optional[date] = None) -> list[dict]:
+def get_daily_receipts(target_date: Optional[date] = None) -> list[DailyReceiptItem]:
     """All receipts issued on a given date with totals."""
     if target_date is None:
         target_date = date.today()
     with get_session() as db:
-        return repo.list_receipts_by_date(db, target_date)
+        rows = repo.list_receipts_by_date(db, target_date)
+        return [
+            DailyReceiptItem(
+                receipt_id=int(row.get('receipt_id', 0)),
+                receipt_number=row.get('receipt_number', ''),
+                payer_name=row.get('payer_name'),
+                total_amount=float(row.get('total', 0)),
+                payment_method=row.get('payment_method', 'unknown'),
+                issued_at=row.get('issued_at') or datetime.now(),
+            )
+            for row in rows
+        ]
 
 
 def search_receipts(
@@ -345,18 +398,29 @@ def search_receipts(
     student_id: Optional[int] = None,
     receipt_number_contains: Optional[str] = None,
     limit: int = 200,
-) -> list[dict]:
+) -> list[ReceiptSearchItem]:
     """Filtered receipt list for Dashboard / ops search (B9)."""
     if to_date < from_date:
         raise ValidationError("End date must be on or after start date.")
     with get_session() as db:
-        return repo.search_receipts(
+        rows = repo.search_receipts(
             db,
             from_date,
             to_date,
             payer_name_contains=payer_name_contains,
             student_id=student_id,
         )
+        return [
+            ReceiptSearchItem(
+                receipt_id=int(row.get('receipt_id', 0)),
+                receipt_number=row.get('receipt_number'),
+                payer_name=row.get('payer_name'),
+                payment_method=row.get('payment_method', 'unknown'),
+                paid_at=row.get('paid_at') or datetime.now(),
+                total=float(row.get('total', 0)),
+            )
+            for row in rows
+        ]
 
 
 def get_receipt_detail(receipt_id: int) -> ReceiptDetailResponse | None:
@@ -401,29 +465,36 @@ def get_receipt_detail(receipt_id: int) -> ReceiptDetailResponse | None:
         )
 
 
-def get_enrollment_balance(enrollment_id: int) -> dict | None:
+def get_enrollment_balance(enrollment_id: int) -> EnrollmentBalanceItem | None:
     """
     Row from `v_enrollment_balance`. **P6:** `balance` = total_paid − net_due
     (negative = debt, zero = settled, positive = credit).
     """
     with get_session() as db:
-        return repo.get_enrollment_balance(db, enrollment_id)
+        row = repo.get_enrollment_balance(db, enrollment_id)
+        if not row:
+            return None
+        return EnrollmentBalanceItem(
+            enrollment_id=enrollment_id,
+            student_id=row.get('student_id', 0),
+            group_id=row.get('group_id', 0),
+            level_number=row.get('level_number', 0),
+            amount_due=float(row.get('amount_due', 0)),
+            discount_applied=float(row.get('discount_applied', 0)),
+            amount_paid=float(row.get('amount_paid', 0)),
+            remaining_balance=float(row.get('balance', 0)),
+            status=row.get('status', 'unknown'),
+        )
 
 
 # ── Unpaid Competition Fees ───────────────────────────────────────────────────
 
 
-def get_unpaid_competition_fees(student_id: int) -> list[dict]:
+def get_unpaid_competition_fees(student_id: int) -> list[UnpaidCompFeeItem]:
     """
     Returns a list of unpaid competition fee records for a student.
-    Each dict contains all the information the Financial Desk UI needs to
-    render a checkbox payment line:
-      - team_member_id  : int              (FK to mark fee paid)
-      - team_id         : int
-      - team_name       : str
-      - competition_name: str
-      - member_share    : float            (snapshotted amount at registration time)
-      - student_id      : int
+    Each item contains all the information the Financial Desk UI needs to
+    render a checkbox payment line.
     """
     from app.modules.competitions.models.team_models import TeamMember, Team
     from app.modules.competitions.models.competition_models import Competition, CompetitionCategory
@@ -444,15 +515,15 @@ def get_unpaid_competition_fees(student_id: int) -> list[dict]:
         rows = db.exec(stmt).all()
         result = []
         for tm, team, cat, comp in rows:
-            result.append({
-                "team_member_id": tm.id,
-                "team_id": team.id,
-                "team_name": team.team_name,
-                "competition_name": f"{comp.name}" + (f" – {comp.edition}" if comp.edition else ""),
-                "category_name": cat.category_name,
-                "member_share": float(tm.member_share),
-                "student_id": tm.student_id,
-            })
+            result.append(UnpaidCompFeeItem(
+                team_member_id=tm.id,
+                team_id=team.id,
+                team_name=team.team_name,
+                competition_name=f"{comp.name}" + (f" – {comp.edition}" if comp.edition else ""),
+                category_name=cat.category_name,
+                member_share=float(tm.member_share),
+                student_id=tm.student_id,
+            ))
         return result
 
 

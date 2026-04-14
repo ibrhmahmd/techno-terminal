@@ -17,11 +17,11 @@ from app.modules.academics.models.course_models import Course
 from app.modules.finance.finance_models import Payment, Receipt
 from app.modules.finance.models.balance_models import (
     StudentBalance,
-    StudentBalanceDTO,
-    EnrollmentBalanceDetail,
+    StudentBalanceItem,
+    EnrollmentBalanceItem,
     PaymentAllocation,
-    PaymentAllocationCreate,
-    PaymentAllocationResult,
+    PaymentAllocationInput,
+    PaymentAllocationResponse,
     BalanceAdjustmentInput,
     StudentCredit,
 )
@@ -52,7 +52,7 @@ class BalanceService:
         if self._own_session and self._db:
             self._db.close()
     
-    def calculate_balance(self, student_id: int) -> StudentBalanceDTO:
+    def calculate_balance(self, student_id: int) -> StudentBalanceItem:
         """
         Calculate comprehensive balance for a student.
         
@@ -63,7 +63,7 @@ class BalanceService:
             student_id: The student ID to calculate balance for
             
         Returns:
-            StudentBalanceDTO with all breakdowns
+            StudentBalanceItem with all breakdowns
         """
         db = self._get_db()
         
@@ -102,7 +102,7 @@ class BalanceService:
             
             remaining = due - discount - paid
             
-            enrollment_balance = EnrollmentBalanceDetail(
+            enrollment_balance = EnrollmentBalanceItem(
                 enrollment_id=enrollment.id,
                 group_id=enrollment.group_id,
                 level_number=enrollment.level_number,
@@ -125,7 +125,7 @@ class BalanceService:
         
         net_balance = total_paid - (total_due - total_discounts)
         
-        return StudentBalanceDTO(
+        return StudentBalanceItem(
             student_id=student_id,
             total_amount_due=float(total_due.quantize(Decimal('0.01'))),
             total_discounts=float(total_discounts.quantize(Decimal('0.01'))),
@@ -135,7 +135,7 @@ class BalanceService:
             as_of_date=datetime.utcnow()
         )
     
-    def get_quick_balance(self, student_id: int) -> StudentBalanceDTO:
+    def get_quick_balance(self, student_id: int) -> StudentBalanceItem:
         """
         Get balance from materialized table (fast O(1) lookup).
         Falls back to calculation if no materialized balance exists.
@@ -168,7 +168,7 @@ class BalanceService:
                 paid = Decimal(str(allocations[0] or 0)) if allocations and allocations[0] else Decimal('0.00')
                 remaining = due - discount - paid
                 
-                enrollment_details.append(EnrollmentBalanceDetail(
+                enrollment_details.append(EnrollmentBalanceItem(
                     enrollment_id=enrollment.id,
                     group_id=enrollment.group_id,
                     level_number=enrollment.level_number,
@@ -179,7 +179,7 @@ class BalanceService:
                     status='paid' if remaining <= 0 else 'partial' if paid > 0 else 'unpaid'
                 ))
             
-            return StudentBalanceDTO(
+            return StudentBalanceItem(
                 student_id=student_id,
                 total_amount_due=float(materialized.total_amount_due),
                 total_discounts=float(materialized.total_discounts),

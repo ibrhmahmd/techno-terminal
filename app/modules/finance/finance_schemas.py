@@ -3,6 +3,7 @@ app/modules/finance/finance_schemas.py
 ────────────────────────────────────────
 Typed input DTOs for the Finance service layer.
 """
+from datetime import date, datetime
 from typing import Optional
 from pydantic import BaseModel, field_validator
 from app.shared.constants import PaymentMethod
@@ -79,5 +80,54 @@ class UnpaidCompFeeItem(BaseModel):
     category_name: str
     member_share: float      # Snapshotted amount at registration
     student_id: int
+
+    model_config = {"from_attributes": True}
+
+
+class EnrollmentBalanceItem(BaseModel):
+    """Balance details for a single enrollment (from v_enrollment_balance)."""
+    enrollment_id: int
+    student_id: int
+    group_id: int
+    level_number: int
+    amount_due: float
+    discount_applied: float
+    amount_paid: float
+    remaining_balance: float
+    status: str  # 'paid', 'partial', 'unpaid'
+
+    model_config = {"from_attributes": True}
+
+
+class DailyCollectionItem(BaseModel):
+    """Daily collection summary by payment method."""
+    payment_method: str
+    total_amount: float
+    receipt_count: int
+    target_date: date
+
+    model_config = {"from_attributes": True}
+
+
+class DailyReceiptItem(BaseModel):
+    """Receipt summary for daily reporting."""
+    receipt_id: int
+    receipt_number: str
+    payer_name: Optional[str]
+    total_amount: float
+    payment_method: str
+    issued_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ReceiptSearchItem(BaseModel):
+    """Receipt search result item."""
+    receipt_id: int
+    receipt_number: Optional[str]
+    payer_name: Optional[str]
+    payment_method: str
+    paid_at: datetime
+    total: float
 
     model_config = {"from_attributes": True}
