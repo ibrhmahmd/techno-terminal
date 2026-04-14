@@ -12,7 +12,7 @@ from sqlmodel import select
 from app.db.connection import get_session
 from app.modules.finance.finance_models import Receipt, Payment
 from app.modules.finance.models.balance_models import PaymentAllocation
-from app.api.schemas.finance.receipt import BatchGenerateResponse, BatchReceiptResultDTO
+from app.api.schemas.finance.receipt import BatchGenerateResponse, BatchReceiptItem
 from app.modules.enrollments.models.enrollment_models import Enrollment
 from app.modules.academics.models.group_models import Group
 from app.modules.crm.models.student_models import Student
@@ -292,16 +292,16 @@ This receipt was generated on {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}.
         self,
         receipt_ids: List[int],
         template_name: str = 'standard'
-    ) -> List[BatchReceiptResultDTO]:
+    ) -> List[BatchReceiptItem]:
         """Generate multiple receipts in batch with structured error handling."""
         db = self._get_db()
-        results: List[BatchReceiptResultDTO] = []
+        results: List[BatchReceiptItem] = []
         
         for receipt_id in receipt_ids:
             try:
                 receipt = db.get(Receipt, receipt_id)
                 if not receipt:
-                    results.append(BatchReceiptResultDTO(
+                    results.append(BatchReceiptItem(
                         receipt_id=receipt_id,
                         success=False,
                         error_message=f"Receipt {receipt_id} not found",
@@ -310,20 +310,20 @@ This receipt was generated on {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}.
                     continue
                 
                 content = self.generate_receipt_text(receipt_id, template_name)
-                results.append(BatchReceiptResultDTO(
+                results.append(BatchReceiptItem(
                     receipt_id=receipt_id,
                     success=True,
                     content=content
                 ))
             except NotFoundError as e:
-                results.append(BatchReceiptResultDTO(
+                results.append(BatchReceiptItem(
                     receipt_id=receipt_id,
                     success=False,
                     error_message=str(e),
                     error_code="not_found"
                 ))
             except Exception as e:
-                results.append(BatchReceiptResultDTO(
+                results.append(BatchReceiptItem(
                     receipt_id=receipt_id,
                     success=False,
                     error_message=str(e),

@@ -27,8 +27,8 @@ from app.modules.finance.models.balance_models import (
 )
 from app.api.schemas.finance.balance import (
     EnrollmentBalanceResponse,
-    BalanceAdjustmentResponseDTO,
-    UnpaidEnrollmentResponse,
+    BalanceAdjustmentResponse,
+    UnpaidEnrollmentItem,
 )
 from app.shared.exceptions import NotFoundError, BusinessRuleError, ValidationError
 
@@ -243,7 +243,7 @@ class BalanceService:
         group_id: Optional[int] = None,
         skip: int = 0,
         limit: int = 50
-    ) -> tuple[List[UnpaidEnrollmentResponse], int]:
+    ) -> tuple[List[UnpaidEnrollmentItem], int]:
         """List all unpaid enrollments with database-level pagination.
         
         Returns:
@@ -289,7 +289,7 @@ class BalanceService:
             remaining = due - discount - paid
             
             if remaining > 0:
-                unpaid.append(UnpaidEnrollmentResponse(
+                unpaid.append(UnpaidEnrollmentItem(
                     enrollment_id=enrollment.id,
                     student_id=enrollment.student_id,
                     student_name=student_name,
@@ -329,7 +329,7 @@ class BalanceService:
         self,
         adjustment: BalanceAdjustmentInput,
         performed_by: Optional[int] = None
-    ) -> BalanceAdjustmentResponseDTO:
+    ) -> BalanceAdjustmentResponse:
         """
         Manually adjust a student's balance.
         Creates an adjustment record and updates materialized balance.
@@ -377,7 +377,7 @@ class BalanceService:
         
         db.commit()
         
-        return BalanceAdjustmentResponseDTO(
+        return BalanceAdjustmentResponse(
             student_id=adjustment.student_id,
             previous_balance=current_balance.net_balance,
             adjustment_amount=float(adjustment_amount),

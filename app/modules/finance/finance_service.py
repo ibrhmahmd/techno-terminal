@@ -9,13 +9,13 @@ from app.shared.validators import validate_positive_amount
 from app.shared.constants import PaymentMethod
 from app.modules.finance.finance_schemas import ReceiptLineInput
 from app.api.schemas.finance.receipt import (
-    ReceiptCreatedPublic,
-    ReceiptDetailPublic,
-    RefundResultPublic,
+    ReceiptCreationResponse,
+    ReceiptDetailResponse,
+    RefundResponse,
     ReceiptFinalizedDTO,
-    BatchReceiptResultDTO,
+    BatchReceiptItem,
 )
-from app.api.schemas.finance.risk import OverpaymentRiskItem
+from app.api.schemas.finance.risk import OverpaymentRiskResponse
 
 # ── Receipt Lifecycle ─────────────────────────────────────────────────────────
 
@@ -103,7 +103,7 @@ def preview_overpayment_risk(
     lines: list[ReceiptLineInput],
     *,
     db=None,
-) -> list[OverpaymentRiskItem]:
+) -> list[OverpaymentRiskResponse]:
     """
     Returns lines that would create/increase credit under P6.
     P6: balance = total_paid - net_due, so debt is negative.
@@ -113,7 +113,7 @@ def preview_overpayment_risk(
         cm = get_session()
         db = cm.__enter__()
     try:
-        risk_rows: list[OverpaymentRiskItem] = []
+        risk_rows: list[OverpaymentRiskResponse] = []
         for spec in lines:
             ld = spec.model_dump()
             enrollment_id = ld.get("enrollment_id")
@@ -126,7 +126,7 @@ def preview_overpayment_risk(
             if projected_balance > 0:
                 debt_before = max(-current_balance, 0.0)
                 risk_rows.append(
-                    OverpaymentRiskItem(
+                    OverpaymentRiskResponse(
                         student_id=ld["student_id"],
                         enrollment_id=enrollment_id,
                         amount=pay_amount,
@@ -236,7 +236,7 @@ def issue_refund(
     reason: str,
     received_by_user_id: Optional[int],
     method: PaymentMethod | str = "cash",
-) -> RefundResultPublic:
+) -> RefundResponse:
     """
     Opens a new receipt and adds a refund line based on an original payment.
     ATOMIC — receipt header + refund line + competition fee unmark all commit
@@ -304,7 +304,7 @@ def issue_refund(
         if enrollment_id:
             balance_data = repo.get_enrollment_balance(db, enrollment_id)
 
-        return RefundResultPublic(
+        return RefundResponse(
             receipt_number=refund_receipt.receipt_number,
             refunded_amount=amount,
             new_balance=balance_data["balance"] if balance_data else None,
@@ -359,7 +359,7 @@ def search_receipts(
         )
 
 
-def get_receipt_detail(receipt_id: int) -> ReceiptDetailPublic | None:
+def get_receipt_detail(receipt_id: int) -> ReceiptDetailResponse | None:
     """Returns a receipt with its payment lines and computed total."""
     with get_session() as db:
         data = repo.get_receipt_with_lines(db, receipt_id)
@@ -368,10 +368,10 @@ def get_receipt_detail(receipt_id: int) -> ReceiptDetailPublic | None:
         total = repo.get_receipt_total(db, receipt_id)
         receipt = data["receipt"]
         
-        # Convert lines to ReceiptLinePublic models
-        from app.api.schemas.finance.receipt import ReceiptLinePublic
+        # Convert lines to ReceiptLineResponse models
+        from app.api.schemas.finance.receipt import ReceiptLineResponse
         lines = [
-            ReceiptLinePublic.model_validate(line) if hasattr(line, 'model_dump') else ReceiptLinePublic(**{
+            ReceiptLineResponse.model_validate(line) if hasattr(line, 'model_dump') else ReceiptLineResponse(**{
                 'line_id': getattr(line, 'id', 0),
                 'student_id': getattr(line, 'student_id', 0),
                 'enrollment_id': getattr(line, 'enrollment_id', None),
@@ -383,9 +383,9 @@ def get_receipt_detail(receipt_id: int) -> ReceiptDetailPublic | None:
             for line in data.get("lines", [])
         ]
         
-        # Build ReceiptHeaderPublic from receipt object
-        from app.api.schemas.finance.receipt import ReceiptHeaderPublic
-        header = ReceiptHeaderPublic(
+        # Build ReceiptHeaderResponse from receipt object
+        from app.api.schemas.finance.receipt import ReceiptHeaderResponse
+        header = ReceiptHeaderResponse(
             id=receipt.id,
             receipt_number=receipt.receipt_number,
             payer_name=receipt.payer_name,
@@ -394,7 +394,7 @@ def get_receipt_detail(receipt_id: int) -> ReceiptDetailPublic | None:
             notes=receipt.notes,
         )
         
-        return ReceiptDetailPublic(
+        return ReceiptDetailResponse(
             receipt=header,
             lines=lines,
             total=total,
