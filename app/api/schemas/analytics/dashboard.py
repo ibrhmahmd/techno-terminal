@@ -3,12 +3,12 @@ app/api/schemas/analytics/dashboard.py
 ────────────────────────────────────
 Public Analytics DTOs for API responses.
 """
-from datetime import date, datetime
+from datetime import date
 from typing import Optional
 from pydantic import BaseModel
 
 
-class DashboardSummaryPublic(BaseModel):
+class DashboardSummaryResponse(BaseModel):
     """High-level dashboard aggregates for admin view."""
     active_enrollments: int
     today_sessions_count: int
@@ -16,7 +16,7 @@ class DashboardSummaryPublic(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class SessionSummaryPublic(BaseModel):
+class SessionSummaryItem(BaseModel):
     """Summary of a scheduled session."""
     session_id: int
     group_id: int
@@ -28,7 +28,7 @@ class SessionSummaryPublic(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class DebtorPublic(BaseModel):
+class DebtorItem(BaseModel):
     """Student with outstanding debt."""
     student_id: int
     student_name: str
