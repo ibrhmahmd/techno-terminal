@@ -13,7 +13,7 @@ Student balance inquiry, adjustment, and credit management endpoints.
 3. [List Unpaid Enrollments](#list-unpaid-enrollments)
 4. [Get Student Credit Balance](#get-student-credit-balance)
 5. [Adjust Student Balance](#adjust-student-balance)
-6. [Get Balance Summary](#get-balance-summary)
+6. [Get BalanceSummaryResponse](#get-balance-summary)
 
 ---
 
@@ -273,7 +273,7 @@ Admin or finance role required
 
 ---
 
-## Get Balance Summary
+## Get BalanceSummaryResponse
 
 Get a simplified balance summary for dashboard display.
 
@@ -323,7 +323,7 @@ Any authenticated user
 
 ## Schemas
 
-### StudentBalanceDTO
+### BalanceSummaryResponse
 
 ```json
 {
@@ -374,7 +374,7 @@ Any authenticated user
 | `reason` | string | Yes | Reason for adjustment |
 | `notes` | string | No | Additional notes |
 
-### BalanceAdjustmentResponseDTO
+### BalanceAdjustmentResponse
 
 | Field | Type | Description |
 |-------|------|-------------|

@@ -28,11 +28,11 @@ This audit covers 17 finance endpoints across `finance_router.py`, `receipt_rout
 | **Method** | POST |
 | **Auth** | Admin only (`require_admin`) |
 | **Request** | `CreateReceiptRequest` |
-| **Request Fields** | `payer_name?: str`, `method: str = "cash"`, `notes?: str`, `allow_credit: bool = true`, `lines: ReceiptLinePublic[]` |
-| **Response** | `ApiResponse[ReceiptFinalizedDTO]` |
+| **Request Fields** | `payer_name?: str`, `method: str = "cash"`, `notes?: str`, `allow_credit: bool = true`, `lines: ReceiptLineRequest[]` |
+| **Response** | `ApiResponse[ReceiptCreationResponse]` |
 | **Response Fields** | `receipt_id, receipt_number, payment_method, paid_at, lines, total, payment_ids` |
 | **When to Use** | Creating new payment receipts for enrollments, competition fees, or other charges |
-| **Status** | ✅ **FIXED** (Issue C1) - Now returns typed `ReceiptFinalizedDTO` instead of raw dict |
+| **Status** | ✅ **FIXED** (Issue C1) - Now returns typed `ReceiptCreationResponse` instead of raw dict |
 
 #### 1.2 GET /finance/receipts/{receipt_id} - Get Receipt Details
 | Field | Details |
@@ -40,7 +40,7 @@ This audit covers 17 finance endpoints across `finance_router.py`, `receipt_rout
 | **Method** | GET |
 | **Auth** | Any authenticated user (`require_any`) |
 | **Request** | Path param: `receipt_id: int` |
-| **Response** | `ApiResponse[ReceiptDetailPublic]` |
+| **Response** | `ApiResponse[ReceiptDetailResponse]` |
 | **Response Fields** | `receipt_number, created_at, payer_name, method, total, status, lines[]` |
 | **When to Use** | Displaying receipt details, printing receipts, verifying payment history |
 | **Potential Issues** | ⚠️ Returns 404 if receipt not found; no soft-delete check |
@@ -64,7 +64,7 @@ This audit covers 17 finance endpoints across `finance_router.py`, `receipt_rout
 | **Auth** | Admin only |
 | **Request** | `IssueRefundRequest` |
 | **Request Fields** | `payment_id: int`, `amount: float`, `reason: str`, `method: str = "cash"` |
-| **Response** | `ApiResponse[RefundResultPublic]` |
+| **Response** | `ApiResponse[RefundResponse]` |
 | **Response Fields** | `refund_id, payment_id, amount, method, reason, new_balance, processed_at` |
 | **Validation** | ✅ Refund amount validated against (original - already_refunded) - Returns HTTP 422 if exceeds available |
 | **When to Use** | Processing refunds for overpayments, cancelled enrollments, or errors |
@@ -76,7 +76,7 @@ This audit covers 17 finance endpoints across `finance_router.py`, `receipt_rout
 | **Method** | GET |
 | **Auth** | Any authenticated user |
 | **Request** | Path: `student_id: int`; Query: `use_materialized: bool = true` |
-| **Response** | `ApiResponse[StudentBalanceDTO]` |
+| **Response** | `ApiResponse[StudentBalanceResponse]` |
 | **Response Fields** | `student_id, total_due, total_paid, total_discount, net_balance, enrollments[]` |
 | **When to Use** | Student profile balance display, payment portal, debt collection |
 | **Potential Issues** | ⚠️ Materialized view may be stale; flag allows real-time calc but slower |
@@ -108,9 +108,9 @@ This audit covers 17 finance endpoints across `finance_router.py`, `receipt_rout
 |-------|---------|
 | **Method** | POST |
 | **Auth** | Admin only |
-| **Request** | `PreviewRiskRequest` |
+| **Request** | `PreviewOverpaymentRequest` |
 | **Request Fields** | `student_id: int`, `planned_amount: float` |
-| **Response** | `ApiResponse[OverpaymentRiskItem[]]` |
+| **Response** | `ApiResponse[OverpaymentRiskResponse[]]` |
 | **Response Fields** | `enrollment_id, current_balance, would_result_in_credit, suggested_amount` |
 | **When to Use** | Pre-payment validation, payment plan suggestions, credit warnings |
 | **Potential Issues** | ✅ Good UX pattern; should be called before all payments |
@@ -125,7 +125,7 @@ This audit covers 17 finance endpoints across `finance_router.py`, `receipt_rout
 | **Method** | GET |
 | **Auth** | Any authenticated user |
 | **Request** | Path: `receipt_id: int`; Query: `template_name: str = "standard"`, `include_balance: bool = true`, `as_text: bool = false` |
-| **Response** | `ApiResponse[ReceiptGeneratedDTO]` (default) or Plain text (`text/plain`) with `?as_text=true` |
+| **Response** | `ApiResponse[ReceiptGenerationResponse]` (default) or Plain text (`text/plain`) with `?as_text=true` |
 | **Response Fields** | `receipt_id, content, template_name, include_balance, generated_at, content_type` |
 | **When to Use** | Receipt printing, email attachments, POS displays |
 | **Status** | ✅ **FIXED** (Issue M2) - Now returns structured JSON by default; use `?as_text=true` for legacy plain text |
@@ -149,7 +149,7 @@ This audit covers 17 finance endpoints across `finance_router.py`, `receipt_rout
 | **Auth** | Admin only |
 | **Request** | `BatchGenerateRequest` |
 | **Request Fields** | `receipt_ids: int[]`, `template_name: str = "standard"` |
-| **Response** | `ApiResponse[BatchReceiptResultDTO[]]` |
+| **Response** | `ApiResponse[BatchReceiptItem[]]` |
 | **Response Fields** | `receipt_id, success, content, error_message, error_code` |
 | **When to Use** | End-of-day batch processing, monthly statement generation |
 | **Status** | ✅ **FIXED** (Issue H2) - Structured response with explicit `success` flag and `error_code`; individual failures don't abort batch |
@@ -164,10 +164,10 @@ This audit covers 17 finance endpoints across `finance_router.py`, `receipt_rout
 | **Method** | GET |
 | **Auth** | Any authenticated user |
 | **Request** | Path: `student_id: int`; Query: `use_materialized: bool = true` |
-| **Response** | `ApiResponse[StudentBalanceDTO]` |
+| **Response** | `ApiResponse[StudentBalanceResponse]` |
 | **Response Fields** | `student_id, total_due, total_discount, total_paid, net_balance, credit_balance, enrollments[]` |
 | **When to Use** | Student financial summary, dashboard widgets, payment decisions |
-| **Status** | ✅ Clean endpoint - Returns typed `StudentBalanceDTO` |
+| **Status** | ✅ Clean endpoint - Returns typed `StudentBalanceResponse` |
 
 #### 3.2 GET /students/{student_id}/balance/enrollments/{enrollment_id} - Get Enrollment Balance
 | Field | Details |
@@ -186,7 +186,7 @@ This audit covers 17 finance endpoints across `finance_router.py`, `receipt_rout
 | **Method** | GET |
 | **Auth** | Any authenticated user |
 | **Request** | Query: `group_id?: int`, `skip: int = 0`, `limit: int = 50 (max 200)` |
-| **Response** | `PaginatedResponse[UnpaidEnrollmentResponse]` |
+| **Response** | `PaginatedResponse[UnpaidEnrollmentItem]` |
 | **Response Fields** | `data[], total, skip, limit` with enrollment details and balances |
 | **When to Use** | Debt collection reports, group balance reports, admin dashboards |
 | **Status** | ✅ **FIXED** (Issue M1) - Database-level pagination in service layer; returns `(items, total_count)` tuple |
@@ -199,7 +199,7 @@ This audit covers 17 finance endpoints across `finance_router.py`, `receipt_rout
 | **Auth** | Admin only |
 | **Request** | `BalanceAdjustmentRequest` |
 | **Request Fields** | `amount: float`, `reason: str`, `adjustment_type: str` |
-| **Response** | `ApiResponse[BalanceAdjustmentResponseDTO]` |
+| **Response** | `ApiResponse[BalanceAdjustmentResponse]` |
 | **Response Fields** | `student_id, previous_balance, adjustment_amount, new_balance, reason, adjustment_type, adjusted_at` |
 | **When to Use** | Correcting billing errors, applying scholarships, writing off bad debt |
 | **Potential Issues** | ⚠️ No approval workflow; ⚠️ No automatic audit log entry (manual) |
@@ -210,7 +210,7 @@ This audit covers 17 finance endpoints across `finance_router.py`, `receipt_rout
 | **Method** | GET |
 | **Auth** | Any authenticated user |
 | **Request** | Path: `student_id: int` |
-| **Response** | `ApiResponse[CreditBalanceResponseDTO]` |
+| **Response** | `ApiResponse[CreditBalanceResponse]` |
 | **Response Fields** | `student_id, credit_balance, available_credit, reserved_credit, credit_history[]` |
 | **When to Use** | Credit application decisions, refund eligibility |
 | **Potential Issues** | ✅ Clean endpoint |
@@ -220,9 +220,9 @@ This audit covers 17 finance endpoints across `finance_router.py`, `receipt_rout
 |-------|---------|
 | **Method** | POST |
 | **Auth** | Admin only |
-| **Request** | `ApplyCreditRequestDTO` |
+| **Request** | `ApplyCreditRequest` |
 | **Request Fields** | `enrollment_id: int`, `amount?: float` (defaults to full credit) |
-| **Response** | `ApiResponse[ApplyCreditResponseDTO]` |
+| **Response** | `ApiResponse[ApplyCreditResponse]` |
 | **Response Fields** | `student_id, enrollment_id, amount_applied, credit_applications[], enrollment_balance_after` |
 | **When to Use** | Applying overpayment credit to new enrollments, credit transfers |
 | **Potential Issues** | ⚠️ Complex nested dict structure in response; ⚠️ Partial credit application edge cases not documented |
@@ -239,12 +239,12 @@ This audit covers 17 finance endpoints across `finance_router.py`, `receipt_rout
 
 **Resolution:**
 - All service methods now return typed DTOs:
-  - `create_receipt_with_charge_lines()` → `ReceiptFinalizedDTO`
-  - `preview_overpayment_risk()` → `List[OverpaymentRiskItem]`
-  - `issue_refund()` → `RefundResultPublic`
-  - `finalize_receipt()` → `ReceiptFinalizedDTO`
-  - `get_receipt_detail()` → `ReceiptDetailPublic`
-  - `generate_batch_receipts()` → `List[BatchReceiptResultDTO]`
+  - `create_receipt_with_charge_lines()` → `ReceiptCreationResponse`
+  - `preview_overpayment_risk()` → `List[OverpaymentRiskResponse]`
+  - `issue_refund()` → `RefundResponse`
+  - `finalize_receipt()` → `ReceiptCreationResponse`
+  - `get_receipt_detail()` → `ReceiptDetailResponse`
+  - `generate_batch_receipts()` → `List[BatchReceiptItem]`
 - See [Schema Reference](./schemas.md) for updated DTO definitions
 
 ### High Issues (RESOLVED ✓)
@@ -260,7 +260,7 @@ This audit covers 17 finance endpoints across `finance_router.py`, `receipt_rout
 - HTTP 422 error with detailed message: `"Refund amount (X) exceeds available amount (Y). Original: Z, already refunded: W"`
 
 **H2 Resolution:**
-- `BatchReceiptResultDTO` now returns structured list with:
+- `BatchReceiptItem` now returns structured list with:
   - `receipt_id`, `success`, `content`, `error_message`, `error_code`
 - Errors no longer embedded in strings
 - Individual failures don't abort entire batch
@@ -280,7 +280,7 @@ This audit covers 17 finance endpoints across `finance_router.py`, `receipt_rout
 - Router uses `PaginatedResponse[T]` wrapper
 
 **M2 Resolution:**
-- `generate_receipt` endpoint now returns `ReceiptGeneratedDTO` (JSON) by default
+- `generate_receipt` endpoint now returns `ReceiptGenerationResponse` (JSON) by default
 - Added `?as_text=true` query parameter for backward compatibility
 - Response includes `content`, `template_name`, `include_balance`, `generated_at`, `content_type`
 
@@ -331,9 +331,9 @@ This audit covers 17 finance endpoints across `finance_router.py`, `receipt_rout
 ### Completed Actions ✓
 1. **✅ Fix C1:** All services now return typed DTOs instead of raw dicts
 2. **✅ Fix H1:** Refund validation against original payment amount implemented
-3. **✅ Fix H2:** Batch receipt generation returns structured `BatchReceiptResultDTO`
+3. **✅ Fix H2:** Batch receipt generation returns structured `BatchReceiptItem`
 4. **✅ Fix M1:** Pagination moved to service layer with database-level implementation
-5. **✅ Fix M2:** Receipt generation returns `ReceiptGeneratedDTO` (JSON) by default
+5. **✅ Fix M2:** Receipt generation returns `ReceiptGenerationResponse` (JSON) by default
 6. **✅ Fix M3:** 90-day maximum date range limit on receipt search enforced
 
 ### Remaining Actions
@@ -350,35 +350,35 @@ This audit covers 17 finance endpoints across `finance_router.py`, `receipt_rout
 ### Key DTOs by Category
 
 **Receipts:**
-- `CreateReceiptRequest` → `ReceiptFinalizedDTO` (Issue C1 fix)
-- `ReceiptDetailPublic` (full receipt with lines)
+- `CreateReceiptRequest` → `ReceiptCreationResponse` (Issue C1 fix)
+- `ReceiptDetailResponse` (full receipt with lines)
 - `ReceiptListItem` (search results)
-- `ReceiptGeneratedDTO` - Receipt generation response (Issue M2 fix)
-- `BatchReceiptResultDTO` - Batch generation result item (Issue H2 fix)
+- `ReceiptGenerationResponse` - Receipt generation response (Issue M2 fix)
+- `BatchReceiptItem` - Batch generation result item (Issue H2 fix)
 
 **Refunds:**
-- `IssueRefundRequest` → `RefundResultPublic` (Issue C1 fix)
+- `IssueRefundRequest` → `RefundResponse` (Issue C1 fix)
 
 **Balance:**
-- `StudentBalanceDTO` (comprehensive balance)
+- `StudentBalanceResponse` (comprehensive balance)
 - `EnrollmentBalanceResponse` (single enrollment)
-- `UnpaidEnrollmentResponse` (unpaid enrollment item)
-- `BalanceAdjustmentRequest` → `BalanceAdjustmentResponseDTO`
+- `UnpaidEnrollmentItem` (unpaid enrollment item)
+- `BalanceAdjustmentRequest` → `BalanceAdjustmentResponse`
 
 **Credit:**
-- `ApplyCreditRequestDTO` → `ApplyCreditResponseDTO`
-- `CreditBalanceResponseDTO`
+- `ApplyCreditRequest` → `ApplyCreditResponse`
+- `CreditBalanceResponse`
 - `CreditInfoDTO`
 
 **Risk:**
-- `PreviewRiskRequest` → `OverpaymentRiskItem[]` (Issue C1 fix)
+- `PreviewOverpaymentRequest` → `OverpaymentRiskResponse[]` (Issue C1 fix)
 
 ### New DTOs Added (Audit Fixes)
 
 | DTO | Purpose | Issue Fixed |
 |-----|---------|-------------|
-| `ReceiptFinalizedDTO` | Response from `create_receipt_with_charge_lines()` | C1 |
-| `ReceiptGeneratedDTO` | Structured receipt generation response | M2 |
-| `BatchReceiptResultDTO` | Individual batch result with success/error | H2 |
-| `RefundResultPublic` | Typed refund response | C1 |
-| `OverpaymentRiskItem` | Risk preview result item | C1 |
+| `ReceiptCreationResponse` | Response from `create_receipt_with_charge_lines()` | C1 |
+| `ReceiptGenerationResponse` | Structured receipt generation response | M2 |
+| `BatchReceiptItem` | Individual batch result with success/error | H2 |
+| `RefundResponse` | Typed refund response | C1 |
+| `OverpaymentRiskResponse` | Risk preview result item | C1 |

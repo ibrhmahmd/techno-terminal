@@ -110,7 +110,7 @@ Admin role required
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `lines` | array | Yes | Receipt line items to preview |
+| `lines` | array | Yes | ReceiptDetailResponse items to preview |
 | `lines[].student_id` | integer | Yes | Student ID |
 | `lines[].enrollment_id` | integer | Yes | Enrollment ID |
 | `lines[].amount` | float | Yes | Payment amount |
@@ -219,7 +219,7 @@ Any authenticated user
 | `reason` | string | Yes | - | Refund reason |
 | `method` | string | Yes | "cash" | Refund method |
 
-### RefundResultPublic
+### RefundResponse
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -231,13 +231,13 @@ Any authenticated user
 | `new_balance` | float | Updated balance |
 | `processed_at` | datetime | Processing timestamp |
 
-### PreviewRiskRequest
+### PreviewOverpaymentRequest
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `lines` | ReceiptLineInput[] | Yes | Lines to preview |
+| `lines` | ReceiptLineResponseInput[] | Yes | Lines to preview |
 
-### OverpaymentRiskItem
+### OverpaymentRiskResponse
 
 | Field | Type | Description |
 |-------|------|-------------|

@@ -263,14 +263,13 @@ Any authenticated user
 RECEIPT #RCP-2026-00123
 Date: 2026-04-09
 Payer: John Smith
-
 Payment for Mathematics Level 2: 150.00
 Total: 150.00
 ```
 
 ### Response Schema
 
-#### ReceiptGeneratedDTO
+#### ReceiptGenerationResponse
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -436,7 +435,7 @@ Admin role required
 
 ## Schemas
 
-### CreateReceiptRequest
+### CreateBatchReceiptItemRequest
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
@@ -444,9 +443,9 @@ Admin role required
 | `method` | string | Yes | "cash" | Payment method |
 | `notes` | string | No | null | Notes |
 | `allow_credit` | boolean | No | false | Allow credit |
-| `lines` | ReceiptLinePublic[] | Yes | - | Line items |
+| `lines` | ReceiptLineResponse[] | Yes | - | Line items |
 
-### ReceiptLinePublic
+### ReceiptLineResponse
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -456,7 +455,7 @@ Admin role required
 | `amount` | float | Yes | Line amount |
 | `description` | string | No | Description |
 
-### ReceiptCreatedPublic
+### ReceiptCreationResponse
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -468,12 +467,12 @@ Admin role required
 | `created_at` | datetime | Creation timestamp |
 | `payment_ids` | integer[] | Associated payment IDs |
 
-### ReceiptDetailPublic
+### ReceiptDetailResponse
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `header` | ReceiptHeaderPublic | Receipt header info |
-| `lines` | ReceiptLinePublic[] | Line items |
+| `header` | ReceiptHeaderResponse | Receipt header info |
+| `lines` | ReceiptLineResponse[] | Line items |
 | `total` | float | Total amount |
 
 ### ReceiptListItem
