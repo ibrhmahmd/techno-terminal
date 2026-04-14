@@ -123,11 +123,10 @@ class DailyReceiptItem(BaseModel):
 
 class ReceiptSearchItem(BaseModel):
     """Receipt search result item."""
-    receipt_id: int
+    id: int
     receipt_number: Optional[str]
     payer_name: Optional[str]
     payment_method: str
     paid_at: datetime
-    total: float
 
     model_config = {"from_attributes": True}

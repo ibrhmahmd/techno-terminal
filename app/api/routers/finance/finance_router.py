@@ -29,6 +29,10 @@ from app.api.dependencies import require_admin, require_any, get_finance_module
 from app.modules.finance.finance_schemas import ReceiptLineInput
 from app.modules.auth import User
 from app.shared.exceptions import NotFoundError
+from app.api.mappers.finance_mapper import (
+    to_receipt_list_item,
+    to_student_balance_response,
+)
 
 # Since finance is a flat module, we treat it similarly to `import app.modules.finance`
 # but use Dependency Injection for testing flexibility.
@@ -70,7 +74,15 @@ def create_receipt(
         allow_credit=body.allow_credit,
     )
     return ApiResponse(
-        data=ReceiptCreationResponse.model_validate(result),
+        data=ReceiptCreationResponse(
+            receipt_id=result.receipt_id,
+            receipt_number=result.receipt_number,
+            payment_method=result.payment_method,
+            paid_at=result.paid_at,
+            lines=len(result.lines),
+            total=result.total,
+            payment_ids=result.payment_ids,
+        ),
         message="Receipt created successfully.",
     )
 
@@ -125,7 +137,7 @@ def search_receipts(
         receipt_number_contains=receipt_number,
         limit=limit,
     )
-    return ApiResponse(data=[ReceiptListItem.model_validate(r) for r in results])
+    return ApiResponse(data=[to_receipt_list_item(r) for r in results])
 
 
 # issue a refund
@@ -165,7 +177,7 @@ def get_student_balance(
 ):
     balances = finance.get_student_financial_summary(student_id)
     return ApiResponse(
-        data=[StudentBalanceResponse.model_validate(b) for b in balances]
+        data=[to_student_balance_response(b) for b in balances]
     )
 
 

@@ -412,12 +412,11 @@ def search_receipts(
         )
         return [
             ReceiptSearchItem(
-                receipt_id=int(row.get('receipt_id', 0)),
+                id=int(row.get('receipt_id', 0)),
                 receipt_number=row.get('receipt_number'),
                 payer_name=row.get('payer_name'),
                 payment_method=row.get('payment_method', 'unknown'),
                 paid_at=row.get('paid_at') or datetime.now(),
-                total=float(row.get('total', 0)),
             )
             for row in rows
         ]
