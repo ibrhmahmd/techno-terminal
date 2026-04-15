@@ -9,7 +9,7 @@ from typing import Optional
 
 from sqlmodel import Session
 
-from app.database.session import get_session
+from app.db.connection import get_session
 from app.modules.finance.repositories.receipt_repository import ReceiptRepository
 from app.modules.finance.repositories.payment_repository import PaymentRepository
 from app.modules.finance.repositories.reporting_repository import ReportingRepository

@@ -18,7 +18,7 @@ from app.modules.finance.interfaces import (
     SearchReceiptsDTO,
 )
 from app.modules.finance import DailyReceiptItem, ReceiptSearchItem
-from app.shared.time_utils import date_at_utc_midnight, utc_now
+from app.shared.datetime_utils import date_at_utc_midnight, utc_now
 
 
 class ReceiptRepository(IReceiptRepository):
