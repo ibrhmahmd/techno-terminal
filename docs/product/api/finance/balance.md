@@ -1,5 +1,10 @@
 # Finance API - Balance Operations
 
+> **⚠️ Implementation Status: Not Yet Implemented**
+> 
+> All balance endpoints documented below are **planned but not yet available** in the current API.
+> Balance operations are currently handled through the student profile service and receipt creation workflow.
+
 Student balance inquiry, adjustment, and credit management endpoints.
 
 **Base Path:** `/api/v1`

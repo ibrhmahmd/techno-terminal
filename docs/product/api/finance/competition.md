@@ -18,7 +18,7 @@ Retrieve pending competition fees for a student to be paid via Financial Desk se
 
 ### Endpoint
 ```
-GET /finance/competition-fees/student/{student_id}
+GET /finance/competition-fees?student_id={student_id}
 ```
 
 ### Authentication
@@ -28,11 +28,11 @@ Any authenticated user
 
 This endpoint returns a list of unpaid competition fees for a specific student. These fees are separate from regular enrollment fees and need to be processed through the Financial Desk workflow. Each fee item includes competition details, amount due, and payment status.
 
-### Path Parameters
+### Query Parameters
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `student_id` | integer | Student unique identifier |
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `student_id` | integer | Yes | Student unique identifier |
 
 ### Response
 

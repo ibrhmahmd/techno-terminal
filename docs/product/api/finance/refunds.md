@@ -52,13 +52,9 @@ Admin role required
 {
   "success": true,
   "data": {
-    "refund_id": 67,
-    "payment_id": 45,
-    "amount": 50.00,
-    "method": "transfer",
-    "reason": "Student withdrawal",
-    "new_balance": 100.00,
-    "processed_at": "2026-04-09T14:30:00Z"
+    "receipt_number": "RCP-2026-00123",
+    "refunded_amount": 50.00,
+    "new_balance": 100.00
   },
   "message": "Refund issued successfully."
 }
@@ -84,13 +80,9 @@ Admin role required
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `refund_id` | integer | Refund record ID |
-| `payment_id` | integer | Original payment ID |
-| `amount` | float | Refund amount |
-| `method` | string | Refund method |
-| `reason` | string | Refund reason |
-| `new_balance` | float | Updated balance after refund |
-| `processed_at` | datetime | Processing timestamp |
+| `receipt_number` | string | Receipt number for the refund |
+| `refunded_amount` | float | Amount refunded |
+| `new_balance` | float \| null | Updated balance after refund |
 
 ---
 
@@ -100,7 +92,7 @@ Preview potential overpayment/credit creation before creating a receipt.
 
 ### Endpoint
 ```
-POST /finance/receipts/preview-risk
+POST /finance/risk/overpayment
 ```
 
 ### Authentication
@@ -110,11 +102,14 @@ Admin role required
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `lines` | array | Yes | ReceiptDetailResponse items to preview |
+| `lines` | array | Yes | Receipt line items to preview |
 | `lines[].student_id` | integer | Yes | Student ID |
-| `lines[].enrollment_id` | integer | Yes | Enrollment ID |
+| `lines[].enrollment_id` | integer | No | Enrollment ID |
+| `lines[].team_member_id` | integer | No | Team member ID |
 | `lines[].amount` | float | Yes | Payment amount |
-| `lines[].description` | string | No | Description |
+| `lines[].payment_type` | string | No | Payment type (default: course_level) |
+| `lines[].discount` | float | No | Discount amount |
+| `lines[].notes` | string | No | Notes |
 
 ### Example Request
 ```json
@@ -123,8 +118,11 @@ Admin role required
     {
       "student_id": 1,
       "enrollment_id": 5,
+      "team_member_id": null,
       "amount": 200.00,
-      "description": "Overpayment test"
+      "payment_type": "course_level",
+      "discount": 0.0,
+      "notes": "Overpayment test"
     }
   ]
 }
@@ -165,9 +163,13 @@ Admin role required
 
 ## Get Student Credit Info
 
+> **⚠️ Implementation Status: Not Yet Implemented**
+> 
+> This endpoint is planned but not yet available in the current API.
+
 Get detailed credit information for a student including allocations.
 
-### Endpoint
+### Endpoint (Planned)
 ```
 GET /finance/credit/student/{student_id}
 ```
@@ -223,19 +225,26 @@ Any authenticated user
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `refund_id` | integer | Refund record ID |
-| `payment_id` | integer | Original payment ID |
-| `amount` | float | Refund amount |
-| `method` | string | Refund method |
-| `reason` | string | Refund reason |
-| `new_balance` | float | Updated balance |
-| `processed_at` | datetime | Processing timestamp |
+| `receipt_number` | string \| null | Receipt number for the refund |
+| `refunded_amount` | float | Amount refunded |
+| `new_balance` | float \| null | Updated balance after refund |
 
 ### PreviewOverpaymentRequest
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `lines` | ReceiptLineResponseInput[] | Yes | Lines to preview |
+| `lines` | ReceiptLineInput[] | Yes | Lines to preview |
+
+**ReceiptLineInput Fields:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `student_id` | integer | Yes | Student ID |
+| `enrollment_id` | integer | No | Enrollment ID |
+| `team_member_id` | integer | No | Team member ID |
+| `amount` | float | Yes | Payment amount |
+| `payment_type` | string | No | Payment type (default: course_level) |
+| `discount` | float | No | Discount amount |
+| `notes` | string | No | Notes |
 
 ### OverpaymentRiskResponse
 

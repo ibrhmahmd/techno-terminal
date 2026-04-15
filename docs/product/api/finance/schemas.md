@@ -140,7 +140,7 @@ Response after balance adjustment.
 
 ## Receipt Schemas
 
-### ReceiptFinalizedDTO
+### ReceiptCreationResponse
 
 **File:** `app/api/schemas/finance/receipt.py`
 
@@ -175,7 +175,7 @@ Response after creating a receipt with charge lines. Replaces raw dict return (I
 
 **File:** `app/api/schemas/finance/receipt.py`
 
-Structured response for receipt generation. Default format for `GET /receipts/{id}/generate` (Issue M2 fix).
+Structured response for receipt generation. Default format for `GET /finance/receipts/{id}/generate` (Issue M2 fix).
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -243,7 +243,7 @@ Request to create a receipt.
 | `method` | string | No | "cash" | Payment method |
 | `notes` | string | No | null | Notes |
 | `allow_credit` | boolean | No | false | Allow credit |
-| `lines` | ReceiptLineResponse[] | Yes | - | Line items |
+| `lines` | ReceiptLineInput[] | Yes | - | Line items (see ReceiptLineInput for fields) |
 
 ---
 
@@ -251,15 +251,18 @@ Request to create a receipt.
 
 **File:** `app/api/schemas/finance/receipt.py`
 
-Receipt line item.
+Receipt line item response.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `id` | integer | Yes | Line ID |
 | `student_id` | integer | Yes | Student ID |
-| `enrollment_id` | integer | No | Enrollment ID |
+| `enrollment_id` | integer \| null | No | Enrollment ID |
 | `amount` | float | Yes | Amount |
-| `description` | string | No | Description |
+| `transaction_type` | string | Yes | Transaction type (e.g., payment, refund) |
+| `payment_type` | string | Yes | Payment type (e.g., course_level) |
+| `discount` | float | Yes | Discount amount |
+| `notes` | string \| null | No | Notes |
 
 ---
 
@@ -271,12 +274,12 @@ Created receipt response.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `id` | integer | Yes | Receipt ID |
-| `receipt_number` | string | Yes | Receipt number |
-| `payer_name` | string | Yes | Payer name |
+| `receipt_id` | integer | Yes | Receipt ID |
+| `receipt_number` | string \| null | Yes | Receipt number |
+| `payment_method` | string | Yes | Payment method |
+| `paid_at` | datetime \| null | Yes | Payment timestamp |
+| `lines` | integer | Yes | Count of charge lines |
 | `total` | float | Yes | Total amount |
-| `method` | string | Yes | Payment method |
-| `created_at` | datetime | Yes | Timestamp |
 | `payment_ids` | integer[] | Yes | Payment IDs |
 
 ---
@@ -289,7 +292,7 @@ Detailed receipt information.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `header` | ReceiptHeaderResponse | Yes | Header info |
+| `receipt` | ReceiptHeaderResponse | Yes | Receipt header info |
 | `lines` | ReceiptLineResponse[] | Yes | Line items |
 | `total` | float | Yes | Total amount |
 
@@ -304,10 +307,11 @@ Receipt header information.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `id` | integer | Yes | Receipt ID |
-| `receipt_number` | string | Yes | Receipt number |
-| `payer_name` | string | Yes | Payer name |
-| `total` | float | Yes | Total amount |
-| `created_at` | datetime | Yes | Timestamp |
+| `receipt_number` | string \| null | Yes | Receipt number |
+| `payer_name` | string \| null | Yes | Payer name |
+| `payment_method` | string | Yes | Payment method |
+| `paid_at` | datetime \| null | Yes | Payment timestamp |
+| `notes` | string \| null | Yes | Notes |
 
 ---
 
@@ -320,11 +324,10 @@ Receipt item for search results.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `id` | integer | Yes | Receipt ID |
-| `receipt_number` | string | Yes | Receipt number |
-| `payer_name` | string | Yes | Payer name |
-| `total` | float | Yes | Total amount |
-| `created_at` | datetime | Yes | Timestamp |
-| `method` | string | Yes | Payment method |
+| `receipt_number` | string \| null | Yes | Receipt number |
+| `payer_name` | string \| null | Yes | Payer name |
+| `payment_method` | string | Yes | Payment method |
+| `paid_at` | datetime \| null | Yes | Payment timestamp |
 
 ---
 
@@ -560,24 +563,16 @@ Refund result. Replaces raw dict return from `issue_refund()` (Issue C1 fix).
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `refund_id` | integer | Yes | Refund ID |
-| `payment_id` | integer | Yes | Payment ID |
-| `amount` | float | Yes | Amount |
-| `method` | string | Yes | Method |
-| `reason` | string | Yes | Reason |
-| `new_balance` | float | Yes | New balance |
-| `processed_at` | datetime | Yes | Timestamp |
+| `receipt_number` | string \| null | Yes | Receipt number for the refund |
+| `refunded_amount` | float | Yes | Amount refunded |
+| `new_balance` | float \| null | Yes | Updated balance after refund |
 
 **Example:**
 ```json
 {
-  "refund_id": 67,
-  "payment_id": 45,
-  "amount": 50.00,
-  "method": "transfer",
-  "reason": "Student withdrawal",
-  "new_balance": 100.00,
-  "processed_at": "2026-04-09T14:30:00Z"
+  "receipt_number": "RCP-2026-00123",
+  "refunded_amount": 50.00,
+  "new_balance": 100.00
 }
 ```
 
@@ -618,4 +613,4 @@ Quick balance summary.
 
 ---
 
-*Last updated: 2026-04-09*
+*Last updated: 2026-04-15*

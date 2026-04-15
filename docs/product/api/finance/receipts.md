@@ -35,15 +35,17 @@ Admin role required
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `payer_name` | string | No | null | Name of person making payment |
-| `method` | string | Yes | "cash" | Payment method: cash, card, transfer |
+| `method` | string | No | "cash" | Payment method: cash, card, transfer |
 | `notes` | string | No | null | Additional notes |
-| `allow_credit` | boolean | No | false | Allow creating credit if overpayment |
+| `allow_credit` | boolean | No | true | Allow creating credit if overpayment |
 | `lines` | array | Yes | - | Payment line items |
-| `lines[].id` | integer | Yes | - | Line item ID |
 | `lines[].student_id` | integer | Yes | - | Student ID |
 | `lines[].enrollment_id` | integer | No | null | Enrollment ID |
+| `lines[].team_member_id` | integer | No | null | Team member ID |
 | `lines[].amount` | float | Yes | - | Line amount |
-| `lines[].description` | string | No | null | Line description |
+| `lines[].payment_type` | string | No | "course_level" | Payment type |
+| `lines[].discount` | float | No | 0.0 | Discount amount |
+| `lines[].notes` | string | No | null | Line notes |
 
 ### Example Request
 ```json
@@ -56,8 +58,11 @@ Admin role required
     {
       "student_id": 1,
       "enrollment_id": 5,
+      "team_member_id": null,
       "amount": 150.00,
-      "description": "Mathematics Level 2"
+      "payment_type": "course_level",
+      "discount": 0.0,
+      "notes": "Mathematics Level 2"
     }
   ]
 }
@@ -84,7 +89,7 @@ Admin role required
 
 ### Response Schema
 
-#### ReceiptFinalizedDTO
+#### ReceiptCreationResponse
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -122,12 +127,13 @@ Any authenticated user
 ```json
 {
   "data": {
-    "header": {
+    "receipt": {
       "id": 123,
       "receipt_number": "RCP-2026-00123",
       "payer_name": "John Smith",
-      "total": 150.00,
-      "created_at": "2026-04-09T14:30:00Z"
+      "payment_method": "card",
+      "paid_at": "2026-04-09T14:30:00Z",
+      "notes": null
     },
     "lines": [
       {
@@ -135,9 +141,13 @@ Any authenticated user
         "student_id": 1,
         "enrollment_id": 5,
         "amount": 150.00,
-        "description": "Mathematics Level 2"
+        "transaction_type": "payment",
+        "payment_type": "course_level",
+        "discount": 0.0,
+        "notes": null
       }
-    ]
+    ],
+    "total": 150.00
   },
   "error": null
 }
@@ -199,9 +209,8 @@ GET /finance/receipts?from_date=2026-04-01&to_date=2026-04-30&limit=50
       "id": 123,
       "receipt_number": "RCP-2026-00123",
       "payer_name": "John Smith",
-      "total": 150.00,
-      "created_at": "2026-04-09T14:30:00Z",
-      "method": "card"
+      "payment_method": "card",
+      "paid_at": "2026-04-09T14:30:00Z"
     }
   ],
   "error": null
@@ -225,7 +234,7 @@ Generate a formatted receipt as plain text.
 
 ### Endpoint
 ```
-GET /receipts/{receipt_id}/generate
+GET /finance/receipts/{receipt_id}/generate
 ```
 
 ### Authentication
@@ -325,7 +334,7 @@ Mark a receipt as sent to parent/guardian with optional email tracking.
 
 ### Endpoint
 ```
-POST /receipts/{receipt_id}/mark-sent
+POST /finance/receipts/{receipt_id}/mark-sent
 ```
 
 ### Authentication
@@ -375,7 +384,7 @@ Generate multiple receipts at once for bulk operations. Returns structured resul
 
 ### Endpoint
 ```
-POST /receipts/batch-generate
+POST /finance/receipts/batch-generate
 ```
 
 ### Authentication
@@ -435,56 +444,81 @@ Admin role required
 
 ## Schemas
 
-### CreateBatchReceiptItemRequest
+### CreateReceiptRequest
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `payer_name` | string | No | null | Payer name |
-| `method` | string | Yes | "cash" | Payment method |
+| `method` | string | No | "cash" | Payment method |
 | `notes` | string | No | null | Notes |
-| `allow_credit` | boolean | No | false | Allow credit |
-| `lines` | ReceiptLineResponse[] | Yes | - | Line items |
+| `allow_credit` | boolean | No | true | Allow credit |
+| `lines` | ReceiptLineInput[] | Yes | - | Line items |
 
-### ReceiptLineResponse
+### ReceiptLineInput (for requests)
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `student_id` | integer | Yes | - | Student ID |
+| `enrollment_id` | integer | No | null | Enrollment ID |
+| `team_member_id` | integer | No | null | Team member ID |
+| `amount` | float | Yes | - | Line amount |
+| `payment_type` | string | No | "course_level" | Payment type |
+| `discount` | float | No | 0.0 | Discount amount |
+| `notes` | string | No | null | Notes |
+
+### ReceiptLineResponse (in responses)
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `id` | integer | Yes | Line item ID |
 | `student_id` | integer | Yes | Student ID |
-| `enrollment_id` | integer | No | Enrollment ID |
+| `enrollment_id` | integer \| null | No | Enrollment ID |
 | `amount` | float | Yes | Line amount |
-| `description` | string | No | Description |
+| `transaction_type` | string | Yes | Transaction type |
+| `payment_type` | string | Yes | Payment type |
+| `discount` | float | Yes | Discount amount |
+| `notes` | string \| null | No | Notes |
 
 ### ReceiptCreationResponse
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `id` | integer | Receipt ID |
-| `receipt_number` | string | Receipt number |
-| `payer_name` | string | Payer name |
+| `receipt_id` | integer | Receipt ID |
+| `receipt_number` | string \| null | Receipt number |
+| `payment_method` | string | Payment method |
+| `paid_at` | datetime \| null | Payment timestamp |
+| `lines` | integer | Count of line items |
 | `total` | float | Total amount |
-| `method` | string | Payment method |
-| `created_at` | datetime | Creation timestamp |
 | `payment_ids` | integer[] | Associated payment IDs |
 
 ### ReceiptDetailResponse
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `header` | ReceiptHeaderResponse | Receipt header info |
+| `receipt` | ReceiptHeaderResponse | Receipt header info |
 | `lines` | ReceiptLineResponse[] | Line items |
 | `total` | float | Total amount |
+
+### ReceiptHeaderResponse
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | integer | Receipt ID |
+| `receipt_number` | string \| null | Receipt number |
+| `payer_name` | string \| null | Payer name |
+| `payment_method` | string | Payment method |
+| `paid_at` | datetime \| null | Payment timestamp |
+| `notes` | string \| null | Notes |
 
 ### ReceiptListItem
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `id` | integer | Receipt ID |
-| `receipt_number` | string | Receipt number |
-| `payer_name` | string | Payer name |
-| `total` | float | Total amount |
-| `created_at` | datetime | Creation timestamp |
-| `method` | string | Payment method |
+| `receipt_number` | string \| null | Receipt number |
+| `payer_name` | string \| null | Payer name |
+| `payment_method` | string | Payment method |
+| `paid_at` | datetime \| null | Payment timestamp |
 
 ### MarkReceiptSentRequest
 
