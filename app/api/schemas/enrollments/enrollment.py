@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel
+from app.shared.constants import PaymentStatus
 
 
 class EnrollmentPublic(BaseModel):
@@ -22,7 +23,8 @@ class EnrollmentPublic(BaseModel):
     status: str
     amount_due: Optional[float] = None
     discount_applied: float = 0.0
-    payment_status: Optional[str] = None  # "paid", "due", "partial"
+    payment_status: Optional[PaymentStatus] = None  # not_paid, partially_paid, paid
+    amount_remaining: Optional[float] = None
     notes: Optional[str] = None
     enrolled_at: Optional[datetime] = None
 
@@ -38,7 +40,8 @@ class StudentEnrollmentSummaryPublic(BaseModel):
     status: str
     sessions_attended: int
     sessions_total: int
-    payment_status: str  # "paid", "due", "partial"
+    payment_status: PaymentStatus  # not_paid, partially_paid, paid
+    amount_remaining: float
     amount_due: float
     discount_applied: float
 

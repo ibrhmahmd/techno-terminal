@@ -14,7 +14,6 @@ from app.modules.students.models.activity_models import (
     StudentActivityLogCreate,
     StudentActivityLogRead,
     StudentEnrollmentHistory,
-    StudentPaymentHistory,
     StudentCompetitionHistory,
     ActivityTimelineFilter,
     StudentActivitySummary,

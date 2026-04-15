@@ -132,7 +132,6 @@ from app.modules.academics.services.group_competition_service import GroupCompet
 from app.modules.academics.services.session_service import SessionService
 from app.modules.academics.services.group_analytics_service import GroupAnalyticsService
 from app.modules.enrollments.services.enrollment_service import EnrollmentService
-import app.modules.finance as finance_module  # flat module — free functions, not a class
 
 def get_auth_service() -> AuthService:
     return AuthService()
@@ -177,13 +176,37 @@ def get_enrollment_service() -> EnrollmentService:
     return EnrollmentService()
 
 
-def get_finance_module():
-    """
-    Finance is a flat module (free functions), not a class.
-    Returns the module itself so routers can call finance_module.create_receipt_with_charge_lines(...).
-    Will be replaced with a FinanceService class in the SOLID refactor (BACKLOG §C2).
-    """
-    return finance_module
+# ── Finance Service Factories (SOLID Refactored) ──────────────────────────────
+
+from app.modules.finance.repositories.unit_of_work import FinanceUnitOfWork
+from app.modules.finance.services.receipt_service import ReceiptService
+from app.modules.finance.services.refund_service import RefundService
+from app.modules.finance.services.balance_service import BalanceService
+from app.modules.finance.services.reporting_service import ReportingService
+
+
+def get_receipt_service() -> ReceiptService:
+    """Returns a ReceiptService with a fresh UnitOfWork."""
+    with FinanceUnitOfWork() as uow:
+        return ReceiptService(uow)
+
+
+def get_refund_service() -> RefundService:
+    """Returns a RefundService with a fresh UnitOfWork."""
+    with FinanceUnitOfWork() as uow:
+        return RefundService(uow)
+
+
+def get_balance_service() -> BalanceService:
+    """Returns a BalanceService with a fresh UnitOfWork."""
+    with FinanceUnitOfWork() as uow:
+        return BalanceService(uow)
+
+
+def get_reporting_service() -> ReportingService:
+    """Returns a ReportingService with a fresh UnitOfWork."""
+    with FinanceUnitOfWork() as uow:
+        return ReportingService(uow)
 
 
 # ── Additional Service Factories (Standardizing DI pattern) ─────────────────────

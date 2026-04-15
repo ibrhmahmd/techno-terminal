@@ -15,7 +15,7 @@ from app.modules.academics.academics_models import Course, Group  # noqa: F401
 from app.modules.academics.academics_session_models import CourseSession  # noqa: F401
 from app.modules.attendance.attendance_models import Attendance  # noqa: F401
 from app.modules.enrollments.enrollment_models import Enrollment  # noqa: F401
-from app.modules.finance.finance_models import Receipt, Payment  # noqa: F401
+from app.modules.finance import Receipt, Payment  # noqa: F401
 from app.modules.competitions.competition_models import (  # noqa: F401
     Competition,
     CompetitionCategory,

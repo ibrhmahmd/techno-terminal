@@ -1,62 +1,76 @@
 """
-app/api/routers/finance.py
-───────────────────────────
-Finance domain router.
+app/api/routers/finance/finance_router.py
+───────────────────────────────────────
+Finance domain router with SOLID-compliant dependency injection.
+
+Endpoints:
+- POST /finance/receipts              - Create new receipt
+- POST /finance/refunds               - Issue refund
+- GET  /finance/competition-fees      - Get unpaid competition fees
+- POST /finance/risk/overpayment        - Assess overpayment risk
 
 Prefix: /api/v1 (mounted in main.py)
 Tag:    Finance
 """
-
 from datetime import date
+from decimal import Decimal
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, Query, status
 
 from app.api.schemas.common import ApiResponse
 from app.api.schemas.finance.receipt import (
     ReceiptCreationResponse,
-    ReceiptDetailResponse,
-    ReceiptListItem,
     RefundResponse,
     CreateReceiptRequest,
     IssueRefundRequest,
-    ReceiptLineRequest,
 )
-from app.api.schemas.finance.balance import StudentBalanceResponse
 from app.api.schemas.finance.risk import PreviewOverpaymentRequest, OverpaymentRiskResponse
-from app.api.dependencies import require_admin, require_any, get_finance_module
-from app.modules.finance.finance_schemas import ReceiptLineInput
-from app.modules.auth import User
-from app.shared.exceptions import NotFoundError
-from app.api.mappers.finance_mapper import (
-    to_receipt_list_item,
-    to_student_balance_response,
+from app.api.dependencies import (
+    require_admin,
+    require_any,
+    get_receipt_service,
+    get_refund_service,
+    get_balance_service,
+    get_reporting_service,
 )
-
-# Since finance is a flat module, we treat it similarly to `import app.modules.finance`
-# but use Dependency Injection for testing flexibility.
+from app.modules.finance.services.receipt_service import ReceiptService
+from app.modules.finance.services.refund_service import RefundService
+from app.modules.finance.services.balance_service import BalanceService
+from app.modules.finance.services.reporting_service import ReportingService
+from app.modules.finance import ReceiptLineInput, UnpaidCompFeeItem
+from app.modules.finance.interfaces import CreateReceiptServiceDTO, IssueRefundDTO
+from app.modules.auth import User
 
 router = APIRouter(tags=["Finance"])
 
 
-# create a new receipt
 @router.post(
     "/finance/receipts",
     response_model=ApiResponse[ReceiptCreationResponse],
-    status_code=201,
+    status_code=status.HTTP_201_CREATED,
     summary="Create a new receipt",
+    responses={
+        201: {"description": "Receipt created successfully"},
+        400: {"description": "Business rule violation (e.g., overpayment risk)"},
+        422: {"description": "Validation error"},
+    },
 )
 def create_receipt(
     body: CreateReceiptRequest,
     current_user: User = Depends(require_admin),
-    finance=Depends(get_finance_module),
-):
-    # Convert API DTOs to internal service DTOs
+    service: ReceiptService = Depends(get_receipt_service),
+) -> ApiResponse[ReceiptCreationResponse]:
+    """
+    Create a new receipt with payment lines.
+    
+    Validates for overpayment risk unless allow_credit=true.
+    """
     service_lines = [
         ReceiptLineInput(
             student_id=line.student_id,
             enrollment_id=line.enrollment_id,
+            team_member_id=line.team_member_id,
             amount=line.amount,
             payment_type=line.payment_type,
             discount=line.discount,
@@ -64,15 +78,18 @@ def create_receipt(
         )
         for line in body.lines
     ]
-    
-    result = finance.create_receipt_with_charge_lines(
-        payer_name=body.payer_name,
-        method=body.method,
-        received_by_user_id=current_user.id,
-        lines=service_lines,
-        notes=body.notes,
-        allow_credit=body.allow_credit,
+
+    result = service.create(
+        CreateReceiptServiceDTO(
+            lines=service_lines,
+            payer_name=body.payer_name,
+            payment_method=body.method,
+            received_by_user_id=current_user.id,
+            allow_credit=body.allow_credit,
+            notes=body.notes,
+        )
     )
+
     return ApiResponse(
         data=ReceiptCreationResponse(
             receipt_id=result.receipt_id,
@@ -80,146 +97,99 @@ def create_receipt(
             payment_method=result.payment_method,
             paid_at=result.paid_at,
             lines=len(result.lines),
-            total=result.total,
+            total=float(result.total),
             payment_ids=result.payment_ids,
         ),
         message="Receipt created successfully.",
     )
 
 
-# get receipt by ID
-@router.get(
-    "/finance/receipts/{receipt_id}",
-    response_model=ApiResponse[ReceiptDetailResponse],
-    summary="Get receipt details",
-)
-def get_receipt(
-    receipt_id: int,
-    _user: User = Depends(require_any),
-    finance=Depends(get_finance_module),
-):
-    detail = finance.get_receipt_detail(receipt_id)
-    if detail is None:
-        raise NotFoundError("Receipt not found")
-    return ApiResponse(data=ReceiptDetailResponse.model_validate(detail))
-
-
-# search receipts
-@router.get(
-    "/finance/receipts",
-    response_model=ApiResponse[list[ReceiptListItem]],
-    summary="Search receipts",
-)
-def search_receipts(
-    from_date: date = Query(..., description="Start date (YYYY-MM-DD)"),
-    to_date: date = Query(..., description="End date (YYYY-MM-DD)"),
-    payer_name: Optional[str] = Query(None, description="Filter by payer name"),
-    student_id: Optional[int] = Query(None, description="Filter by student ID"),
-    receipt_number: Optional[str] = Query(None, description="Filter by receipt number"),
-    limit: int = Query(200, le=1000),
-    _user: User = Depends(require_admin),
-    finance=Depends(get_finance_module),
-):
-    # Validate date range doesn't exceed 90 days (Issue M3)
-    max_days = 90
-    date_range = (to_date - from_date).days
-    if date_range > max_days:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Date range too large. Maximum allowed is {max_days} days. Requested: {date_range} days."
-        )
-    
-    results = finance.search_receipts(
-        from_date=from_date,
-        to_date=to_date,
-        payer_name_contains=payer_name,
-        student_id=student_id,
-        receipt_number_contains=receipt_number,
-        limit=limit,
-    )
-    return ApiResponse(data=[to_receipt_list_item(r) for r in results])
-
-
-# issue a refund
 @router.post(
     "/finance/refunds",
     response_model=ApiResponse[RefundResponse],
+    status_code=status.HTTP_200_OK,
     summary="Issue a refund",
+    responses={
+        200: {"description": "Refund issued successfully"},
+        400: {"description": "Refund exceeds available amount"},
+        404: {"description": "Original payment not found"},
+    },
 )
 def issue_refund(
     body: IssueRefundRequest,
     current_user: User = Depends(require_admin),
-    finance=Depends(get_finance_module),
-):
-    result = finance.issue_refund(
-        payment_id=body.payment_id,
-        amount=body.amount,
-        reason=body.reason,
-        received_by_user_id=current_user.id,
-        method=body.method,
+    service: RefundService = Depends(get_refund_service),
+) -> ApiResponse[RefundResponse]:
+    """
+    Issue a refund against an original payment.
+    
+    Creates a new receipt with a refund line. Refund amount cannot
+    exceed the available amount on the original payment.
+    """
+    result = service.issue(
+        IssueRefundDTO(
+            payment_id=body.payment_id,
+            amount=Decimal(str(body.amount)),
+            reason=body.reason,
+            received_by_user_id=current_user.id,
+            method=body.method,
+        )
     )
+
     return ApiResponse(
-        data=RefundResponse.model_validate(result),
+        data=RefundResponse(
+            receipt_number=result.receipt_number,
+            refunded_amount=float(result.refunded_amount),
+            new_balance=float(result.new_balance) if result.new_balance else None,
+        ),
         message="Refund issued successfully.",
     )
 
-
-# get student balances
 @router.get(
-    "/finance/balance/student/{student_id}",
-    response_model=ApiResponse[list[StudentBalanceResponse]],
-    summary="Get student balances",
-)
-def get_student_balance(
-    student_id: int,
-    _user: User = Depends(require_any),
-    finance=Depends(get_finance_module),
-):
-    balances = finance.get_student_financial_summary(student_id)
-    return ApiResponse(
-        data=[to_student_balance_response(b) for b in balances]
-    )
-
-
-from app.modules.finance.finance_schemas import UnpaidCompFeeItem
-
-@router.get(
-    "/finance/competition-fees/student/{student_id}",
+    "/finance/competition-fees",
     response_model=ApiResponse[list[UnpaidCompFeeItem]],
     summary="Get unpaid competition fees",
 )
 def get_unpaid_competition_fees(
-    student_id: int,
+    student_id: int = Query(..., description="Student ID to query"),
     _user: User = Depends(require_any),
-    finance=Depends(get_finance_module),
-):
+    service: ReportingService = Depends(get_reporting_service),
+) -> ApiResponse[list[UnpaidCompFeeItem]]:
     """
-    Returns pending competition fees for a student to be paid via Financial Desk setup.
+    Returns pending competition fees for a student.
+    
+    Used by Financial Desk to render checkbox payment lines.
     """
-    fees = finance.get_unpaid_competition_fees(student_id)
-    return ApiResponse(
-        data=[UnpaidCompFeeItem.model_validate(f) for f in fees]
-    )
+    fees = service.get_unpaid_competition_fees(student_id)
+    return ApiResponse(data=fees)
 
 
 @router.post(
-    "/finance/receipts/preview-risk",
+    "/finance/risk/overpayment",
     response_model=ApiResponse[list[OverpaymentRiskResponse]],
-    summary="Preview overpayment risk",
+    summary="Assess overpayment risk",
+    responses={
+        200: {"description": "Risk assessment completed"},
+        422: {"description": "Validation error"},
+    },
 )
-def preview_overpayment_risk(
+def assess_overpayment_risk(
     body: PreviewOverpaymentRequest,
     _user: User = Depends(require_admin),
-    finance=Depends(get_finance_module),
-):
+    service: BalanceService = Depends(get_balance_service),
+) -> ApiResponse[list[OverpaymentRiskResponse]]:
     """
-    Returns lines that would create/increase credit before creating a receipt.
+    Assess which receipt lines would create credit/overpayment.
+    
+    Returns lines where projected balance after payment would be
+    positive (indicating credit). Use before creating receipts to
+    warn users about potential overpayments.
     """
-    # Convert API DTOs to internal service DTOs
     service_lines = [
         ReceiptLineInput(
             student_id=line.student_id,
             enrollment_id=line.enrollment_id,
+            team_member_id=line.team_member_id,
             amount=line.amount,
             payment_type=line.payment_type,
             discount=line.discount,
@@ -227,43 +197,19 @@ def preview_overpayment_risk(
         )
         for line in body.lines
     ]
-    
-    risk_rows = finance.preview_overpayment_risk(lines=service_lines)
-    return ApiResponse(data=[OverpaymentRiskResponse.model_validate(r) for r in risk_rows])
 
+    risks = service.assess_overpayment_risk(service_lines)
 
-from fastapi.responses import Response
-from fastapi import HTTPException
-
-@router.get(
-    "/finance/receipts/{receipt_id}/pdf",
-    summary="Download PDF receipt",
-    response_class=Response,
-    responses={
-        200: {
-            "content": {"application/pdf": {}},
-            "description": "Returns the PDF document",
-        }
-    }
-)
-def download_receipt_pdf(
-    receipt_id: int,
-    _user: User = Depends(require_any),
-    finance=Depends(get_finance_module),
-):
-    """
-    Generate a branded PDF receipt with optional logo and signatures.
-    """
-    receipt = finance.get_receipt_detail(receipt_id)
-    if not receipt:
-        raise HTTPException(status_code=404, detail="Receipt not found")
-
-    pdf_bytes = finance.generate_receipt_pdf(receipt_id)
-    
-    return Response(
-        content=pdf_bytes,
-        media_type="application/pdf",
-        headers={
-            "Content-Disposition": f'attachment; filename="receipt_{receipt.receipt_number or receipt_id}.pdf"'
-        }
+    return ApiResponse(
+        data=[
+            OverpaymentRiskResponse(
+                student_id=r.student_id,
+                enrollment_id=r.enrollment_id,
+                amount=float(r.amount),
+                debt_before=float(r.debt_before),
+                projected_balance=float(r.projected_balance),
+                excess_credit=float(r.excess_credit),
+            )
+            for r in risks
+        ]
     )

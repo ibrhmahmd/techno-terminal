@@ -253,7 +253,7 @@ def delete_group_by_id(session: Session, group_id: int) -> Group | None:
     from app.modules.attendance.models.attendance_models import Attendance
     from app.modules.competitions.models.team_models import Team, TeamMember
     from app.modules.enrollments.models.enrollment_models import Enrollment
-    from app.modules.finance.finance_models import Payment
+    from app.modules.finance import Payment
     
     group = session.get(Group, group_id)
     if not group:

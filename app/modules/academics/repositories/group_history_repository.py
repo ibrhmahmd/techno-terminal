@@ -274,7 +274,7 @@ def get_enrollment_payments(session: Session, enrollment_id: int) -> float:
     """
     Get total payments made for an enrollment.
     """
-    from app.modules.finance.finance_models import Payment
+    from app.modules.finance import Payment
     
     stmt = (
         select(func.coalesce(func.sum(Payment.amount), 0))

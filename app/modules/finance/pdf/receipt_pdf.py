@@ -1,29 +1,35 @@
-import io
+"""
+app/modules/finance/pdf/receipt_pdf.py
+───────────────────────────────────────
+PDF generation for receipts.
+"""
 import os
-from datetime import datetime
+from typing import List
 from fpdf import FPDF
-from app.modules.finance.finance_models import Receipt, Payment
+
+from app.modules.finance import Receipt, Payment
 from app.core.config import settings
 
 
 class ReceiptPDF(FPDF):
+    """Custom PDF class for receipt generation."""
+
     def header(self):
+        """PDF header with logo and company info."""
         # Logo
         if settings.pdf_logo_path and os.path.exists(settings.pdf_logo_path):
             try:
-                # Add logo at X=10, Y=8, width=33
                 self.image(settings.pdf_logo_path, 10, 8, 33)
-                self.set_x(45)  # Move cursor past the logo
+                self.set_x(45)
             except Exception:
                 pass
 
         # Company Name
         self.set_font("helvetica", "B", 16)
         self.cell(0, 10, settings.pdf_company_name, border=0, align="L", ln=1)
-        
+
         # Company Address
         if settings.pdf_company_address:
-            # Re-align if there's a logo
             if settings.pdf_logo_path and os.path.exists(settings.pdf_logo_path):
                 self.set_x(45)
             self.set_font("helvetica", "I", 9)
@@ -32,17 +38,18 @@ class ReceiptPDF(FPDF):
         self.ln(10)
 
     def footer(self):
+        """PDF footer with page number."""
         self.set_y(-15)
         self.set_font("helvetica", "I", 8)
         self.cell(0, 10, f"Page {self.page_no()}", align="C")
 
     def add_signature_blocks(self):
-        """Adds signature blocks at the bottom of the page."""
+        """Add signature blocks at the bottom of the page."""
         self.ln(15)
         self.set_font("helvetica", "B", 10)
-        
+
         y_pos = self.get_y()
-        
+
         # Primary Signature
         if settings.pdf_primary_signature:
             self.set_xy(15, y_pos)
@@ -57,10 +64,20 @@ class ReceiptPDF(FPDF):
 
 
 def build_receipt_pdf(
-    receipt: Receipt, lines: list[Payment], total: float, parent_name: str
+    receipt: Receipt, lines: List[Payment], total: float, parent_name: str
 ) -> bytes:
-    """Generates a PDF receipt using fpdf2 and returns the raw bytes."""
-    # Note: A5 format might be a bit narrow for dual signatures, using A4 portrait.
+    """
+    Generate a PDF receipt using fpdf2.
+
+    Args:
+        receipt: Receipt object with header information
+        lines: List of payment line items
+        total: Total amount to display
+        parent_name: Parent/guardian name for the receipt
+
+    Returns:
+        PDF file as bytes
+    """
     pdf = ReceiptPDF(orientation="P", unit="mm", format="A4")
     pdf.add_page()
 
@@ -73,9 +90,7 @@ def build_receipt_pdf(
     pdf.set_font("helvetica", "", 10)
     pdf.cell(50, 6, "Date & Time:", ln=0)
     pdf.set_font("helvetica", "B", 10)
-    dt_str = "N/A"
-    if receipt.paid_at:
-        dt_str = str(receipt.paid_at)[:16]
+    dt_str = str(receipt.paid_at)[:16] if receipt.paid_at else "N/A"
     pdf.cell(0, 6, dt_str, ln=1)
 
     pdf.set_font("helvetica", "", 10)
@@ -92,8 +107,6 @@ def build_receipt_pdf(
 
     # Line Items Table Header
     pdf.set_font("helvetica", "B", 9)
-    # A4 portrait has about 190mm usable width.
-    # Col widths: # 10, Student ID 50, Item 90, Amount 40
     pdf.set_fill_color(230, 230, 240)
     pdf.cell(10, 8, "#", border=1, align="C", fill=True)
     pdf.cell(50, 8, "Student ID", border=1, align="L", fill=True)
@@ -101,7 +114,7 @@ def build_receipt_pdf(
     pdf.cell(40, 8, "Amount", border=1, align="R", fill=True)
     pdf.ln()
 
-    # Line Items Let's assume the names were fetched earlier or we fall back to IDs
+    # Line Items
     pdf.set_font("helvetica", "", 9)
     for i, line in enumerate(lines, start=1):
         item_text = f"{line.transaction_type.capitalize()} - {str(line.payment_type).replace('_', ' ').capitalize()}"

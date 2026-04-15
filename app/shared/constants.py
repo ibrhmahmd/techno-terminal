@@ -31,6 +31,9 @@ EnrollmentStatus: TypeAlias = Literal[
     "active", "completed", "transferred", "dropped", "cancelled"
 ]
 
+PaymentStatus: TypeAlias = Literal["not_paid", "partially_paid", "paid"]
+PAYMENT_STATUSES: list[PaymentStatus] = ["not_paid", "partially_paid", "paid"]
+
 # ── Attendance ────────────────────────────────────────────────────────────────
 
 AttendanceStatus: TypeAlias = Literal["present", "absent", "cancelled"]

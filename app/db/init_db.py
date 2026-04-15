@@ -18,7 +18,7 @@ import app.modules.academics.models.group_models
 import app.modules.academics.models.session_models
 import app.modules.attendance.models.attendance_models
 import app.modules.enrollments.models.enrollment_models
-import app.modules.finance.finance_models
+import app.modules.finance
 import app.modules.competitions.models.competition_models
 import app.modules.competitions.models.team_models
 

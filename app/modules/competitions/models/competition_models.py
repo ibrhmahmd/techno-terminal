@@ -4,7 +4,7 @@ from typing import Optional
 from sqlmodel import SQLModel, Field
 
 # Ensure related models are loaded so SQLAlchemy can resolve foreign keys
-import app.modules.finance.finance_models
+import app.modules.finance
 import app.modules.crm
 import app.modules.academics.models
 import app.modules.auth

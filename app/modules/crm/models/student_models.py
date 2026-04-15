@@ -21,7 +21,6 @@ class StudentStatus(str, Enum):
     ACTIVE = "active"
     WAITING = "waiting"
     INACTIVE = "inactive"
-    GRADUATED = "graduated"
 
 
 class StudentBase(SQLModel):

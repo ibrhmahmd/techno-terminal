@@ -3,27 +3,132 @@ app/api/routers/finance/receipt_router.py
 ─────────────────────────────────────────
 API endpoints for receipt generation and management.
 """
+from datetime import date
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, Query, Response, HTTPException
 
-from app.api.dependencies import require_any, require_admin
+from app.api.dependencies import (
+    require_any,
+    require_admin,
+    get_receipt_service,
+)
 from app.api.schemas.common import ApiResponse
 from app.api.schemas.finance.receipt import (
     MarkReceiptSentRequest,
     BatchGenerateRequest,
-    BatchGenerateResponse,
     BatchReceiptItem,
     ReceiptGenerationResponse,
+    ReceiptDetailResponse,
+    ReceiptListItem,
+    ReceiptHeaderResponse,
+    ReceiptLineResponse,
 )
+from app.api.mappers.finance_mapper import to_receipt_list_item
 from app.modules.auth.models import User
+from app.modules.finance.services.receipt_service import ReceiptService
 from app.modules.finance.services.receipt_generation_service import get_receipt_generation_service
+from app.modules.finance.interfaces import SearchReceiptsDTO
+from app.shared.exceptions import NotFoundError
 
 
 router = APIRouter(tags=["Receipts"])
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
+
+@router.get(
+    "/finance/receipts/{receipt_id}",
+    response_model=ApiResponse[ReceiptDetailResponse],
+    summary="Get receipt details",
+)
+def get_receipt(
+    receipt_id: int,
+    _user: User = Depends(require_any),
+    service: ReceiptService = Depends(get_receipt_service),
+):
+    detail = service.get_detail(receipt_id)
+    if detail is None:
+        raise NotFoundError("Receipt not found")
+    return ApiResponse(
+        data=ReceiptDetailResponse(
+            receipt=ReceiptHeaderResponse.model_validate(detail.receipt),
+            lines=[
+                ReceiptLineResponse(
+                    id=line.id,
+                    student_id=line.student_id,
+                    enrollment_id=line.enrollment_id,
+                    amount=float(line.amount),
+                    transaction_type=line.transaction_type,
+                    payment_type=line.payment_type,
+                    discount=float(line.discount),
+                    notes=line.notes,
+                )
+                for line in detail.lines
+            ],
+            total=float(detail.total),
+        )
+    )
+
+
+@router.get(
+    "/finance/receipts",
+    response_model=ApiResponse[list[ReceiptListItem]],
+    summary="Search receipts",
+)
+def search_receipts(
+    from_date: date = Query(..., description="Start date (YYYY-MM-DD)"),
+    to_date: date = Query(..., description="End date (YYYY-MM-DD)"),
+    payer_name: Optional[str] = Query(None, description="Filter by payer name"),
+    student_id: Optional[int] = Query(None, description="Filter by student ID"),
+    receipt_number: Optional[str] = Query(None, description="Filter by receipt number"),
+    limit: int = Query(200, le=1000),
+    _user: User = Depends(require_admin),
+    service: ReceiptService = Depends(get_receipt_service),
+):
+    max_days = 90
+    date_range = (to_date - from_date).days
+    if date_range > max_days:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Date range too large. Maximum allowed is {max_days} days. Requested: {date_range} days.",
+        )
+
+    results = service.search(
+        SearchReceiptsDTO(
+            from_date=from_date,
+            to_date=to_date,
+            payer_name_contains=payer_name,
+            student_id=student_id,
+            receipt_number_contains=receipt_number,
+            limit=limit,
+        )
+    )
+    return ApiResponse(data=[to_receipt_list_item(r) for r in results])
+
+
+@router.get(
+    "/finance/receipts/{receipt_id}/pdf",
+    summary="Download PDF receipt",
+    response_class=Response,
+    responses={200: {"content": {"application/pdf": {}}, "description": "Returns the PDF document"}},
+)
+def download_receipt_pdf(
+    receipt_id: int,
+    _user: User = Depends(require_any),
+    service: ReceiptService = Depends(get_receipt_service),
+):
+    detail = service.get_detail(receipt_id)
+    if not detail:
+        raise HTTPException(status_code=404, detail="Receipt not found")
+    pdf_bytes = service.generate_pdf(receipt_id)
+    receipt_number = detail.receipt.receipt_number if detail.receipt else None
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="receipt_{receipt_number or receipt_id}.pdf"'},
+    )
+
 
 @router.get(
     "/receipts/{receipt_id}/generate",
@@ -122,3 +227,31 @@ def batch_generate_receipts(
 ):
     results = svc.generate_batch_receipts(request.receipt_ids, request.template_name)
     return ApiResponse(success=True, data=results)
+
+
+@router.get(
+    "/receipts/templates",
+    response_model=ApiResponse[List[dict]],
+    summary="List receipt templates",
+    description="List active templates available for receipt generation.",
+)
+def list_receipt_templates(
+    current_user: User = Depends(require_admin),
+    svc = Depends(get_receipt_generation_service),
+):
+    return ApiResponse(data=svc.list_templates())
+    
+
+@router.post(
+    "/receipts/templates/{template_name}/set-default",
+    response_model=ApiResponse[dict],
+    summary="Set default receipt template",
+    description="Set one active receipt template as default for generation.",
+)
+def set_default_template(
+    template_name: str,
+    current_user: User = Depends(require_admin),
+    svc = Depends(get_receipt_generation_service),
+):
+    result = svc.set_default_template(template_name)
+    return ApiResponse(data=result, message="Default template updated successfully")

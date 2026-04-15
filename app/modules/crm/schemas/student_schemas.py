@@ -10,11 +10,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 
-class StudentStatus(str, Enum):
-    """Enum for student enrollment status."""
-    ACTIVE = "active"
-    WAITING = "waiting"
-    INACTIVE = "inactive"
+from app.modules.crm.models.student_models import StudentStatus
 
 
 class RegisterStudentDTO(BaseModel):
@@ -45,10 +41,21 @@ class UpdateStudentDTO(BaseModel):
     status: Optional[StudentStatus] = None  # Strict enum validation
 
 
+class StatusHistoryEntryDTO(BaseModel):
+    """Typed audit entry in student status trail. Replaces list[dict]."""
+    timestamp: datetime
+    changed_by: Optional[int] = None
+    old_status: Optional[str] = None
+    new_status: str
+    notes: Optional[str] = None
+    action: Optional[str] = None       # e.g. "priority_change"
+    new_priority: Optional[int] = None
+
+
 # NEW DTO for status updates
 class UpdateStudentStatusDTO(BaseModel):
     """Input for updating student status with audit notes."""
-    status: str
+    status: StudentStatus
     notes: Optional[str] = Field(
         default=None,
         description="Optional notes explaining the status change (e.g., 'Waiting for Level 2 group')"
@@ -75,7 +82,7 @@ class StudentResponseDTO(BaseModel):
     waiting_since: Optional[datetime] = None  # NEW
     waiting_priority: Optional[int] = None  # NEW
     waiting_notes: Optional[str] = None  # NEW
-    status_history: list[dict] = []  # NEW
+    status_history: list[StatusHistoryEntryDTO] = []  # NEW
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -86,7 +93,6 @@ class StudentStatusSummaryDTO(BaseModel):
     active: int
     waiting: int
     inactive: int
-    graduated: int
 
 
 class RegisterStudentCommandDTO(BaseModel):

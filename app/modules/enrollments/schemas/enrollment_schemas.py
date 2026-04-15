@@ -45,6 +45,8 @@ class EnrollmentDTO(EnrollmentBase):
     updated_at: Optional[datetime] = None
     created_by: Optional[int] = None
     enrollment_metadata: Optional[dict[str, Any]] = None
+    payment_status: Optional[str] = None  # not_paid, partially_paid, paid
+    amount_remaining: Optional[float] = None
 
 
 class StudentEnrollmentSummaryDTO(BaseModel):
@@ -56,6 +58,7 @@ class StudentEnrollmentSummaryDTO(BaseModel):
     status: str
     sessions_attended: int
     sessions_total: int
-    payment_status: str  # "paid", "due", "partial"
+    payment_status: str  # not_paid, partially_paid, paid
+    amount_remaining: float
     amount_due: float
     discount_applied: float

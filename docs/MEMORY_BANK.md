@@ -1,8 +1,8 @@
 # Techno Terminal — Memory Bank
 >
 > **Purpose:** Complete architectural and code-level reference for AI agent handoff.  
-> **Last updated:** 2026-04-02  
-> **Schema version:** v3.3 (15 tables, 5 views) — see `db/schema.sql` header  
+> **Last updated:** 2026-04-12  
+> **Schema version:** v3.4 (30 tables, 12 views) — verified via Supabase  
 > **Framework:** Streamlit + FastAPI + SQLModel + PostgreSQL + Supabase Auth  
 
 ---
@@ -44,8 +44,8 @@
 **Current Status (April 2026):**
 
 - **API Finalization Complete (2026-04-02):** All auth, session, competition, and finance endpoints implemented. The backend is **100% ready for frontend consumption**.
-- **Testing Initiative Complete (2026-04-02):** 75/80 endpoints tested (94% coverage). All 10 phases complete.
-  - **Test Files:** 11 test modules with 161 tests (160 passing)
+- **Testing Initiative Complete (2026-04-12):** 94% coverage (75/80 endpoint scenarios). All 10 phases complete.
+  - **Test Files:** 20 test modules with 161 tests (160 passing)
   - **Coverage:** Auth (6/6), CRM (9/9), Enrollments (4/4), Finance (8/8), Attendance (2/2), Academics (14/14), Competitions (8/8), HR (7/7), Analytics (16/16)
   - **Strategy:** Phased testing with transaction isolation, JWT mocking, and dependency-based test fixtures
 - **Auth Endpoints:** `POST /auth/login`, `POST /auth/logout`, `POST /auth/refresh`, `GET /auth/me`, `POST /auth/users`, `POST /auth/users/{id}/reset-password` — all using Supabase `sign_in_with_password`.
@@ -175,36 +175,64 @@ get_session()     # @contextmanager — yields Session, auto-commit on exit, rol
 
 **Connection pool config:** `pool_size=5`, `max_overflow=5`, `pool_timeout=30`, `pool_recycle=1800`
 
-### 3.2 Schema Overview (15 tables, dependency order)
+### 3.2 Schema Overview (30 tables — 16 core + 14 history/tracking)
 
 | Table | Purpose | Key Constraints |
 |---|---|---|
-| `parents` | Parent/parent contact records | phone_primary indexed |
-| `employees` | Staff (instructors, admin) | `national_id` UNIQUE NOT NULL; `phone` NOT NULL UNIQUE; `email` UNIQUE (nullable); `university`, `major`, `is_graduate` NOT NULL; `employment_type` NOT NULL; D5 CHECK on `contract_percentage`; see `db/migrations/004_employees_sprint2_identity.sql` |
-| `users` | Login accounts | roles: `admin`, `system_admin`; `supabase_uid` UNIQUE NOT NULL; optional `employee_id` → `employees` |
-| `students` | Student profiles | `is_active` flag; no parent FK — uses junction table |
-| `student_parents` | M:M student–parent with primary flag | `UNIQUE(student_id, parent_id)` |
-| `courses` | Course catalog | `category IN ('software','hardware','steam','other')` |
-| `groups` | Scheduling groups per course | `level_number` tracks current level; `status IN ('active','completed','cancelled')` |
-| `sessions` | Individual class sessions | `session_date` DATE, `created_at` TIMESTAMPTZ (ORM: `CourseSession` uses `date` / `datetime` — avoid legacy TEXT columns); `ON DELETE RESTRICT` on `group_id` |
-| `enrollments` | Student enrolled in a group level | Partial UNIQUE: one active enrollment per (student, group); `status IN ('active','completed','transferred','dropped')` |
-| `attendance` | Attendance per session | `UNIQUE(student_id, session_id)`; `enrollment_id` NOT NULL |
-| `receipts` | Payment receipt header | `payment_method IN ('cash','card','transfer','online')` |
-| `payments` | Payment line items | `transaction_type IN ('charge','payment','refund')`; `amount != 0` (allows negative refund) |
-| `competitions` | Competition events | |
-| `competition_categories` | Categories within a competition | `ON DELETE CASCADE` from competition |
-| `teams` | Team per category | `enrollment_fee_per_student` can be NULL or float > 0 |
-| `team_members` | Students in teams | `UNIQUE(team_id, student_id)`; `fee_paid BOOLEAN` |
+**Core Tables (16):**
+| Table | Purpose | Key Constraints |
+|---|---|---|
+| `attendance` | Attendance per session | `UNIQUE(student_id, session_id)`; 7 columns |
+| `competition_categories` | Categories within a competition | `ON DELETE CASCADE` from competition; 4 columns |
+| `competitions` | Competition events | 8 columns |
+| `courses` | Course catalog | `category IN ('software','hardware','steam','other')`; 10 columns |
+| `employees` | Staff (instructors, admin) | `national_id` UNIQUE NOT NULL; `phone` NOT NULL UNIQUE; 17 columns |
+| `enrollments` | Student enrolled in a group level | Partial UNIQUE: one active enrollment per (student, group); 14 columns |
+| `groups` | Scheduling groups per course | `level_number` tracks current level; 15 columns |
+| `parents` | Parent/parent contact records | phone_primary indexed; 9 columns |
+| `payments` | Payment line items | `transaction_type IN ('charge','payment','refund')`; 11 columns |
+| `receipts` | Payment receipt header | `payment_method IN ('cash','card','transfer','online')`; 14 columns |
+| `sessions` | Individual class sessions | `session_date` DATE, `created_at` TIMESTAMPTZ; 14 columns |
+| `student_parents` | M:M student–parent with primary flag | `UNIQUE(student_id, parent_id)`; 5 columns |
+| `students` | Student profiles | `is_active` flag; `status` enum (active/waiting/inactive); 16 columns |
+| `team_members` | Students in teams | `UNIQUE(team_id, student_id)`; `fee_paid BOOLEAN`; 5 columns |
+| `teams` | Team per category | `enrollment_fee_per_student` can be NULL or float > 0; 11 columns |
+| `users` | Login accounts | roles: `admin`, `system_admin`; `supabase_uid` UNIQUE NOT NULL; 8 columns |
 
-### 3.3 Views (5)
+**History & Tracking Tables (14):**
+| Table | Purpose | Columns |
+|---|---|---|
+| `enrollment_balance_history` | Historical balance changes per enrollment | 10 |
+| `enrollment_level_history` | Level progression tracking | 10 |
+| `generated_receipts` | Generated receipt records | 11 |
+| `group_competition_participation` | Group-competition linkage | 12 |
+| `group_course_history` | Course assignment history for groups | 9 |
+| `group_levels` | Group level progression management | 14 |
+| `payment_allocations` | Payment distribution across enrollments | 10 |
+| `receipt_templates` | Configurable receipt templates | 13 |
+| `student_activity_log` | Audit trail of all student actions | 10 |
+| `student_balances` | Current balance snapshot per student | 7 |
+| `student_competition_history` | Competition participation records | 14 |
+| `student_credits` | Credit balance tracking | 10 |
+| `student_enrollment_history` | Enrollment lifecycle history | 15 |
+| `student_payment_history` | Payment transaction history per student | 20 |
 
-| View | What it gives you |
-|---|---|
-| `v_students` | students + primary parent name/phone joined |
-| `v_enrollment_balance` | enrollment_id + `net_due`, `total_paid`, balance (live, computed from payments) |
-| `v_enrollment_attendance` | enrollment_id + `sessions_attended`, `sessions_missed` |
-| `v_siblings` | pairs of students who share a parent |
-| `v_group_session_count` | group_id + level → `regular_sessions`, `extra_sessions`, `total_sessions` |
+### 3.3 Views (12)
+
+| View | Columns | What it gives you |
+|---|---|---|
+| `v_students` | 13 | students + primary parent name/phone joined |
+| `v_enrollment_balance` | 9 | enrollment_id + `net_due`, `total_paid`, balance (live, computed from payments) |
+| `v_enrollment_attendance` | 3 | enrollment_id + `sessions_attended`, `sessions_missed` |
+| `v_siblings` | 5 | pairs of students who share a parent |
+| `v_group_session_count` | 5 | group_id + level → `regular_sessions`, `extra_sessions`, `total_sessions` |
+| `v_course_stats` | 6 | Course-level statistics |
+| `v_daily_collections` | 7 | Daily payment collections summary |
+| `v_payment_allocations_detailed` | 17 | Detailed payment allocation view |
+| `v_student_activity_timeline` | 13 | Chronological student activity |
+| `v_student_financial_summary` | 13 | Student financial overview |
+| `v_student_payment_history` | 26 | Payment history with details |
+| `v_unpaid_enrollments` | 16 | Unpaid enrollment listing |
 
 > **Critical:** `v_enrollment_balance.balance` is a PostgreSQL `Decimal` — always cast to `float()` in Python before arithmetic.
 
@@ -448,7 +476,7 @@ if "nav_target_student_id" in st.session_state:
 - **`get_db`** — yields a `Session` scoped to the request (uses `get_session()` context manager pattern).
 - **Exception handlers:** `app/api/exceptions.py`
 
-**Phase 5 status:** **5.1** (scaffold + Supabase JWT + `/me`) is implemented. **5.2–5.5** (CRM, academics, transactions, analytics routers) are **planned** — detailed order, acceptance criteria, and security checklist: [docs/planning/phase5_api_execution_roadmap_2026.md](planning/phase5_api_execution_roadmap_2026.md). Architectural blueprint: [docs/memory_bank/04_architecture/09_phase5_api_technical_plan.md](memory_bank/04_architecture/09_phase5_api_technical_plan.md). Commented `include_router` placeholders live in `main.py`.
+**Phase 5 status:** **COMPLETE** — All routers implemented (15 total): auth, CRM (students/parents/history), academics (courses/groups/sessions/lifecycle/competitions), enrollments, attendance, finance (balance/receipts/finance), competitions, HR, analytics (academic/financial/competition/BI). See `app/api/main.py` for full router registration.
 
 ---
 

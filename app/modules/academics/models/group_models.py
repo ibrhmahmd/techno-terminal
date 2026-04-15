@@ -35,3 +35,8 @@ class Group(GroupBase, table=True):
         default=None,
         sa_column=SAColumn("metadata", JSONB),
     )
+
+    @property
+    def group_name(self) -> Optional[str]:
+        """Alias for name field for DTO compatibility."""
+        return self.name

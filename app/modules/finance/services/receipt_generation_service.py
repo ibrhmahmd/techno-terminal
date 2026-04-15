@@ -7,11 +7,11 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any
 from decimal import Decimal
 
+from sqlalchemy import text
 from sqlmodel import select
 
 from app.db.connection import get_session
-from app.modules.finance.finance_models import Receipt, Payment
-from app.modules.finance.models.balance_models import PaymentAllocation
+from app.modules.finance import Receipt, Payment
 from app.api.schemas.finance.receipt import BatchGenerateResponse, BatchReceiptItem
 from app.modules.enrollments.models.enrollment_models import Enrollment
 from app.modules.academics.models.group_models import Group
@@ -62,12 +62,11 @@ class ReceiptGenerationService:
         if not receipt:
             raise NotFoundError(f"Receipt with ID {receipt_id} not found")
         
-        # Get payments with allocations
+        # Get payment lines for receipt
         payments_data = db.exec(
-            select(Payment, PaymentAllocation, Enrollment, Group)
-            .outerjoin(PaymentAllocation, PaymentAllocation.payment_id == Payment.id)
-            .outerjoin(Enrollment, PaymentAllocation.enrollment_id == Enrollment.id)
-            .outerjoin(Group, Enrollment.group_id == Group.id if Enrollment else None)
+            select(Payment, Enrollment, Group)
+            .outerjoin(Enrollment, Payment.enrollment_id == Enrollment.id)
+            .outerjoin(Group, Enrollment.group_id == Group.id)
             .where(Payment.receipt_id == receipt_id)
         ).all()
         
@@ -82,8 +81,8 @@ class ReceiptGenerationService:
         payment_lines = []
         total_discount = Decimal('0.00')
         
-        for payment, allocation, enrollment, group in payments_data:
-            description = self._build_description(payment, allocation, enrollment, group)
+        for payment, enrollment, group in payments_data:
+            description = self._build_description(payment, enrollment, group)
             
             line_discount = Decimal(str(payment.discount_amount or 0))
             total_discount += line_discount
@@ -99,15 +98,23 @@ class ReceiptGenerationService:
         subtotal = sum(line['amount'] for line in payment_lines)
         total = subtotal - float(total_discount)
         
-        # Get balance if requested
+        # Get balance if requested (query v_enrollment_balance directly)
         balance_remaining = 0.0
         if include_balance and student:
-            from app.modules.finance.services.balance_service import BalanceService
-            balance_service = BalanceService(db)
             try:
-                balance = balance_service.get_quick_balance(student.id)
-                if balance.net_balance < 0:
-                    balance_remaining = abs(balance.net_balance)
+                from sqlalchemy import text
+                result = db.execute(
+                    text("""
+                        SELECT COALESCE(SUM(balance), 0) as net_balance
+                        FROM v_enrollment_balance
+                        WHERE student_id = :sid
+                    """),
+                    {"sid": student.id}
+                ).first()
+                if result:
+                    net_balance = float(result[0] or 0)
+                    if net_balance < 0:
+                        balance_remaining = abs(net_balance)
             except:
                 pass  # Balance calculation failed, continue without
         
@@ -136,7 +143,6 @@ class ReceiptGenerationService:
     def _build_description(
         self,
         payment: Payment,
-        allocation: Optional[PaymentAllocation],
         enrollment: Optional[Enrollment],
         group: Optional[Group]
     ) -> str:
@@ -331,6 +337,51 @@ This receipt was generated on {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}.
                 ))
         
         return results
+
+    def list_templates(self) -> List[Dict[str, Any]]:
+        """List active receipt templates for admin selection."""
+        db = self._get_db()
+        rows = db.execute(
+            text(
+                """
+                SELECT template_name, template_type, format, is_default, is_active, updated_at
+                FROM receipt_templates
+                WHERE is_active = TRUE
+                ORDER BY is_default DESC, template_name ASC
+                """
+            )
+        ).all()
+        return [dict(row._mapping) for row in rows]
+
+    def set_default_template(self, template_name: str) -> Dict[str, Any]:
+        """Set one template as default and unset others."""
+        db = self._get_db()
+        exists = db.execute(
+            text(
+                """
+                SELECT template_name
+                FROM receipt_templates
+                WHERE template_name = :name AND is_active = TRUE
+                """
+            ),
+            {"name": template_name},
+        ).first()
+        if not exists:
+            raise NotFoundError(f"Template '{template_name}' not found or inactive")
+
+        db.execute(text("UPDATE receipt_templates SET is_default = FALSE WHERE is_default = TRUE"))
+        db.execute(
+            text(
+                """
+                UPDATE receipt_templates
+                SET is_default = TRUE, updated_at = NOW()
+                WHERE template_name = :name
+                """
+            ),
+            {"name": template_name},
+        )
+        db.commit()
+        return {"template_name": template_name, "is_default": True}
 
 
 def get_receipt_generation_service(db = None):

@@ -14,7 +14,7 @@ def seed_admin_account():
             print("Seeding default 'admin' account into Supabase Cloud...")
             try:
                 supabase_admin = get_supabase_admin()
-                admin_email = "admin.net@techno.crm"
+                admin_email = "ibrahim.net@techno.crm"
 
                 # We attempt to create the identity natively in Supabase
                 try:

@@ -14,6 +14,7 @@ from app.modules.enrollments.schemas.enrollment_schemas import (
 )
 from app.shared.exceptions import NotFoundError, BusinessRuleError, ConflictError
 import app.modules.enrollments.repositories.enrollment_repository as repo
+from app.modules.finance.repositories.payment_repository import PaymentRepository
 
 class EnrollmentService:
     def enroll_student(
@@ -185,16 +186,14 @@ class EnrollmentService:
                 ).first()
                 sessions_total = level.sessions_planned if level else 0
 
-                # Calculate payment status
+                # Get actual payment status from v_enrollment_balance view
+                pay_repo = PaymentRepository(session)
+                balance_info = pay_repo.get_enrollment_balance(enrollment.id)
+                payment_status = balance_info.status if balance_info else 'not_paid'
+                amount_remaining = float(balance_info.balance) if balance_info else 0.0
+
                 amount_due = float(enrollment.amount_due or 0)
                 discount = float(enrollment.discount_applied or 0)
-                # Simple payment status logic - can be enhanced with actual payment queries
-                if amount_due <= 0:
-                    payment_status = "paid"
-                elif discount > 0 and amount_due <= discount:
-                    payment_status = "paid"
-                else:
-                    payment_status = "due"
 
                 summary = StudentEnrollmentSummaryDTO(
                     student_id=student.id,
@@ -205,6 +204,7 @@ class EnrollmentService:
                     sessions_attended=attendance_summary.sessions_attended,
                     sessions_total=sessions_total,
                     payment_status=payment_status,
+                    amount_remaining=amount_remaining,
                     amount_due=amount_due,
                     discount_applied=discount,
                 )
@@ -216,4 +216,14 @@ class EnrollmentService:
     def get_student_enrollments(self, student_id: int) -> list[EnrollmentDTO]:
         with get_session() as session:
             enrollments = repo.get_enrollments_by_student(session, student_id)
-            return [EnrollmentDTO.model_validate(e) for e in enrollments]
+            result = []
+            for enrollment in enrollments:
+                dto = EnrollmentDTO.model_validate(enrollment)
+                # Enrich with payment status from v_enrollment_balance
+                pay_repo = PaymentRepository(session)
+                balance_info = pay_repo.get_enrollment_balance(enrollment.id)
+                if balance_info:
+                    dto.payment_status = balance_info.status
+                    dto.amount_remaining = float(balance_info.balance)
+                result.append(dto)
+            return result

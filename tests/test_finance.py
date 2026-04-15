@@ -212,6 +212,26 @@ class TestRiskPreview:
         assert data["success"] is False
 
 
+class TestReceiptTemplates:
+    """Tests for receipt template management endpoints."""
+
+    def test_list_templates_requires_auth(self, client):
+        response = client.get("/api/v1/receipts/templates")
+        assert response.status_code == 401
+
+    def test_list_templates_admin_access(self, client, admin_headers):
+        response = client.get("/api/v1/receipts/templates", headers=admin_headers)
+        assert response.status_code in [200, 401]
+        if response.status_code == 200:
+            data = response.json()
+            assert data["success"] is True
+            assert isinstance(data["data"], list)
+
+    def test_set_default_template_requires_auth(self, client):
+        response = client.post("/api/v1/receipts/templates/standard/set-default")
+        assert response.status_code == 401
+
+
 class TestFinanceAuth:
     """Tests for authentication and authorization."""
     

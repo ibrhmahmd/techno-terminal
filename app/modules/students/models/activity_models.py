@@ -94,51 +94,6 @@ class StudentEnrollmentHistoryRead(StudentEnrollmentHistoryBase):
     performed_by: Optional[int] = None
 
 
-# ── Student Payment History ────────────────────────────────────────────────
-
-class StudentPaymentHistoryBase(SQLModel):
-    """Base model for student payment history."""
-    payment_date: datetime
-    amount: Decimal = Field(decimal_places=2)
-    transaction_type: str  # 'payment', 'refund', 'charge', 'adjustment'
-    payment_type: Optional[str] = None  # 'course_level', 'competition', 'other'
-    discount_amount: Decimal = Field(default=Decimal("0.00"), decimal_places=2)
-    allocated_amount: Optional[Decimal] = Field(default=None, decimal_places=2)
-    balance_after: Optional[Decimal] = Field(default=None, decimal_places=2)
-    receipt_number: Optional[str] = None
-    payment_method: Optional[str] = None
-    payer_name: Optional[str] = None
-    notes: Optional[str] = None
-    created_at: Optional[datetime] = None
-
-
-class StudentPaymentHistory(StudentPaymentHistoryBase, table=True):
-    """Denormalized payment history for fast queries."""
-    __tablename__ = "student_payment_history"
-    __table_args__ = {"extend_existing": True}
-    
-    id: Optional[int] = Field(default=None, primary_key=True)
-    student_id: int = Field(foreign_key="students.id")
-    payment_id: int = Field(foreign_key="payments.id")
-    receipt_id: Optional[int] = Field(default=None, foreign_key="receipts.id")
-    enrollment_id: Optional[int] = Field(default=None, foreign_key="enrollments.id")
-    competition_id: Optional[int] = Field(default=None, foreign_key="competitions.id")
-    team_member_id: Optional[int] = Field(default=None, foreign_key="team_members.id")
-    received_by: Optional[int] = Field(default=None, foreign_key="users.id")
-
-
-class StudentPaymentHistoryRead(StudentPaymentHistoryBase):
-    """DTO for reading payment history."""
-    id: int
-    student_id: int
-    payment_id: int
-    receipt_id: Optional[int] = None
-    enrollment_id: Optional[int] = None
-    competition_id: Optional[int] = None
-    team_member_id: Optional[int] = None
-    received_by: Optional[int] = None
-
-
 # ── Student Competition History ─────────────────────────────────────────────
 
 class StudentCompetitionHistoryBase(SQLModel):

@@ -189,12 +189,14 @@ class TeamService:
                         fee_paid=m.fee_paid,
                         payment_id=m.payment_id,
                     )
+                    
                 )
             return result
 
     def pay_competition_fee(self, cmd: PayCompetitionFeeInput) -> PayCompetitionFeeResponseDTO:
-        from app.modules.finance import finance_service as fin_srv
-        from app.modules.finance.finance_schemas import ReceiptLineInput
+        from app.modules.finance.repositories.unit_of_work import FinanceUnitOfWork
+        from app.modules.finance.services.receipt_service import ReceiptService
+        from app.modules.finance import ReceiptLineInput
 
         with get_session() as db:
             team = team_repo.get_team(db, cmd.team_id)
@@ -213,29 +215,32 @@ class TeamService:
                     "Student's member share fee is 0."
                 )
 
-        # Trigger external finance service layer
-        summary = fin_srv.create_receipt_with_charge_lines(
-            parent_id=cmd.parent_id,
-            method="cash",
-            received_by_user_id=cmd.received_by_user_id,
-            lines=[
-                ReceiptLineInput(
-                    student_id=cmd.student_id,
-                    enrollment_id=None,
-                    amount=fee,
-                    payment_type="competition",
-                )
-            ],
-            notes=f"Competition fee — Team #{cmd.team_id}",
-        )
-        payment_id = summary["payment_ids"][0]
+        # Use new SOLID-compliant ReceiptService
+        with FinanceUnitOfWork() as uow:
+            service = ReceiptService(uow)
+            result = service.create(
+                lines=[
+                    ReceiptLineInput(
+                        student_id=cmd.student_id,
+                        enrollment_id=None,
+                        amount=fee,
+                        payment_type="competition",
+                    )
+                ],
+                payer_name=cmd.parent_name if hasattr(cmd, 'parent_name') else None,
+                payment_method="cash",
+                received_by_user_id=cmd.received_by_user_id,
+                allow_credit=False,
+                notes=f"Competition fee — Team #{cmd.team_id}",
+            )
+            payment_id = result.payment_ids[0]
 
         # Finalize fee status independently
         with get_session() as db:
             team_repo.mark_fee_paid(db, cmd.team_id, cmd.student_id, payment_id)
 
         return PayCompetitionFeeResponseDTO(
-            receipt_number=summary["receipt_number"],
+            receipt_number=result.receipt_number,
             payment_id=payment_id,
             amount=fee,
         )
