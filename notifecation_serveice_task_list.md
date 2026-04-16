@@ -1,0 +1,29 @@
+- `[x]` Phase 1: Database Models & Migration
+  - `[x]` Create `app/modules/notifications/models` structure
+  - `[x]` Create `notification_template.py`
+  - `[x]` Create `notification_log.py`
+  - `[x]` Create `notification_subscriber.py`
+  - `[x]` Generate Alembic migration & add seed templates
+- `[x]` Phase 2: Abstract Dispatcher Interface
+  - `[x]` Create `IMessageDispatcher` protocol
+- `[x]` Phase 3: Concrete Dispatchers
+  - `[x]` Implement `TwilioWhatsAppDispatcher`
+  - `[x]` Implement `GmailEmailDispatcher`
+- `[x]` Phase 4: Repository & Interface
+  - `[x]` Create `INotificationRepository` protocol
+  - `[x]` Implement `NotificationRepository`
+- `[x]` Phase 5: NotificationService (Core Orchestrator)
+  - `[x]` Implement `NotificationService` methods (notify_absence, send_bulk, etc)
+- `[x]` Phase 6: Scheduler
+  - `[x]` Implement `report_scheduler.py`
+  - `[x]` Modify `app/api/main.py` lifespan
+- `[x]` Phase 7: API Routers & Dependencies
+  - `[x]` Create Notification modules and routers
+  - `[x]` Inject into `dependencies.py`
+- `[x]` Phase 8: Integration With Existing Services
+  - `[x]` Inject into `receipt_service.py`
+  - `[x]` Inject into `enrollment_service.py`
+- `[ ]` Phase 9: Testing & Verification
+  - `[ ]` Add `twilio` to dependencies
+  - `[ ]` Add `.env` vars
+  - `[ ]` Run manual testing routines

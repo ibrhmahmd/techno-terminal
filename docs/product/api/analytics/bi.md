@@ -1,562 +1,169 @@
 # Business Intelligence (BI) Analytics API
 
-Advanced analytics endpoints for business intelligence: trends, retention, performance metrics, and risk analysis.
-
-**Base Path:** `/api/v1/analytics`  
-**Tag:** `Analytics — BI`  
-**Authentication:** Admin required (`require_admin`)
+Advanced analytics for trends, retention, instructor performance, and student risk factor analysis.
 
 ---
 
 ## Endpoints
 
 ### 1. Get Enrollment Trend
-**GET** `/api/v1/analytics/bi/enrollment-trend`
+`GET /analytics/bi/enrollment-trend`
 
-**Description:** Returns daily new enrollment counts over time for trend analysis.
-
-**Authentication:** Admin required
+Returns daily new enrollment counts over time to visualize growth trends.
 
 **Query Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| cutoff | string (date) | No | Start date for trend analysis (YYYY-MM-DD). Defaults to 90 days ago. |
+- `cutoff` (optional): The start date for the analysis (YYYY-MM-DD). Defaults to 90 days ago.
 
-**Response (200):** `ApiResponse<list<EnrollmentTrendItem>>`
-
-**Example Response:**
+**Response Body:** `ApiResponse[list[EnrollmentTrendItem]]`
 ```json
-{
-  "success": true,
-  "data": [
-    {
-      "day": "2026-04-01",
-      "new_enrollments": 5
-    },
-    {
-      "day": "2026-04-02",
-      "new_enrollments": 3
-    }
-  ],
-  "message": "Enrollment trend retrieved successfully."
-}
+[
+  {
+    "day": "2026-04-15",
+    "new_enrollments": 12
+  }
+]
 ```
 
 ---
 
 ### 2. Get Retention Metrics
-**GET** `/api/v1/analytics/bi/retention`
+`GET /analytics/bi/retention`
 
-**Description:** Returns enrollment retention and dropout rates per course.
+Returns current enrollment retention and dropout counts grouped by course.
 
-**Authentication:** Admin required
-
-**Response (200):** `ApiResponse<list<RetentionMetricsResponse>>`
-
-**Example Response:**
+**Response Body:** `ApiResponse[list[RetentionMetricsResponse]]`
 ```json
-{
-  "success": true,
-  "data": [
-    {
-      "course_name": "Robotics Fundamentals",
-      "active_count": 45,
-      "dropped_count": 5,
-      "total_enrollments": 50
-    }
-  ],
-  "message": "Retention metrics retrieved successfully."
-}
+[
+  {
+    "course_name": "Robotics 101",
+    "active_count": 80,
+    "dropped_count": 5,
+    "total_enrollments": 85
+  }
+]
 ```
 
 ---
 
 ### 3. Get Instructor Performance
-**GET** `/api/v1/analytics/bi/instructor-performance`
+`GET /analytics/bi/instructor-performance`
 
-**Description:** Returns group and active student counts per instructor.
+Provides operational volume metrics (groups handled and total students) per instructor.
 
-**Authentication:** Admin required
-
-**Response (200):** `ApiResponse<list<InstructorPerformanceItem>>`
-
-**Example Response:**
+**Response Body:** `ApiResponse[list[InstructorPerformanceItem]]`
 ```json
-{
-  "success": true,
-  "data": [
-    {
-      "instructor_name": "Ahmed Hassan",
-      "active_groups": 4,
-      "active_students": 32
-    }
-  ],
-  "message": "Instructor performance retrieved successfully."
-}
+[
+  {
+    "instructor_name": "John Doe",
+    "active_groups": 4,
+    "active_students": 45
+  }
+]
 ```
 
 ---
 
 ### 4. Get Level Retention Funnel
-**GET** `/api/v1/analytics/bi/retention-funnel`
+`GET /analytics/bi/retention-funnel`
 
-**Description:** Returns student counts per course/level showing progression funnel (how many students reach each level).
+Shows a progression funnel of how many students reach which level in a specific course.
 
-**Authentication:** Admin required
-
-**Response (200):** `ApiResponse<list<LevelRetentionFunnelItem>>`
-
-**Example Response:**
+**Response Body:** `ApiResponse[list[LevelRetentionFunnelItem]]`
 ```json
-{
-  "success": true,
-  "data": [
-    {
-      "course_name": "Robotics Fundamentals",
-      "level_number": 1,
-      "student_count": 50
-    },
-    {
-      "course_name": "Robotics Fundamentals",
-      "level_number": 2,
-      "student_count": 42
-    }
-  ],
-  "message": "Level retention funnel retrieved successfully."
-}
+[
+  {
+    "course_name": "Robotics 101",
+    "level_number": 1,
+    "student_count": 100
+  },
+  {
+    "course_name": "Robotics 101",
+    "level_number": 2,
+    "student_count": 65
+  }
+]
 ```
 
 ---
 
 ### 5. Get Instructor Value Matrix
-**GET** `/api/v1/analytics/bi/instructor-value`
+`GET /analytics/bi/instructor-value`
 
-**Description:** Returns revenue and attendance correlation per instructor to identify high-value instructors.
+Correlates instructor teaching quality (via attendance percentages) with revenue generated.
 
-**Authentication:** Admin required
-
-**Response (200):** `ApiResponse<list<InstructorValueMatrixItem>>`
-
-**Example Response:**
+**Response Body:** `ApiResponse[list[InstructorValueMatrixItem]]`
 ```json
-{
-  "success": true,
-  "data": [
-    {
-      "instructor_name": "Ahmed Hassan",
-      "total_revenue": 75000.0,
-      "avg_attendance_pct": 92.5
-    }
-  ],
-  "message": "Instructor value matrix retrieved successfully."
-}
+[
+  {
+    "instructor_name": "John Doe",
+    "total_revenue": 15000.0,
+    "avg_attendance_pct": 92.5
+  }
+]
 ```
 
 ---
 
 ### 6. Get Schedule Utilization
-**GET** `/api/v1/analytics/bi/schedule-utilization`
+`GET /analytics/bi/schedule-utilization`
 
-**Description:** Returns schedule slot utilization percentages to identify underutilized or overbooked time slots.
+Analyzes how well scheduled time slots are being utilized relative to their maximum capacity.
 
-**Authentication:** Admin required
-
-**Response (200):** `ApiResponse<list<ScheduleUtilizationItem>>`
-
-**Example Response:**
+**Response Body:** `ApiResponse[list[ScheduleUtilizationItem]]`
 ```json
-{
-  "success": true,
-  "data": [
-    {
-      "day": "Saturday",
-      "time_start": "14:00",
-      "total_enrolled": 45,
-      "total_capacity": 60,
-      "utilization_pct": 75.0
-    }
-  ],
-  "message": "Schedule utilization retrieved successfully."
-}
+[
+  {
+    "day": "Monday",
+    "time_start": "16:00:00",
+    "total_enrolled": 18,
+    "total_capacity": 20,
+    "utilization_pct": 90.0
+  }
+]
 ```
 
 ---
 
 ### 7. Get Flight-Risk Students
-**GET** `/api/v1/analytics/bi/flight-risk`
+`GET /analytics/bi/flight-risk`
 
-**Description:** Returns students likely to drop out based on attendance patterns and outstanding debt.
+Uses a heuristic model based on missed sessions and outstanding debt to identify students likely to drop out.
 
-**Authentication:** Admin required
-
-**Response (200):** `ApiResponse<list<FlightRiskStudentItem>>`
-
-**Example Response:**
+**Response Body:** `ApiResponse[list[FlightRiskStudentItem]]`
 ```json
-{
-  "success": true,
-  "data": [
-    {
-      "student_name": "Omar Mohamed",
-      "course_name": "Robotics Fundamentals",
-      "amount_owed": -500.0,
-      "sessions_missed": 3
-    }
-  ],
-  "message": "Flight-risk students retrieved successfully."
-}
+[
+  {
+    "student_name": "Alice Wonderland",
+    "course_name": "Advanced AI",
+    "amount_owed": 1200.0,
+    "sessions_missed": 3
+  }
+]
 ```
 
 ---
 
-### 8. Get User Engagement
-**GET** `/api/v1/analytics/bi/user-engagement`
+### 8. Get Retention Cohort Analysis
+`GET /analytics/bi/retention-analysis`
 
-**Description:** Returns daily user engagement metrics including active users, session duration, and feature usage patterns.
-
-**Authentication:** Admin required
+Provides a longitudinal look at student retention by grouping enrollments into monthly cohorts.
 
 **Query Parameters:**
-| Name | Type | Required | Default | Constraints | Description |
-|------|------|----------|---------|-------------|-------------|
-| days | integer | No | 30 | ge=1, le=90 | Number of days to analyze |
+- `months` (optional): Number of months to look back (1-12, default: 6).
 
-**Response (200):** `ApiResponse<list<UserEngagementItem>>`
-
-**Error Responses:**
-- 422 Validation Error - days must be between 1 and 90
-
-**Example Response:**
+**Response Body:** `ApiResponse[list[RetentionCohortItem]]`
 ```json
-{
-  "success": true,
-  "data": [
-    {
-      "date": "2026-04-05",
-      "daily_active_users": 25,
-      "total_sessions": 85,
-      "avg_session_duration_minutes": 45.5,
-      "feature_usage": {
-        "attendance_marking": 45,
-        "student_search": 30,
-        "receipt_creation": 10
-      }
+[
+  {
+    "cohort_month": "2026-01",
+    "initial_enrollments": 50,
+    "retention_by_month": {
+      "Month 0": "100%",
+      "Current": "88.5%"
+    },
+    "retention_rates": {
+        "overall_retention_pct": 88.5
     }
-  ],
-  "message": "User engagement metrics retrieved successfully."
-}
-```
-
----
-
-### 9. Get Retention Analysis (Cohort)
-**GET** `/api/v1/analytics/bi/retention-analysis`
-
-**Description:** Returns cohort-based retention analysis showing how student cohorts retain over time.
-
-**Authentication:** Admin required
-
-**Query Parameters:**
-| Name | Type | Required | Default | Constraints | Description |
-|------|------|----------|---------|-------------|-------------|
-| months | integer | No | 6 | ge=1, le=12 | Number of months for cohort analysis |
-
-**Response (200):** `ApiResponse<list<RetentionCohortItem>>`
-
-**Error Responses:**
-- 422 Validation Error - months must be between 1 and 12
-
-**Example Response:**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "cohort_month": "2026-01",
-      "initial_enrollments": 50,
-      "retention_by_month": {
-        "month_1": 48,
-        "month_2": 45,
-        "month_3": 42
-      },
-      "retention_rates": {
-        "month_1": 96.0,
-        "month_2": 90.0,
-        "month_3": 84.0
-      }
-    }
-  ],
-  "message": "Retention analysis retrieved successfully."
-}
-```
-
----
-
-## Schemas
-
-### EnrollmentTrendItem
-Daily enrollment count for trend analysis.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| day | date | Yes | Date (YYYY-MM-DD) |
-| new_enrollments | integer | Yes | Count of new enrollments that day |
-
-**Example:**
-```json
-{
-  "day": "2026-04-01",
-  "new_enrollments": 5
-}
-```
-
----
-
-### RetentionMetricsResponse
-Retention metrics per course.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| course_name | string | Yes | Course name |
-| active_count | integer | Yes | Currently active students |
-| dropped_count | integer | Yes | Students who dropped |
-| total_enrollments | integer | Yes | Total enrollment count |
-
-**Example:**
-```json
-{
-  "course_name": "Robotics Fundamentals",
-  "active_count": 45,
-  "dropped_count": 5,
-  "total_enrollments": 50
-}
-```
-
----
-
-### InstructorPerformanceItem
-Performance metrics per instructor.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| instructor_name | string | Yes | Instructor full name |
-| active_groups | integer | Yes | Number of groups they teach |
-| active_students | integer | Yes | Total students across all their groups |
-
-**Example:**
-```json
-{
-  "instructor_name": "Ahmed Hassan",
-  "active_groups": 4,
-  "active_students": 32
-}
-```
-
----
-
-### LevelRetentionFunnelItem
-Student count per level showing progression funnel.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| course_name | string | Yes | Course name |
-| level_number | integer | Yes | Level number |
-| student_count | integer | Yes | Students at this level |
-
-**Example:**
-```json
-{
-  "course_name": "Robotics Fundamentals",
-  "level_number": 1,
-  "student_count": 50
-}
-```
-
----
-
-### InstructorValueMatrixItem
-Revenue and attendance correlation per instructor.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| instructor_name | string | Yes | Instructor full name |
-| total_revenue | float | Yes | Total revenue generated |
-| avg_attendance_pct | float | Yes | Average attendance percentage across their groups |
-
-**Example:**
-```json
-{
-  "instructor_name": "Ahmed Hassan",
-  "total_revenue": 75000.0,
-  "avg_attendance_pct": 92.5
-}
-```
-
----
-
-### ScheduleUtilizationItem
-Schedule slot utilization statistics.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| day | string | Yes | Day of week |
-| time_start | string | Yes | Start time (HH:MM) |
-| total_enrolled | integer | Yes | Total students enrolled in slots at this time |
-| total_capacity | integer | Yes | Total capacity of all groups at this time |
-| utilization_pct | float | Yes | Percentage utilized |
-
-**Example:**
-```json
-{
-  "day": "Saturday",
-  "time_start": "14:00",
-  "total_enrolled": 45,
-  "total_capacity": 60,
-  "utilization_pct": 75.0
-}
-```
-
----
-
-### FlightRiskStudentItem
-Student flagged as likely to drop out.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| student_name | string | Yes | Student full name |
-| course_name | string | Yes | Course name |
-| amount_owed | float | Yes | Outstanding balance (negative) |
-| sessions_missed | integer | Yes | Recent missed sessions count |
-
-**Example:**
-```json
-{
-  "student_name": "Omar Mohamed",
-  "course_name": "Robotics Fundamentals",
-  "amount_owed": -500.0,
-  "sessions_missed": 3
-}
-```
-
----
-
-### UserEngagementItem
-Daily user engagement metrics.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| date | date | Yes | Date (YYYY-MM-DD) |
-| daily_active_users | integer | Yes | Unique active users |
-| total_sessions | integer | Yes | Total user sessions |
-| avg_session_duration_minutes | float | Yes | Average session duration |
-| feature_usage | dict[string, int] | Yes | Feature usage counts |
-
-**Example:**
-```json
-{
-  "date": "2026-04-05",
-  "daily_active_users": 25,
-  "total_sessions": 85,
-  "avg_session_duration_minutes": 45.5,
-  "feature_usage": {
-    "attendance_marking": 45,
-    "student_search": 30,
-    "receipt_creation": 10
   }
-}
+]
 ```
-
----
-
-### RetentionCohortItem
-Cohort-based retention analysis.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| cohort_month | string | Yes | Month of initial enrollment (YYYY-MM) |
-| initial_enrollments | integer | Yes | Students who started in this cohort |
-| retention_by_month | dict[string, int] | Yes | Absolute counts per month |
-| retention_rates | dict[string, float] | Yes | Retention percentages per month |
-
-**Example:**
-```json
-{
-  "cohort_month": "2026-01",
-  "initial_enrollments": 50,
-  "retention_by_month": {
-    "month_1": 48,
-    "month_2": 45,
-    "month_3": 42
-  },
-  "retention_rates": {
-    "month_1": 96.0,
-    "month_2": 90.0,
-    "month_3": 84.0
-  }
-}
-```
-
----
-
-## Error Handling
-
-### Common Error Responses
-
-All endpoints may return the following errors:
-
-#### 401 Unauthorized
-```json
-{
-  "success": false,
-  "data": null,
-  "message": "Not authenticated"
-}
-```
-
-#### 403 Forbidden
-```json
-{
-  "success": false,
-  "data": null,
-  "message": "Admin access required"
-}
-```
-
-#### 422 Validation Error
-```json
-{
-  "success": false,
-  "data": null,
-  "message": "Validation error",
-  "errors": [
-    {
-      "loc": ["query", "days"],
-      "msg": "ensure this value is less than or equal to 90",
-      "type": "value_error.number.not_le"
-    }
-  ]
-}
-```
-
----
-
-## Cohort Analysis Explanation
-
-The retention analysis endpoint uses **cohort analysis** methodology:
-
-1. **Cohort Definition**: Students who enrolled in the same month form a cohort
-2. **Tracking**: System tracks how many from each cohort remain active over subsequent months
-3. **Calculation**: 
-   - `retention_by_month` = absolute student counts still active
-   - `retention_rates` = percentage of initial cohort still active
-
-**Example**: A cohort starting with 50 students in January:
-- Month 1: 48 students (96% retention)
-- Month 2: 45 students (90% retention)
-- Month 3: 42 students (84% retention)
-
-This helps identify when students typically drop out and evaluate retention strategies.
-
----
-
-[← Back to Analytics API Overview](../analytics.md)

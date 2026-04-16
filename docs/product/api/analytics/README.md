@@ -11,11 +11,11 @@ The Analytics API provides comprehensive business intelligence and operational m
 | Domain | File | Endpoints | Purpose |
 |--------|------|-----------|---------|
 | **Academic** | [academic.md](./academic.md) | 6 | Enrollments, sessions, attendance, student progress |
-| **BI** | [bi.md](./bi.md) | 9 | Trends, retention, performance, risk analysis |
+| **BI** | [bi.md](./bi.md) | 8 | Trends, retention, performance, risk analysis |
 | **Competition** | [competition.md](./competition.md) | 1 | Competition participation and fees |
 | **Financial** | [financial.md](./financial.md) | 6 | Revenue, debts, forecasting |
 
-**Total: 22 endpoints**
+**Total: 21 endpoints**
 
 ---
 
@@ -27,10 +27,10 @@ All analytics endpoints return data wrapped in a standardized envelope:
 
 ```json
 {
-  "success": boolean,
+  "success": true,
   "data": T | null,
-  "message": string,
-  "errors": ErrorDetail[] | null  // only on error
+  "message": "Success message",
+  "errors": null
 }
 ```
 
@@ -94,7 +94,6 @@ GET /api/v1/analytics/bi/retention-funnel
 GET /api/v1/analytics/bi/instructor-value
 GET /api/v1/analytics/bi/schedule-utilization
 GET /api/v1/analytics/bi/flight-risk
-GET /api/v1/analytics/bi/user-engagement
 GET /api/v1/analytics/bi/retention-analysis
 ```
 
