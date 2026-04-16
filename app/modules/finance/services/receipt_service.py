@@ -5,9 +5,11 @@ Receipt service implementation with proper SOLID compliance.
 """
 from decimal import Decimal
 from typing import Optional, List, TYPE_CHECKING
+from fastapi import BackgroundTasks
 
 if TYPE_CHECKING:
     from app.modules.crm.services.activity_service import StudentActivityService
+    from app.modules.notifications.services.notification_service import NotificationService
 
 from app.modules.finance.interfaces import (
     IReceiptService,
@@ -38,11 +40,13 @@ class ReceiptService(IReceiptService):
         self,
         uow: FinanceUnitOfWork,
         activity_svc: Optional["StudentActivityService"] = None,
+        notification_svc: Optional["NotificationService"] = None,
     ) -> None:
         self._uow = uow
         self._activity_svc = activity_svc
+        self._notification_svc = notification_svc
 
-    def create(self, dto: CreateReceiptServiceDTO) -> ReceiptFinalizedDTO:
+    def create(self, dto: CreateReceiptServiceDTO, background_tasks: Optional[BackgroundTasks] = None) -> ReceiptFinalizedDTO:
         """
         Create a new receipt with charge lines.
         
@@ -125,6 +129,14 @@ class ReceiptService(IReceiptService):
                             payment_type=line.payment_type or "course_level",
                             performed_by=dto.received_by_user_id,
                         )
+                    )
+
+        # Handle Notifications
+        if self._notification_svc and background_tasks:
+            for line in processed_lines:
+                if line.student_id:
+                    self._notification_svc.notify_payment_receipt(
+                        receipt.id, line.student_id, str(line.amount), str(receipt.receipt_number), background_tasks
                     )
 
         return ReceiptFinalizedDTO(

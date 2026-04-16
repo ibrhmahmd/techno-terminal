@@ -59,7 +59,6 @@ class BalanceService(IBalanceService):
     ) -> List[OverpaymentRiskItem]:
         """
         Assess which receipt lines would create credit/overpayment.
-        
         Returns lines where projected balance after payment would be positive
         (indicating credit/overpayment).
         """

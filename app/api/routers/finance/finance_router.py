@@ -14,7 +14,7 @@ Tag:    Finance
 """
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, status, BackgroundTasks
 
 from app.api.schemas.common import ApiResponse
 from app.api.schemas.finance.receipt import (
@@ -42,7 +42,6 @@ from app.modules.auth import User
 
 router = APIRouter(tags=["Finance"])
 
-
 @router.post(
     "/finance/receipts",
     response_model=ApiResponse[ReceiptCreationResponse],
@@ -56,6 +55,7 @@ router = APIRouter(tags=["Finance"])
 )
 def create_receipt(
     body: CreateReceiptRequest,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(require_admin),
     service: ReceiptService = Depends(get_receipt_service),
 ) -> ApiResponse[ReceiptCreationResponse]:
@@ -85,7 +85,8 @@ def create_receipt(
             received_by_user_id=current_user.id,
             allow_credit=body.allow_credit,
             notes=body.notes,
-        )
+        ),
+        background_tasks=background_tasks
     )
 
     return ApiResponse(
