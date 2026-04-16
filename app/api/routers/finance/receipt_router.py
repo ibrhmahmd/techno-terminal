@@ -21,10 +21,8 @@ from app.api.schemas.finance.receipt import (
     ReceiptGenerationResponse,
     ReceiptDetailResponse,
     ReceiptListItem,
-    ReceiptHeaderResponse,
-    ReceiptLineResponse,
 )
-from app.api.mappers.finance_mapper import to_receipt_list_item
+from app.api.mappers.finance_mapper import to_receipt_list_item, to_receipt_detail_response
 from app.modules.auth.models import User
 from app.modules.finance.services.receipt_service import ReceiptService
 from app.modules.finance.services.receipt_generation_service import get_receipt_generation_service
@@ -34,8 +32,6 @@ from app.shared.exceptions import NotFoundError
 
 router = APIRouter(tags=["Receipts"])
 
-
-# ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.get(
     "/finance/receipts/{receipt_id}",
@@ -50,25 +46,7 @@ def get_receipt(
     detail = service.get_detail(receipt_id)
     if detail is None:
         raise NotFoundError("Receipt not found")
-    return ApiResponse(
-        data=ReceiptDetailResponse(
-            receipt=ReceiptHeaderResponse.model_validate(detail.receipt),
-            lines=[
-                ReceiptLineResponse(
-                    id=line.id,
-                    student_id=line.student_id,
-                    enrollment_id=line.enrollment_id,
-                    amount=float(line.amount),
-                    transaction_type=line.transaction_type,
-                    payment_type=line.payment_type,
-                    discount=float(line.discount),
-                    notes=line.notes,
-                )
-                for line in detail.lines
-            ],
-            total=float(detail.total),
-        )
-    )
+    return ApiResponse(data=to_receipt_detail_response(detail))
 
 
 @router.get(
@@ -131,7 +109,7 @@ def download_receipt_pdf(
 
 
 @router.get(
-    "/receipts/{receipt_id}/generate",
+    "/finance/receipts/{receipt_id}/generate",
     response_model=ApiResponse[ReceiptGenerationResponse],
     summary="Generate receipt",
     description="Generate a formatted receipt. Returns structured JSON by default. Use ?as_text=true for plain text."
@@ -188,7 +166,7 @@ def generate_receipt(
 
 
 @router.post(
-    "/receipts/{receipt_id}/mark-sent",
+    "/finance/receipts/{receipt_id}/mark-sent",
     response_model=ApiResponse[dict],
     summary="Mark receipt as sent",
     description="Mark a receipt as sent to parent/guardian."
@@ -215,7 +193,7 @@ def mark_receipt_sent(
 
 
 @router.post(
-    "/receipts/batch-generate",
+    "/finance/receipts/batch-generate",
     response_model=ApiResponse[List[BatchReceiptItem]],
     summary="Batch generate receipts",
     description="Generate multiple receipts in a single batch operation. Returns structured results with explicit success/error tracking.",
@@ -230,7 +208,7 @@ def batch_generate_receipts(
 
 
 @router.get(
-    "/receipts/templates",
+    "/finance/receipts/templates",
     response_model=ApiResponse[List[dict]],
     summary="List receipt templates",
     description="List active templates available for receipt generation.",
@@ -243,7 +221,7 @@ def list_receipt_templates(
     
 
 @router.post(
-    "/receipts/templates/{template_name}/set-default",
+    "/finance/receipts/templates/{template_name}/set-default",
     response_model=ApiResponse[dict],
     summary="Set default receipt template",
     description="Set one active receipt template as default for generation.",

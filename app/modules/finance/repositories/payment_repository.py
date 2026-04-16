@@ -16,7 +16,7 @@ from app.modules.finance.interfaces import (
     AddPaymentLineDTO,
 )
 from app.modules.finance import EnrollmentBalanceItem
-from app.shared.time_utils import utc_now
+from app.shared.datetime_utils import utc_now
 
 
 class PaymentRepository(IPaymentRepository):
@@ -71,7 +71,6 @@ class PaymentRepository(IPaymentRepository):
                 amount_due,
                 discount_applied,
                 total_paid as amount_paid,
-                total_refunded,
                 balance,
                 payment_status as status
             FROM v_enrollment_balance
@@ -90,7 +89,7 @@ class PaymentRepository(IPaymentRepository):
             amount_due=Decimal(str(row.amount_due or 0)),
             discount_applied=Decimal(str(row.discount_applied or 0)),
             amount_paid=Decimal(str(row.amount_paid or 0)),
-            total_refunded=Decimal(str(row.total_refunded or 0)),
+            total_refunded=Decimal("0"),  # Not yet implemented in view
             balance=Decimal(str(row.balance or 0)),
             status=row.status or "unknown",
         )

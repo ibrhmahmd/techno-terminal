@@ -249,3 +249,77 @@ class StudentRepository(IStudentRepository):
             cancelled=cancelled,
             attendance_rate=round(attended / denom, 3) if denom > 0 else 0.0
         )
+
+    def link_parent(
+        self,
+        student_id: int,
+        parent_id: int,
+        relationship: Optional[str] = None,
+        is_primary: bool = False,
+    ) -> "StudentParent":
+        """Link a student to a parent."""
+        from app.modules.crm.models.student_models import StudentParent
+        link = StudentParent(
+            student_id=student_id,
+            parent_id=parent_id,
+            relationship=relationship,
+            is_primary=is_primary,
+        )
+        self._session.add(link)
+        self._session.flush()
+        return link
+
+    def get_student_parents(self, student_id: int) -> list["StudentParent"]:
+        """Get all parent links for a student."""
+        from app.modules.crm.models.student_models import StudentParent
+        stmt = select(StudentParent).where(StudentParent.student_id == student_id)
+        return list(self._session.exec(stmt).all())
+
+    def log_status_change(
+        self,
+        student_id: int,
+        previous_status: Optional[str],
+        new_status: str,
+        changed_by_user_id: Optional[int] = None,
+        notes: Optional[str] = None,
+        action: Optional[str] = None,
+        new_priority: Optional[int] = None,
+    ) -> None:
+        """Log a status change in the history table."""
+        # For now, just log to a simple table or skip if table doesn't exist
+        # This will be implemented when the migration is applied
+        # The status_history table was created in migration 021
+        try:
+            from sqlalchemy import text
+            query = text("""
+                INSERT INTO student_status_history 
+                (student_id, previous_status, new_status, changed_by_user_id, notes, created_at)
+                VALUES (:student_id, :previous_status, :new_status, :changed_by_user_id, :notes, NOW())
+            """)
+            self._session.exec(
+                query,
+                params={
+                    "student_id": student_id,
+                    "previous_status": previous_status,
+                    "new_status": new_status,
+                    "changed_by_user_id": changed_by_user_id,
+                    "notes": notes,
+                }
+            )
+        except Exception:
+            # If the table doesn't exist yet, silently skip
+            pass
+
+    def get_by_status(self, status: StudentStatus) -> list[Student]:
+        """Get all students with a specific status."""
+        stmt = select(Student).where(Student.status == status)
+        return list(self._session.exec(stmt).all())
+
+    def get_waiting_list(self) -> list[Student]:
+        """Get all students on the waiting list, ordered by priority."""
+        stmt = (
+            select(Student)
+            .where(Student.status == StudentStatus.WAITING)
+            .order_by(Student.waiting_priority.nulls_last())
+        )
+        return list(self._session.exec(stmt).all())

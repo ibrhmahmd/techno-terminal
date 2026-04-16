@@ -1,9 +1,10 @@
-from typing import Optional, Sequence
+from typing import Optional
 from sqlmodel import Session, select, func
 from sqlalchemy import or_
 
 from app.modules.crm.interfaces import IParentRepository
 from app.modules.crm.models import Parent
+from app.modules.crm.models.link_models import StudentParent
 
 class ParentRepository(IParentRepository):
     def __init__(self, session: Session) -> None:
@@ -24,6 +25,10 @@ class ParentRepository(IParentRepository):
     def get_all(self, skip: int, limit: int) -> list[Parent]:
         stmt = select(Parent).offset(skip).limit(limit)
         return list(self._session.exec(stmt).all())
+
+    def list_all(self, skip: int, limit: int) -> list[Parent]:
+        """Alias for get_all - returns paginated list of parents."""
+        return self.get_all(skip=skip, limit=limit)
 
     def search(self, query: str) -> list[Parent]:
         search_term = f"%{query}%"
@@ -62,3 +67,8 @@ class ParentRepository(IParentRepository):
             self._session.delete(parent)
             self._session.flush()
         return parent
+
+    def get_parent_students(self, parent_id: int) -> list[StudentParent]:
+        """Get all student links for a parent."""
+        stmt = select(StudentParent).where(StudentParent.parent_id == parent_id)
+        return list(self._session.exec(stmt).all())

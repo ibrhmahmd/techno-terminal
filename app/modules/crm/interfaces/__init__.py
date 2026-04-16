@@ -1,54 +1,36 @@
-from dataclasses import dataclass
+"""
+CRM Module Interfaces
+
+Contains Protocol interfaces and re-exports DTOs.
+DTOs are defined in separate files in the dtos/ subdirectory.
+"""
 from typing import Protocol, Optional, runtime_checkable, Any
-from datetime import date
 
 from app.modules.crm.models.student_models import Student, StudentStatus
 from app.modules.crm.models.parent_models import Parent
 from app.modules.crm.schemas.student_schemas import RegisterStudentCommandDTO, UpdateStudentDTO, StudentStatusSummaryDTO
 
-@dataclass(frozen=True)
-class StudentSummaryDTO:
-    """Immutable summary row — used internally between services."""
-    id: int
-    full_name: str
-    phone: Optional[str]
-    gender: Optional[str]
-    status: str
-    is_active: bool
-    current_group_id: Optional[int]
-    current_group_name: Optional[str]
-    date_of_birth: Optional[date]
+# Re-export DTOs from separate files
+from .dtos import (
+    StudentSummaryDTO,
+    StudentGroupedResultDTO,
+    StudentGroupBucketDTO,
+    StudentBalanceSummaryDTO,
+    AttendanceStatsDTO,
+    StatusHistoryEntryDTO,
+)
 
-@dataclass(frozen=True)
-class StudentGroupedResultDTO:
-    """Result of a grouping operation."""
-    group_by: str
-    total_unique_students: int
-    groups: list  # list[StudentGroupBucketDTO]
+__all__ = [
+    # DTOs
+    "StudentSummaryDTO",
+    "StudentGroupedResultDTO",
+    "StudentGroupBucketDTO",
+    "StudentBalanceSummaryDTO",
+    "AttendanceStatsDTO",
+    "StatusHistoryEntryDTO",
+    # Protocols remain private to this module
+]
 
-@dataclass(frozen=True)
-class StudentGroupBucketDTO:
-    key: str
-    label: str
-    count: int
-    students: list  # list[StudentSummaryDTO]
-
-@dataclass(frozen=True)
-class StudentBalanceSummaryDTO:
-    total_due: float
-    total_discounts: float
-    total_paid: float
-    net_balance: float
-    enrollment_count: int
-    unpaid_enrollments: int
-
-@dataclass(frozen=True)
-class AttendanceStatsDTO:
-    total_sessions: int
-    attended: int
-    absent: int
-    cancelled: int
-    attendance_rate: float
 
 @runtime_checkable
 class IStudentRepository(Protocol):

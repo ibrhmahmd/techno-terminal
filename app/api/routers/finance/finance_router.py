@@ -12,9 +12,7 @@ Endpoints:
 Prefix: /api/v1 (mounted in main.py)
 Tag:    Finance
 """
-from datetime import date
 from decimal import Decimal
-from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, status
 

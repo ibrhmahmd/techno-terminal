@@ -2,21 +2,22 @@
 app/api/routers/crm/students_history.py
 ───────────────────────────────────────
 API endpoints for student activity and history tracking.
+Refactored to use CRM StudentActivityService (SOLID architecture).
 """
 from typing import Optional, List
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query
 
-from app.api.dependencies import require_any, require_admin
+from app.api.dependencies import require_any, require_admin, get_student_activity_service
 from app.api.schemas.common import ApiResponse
-from app.api.schemas.students.history import (
+from app.api.schemas.crm.history import (
     ActivityLogRequest,
     EnrollmentHistoryEntry,
     ActivitySummaryItem,
     ActivitySearchParams,
 )
-from app.api.schemas.students.activity import (
+from app.api.schemas.crm.activity import (
     ActivityLogResponseDTO,
     RecentActivityItemDTO,
     ManualActivityResponseDTO,
@@ -25,7 +26,7 @@ from app.api.schemas.students.activity import (
     ActivityActorDTO
 )
 from app.modules.auth.models import User
-from app.modules.students.services.activity_service import get_activity_service
+from app.modules.crm.services import StudentActivityService
 
 
 router = APIRouter(tags=["Student History"])
@@ -46,7 +47,7 @@ def get_student_history(
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     current_user: User = Depends(require_any),
-    svc = Depends(get_activity_service),
+    svc: StudentActivityService = Depends(get_student_activity_service),
 ):
     """
     Get activity history for a student.
@@ -56,16 +57,18 @@ def get_student_history(
     - Date range
     - Pagination (limit/offset)
     """
-    # Parse activity types
-    type_list = activity_types.split(",") if activity_types else None
-    
-    activities = svc.get_student_activity_timeline(
-        student_id=student_id,
-        activity_types=type_list,
-        date_from=date_from,
-        date_to=date_to,
+    from app.modules.crm.interfaces.dtos.timeline_filter_dto import TimelineFilterDTO
+
+    filters = TimelineFilterDTO(
+        start_date=date_from,
+        end_date=date_to,
         limit=limit,
-        offset=offset
+        skip=offset,
+    )
+
+    activities = svc.get_student_timeline(
+        student_id=student_id,
+        filters=filters,
     )
     
     return ApiResponse(
@@ -97,13 +100,13 @@ def get_student_history(
 def get_activity_summary(
     student_id: int,
     current_user: User = Depends(require_any),
-    svc = Depends(get_activity_service),
+    svc: StudentActivityService = Depends(get_student_activity_service),
 ):
     """Get activity summary (counts by type) for a student."""
     summary = svc.get_activity_summary(student_id)
     
     return ApiResponse(
-        data=[ActivitySummaryItem(activity_type=type_, count=count) for type_, count in summary.items()],
+        data=[ActivitySummaryItem(activity_type=type_, count=count) for type_, count in summary.activities_by_type.items()],
         message="Activity summary retrieved"
     )
 
@@ -118,7 +121,7 @@ def get_enrollment_history(
     student_id: int,
     limit: int = Query(50, ge=1, le=200),
     current_user: User = Depends(require_any),
-    svc = Depends(get_activity_service),
+    svc: StudentActivityService = Depends(get_student_activity_service),
 ):
     """Get enrollment history including transfers and level changes."""
     history = svc.get_enrollment_history(student_id, limit)
@@ -153,7 +156,7 @@ def log_manual_activity(
     student_id: int,
     request: ActivityLogRequest,
     current_user: User = Depends(require_admin),
-    svc = Depends(get_activity_service),
+    svc: StudentActivityService = Depends(get_student_activity_service),
 ):
     """Manually log an activity entry."""
     activity = svc.log_activity(
@@ -188,7 +191,7 @@ def log_manual_activity(
 def get_recent_activity(
     limit: int = Query(20, ge=1, le=100),
     current_user: User = Depends(require_any),
-    svc = Depends(get_activity_service),
+    svc: StudentActivityService = Depends(get_student_activity_service),
 ):
     """Get recent activity feed for admin dashboard."""
     activities = svc.get_recent_activity(limit)
@@ -215,7 +218,7 @@ def get_recent_activity(
 def search_activities(
     params: ActivitySearchParams,
     current_user: User = Depends(require_any),
-    svc = Depends(get_activity_service),
+    svc: StudentActivityService = Depends(get_student_activity_service),
 ):
     """Search activities with various filters."""
     activities = svc.search_activities(

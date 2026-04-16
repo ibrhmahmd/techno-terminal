@@ -1,8 +1,10 @@
+from typing import Optional
 from sqlalchemy.exc import IntegrityError
 from app.db.connection import get_session
 from app.shared.audit_utils import apply_create_audit
 from app.shared.datetime_utils import utc_now
-from app.modules.crm import crm_service as crm_srv
+from app.modules.crm.repositories.unit_of_work import StudentUnitOfWork
+from app.modules.crm.services.student_crud_service import StudentCrudService
 import app.modules.academics as acad_srv
 from app.modules.academics.models.group_models import Group
 from app.modules.enrollments.models.enrollment_models import Enrollment
@@ -16,7 +18,21 @@ from app.shared.exceptions import NotFoundError, BusinessRuleError, ConflictErro
 import app.modules.enrollments.repositories.enrollment_repository as repo
 from app.modules.finance.repositories.payment_repository import PaymentRepository
 
+
 class EnrollmentService:
+    """Service for managing student enrollments."""
+
+    def __init__(self) -> None:
+        self._student_crud_service: Optional[StudentCrudService] = None
+
+    def _get_student_service(self) -> StudentCrudService:
+        """Lazy initialization of StudentCrudService with fresh UnitOfWork."""
+        if self._student_crud_service is None:
+            uow = StudentUnitOfWork()
+            uow.__enter__()
+            self._student_crud_service = StudentCrudService(uow)
+        return self._student_crud_service
+
     def enroll_student(
         self,
         data: EnrollStudentInput,
@@ -26,7 +42,8 @@ class EnrollmentService:
         Returns (enrollment, capacity_exceeded: bool).
         Cross-module validation is done via service calls (each opens its own read session).
         """
-        student = crm_srv.get_student_by_id(data.student_id)
+        student_svc = self._get_student_service()
+        student = student_svc.get_by_id(data.student_id)
         if not student:
             raise NotFoundError(f"Student ID {data.student_id} not found.")
         if not student.is_active:

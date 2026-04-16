@@ -1,6 +1,6 @@
 """
-app/modules/students/models/activity_models.py
-───────────────────────────────────────────
+app/modules/crm/models/activity_models.py
+────────────────────────────────────────
 Activity and history tracking models for comprehensive student audit trails.
 """
 from datetime import datetime

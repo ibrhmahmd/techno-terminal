@@ -122,8 +122,17 @@ require_any = get_current_user
 # See BACKLOG.md §C1 for the deferred Session Injection refactor.
 
 from app.modules.auth.services.auth_service import AuthService
-from app.modules.crm.services.student_service import StudentService
-from app.modules.crm.services.parent_service import ParentService
+
+# ── CRM Service Factories (SOLID Refactored) ────────────────────────────────────
+from app.modules.crm.repositories.unit_of_work import StudentUnitOfWork
+from app.modules.crm.services import (
+    StudentCrudService,
+    ParentCrudService,
+    SearchService,
+    StudentProfileService,
+    StudentActivityService,
+)
+
 from app.modules.academics.services.course_service import CourseService
 from app.modules.academics.services.group_service import GroupService
 from app.modules.academics.services.group_history_service import GroupHistoryService
@@ -137,36 +146,52 @@ def get_auth_service() -> AuthService:
     return AuthService()
 
 
-def get_student_service() -> StudentService:
-    return StudentService()
+def get_student_crud_service() -> StudentCrudService:
+    """Returns a StudentCrudService with a fresh UnitOfWork and activity logging."""
+    with StudentUnitOfWork() as uow:
+        activity_svc = StudentActivityService(uow)
+        return StudentCrudService(uow, activity_svc=activity_svc)
+
+def get_student_search_service() -> SearchService:
+    """Returns a SearchService with a fresh UnitOfWork."""
+    with StudentUnitOfWork() as uow:
+        return SearchService(uow)
+
+def get_student_profile_service() -> StudentProfileService:
+    """Returns a StudentProfileService with a fresh UnitOfWork."""
+    with StudentUnitOfWork() as uow:
+        return StudentProfileService(uow)
 
 
-def get_parent_service() -> ParentService:
-    return ParentService()
+def get_student_activity_service() -> StudentActivityService:
+    """Returns a StudentActivityService with a fresh UnitOfWork."""
+    with StudentUnitOfWork() as uow:
+        return StudentActivityService(uow)
+
+
+def get_parent_crud_service() -> ParentCrudService:
+    """Returns a ParentCrudService with a fresh UnitOfWork."""
+    with StudentUnitOfWork() as uow:
+        return ParentCrudService(uow)
 
 
 def get_course_service() -> CourseService:
     return CourseService()
 
-
 def get_group_service() -> GroupService:
     return GroupService()
-
 
 def get_group_history_service() -> GroupHistoryService:
     """Returns a fresh GroupHistoryService instance per request."""
     return GroupHistoryService()
 
-
 def get_group_level_service() -> GroupLevelService:
     """Returns a fresh GroupLevelService instance per request."""
     return GroupLevelService()
 
-
 def get_group_competition_service() -> GroupCompetitionService:
     """Returns a fresh GroupCompetitionService instance per request."""
     return GroupCompetitionService()
-
 
 def get_session_service() -> SessionService:
     return SessionService()

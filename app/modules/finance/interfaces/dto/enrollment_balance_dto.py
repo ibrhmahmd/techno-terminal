@@ -14,5 +14,9 @@ class EnrollmentBalanceDTO:
     student_id: int
     group_id: int
     level_number: int
+    amount_due: Decimal
+    discount_applied: Decimal
+    amount_paid: Decimal
+    total_refunded: Decimal
     balance: Decimal
     status: str  # 'paid', 'partial', 'unpaid'
