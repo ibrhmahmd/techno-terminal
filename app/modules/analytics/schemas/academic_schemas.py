@@ -25,6 +25,11 @@ class TodaySessionDTO(BaseModel):
     unmarked: int
     total_enrolled: int
 
+class DashboardSummaryDTO(BaseModel):
+    active_enrollments: int
+    today_sessions_count: int
+    sessions: list[TodaySessionDTO]
+
 
 class UnpaidAttendeeDTO(BaseModel):
     student_id: int

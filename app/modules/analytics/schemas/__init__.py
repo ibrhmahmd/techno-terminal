@@ -19,6 +19,7 @@ from .academic_schemas import (
     AttendanceHeatmapRowDTO,
     StudentProgressDTO,
     CourseCompletionDTO,
+    DashboardSummaryDTO,
 )
 from .competition_schemas import (
     CompetitionFeeSummaryDTO,
@@ -31,7 +32,6 @@ from .bi_schemas import (
     InstructorValueMatrixDTO,
     ScheduleUtilizationDTO,
     FlightRiskStudentDTO,
-    UserEngagementDTO,
     RetentionCohortDTO,
 )
 
@@ -51,6 +51,7 @@ __all__ = [
     "AttendanceHeatmapRowDTO",
     "StudentProgressDTO",
     "CourseCompletionDTO",
+    "DashboardSummaryDTO",
 
     # Competition
     "CompetitionFeeSummaryDTO",
@@ -63,6 +64,5 @@ __all__ = [
     "InstructorValueMatrixDTO",
     "ScheduleUtilizationDTO",
     "FlightRiskStudentDTO",
-    "UserEngagementDTO",
     "RetentionCohortDTO",
 ]

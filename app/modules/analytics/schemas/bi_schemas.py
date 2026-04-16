@@ -53,15 +53,6 @@ class FlightRiskStudentDTO(BaseModel):
     sessions_missed: int
 
 
-class UserEngagementDTO(BaseModel):
-    """User engagement metrics for platform usage analysis."""
-    date: date
-    daily_active_users: int
-    total_sessions: int
-    avg_session_duration_minutes: float
-    feature_usage: dict[str, int]
-
-
 class RetentionCohortDTO(BaseModel):
     """Cohort-based retention analysis."""
     cohort_month: str

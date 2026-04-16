@@ -15,11 +15,22 @@ from app.modules.analytics.schemas import (
     AttendanceHeatmapRowDTO,
     StudentProgressDTO,
     CourseCompletionDTO,
+    DashboardSummaryDTO,
 )
 
 
 class AcademicAnalyticsService:
     """Service handling attendance, sessions, and roster reporting."""
+
+    def get_dashboard_summary(self, target_date: Optional[date] = None) -> DashboardSummaryDTO:
+        with get_session() as db:
+            active_enrollments = repo.get_active_enrollment_count(db)
+            today_sessions = repo.get_today_sessions(db, target_date)
+        return DashboardSummaryDTO(
+            active_enrollments=active_enrollments,
+            today_sessions_count=len(today_sessions),
+            sessions=today_sessions,
+        )
 
     def get_active_enrollment_count(self) -> int:
         with get_session() as db:

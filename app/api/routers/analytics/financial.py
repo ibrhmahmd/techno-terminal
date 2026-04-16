@@ -6,27 +6,34 @@ Financial analytics router.
 Endpoints for financial metrics: revenue, outstanding balances, debtors.
 """
 from datetime import date
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 
-from app.api.schemas.common import ApiResponse
-from app.api.schemas.analytics import (
-    RevenueByDateItem,
-    RevenueByMethodItem,
-    OutstandingByGroupItem,
-    TopDebtorItem,
-    RevenueMetricsResponse,
-    RevenueForecastItem,
+from app.api.schemas.common import ApiResponse, ErrorResponse
+from app.modules.analytics.schemas.financial_schemas import (
+    RevenueByDateDTO,
+    RevenueByMethodDTO,
+    OutstandingByGroupDTO,
+    TopDebtorDTO,
+    RevenueMetricsDTO,
+    RevenueForecastDTO,
 )
 from app.api.dependencies import require_admin, get_financial_analytics_service
 from app.modules.auth import User
 from app.modules.analytics.services.financial_service import FinancialAnalyticsService
 
-router = APIRouter(tags=["Analytics — Financial"])
+router = APIRouter(
+    tags=["Analytics — Financial"],
+    responses={
+        401: {"model": ErrorResponse, "description": "Unauthorized"},
+        403: {"model": ErrorResponse, "description": "Forbidden"},
+        422: {"model": ErrorResponse, "description": "Validation Error"},
+    }
+)
 
 
 @router.get(
     "/analytics/finance/revenue-by-date",
-    response_model=ApiResponse[list[RevenueByDateItem]],
+    response_model=ApiResponse[list[RevenueByDateDTO]],
     summary="Get revenue breakdown by date",
 )
 def get_revenue_by_date(
@@ -36,12 +43,14 @@ def get_revenue_by_date(
     svc: FinancialAnalyticsService = Depends(get_financial_analytics_service),
 ):
     """Returns daily revenue totals within the specified date range."""
+    if (end - start).days > 365:
+        raise HTTPException(422, "Date range cannot exceed 365 days")
     return ApiResponse(data=svc.get_revenue_by_date(start, end))
 
 
 @router.get(
     "/analytics/finance/revenue-by-method",
-    response_model=ApiResponse[list[RevenueByMethodItem]],
+    response_model=ApiResponse[list[RevenueByMethodDTO]],
     summary="Get revenue breakdown by payment method",
 )
 def get_revenue_by_method(
@@ -51,12 +60,14 @@ def get_revenue_by_method(
     svc: FinancialAnalyticsService = Depends(get_financial_analytics_service),
 ):
     """Returns revenue totals grouped by payment method within the date range."""
+    if (end - start).days > 365:
+        raise HTTPException(422, "Date range cannot exceed 365 days")
     return ApiResponse(data=svc.get_revenue_by_method(start, end))
 
 
 @router.get(
     "/analytics/finance/outstanding-by-group",
-    response_model=ApiResponse[list[OutstandingByGroupItem]],
+    response_model=ApiResponse[list[OutstandingByGroupDTO]],
     summary="Get outstanding balances by group",
 )
 def get_outstanding_by_group(
@@ -69,7 +80,7 @@ def get_outstanding_by_group(
 
 @router.get(
     "/analytics/finance/top-debtors",
-    response_model=ApiResponse[list[TopDebtorItem]],
+    response_model=ApiResponse[list[TopDebtorDTO]],
     summary="Get top debtors",
 )
 def get_top_debtors(
@@ -83,7 +94,7 @@ def get_top_debtors(
 
 @router.get(
     "/analytics/finance/revenue-metrics",
-    response_model=ApiResponse[RevenueMetricsResponse],
+    response_model=ApiResponse[RevenueMetricsDTO],
     summary="Get extended revenue metrics with trend analysis",
 )
 def get_revenue_metrics(
@@ -97,7 +108,7 @@ def get_revenue_metrics(
 
 @router.get(
     "/analytics/finance/revenue-forecast",
-    response_model=ApiResponse[list[RevenueForecastItem]],
+    response_model=ApiResponse[list[RevenueForecastDTO]],
     summary="Get revenue forecast for future months",
 )
 def get_revenue_forecast(

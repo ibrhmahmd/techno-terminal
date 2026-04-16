@@ -15,6 +15,7 @@ from app.modules.analytics.schemas import (
     RevenueMetricsDTO,
     RevenueForecastDTO
 )
+from dateutil.relativedelta import relativedelta
 
 
 def get_revenue_by_date(db: Session, start: date, end: date) -> list[RevenueByDateDTO]:
@@ -96,18 +97,45 @@ def get_top_debtors(db: Session, limit: int = 15) -> list[TopDebtorDTO]:
 
 def get_revenue_metrics(db: Session, months: int = 6) -> RevenueMetricsDTO:
     """Extended revenue metrics with trend analysis for the last N months."""
-    # Calculate date ranges
-    from dateutil.relativedelta import relativedelta
-    
     period_end = date.today()
     period_start = period_end - relativedelta(months=months)
     previous_period_start = period_start - relativedelta(months=months)
     
-    # Get current period revenue breakdown
-    monthly_breakdown = get_revenue_by_date(db, period_start, period_end)
+    # 1. Fetch ALL daily revenue across previous + current periods in ONE query
+    daily_revenue_stmt = text("""
+        SELECT
+            DATE(r.paid_at) AS day,
+            COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type IN ('payment','charge')), 0)
+              - COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type = 'refund'), 0) AS net_revenue
+        FROM receipts r
+        JOIN payments p ON p.receipt_id = r.id
+        WHERE DATE(r.paid_at) BETWEEN :prev_start AND :end
+        GROUP BY day
+        ORDER BY day
+    """)
+    daily_rows = db.execute(
+        daily_revenue_stmt, 
+        {"prev_start": str(previous_period_start), "end": str(period_end)}
+    ).all()
     
-    # Calculate totals
-    total_revenue = sum(day.net_revenue for day in monthly_breakdown)
+    # Separate into current vs previous periods in python
+    monthly_breakdown = []
+    total_revenue = 0.0
+    previous_period_revenue = 0.0
+    
+    for row in daily_rows:
+        day_val = row.day
+        if isinstance(day_val, str):
+            from datetime import datetime
+            day_val = datetime.strptime(day_val, "%Y-%m-%d").date()
+        
+        if day_val >= period_start:
+            monthly_breakdown.append(RevenueByDateDTO(day=day_val, net_revenue=row.net_revenue))
+            total_revenue += float(row.net_revenue)
+        else:
+            previous_period_revenue += float(row.net_revenue)
+
+    # 2. Get total receipts for current period
     total_receipts_stmt = text("""
         SELECT COUNT(DISTINCT r.id) 
         FROM receipts r
@@ -117,10 +145,6 @@ def get_revenue_metrics(db: Session, months: int = 6) -> RevenueMetricsDTO:
         total_receipts_stmt, 
         {"start": str(period_start), "end": str(period_end)}
     ).scalar() or 0
-    
-    # Get previous period revenue for trend calculation
-    previous_revenue_rows = get_revenue_by_date(db, previous_period_start, period_start)
-    previous_period_revenue = sum(day.net_revenue for day in previous_revenue_rows)
     
     # Calculate trend
     if previous_period_revenue > 0:
@@ -156,7 +180,6 @@ def get_revenue_metrics(db: Session, months: int = 6) -> RevenueMetricsDTO:
 
 def get_revenue_forecast(db: Session, months_ahead: int = 3) -> list[RevenueForecastDTO]:
     """Generate revenue forecast for future months based on historical trends."""
-    from dateutil.relativedelta import relativedelta
     
     # Get historical data for trend calculation (last 6 months)
     end_date = date.today()

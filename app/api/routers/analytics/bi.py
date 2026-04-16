@@ -9,28 +9,34 @@ from datetime import date
 from typing import Optional
 from fastapi import APIRouter, Depends, Query
 
-from app.api.schemas.common import ApiResponse
-from app.api.schemas.analytics import (
-    EnrollmentTrendItem,
-    RetentionMetricsResponse,
-    InstructorPerformanceItem,
-    LevelRetentionFunnelItem,
-    InstructorValueMatrixItem,
-    ScheduleUtilizationItem,
-    FlightRiskStudentItem,
-    UserEngagementItem,
-    RetentionCohortItem,
+from app.api.schemas.common import ApiResponse, ErrorResponse
+from app.modules.analytics.schemas.bi_schemas import (
+    EnrollmentTrendDTO,
+    RetentionMetricsDTO,
+    InstructorPerformanceDTO,
+    LevelRetentionFunnelDTO,
+    InstructorValueMatrixDTO,
+    ScheduleUtilizationDTO,
+    FlightRiskStudentDTO,
+    RetentionCohortDTO,
 )
 from app.api.dependencies import require_admin, get_bi_analytics_service
 from app.modules.auth import User
 from app.modules.analytics.services.bi_service import BIAnalyticsService
 
-router = APIRouter(tags=["Analytics — BI"])
+router = APIRouter(
+    tags=["Analytics — BI"],
+    responses={
+        401: {"model": ErrorResponse, "description": "Unauthorized"},
+        403: {"model": ErrorResponse, "description": "Forbidden"},
+        422: {"model": ErrorResponse, "description": "Validation Error"},
+    }
+)
 
 
 @router.get(
     "/analytics/bi/enrollment-trend",
-    response_model=ApiResponse[list[EnrollmentTrendItem]],
+    response_model=ApiResponse[list[EnrollmentTrendDTO]],
     summary="Get enrollment trend over time",
 )
 def get_enrollment_trend(
@@ -44,7 +50,7 @@ def get_enrollment_trend(
 
 @router.get(
     "/analytics/bi/retention",
-    response_model=ApiResponse[list[RetentionMetricsResponse]],
+    response_model=ApiResponse[list[RetentionMetricsDTO]],
     summary="Get retention metrics by course",
 )
 def get_retention_metrics(
@@ -57,7 +63,7 @@ def get_retention_metrics(
 
 @router.get(
     "/analytics/bi/instructor-performance",
-    response_model=ApiResponse[list[InstructorPerformanceItem]],
+    response_model=ApiResponse[list[InstructorPerformanceDTO]],
     summary="Get instructor performance metrics",
 )
 def get_instructor_performance(
@@ -70,7 +76,7 @@ def get_instructor_performance(
 
 @router.get(
     "/analytics/bi/retention-funnel",
-    response_model=ApiResponse[list[LevelRetentionFunnelItem]],
+    response_model=ApiResponse[list[LevelRetentionFunnelDTO]],
     summary="Get level retention funnel",
 )
 def get_level_retention_funnel(
@@ -83,7 +89,7 @@ def get_level_retention_funnel(
 
 @router.get(
     "/analytics/bi/instructor-value",
-    response_model=ApiResponse[list[InstructorValueMatrixItem]],
+    response_model=ApiResponse[list[InstructorValueMatrixDTO]],
     summary="Get instructor value matrix",
 )
 def get_instructor_value_matrix(
@@ -96,7 +102,7 @@ def get_instructor_value_matrix(
 
 @router.get(
     "/analytics/bi/schedule-utilization",
-    response_model=ApiResponse[list[ScheduleUtilizationItem]],
+    response_model=ApiResponse[list[ScheduleUtilizationDTO]],
     summary="Get schedule utilization",
 )
 def get_schedule_utilization(
@@ -109,7 +115,7 @@ def get_schedule_utilization(
 
 @router.get(
     "/analytics/bi/flight-risk",
-    response_model=ApiResponse[list[FlightRiskStudentItem]],
+    response_model=ApiResponse[list[FlightRiskStudentDTO]],
     summary="Get flight-risk students",
 )
 def get_flight_risk_students(
@@ -120,23 +126,10 @@ def get_flight_risk_students(
     return ApiResponse(data=svc.get_flight_risk_students())
 
 
-@router.get(
-    "/analytics/bi/user-engagement",
-    response_model=ApiResponse[list[UserEngagementItem]],
-    summary="Get user engagement metrics",
-)
-def get_user_engagement(
-    days: int = Query(30, ge=1, le=90, description="Number of days to analyze"),
-    _user: User = Depends(require_admin),
-    svc: BIAnalyticsService = Depends(get_bi_analytics_service),
-):
-    """Returns daily user engagement metrics including active users and session duration."""
-    return ApiResponse(data=svc.get_user_engagement(days))
-
 
 @router.get(
     "/analytics/bi/retention-analysis",
-    response_model=ApiResponse[list[RetentionCohortItem]],
+    response_model=ApiResponse[list[RetentionCohortDTO]],
     summary="Get cohort-based retention analysis",
 )
 def get_retention_analysis(

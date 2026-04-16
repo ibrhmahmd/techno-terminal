@@ -4,7 +4,7 @@ app/modules/analytics/services/bi_service.py
 Domain service for Business Intelligence (BI) analytics.
 """
 
-from datetime import date
+from datetime import date, timedelta
 from app.db.connection import get_session
 import app.modules.analytics.repositories.bi_repository as repo
 from app.modules.analytics.schemas import (
@@ -15,7 +15,6 @@ from app.modules.analytics.schemas import (
     InstructorValueMatrixDTO,
     ScheduleUtilizationDTO,
     FlightRiskStudentDTO,
-    UserEngagementDTO,
     RetentionCohortDTO,
 )
 
@@ -26,7 +25,6 @@ class BIAnalyticsService:
     def get_new_enrollments_trend(self, cutoff_date: date | None = None) -> list[EnrollmentTrendDTO]:
         """Get enrollment trend. Defaults to 90 days ago if cutoff not provided."""
         if cutoff_date is None:
-            from datetime import timedelta
             cutoff_date = date.today() - timedelta(days=90)
         with get_session() as db:
             return repo.get_new_enrollments_trend(db, cutoff_date)
@@ -54,11 +52,6 @@ class BIAnalyticsService:
     def get_flight_risk_students(self) -> list[FlightRiskStudentDTO]:
         with get_session() as db:
             return repo.get_flight_risk_students(db)
-
-    def get_user_engagement(self, days: int = 30) -> list[UserEngagementDTO]:
-        """Get user engagement metrics for the specified number of days."""
-        with get_session() as db:
-            return repo.get_user_engagement(db, days)
 
     def get_retention_cohorts(self, months: int = 6) -> list[RetentionCohortDTO]:
         """Get cohort-based retention analysis."""

@@ -149,21 +149,22 @@ def get_student_progress(
     group_id: Optional[int] = None
 ) -> list[StudentProgressDTO]:
     """Student progress analytics for all or specific student/group."""
-    # Build the WHERE clause dynamically
-    where_conditions = ["en.status = 'active'"]
     params = {}
     
-    if student_id:
-        where_conditions.append("st.id = :student_id")
+    if student_id and group_id:
+        where_sql = "en.status = 'active' AND st.id = :student_id AND en.group_id = :group_id"
         params["student_id"] = student_id
-    
-    if group_id:
-        where_conditions.append("en.group_id = :group_id")
         params["group_id"] = group_id
+    elif student_id:
+        where_sql = "en.status = 'active' AND st.id = :student_id"
+        params["student_id"] = student_id
+    elif group_id:
+        where_sql = "en.status = 'active' AND en.group_id = :group_id"
+        params["group_id"] = group_id
+    else:
+        where_sql = "en.status = 'active'"
     
-    where_clause = " AND ".join(where_conditions)
-    
-    stmt = text(f"""
+    base_sql = f"""
         SELECT
             st.id AS student_id,
             st.full_name AS student_name,
@@ -196,9 +197,10 @@ def get_student_progress(
         LEFT JOIN v_enrollment_attendance att ON att.enrollment_id = en.id
         LEFT JOIN v_group_session_count vgs ON vgs.group_id = en.group_id
             AND vgs.level_number = en.level_number
-        WHERE {where_clause}
+        WHERE {where_sql}
         ORDER BY st.full_name, c.name
-    """)
+    """
+    stmt = text(base_sql)
     
     rows = db.execute(stmt, params).all()
     return [StudentProgressDTO(**r._mapping) for r in rows]

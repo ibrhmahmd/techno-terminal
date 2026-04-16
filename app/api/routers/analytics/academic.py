@@ -9,25 +9,33 @@ from datetime import date
 from typing import Optional
 from fastapi import APIRouter, Depends, Query
 
-from app.api.schemas.common import ApiResponse
-from app.api.schemas.analytics import (
-    DashboardSummaryResponse,
-    UnpaidAttendeeItem,
-    GroupRosterItem,
-    AttendanceHeatmapItem,
-    StudentProgressItem,
-    CourseCompletionItem,
+from app.api.schemas.common import ApiResponse, ErrorResponse
+from app.modules.analytics.schemas.academic_schemas import (
+    TodaySessionDTO,
+    UnpaidAttendeeDTO,
+    GroupRosterRowDTO,
+    AttendanceHeatmapRowDTO,
+    StudentProgressDTO,
+    CourseCompletionDTO,
+    DashboardSummaryDTO,
 )
 from app.api.dependencies import require_admin, get_academic_analytics_service
 from app.modules.auth import User
 from app.modules.analytics.services.academic_service import AcademicAnalyticsService
 
-router = APIRouter(tags=["Analytics — Academic"])
+router = APIRouter(
+    tags=["Analytics — Academic"],
+    responses={
+        401: {"model": ErrorResponse, "description": "Unauthorized - Missing or invalid token"},
+        403: {"model": ErrorResponse, "description": "Forbidden - Insufficient permissions"},
+        422: {"model": ErrorResponse, "description": "Validation Error - Invalid parameters"},
+    }
+)
 
 
 @router.get(
     "/analytics/dashboard/summary",
-    response_model=ApiResponse[DashboardSummaryResponse],
+    response_model=ApiResponse[DashboardSummaryDTO],
     summary="Get high-level dashboard aggregates",
 )
 def get_dashboard_summary(
@@ -35,21 +43,15 @@ def get_dashboard_summary(
     svc: AcademicAnalyticsService = Depends(get_academic_analytics_service),
 ):
     """Provides a quick top-level aggregate of the system state."""
-    active_enrollments = svc.get_active_enrollment_count()
-    today_sessions = svc.get_today_sessions()
-    
     return ApiResponse(
-        data=DashboardSummaryResponse(
-            active_enrollments=active_enrollments,
-            today_sessions_count=len(today_sessions),
-        ),
+        data=svc.get_dashboard_summary(),
         message="Dashboard summary loaded successfully.",
     )
 
 
 @router.get(
     "/analytics/academics/unpaid-attendees",
-    response_model=ApiResponse[list[UnpaidAttendeeItem]],
+    response_model=ApiResponse[list[UnpaidAttendeeDTO]],
     summary="Get unpaid attendees for today",
 )
 def get_unpaid_attendees(
@@ -63,7 +65,7 @@ def get_unpaid_attendees(
 
 @router.get(
     "/analytics/academics/groups/{group_id}/roster",
-    response_model=ApiResponse[list[GroupRosterItem]],
+    response_model=ApiResponse[list[GroupRosterRowDTO]],
     summary="Get group roster",
 )
 def get_group_roster(
@@ -78,7 +80,7 @@ def get_group_roster(
 
 @router.get(
     "/analytics/academics/groups/{group_id}/heatmap",
-    response_model=ApiResponse[list[AttendanceHeatmapItem]],
+    response_model=ApiResponse[list[AttendanceHeatmapRowDTO]],
     summary="Get attendance heatmap for group",
 )
 def get_attendance_heatmap(
@@ -93,7 +95,7 @@ def get_attendance_heatmap(
 
 @router.get(
     "/analytics/academics/student-progress",
-    response_model=ApiResponse[list[StudentProgressItem]],
+    response_model=ApiResponse[list[StudentProgressDTO]],
     summary="Get student progress analytics",
 )
 def get_student_progress(
@@ -111,7 +113,7 @@ def get_student_progress(
 
 @router.get(
     "/analytics/academics/course-completion",
-    response_model=ApiResponse[list[CourseCompletionItem]],
+    response_model=ApiResponse[list[CourseCompletionDTO]],
     summary="Get course completion rates",
 )
 def get_course_completion(
