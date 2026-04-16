@@ -4,7 +4,10 @@ app/modules/finance/services/refund_service.py
 Refund service implementation with atomic transaction handling.
 """
 from decimal import Decimal
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.modules.crm.services.activity_service import StudentActivityService
 
 from app.modules.finance.interfaces import (
     IRefundService,
@@ -18,7 +21,7 @@ from app.shared.exceptions import NotFoundError, BusinessRuleError
 class RefundService(IRefundService):
     """
     Service for refund business operations.
-    
+
     Responsible for:
     - Processing refunds against original payments
     - Validating refund amounts don't exceed original
@@ -26,8 +29,13 @@ class RefundService(IRefundService):
     - Competition fee unmarking (if applicable)
     """
 
-    def __init__(self, uow: FinanceUnitOfWork) -> None:
+    def __init__(
+        self,
+        uow: FinanceUnitOfWork,
+        activity_svc: Optional["StudentActivityService"] = None,
+    ) -> None:
         self._uow = uow
+        self._activity_svc = activity_svc
 
     def issue(self, dto: IssueRefundDTO) -> RefundResultDTO:
         """
@@ -81,16 +89,16 @@ class RefundService(IRefundService):
             receipt_id=refund_receipt.id,
             student_id=original.student_id,
             enrollment_id=original.enrollment_id,
-            amount=amount,
+            amount=dto.amount,
             transaction_type="refund",
             payment_type=original.payment_type,
-            notes=reason,
-            original_payment_id=payment_id,
+            notes=dto.reason,
+            original_payment_id=dto.payment_id,
         )
 
         # Handle competition fee unmarking
         if original.payment_type == "competition":
-            self._unlink_competition_payment(payment_id)
+            self._unlink_competition_payment(dto.payment_id)
 
         # Get updated balance if applicable
         new_balance: Optional[Decimal] = None
@@ -103,9 +111,22 @@ class RefundService(IRefundService):
 
         self._uow.commit()
 
+        # Log refund activity
+        if self._activity_svc and original.student_id:
+            from app.modules.crm.interfaces.dtos.log_payment_dto import LogPaymentDTO
+            self._activity_svc.log_payment(
+                LogPaymentDTO(
+                    student_id=original.student_id,
+                    payment_id=refund_payment.id,
+                    amount=Decimal(str(dto.amount)),
+                    payment_type="refund",
+                    performed_by=dto.received_by_user_id,
+                )
+            )
+
         return RefundResultDTO(
             receipt_number=refund_receipt.receipt_number or "",
-            refunded_amount=amount,
+            refunded_amount=dto.amount,
             new_balance=new_balance,
         )
 

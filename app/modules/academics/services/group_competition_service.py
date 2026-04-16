@@ -4,6 +4,10 @@ app/modules/academics/services/group_competition_service.py
 Service class for Group Competition integration.
 """
 from datetime import datetime
+from typing import Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.modules.crm.services.activity_service import StudentActivityService
 
 from app.db.connection import get_session
 from app.modules.academics.models.group_level_models import GroupCompetitionParticipation
@@ -13,6 +17,9 @@ from app.modules.academics.schemas.team_schemas import TeamReadDTO
 
 class GroupCompetitionService:
     """Service for managing group participation in competitions."""
+
+    def __init__(self, activity_svc: Optional["StudentActivityService"] = None) -> None:
+        self._activity_svc = activity_svc
 
     def get_teams_by_group(
         self,
@@ -83,6 +90,33 @@ class GroupCompetitionService:
             created = repo.create_participation(session, participation)
             session.commit()
             session.refresh(created)
+
+            # Log competition registration for each team member
+            if self._activity_svc:
+                from app.modules.crm.interfaces.dtos.log_competition_registration_dto import LogCompetitionRegistrationDTO
+                from app.modules.competitions.models.team_models import TeamMember
+                from sqlalchemy import select
+
+                # Get team members
+                stmt = select(TeamMember).where(TeamMember.team_id == team_id)
+                members = session.exec(stmt).all()
+
+                # Get competition name
+                from app.modules.competitions.models.competition_models import Competition
+                competition = session.get(Competition, competition_id)
+                competition_name = competition.name if competition else "Unknown"
+
+                for member in members:
+                    if member.student_id:
+                        self._activity_svc.log_competition_registration(
+                            LogCompetitionRegistrationDTO(
+                                student_id=member.student_id,
+                                competition_id=competition_id,
+                                competition_name=competition_name,
+                                performed_by=None,  # TODO: Pass from caller
+                            )
+                        )
+
             return created
 
     def get_group_competitions(

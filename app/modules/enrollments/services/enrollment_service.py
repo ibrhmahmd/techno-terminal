@@ -5,6 +5,7 @@ from app.shared.audit_utils import apply_create_audit
 from app.shared.datetime_utils import utc_now
 from app.modules.crm.repositories.unit_of_work import StudentUnitOfWork
 from app.modules.crm.services.student_crud_service import StudentCrudService
+from app.modules.crm.services.activity_service import StudentActivityService
 import app.modules.academics as acad_srv
 from app.modules.academics.models.group_models import Group
 from app.modules.enrollments.models.enrollment_models import Enrollment
@@ -22,8 +23,9 @@ from app.modules.finance.repositories.payment_repository import PaymentRepositor
 class EnrollmentService:
     """Service for managing student enrollments."""
 
-    def __init__(self) -> None:
+    def __init__(self, activity_svc: Optional[StudentActivityService] = None) -> None:
         self._student_crud_service: Optional[StudentCrudService] = None
+        self._activity_svc = activity_svc
 
     def _get_student_service(self) -> StudentCrudService:
         """Lazy initialization of StudentCrudService with fresh UnitOfWork."""
@@ -76,6 +78,21 @@ class EnrollmentService:
                     created_at=utc_now(),
                 )
                 created = repo.create_enrollment(session, enrollment)
+
+                # Log enrollment activity
+                if self._activity_svc:
+                    from app.modules.crm.interfaces.dtos.log_enrollment_dto import LogEnrollmentDTO
+                    self._activity_svc.log_enrollment(
+                        LogEnrollmentDTO(
+                            student_id=created.student_id,
+                            enrollment_id=created.id,
+                            group_id=group.id,
+                            group_name=group.name,
+                            level_number=group.level_number,
+                            performed_by=data.created_by,
+                        )
+                    )
+
                 return EnrollmentDTO.model_validate(created), capacity_exceeded
         except IntegrityError:
             raise ConflictError(f"'{student.full_name}' was just enrolled in this group by another request. Please refresh and try again.")
@@ -124,24 +141,65 @@ class EnrollmentService:
             )
             apply_create_audit(new_enrollment)
             created = repo.create_enrollment(session, new_enrollment)
+
+            # Log enrollment change activity
+            if self._activity_svc:
+                from app.modules.crm.interfaces.dtos.log_enrollment_change_dto import LogEnrollmentChangeDTO
+                self._activity_svc.log_enrollment_change(
+                    LogEnrollmentChangeDTO(
+                        student_id=source.student_id,
+                        enrollment_id=created.id,
+                        action="transferred",
+                        old_group_id=source.group_id,
+                        new_group_id=data.to_group_id,
+                        performed_by=data.created_by,
+                    )
+                )
+
             return EnrollmentDTO.model_validate(created)
 
 
-    def drop_enrollment(self, enrollment_id: int) -> EnrollmentDTO:
+    def drop_enrollment(self, enrollment_id: int, performed_by: Optional[int] = None) -> EnrollmentDTO:
         with get_session() as session:
             enrollment = repo.get_enrollment(session, enrollment_id)
             if not enrollment:
                 raise NotFoundError(f"Enrollment {enrollment_id} not found.")
             updated = repo.update_enrollment_status(session, enrollment_id, "dropped")
+
+            # Log enrollment change activity
+            if self._activity_svc:
+                from app.modules.crm.interfaces.dtos.log_enrollment_change_dto import LogEnrollmentChangeDTO
+                self._activity_svc.log_enrollment_change(
+                    LogEnrollmentChangeDTO(
+                        student_id=enrollment.student_id,
+                        enrollment_id=enrollment.id,
+                        action="dropped",
+                        performed_by=performed_by,
+                    )
+                )
+
             return EnrollmentDTO.model_validate(updated)
 
 
-    def complete_enrollment(self, enrollment_id: int) -> EnrollmentDTO:
+    def complete_enrollment(self, enrollment_id: int, performed_by: Optional[int] = None) -> EnrollmentDTO:
         with get_session() as session:
             enrollment = repo.get_enrollment(session, enrollment_id)
             if not enrollment:
                 raise NotFoundError(f"Enrollment {enrollment_id} not found.")
             updated = repo.update_enrollment_status(session, enrollment_id, "completed")
+
+            # Log enrollment change activity
+            if self._activity_svc:
+                from app.modules.crm.interfaces.dtos.log_enrollment_change_dto import LogEnrollmentChangeDTO
+                self._activity_svc.log_enrollment_change(
+                    LogEnrollmentChangeDTO(
+                        student_id=enrollment.student_id,
+                        enrollment_id=enrollment.id,
+                        action="completed",
+                        performed_by=performed_by,
+                    )
+                )
+
             return EnrollmentDTO.model_validate(updated)
 
 

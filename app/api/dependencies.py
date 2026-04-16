@@ -190,15 +190,20 @@ def get_group_level_service() -> GroupLevelService:
     return GroupLevelService()
 
 def get_group_competition_service() -> GroupCompetitionService:
-    """Returns a fresh GroupCompetitionService instance per request."""
-    return GroupCompetitionService()
+    """Returns a GroupCompetitionService with activity logging."""
+    with StudentUnitOfWork() as uow:
+        activity_svc = StudentActivityService(uow)
+        return GroupCompetitionService(activity_svc=activity_svc)
 
 def get_session_service() -> SessionService:
     return SessionService()
 
 
 def get_enrollment_service() -> EnrollmentService:
-    return EnrollmentService()
+    """Returns an EnrollmentService with activity logging."""
+    with StudentUnitOfWork() as uow:
+        activity_svc = StudentActivityService(uow)
+        return EnrollmentService(activity_svc=activity_svc)
 
 
 # ── Finance Service Factories (SOLID Refactored) ──────────────────────────────
@@ -211,15 +216,17 @@ from app.modules.finance.services.reporting_service import ReportingService
 
 
 def get_receipt_service() -> ReceiptService:
-    """Returns a ReceiptService with a fresh UnitOfWork."""
-    with FinanceUnitOfWork() as uow:
-        return ReceiptService(uow)
+    """Returns a ReceiptService with activity logging."""
+    with FinanceUnitOfWork() as finance_uow, StudentUnitOfWork() as crm_uow:
+        activity_svc = StudentActivityService(crm_uow)
+        return ReceiptService(finance_uow, activity_svc=activity_svc)
 
 
 def get_refund_service() -> RefundService:
-    """Returns a RefundService with a fresh UnitOfWork."""
-    with FinanceUnitOfWork() as uow:
-        return RefundService(uow)
+    """Returns a RefundService with activity logging."""
+    with FinanceUnitOfWork() as finance_uow, StudentUnitOfWork() as crm_uow:
+        activity_svc = StudentActivityService(crm_uow)
+        return RefundService(finance_uow, activity_svc=activity_svc)
 
 
 def get_balance_service() -> BalanceService:

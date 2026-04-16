@@ -4,7 +4,10 @@ app/modules/finance/services/receipt_service.py
 Receipt service implementation with proper SOLID compliance.
 """
 from decimal import Decimal
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.modules.crm.services.activity_service import StudentActivityService
 
 from app.modules.finance.interfaces import (
     IReceiptService,
@@ -23,7 +26,7 @@ from app.shared.exceptions import NotFoundError, BusinessRuleError
 class ReceiptService(IReceiptService):
     """
     Service for receipt business operations.
-    
+
     Responsible for:
     - Receipt creation with charge lines
     - Receipt retrieval and search
@@ -31,8 +34,13 @@ class ReceiptService(IReceiptService):
     - Receipt finalization
     """
 
-    def __init__(self, uow: FinanceUnitOfWork) -> None:
+    def __init__(
+        self,
+        uow: FinanceUnitOfWork,
+        activity_svc: Optional["StudentActivityService"] = None,
+    ) -> None:
         self._uow = uow
+        self._activity_svc = activity_svc
 
     def create(self, dto: CreateReceiptServiceDTO) -> ReceiptFinalizedDTO:
         """
@@ -103,6 +111,21 @@ class ReceiptService(IReceiptService):
 
         total = self._uow.receipts.get_total(receipt.id)
         self._uow.commit()
+
+        # Log payment activities for each line
+        if self._activity_svc:
+            from app.modules.crm.interfaces.dtos.log_payment_dto import LogPaymentDTO
+            for line in processed_lines:
+                if line.student_id:  # Only log if associated with a student
+                    self._activity_svc.log_payment(
+                        LogPaymentDTO(
+                            student_id=line.student_id,
+                            payment_id=line.id,
+                            amount=line.amount,
+                            payment_type=line.payment_type or "course_level",
+                            performed_by=dto.received_by_user_id,
+                        )
+                    )
 
         return ReceiptFinalizedDTO(
             receipt_id=receipt.id,
