@@ -1,5 +1,6 @@
 from typing import Sequence
 from sqlmodel import Session, select
+from sqlalchemy import func
 from sqlalchemy import text
 from app.modules.attendance.models import Attendance
 from app.modules.attendance.schemas import EnrollmentAttendanceSummaryDTO

@@ -1,4 +1,4 @@
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Tuple
 from sqlmodel import Session, select, delete, func
 from sqlalchemy import or_
 import json
@@ -322,4 +322,40 @@ class StudentRepository(IStudentRepository):
             .where(Student.status == StudentStatus.WAITING)
             .order_by(Student.waiting_priority.nulls_last())
         )
+        return list(self._session.exec(stmt).all())
+
+    def get_active_enrollment_with_details(
+        self, student_id: int
+    ) -> Optional[Tuple[int, str, int, str, int, Optional[str], int]]:
+        """
+        Get active enrollment with joined group, course, and instructor details.
+        Returns: (enrollment_id, group_name, group_id, course_name, course_id, instructor_name, level_number) or None.
+        """
+        from app.modules.enrollments.models.enrollment_models import Enrollment
+        from app.modules.academics.models.group_models import Group
+        from app.modules.academics.models.course_models import Course
+        from app.modules.auth.models.user_models import User
+
+        stmt = (
+            select(
+                Enrollment.id,
+                Group.name,
+                Group.id,
+                Course.name,
+                Course.id,
+                User.full_name,
+                Enrollment.level_number,
+            )
+            .join(Group, Enrollment.group_id == Group.id)
+            .join(Course, Group.course_id == Course.id)
+            .outerjoin(User, Group.instructor_id == User.id)
+            .where(
+                Enrollment.student_id == student_id,
+                Enrollment.status == "active",
+            )
+            .order_by(Enrollment.created_at.desc())
+            .limit(1)
+        )
+        result = self._session.exec(stmt).first()
+        return result
         return list(self._session.exec(stmt).all())

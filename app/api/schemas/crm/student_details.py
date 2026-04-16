@@ -50,6 +50,19 @@ class StudentBalanceSummary(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class CurrentEnrollmentInfo(BaseModel):
+    """Current active enrollment with group, course, and instructor details."""
+    group_id: int
+    group_name: str
+    course_id: int
+    course_name: str
+    level_number: int
+    instructor_name: Optional[str] = None
+    enrollment_id: int
+
+    model_config = {"from_attributes": True}
+
+
 class StudentWithDetails(BaseModel):
     """
     Complete student profile with relationships and balance summary.
@@ -65,6 +78,7 @@ class StudentWithDetails(BaseModel):
     notes: Optional[str] = None
     status: str
     is_active: bool = True
+    school_name: Optional[str] = None  # From profile_metadata
     
     # Waiting list metadata
     waiting_since: Optional[datetime] = None
@@ -78,6 +92,14 @@ class StudentWithDetails(BaseModel):
     # Relationships
     primary_parent: Optional[ParentInfo] = None
     enrollments: List[EnrollmentInfo] = Field(default_factory=list)
+    
+    # Current enrollment (if active)
+    current_enrollment: Optional[CurrentEnrollmentInfo] = None
+    
+    # Attendance summary
+    sessions_attended_count: int = 0
+    sessions_absent_count: int = 0
+    last_session_attended: Optional[datetime] = None
     
     # Financial summary
     balance_summary: StudentBalanceSummary = Field(default_factory=StudentBalanceSummary)
