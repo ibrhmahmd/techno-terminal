@@ -2,6 +2,8 @@
 Techno Terminal - FastAPI Application Factory
 """
 from fastapi import FastAPI
+from contextlib import asynccontextmanager
+import asyncio
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -37,10 +39,26 @@ from app.api.routers.finance import (
 
 
 def create_app() -> FastAPI:
+    from app.db.connection import get_engine
+    from sqlmodel import Session
+    from app.modules.notifications.repositories.notification_repository import NotificationRepository
+    from app.modules.notifications.services.notification_service import NotificationService
+    from app.modules.notifications.services.report_scheduler import start_report_scheduler
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        session = Session(get_engine(), expire_on_commit=False)
+        notification_service = NotificationService(repo=NotificationRepository(session))
+        task = asyncio.create_task(start_report_scheduler(notification_service))
+        yield
+        task.cancel()
+        session.close()
+
     app = FastAPI(
         title="Techno Terminal API",
         description="RESTful backend for the Techno Terminal CRM & Operations System",
         version="1.0.0",
+        lifespan=lifespan,
         docs_url="/api/v1/docs",
         redoc_url="/api/v1/redoc",
         openapi_url="/api/v1/openapi.json",
@@ -88,6 +106,10 @@ def create_app() -> FastAPI:
     app.include_router(financial_router,   prefix="/api/v1", tags=["Analytics — Financial"])
     app.include_router(competition_router, prefix="/api/v1", tags=["Analytics — Competition"])
     app.include_router(bi_router,          prefix="/api/v1", tags=["Analytics — BI"])
+
+    # Notifications router
+    from app.api.routers.notifications import router as notifications_router
+    app.include_router(notifications_router, prefix="/api/v1")
 
     # 5. Utility endpoints
     @app.get("/health", tags=["Health"])

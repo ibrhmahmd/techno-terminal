@@ -45,10 +45,8 @@ router = APIRouter(prefix="/crm", tags=["CRM — Students"])
     response_model=PaginatedResponse[StudentListItem],
     summary="List / search students",
 )
-def list_students(
-    q: str = Query(
-        "", description="Search by name or phone (min 2 chars). Empty → all students."
-    ),
+def search_students(
+    q: str = Query(None, min_length=1, max_length=100, description="Search by name or phone (min 2 chars). Empty → all students."),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     _user: User = Depends(require_any),
@@ -119,8 +117,8 @@ def get_grouped_students(
     description="Retrieve students on the waiting list, ordered by priority and wait time."
 )
 def get_waiting_list(
-    skip: int = 0,
-    limit: int = 200,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(200, ge=1, le=200),
     order_by_priority: bool = True,
     current_user: User = Depends(require_admin),
     svc: SearchService = Depends(get_student_search_service),
@@ -138,8 +136,8 @@ def get_waiting_list(
 )
 def get_students_by_status(
     status: str,
-    skip: int = 0,
-    limit: int = 200,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(200, ge=1, le=200),
     current_user: User = Depends(require_admin),
     svc: SearchService = Depends(get_student_search_service),
 ):

@@ -1,5 +1,6 @@
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from sqlalchemy.exc import IntegrityError
+from fastapi import BackgroundTasks
 from app.db.connection import get_session
 from app.shared.audit_utils import apply_create_audit
 from app.shared.datetime_utils import utc_now
@@ -19,13 +20,16 @@ from app.shared.exceptions import NotFoundError, BusinessRuleError, ConflictErro
 import app.modules.enrollments.repositories.enrollment_repository as repo
 from app.modules.finance.repositories.payment_repository import PaymentRepository
 
+if TYPE_CHECKING:
+    from app.modules.notifications.services.notification_service import NotificationService
 
 class EnrollmentService:
     """Service for managing student enrollments."""
 
-    def __init__(self, activity_svc: Optional[StudentActivityService] = None) -> None:
+    def __init__(self, activity_svc: Optional[StudentActivityService] = None, notification_svc: Optional["NotificationService"] = None) -> None:
         self._student_crud_service: Optional[StudentCrudService] = None
         self._activity_svc = activity_svc
+        self._notification_svc = notification_svc
 
     def _get_student_service(self) -> StudentCrudService:
         """Lazy initialization of StudentCrudService with fresh UnitOfWork."""
@@ -38,6 +42,7 @@ class EnrollmentService:
     def enroll_student(
         self,
         data: EnrollStudentInput,
+        background_tasks: Optional[BackgroundTasks] = None,
     ) -> tuple[EnrollmentDTO, bool]:
         """
         Enrolls a student in a group.
@@ -91,6 +96,12 @@ class EnrollmentService:
                             level_number=group.level_number,
                             performed_by=data.created_by,
                         )
+                    )
+
+                # Trigger Notification
+                if self._notification_svc and background_tasks:
+                    self._notification_svc.notify_enrollment(
+                        created.id, student.id, group.id, background_tasks
                     )
 
                 return EnrollmentDTO.model_validate(created), capacity_exceeded

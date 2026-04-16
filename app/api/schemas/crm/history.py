@@ -3,16 +3,39 @@ app/api/schemas/crm/history.py
 ──────────────────────────────
 Pydantic schemas for student history and activity requests (CRM module).
 """
+from enum import Enum
 from typing import Optional, List, Dict, Any
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, validator
+
+
+class ActivityType(str, Enum):
+    """Valid activity types for logging."""
+    REGISTRATION = "registration"
+    STATUS_CHANGE = "status_change"
+    ENROLLMENT = "enrollment"
+    ENROLLMENT_CHANGE = "enrollment_change"
+    PAYMENT = "payment"
+    NOTE_ADDED = "note_added"
+    COMPETITION = "competition"
+    DELETION = "deletion"
+
+
+class ReferenceType(str, Enum):
+    """Valid reference types for activities."""
+    STUDENT = "student"
+    ENROLLMENT = "enrollment"
+    PAYMENT = "payment"
+    GROUP = "group"
+    COURSE = "course"
+    COMPETITION = "competition"
 
 
 class ActivityLogRequest(BaseModel):
     """Request to log a manual activity."""
-    activity_type: str
-    activity_subtype: Optional[str] = None
-    reference_type: Optional[str] = None
+    activity_type: ActivityType
+    activity_subtype: Optional[str] = Field(None, max_length=50)
+    reference_type: Optional[ReferenceType] = None
     reference_id: Optional[int] = None
     description: str
     metadata: Optional[Dict[str, Any]] = None
@@ -37,16 +60,22 @@ class EnrollmentHistoryEntry(BaseModel):
 
 class ActivitySummaryItem(BaseModel):
     """DTO for activity summary by type."""
-    activity_type: str
+    activity_type: ActivityType
     count: int
 
 
 class ActivitySearchParams(BaseModel):
     """Parameters for searching activities."""
-    search_term: Optional[str] = None
-    activity_types: Optional[List[str]] = None
+    search_term: Optional[str] = Field(None, max_length=100)
+    activity_types: Optional[List[ActivityType]] = Field(None, max_length=10)
     date_from: Optional[datetime] = None
     date_to: Optional[datetime] = None
-    performed_by: Optional[int] = None
-    student_id: Optional[int] = None
-    limit: int = 50
+    performed_by: Optional[int] = Field(None, gt=0)
+    student_id: Optional[int] = Field(None, gt=0)
+    limit: int = Field(50, ge=1, le=100)
+
+    @validator("date_to")
+    def validate_date_range(cls, v, values):
+        if v and values.get("date_from") and v < values["date_from"]:
+            raise ValueError("date_to must be after date_from")
+        return v

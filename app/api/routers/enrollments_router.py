@@ -10,7 +10,7 @@ Role policy:
   READ  -> require_any
   WRITE -> require_admin
 """
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, BackgroundTasks
 
 from app.api.schemas.common import ApiResponse
 from app.api.schemas.enrollments.enrollment import EnrollmentPublic, StudentEnrollmentSummaryPublic
@@ -30,11 +30,12 @@ router = APIRouter(tags=["Enrollments"])
 )
 def enroll_student(
     body: EnrollStudentInput,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(require_admin),
     svc: EnrollmentService = Depends(get_enrollment_service),
 ):
     enrollment_data = body.model_copy(update={"created_by": current_user.id})
-    enrollment, capacity_exceeded = svc.enroll_student(enrollment_data)
+    enrollment, capacity_exceeded = svc.enroll_student(enrollment_data, background_tasks=background_tasks)
     
     msg = "Student enrolled successfully."
     if capacity_exceeded:

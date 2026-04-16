@@ -148,6 +148,10 @@ class StudentRepository(IStudentRepository):
         return list(student_map.values())
 
     def get_student_balance_summary(self, student_id: int) -> StudentBalanceSummaryDTO:
+        """
+        Get total due, total discounts, total paid, net balance, enrollment count and unpaid enrollments
+        for a specific student based on their active and completed enrollments.
+        """
         from app.modules.enrollments.models.enrollment_models import Enrollment
         from app.modules.finance import Payment
         enrollments = self._session.exec(

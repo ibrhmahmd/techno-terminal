@@ -199,11 +199,21 @@ def get_session_service() -> SessionService:
     return SessionService()
 
 
+def get_notification_service():
+    from app.db.connection import get_engine
+    from sqlmodel import Session
+    from app.modules.notifications.repositories.notification_repository import NotificationRepository
+    from app.modules.notifications.services.notification_service import NotificationService
+    return NotificationService(NotificationRepository(Session(get_engine(), expire_on_commit=False)))
+
 def get_enrollment_service() -> EnrollmentService:
-    """Returns an EnrollmentService with activity logging."""
+    """Returns an EnrollmentService with activity logging and notifications."""
     with StudentUnitOfWork() as uow:
         activity_svc = StudentActivityService(uow)
-        return EnrollmentService(activity_svc=activity_svc)
+        return EnrollmentService(
+            activity_svc=activity_svc,
+            notification_svc=get_notification_service()
+        )
 
 
 # ── Finance Service Factories (SOLID Refactored) ──────────────────────────────
@@ -216,10 +226,14 @@ from app.modules.finance.services.reporting_service import ReportingService
 
 
 def get_receipt_service() -> ReceiptService:
-    """Returns a ReceiptService with activity logging."""
+    """Returns a ReceiptService with activity logging and notifications."""
     with FinanceUnitOfWork() as finance_uow, StudentUnitOfWork() as crm_uow:
         activity_svc = StudentActivityService(crm_uow)
-        return ReceiptService(finance_uow, activity_svc=activity_svc)
+        return ReceiptService(
+            finance_uow, 
+            activity_svc=activity_svc,
+            notification_svc=get_notification_service()
+        )
 
 
 def get_refund_service() -> RefundService:

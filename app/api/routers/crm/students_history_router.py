@@ -41,10 +41,10 @@ router = APIRouter(tags=["Student History"])
 )
 def get_student_history(
     student_id: int,
-    activity_types: Optional[str] = Query(None, description="Comma-separated activity types"),
+    activity_types: Optional[str] = Query(None, max_length=100, description="Comma-separated activity types"),
     date_from: Optional[datetime] = None,
     date_to: Optional[datetime] = None,
-    limit: int = Query(50, ge=1, le=500),
+    limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     current_user: User = Depends(require_any),
     svc: StudentActivityService = Depends(get_student_activity_service),
