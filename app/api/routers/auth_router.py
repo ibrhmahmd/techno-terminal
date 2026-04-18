@@ -54,6 +54,10 @@ def login(
     except Exception as e:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
+        # Add to auth_router.py login endpoint
+    print(f"Login attempt: email={body.email}")
+    # print(f"Supabase URL: {settings.SUPABASE_URL}")
+
     # verify against local DB
     user = auth_svc.get_user_by_supabase_uid(res.user.id)
     if not user:

@@ -34,7 +34,8 @@ from app.api.routers.analytics import (
 )
 from app.api.routers.finance import (
     receipt_router,
-    finance_router
+    finance_router,
+    reporting_router
 )
 
 
@@ -96,6 +97,7 @@ def create_app() -> FastAPI:
     # Finance routers (balance and receipt are already APIRouter objects)
     app.include_router(receipt_router,     prefix="/api/v1", tags=["Receipts"])
     app.include_router(finance_router,     prefix="/api/v1", tags=["Finance"])
+    app.include_router(reporting_router,   prefix="/api/v1", tags=["Finance — Reporting"])
     # Student History & Activity
     app.include_router(students_history_router,     prefix="/api/v1", tags=["Student History"])
     # Phase 5.5 — Auxiliary
