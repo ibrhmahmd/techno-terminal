@@ -1,13 +1,17 @@
 """
-StudentGroupedResultDTO - Result of a student grouping operation.
+StudentGroupedResultDTO - Grouped student data result.
 """
-from dataclasses import dataclass
 from typing import List
+from pydantic import BaseModel
+
+from .student_group_bucket_dto import StudentGroupBucketDTO
 
 
-@dataclass(frozen=True)
-class StudentGroupedResultDTO:
-    """Result of a grouping operation."""
+class StudentGroupedResultDTO(BaseModel):
+    """Result of grouped student query."""
+    model_config = {"frozen": True}
+
     group_by: str
     total_unique_students: int
-    groups: List["StudentGroupBucketDTO"]
+    groups: List[StudentGroupBucketDTO]
+    total: int

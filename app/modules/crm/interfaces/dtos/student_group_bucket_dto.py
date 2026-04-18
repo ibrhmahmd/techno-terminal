@@ -1,14 +1,17 @@
 """
-StudentGroupBucketDTO - A single bucket in a grouped result.
+StudentGroupBucketDTO - A single group bucket in grouped results.
 """
-from dataclasses import dataclass
 from typing import List
+from pydantic import BaseModel
+
+from .student_summary_dto import StudentSummaryDTO
 
 
-@dataclass(frozen=True)
-class StudentGroupBucketDTO:
-    """A single group bucket containing students."""
-    key: str
-    label: str
+class StudentGroupBucketDTO(BaseModel):
+    """A bucket/group in grouped student results."""
+    model_config = {"frozen": True}
+
+    key: str  # e.g., "active", "male", "10-15"
+    label: str  # Human readable label
     count: int
-    students: List["StudentSummaryDTO"]
+    students: List[StudentSummaryDTO]

@@ -68,20 +68,24 @@ class SearchService:
         self,
         group_by: Literal["status", "gender", "age_bucket"],
         include_inactive: bool = False,
+        skip: int = 0,
+        limit: int = 50,
     ) -> StudentGroupedResultDTO:
         """
         Group students by specified criteria.
-        
+
         Args:
             group_by: Grouping strategy - "status", "gender", or "age_bucket"
             include_inactive: Whether to include inactive students
+            skip: Number of students to skip per group (pagination)
+            limit: Max students per group (pagination)
         """
         # Get all enriched student data
         students = self._uow.students.get_all_enriched(include_inactive)
-        
+
         # Group by strategy
         buckets: dict[str, list[StudentSummaryDTO]] = defaultdict(list)
-        
+
         for student in students:
             if group_by == "status":
                 key = student.status
@@ -92,22 +96,27 @@ class SearchService:
                 key = StudentValidator.classify_age_bracket(age)
             else:
                 key = "other"
-            
+
             buckets[key].append(student)
-        
-        # Build result buckets
-        groups = [
-            StudentGroupBucketDTO(
-                key=key,
-                label=key.replace("_", " ").title() if group_by != "status" else key.capitalize(),
-                count=len(students_list),
-                students=students_list,
+
+        # Build result buckets with pagination applied to each group
+        groups = []
+        for key, students_list in sorted(buckets.items()):
+            total_in_group = len(students_list)
+            # Apply pagination: slice [skip:skip+limit]
+            paginated_students = students_list[skip:skip + limit]
+            groups.append(
+                StudentGroupBucketDTO(
+                    key=key,
+                    label=key.replace("_", " ").title() if group_by != "status" else key.capitalize(),
+                    count=total_in_group,  # Total count (unpaginated)
+                    students=paginated_students,  # Paginated list
+                )
             )
-            for key, students_list in sorted(buckets.items())
-        ]
-        
+
         return StudentGroupedResultDTO(
             group_by=group_by,
             total_unique_students=len(students),
             groups=groups,
+            total=sum(len(g.students) for g in groups),
         )

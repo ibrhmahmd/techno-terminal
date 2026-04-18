@@ -4,6 +4,8 @@ from .attendance_schemas import (
     SessionAttendanceRowDTO,
     EnrollmentAttendanceSummaryDTO,
     MarkAttendanceResponseDTO,
+    SessionAttendanceRecord,
+    StudentEnrollmentAttendanceDTO,
 )
 
 __all__ = [
@@ -12,4 +14,6 @@ __all__ = [
     "SessionAttendanceRowDTO",
     "EnrollmentAttendanceSummaryDTO",
     "MarkAttendanceResponseDTO",
+    "SessionAttendanceRecord",
+    "StudentEnrollmentAttendanceDTO",
 ]

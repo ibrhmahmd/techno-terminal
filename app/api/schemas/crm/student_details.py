@@ -3,7 +3,7 @@ app/api/schemas/crm/student_details.py
 ────────────────────────────────────────
 DTOs for student detail endpoint with full relationships.
 """
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional, List
 
 from pydantic import BaseModel, Field
@@ -96,10 +96,13 @@ class StudentWithDetails(BaseModel):
     # Current enrollment (if active)
     current_enrollment: Optional[CurrentEnrollmentInfo] = None
     
-    # Attendance summary
+    # Attendance summary (totals across all enrollments)
     sessions_attended_count: int = 0
     sessions_absent_count: int = 0
     last_session_attended: Optional[datetime] = None
+
+    # Per-enrollment attendance with all session records
+    enrollment_attendance: List["StudentEnrollmentAttendanceItem"] = Field(default_factory=list)
     
     # Financial summary
     balance_summary: StudentBalanceSummary = Field(default_factory=StudentBalanceSummary)
@@ -127,5 +130,30 @@ class SiblingInfo(BaseModel):
     model_config = {"from_attributes": True}
 
 
-# Update forward reference
+class SessionAttendanceItem(BaseModel):
+    """Single session attendance record for API response."""
+    session_date: date
+    status: str
+
+    model_config = {"from_attributes": True}
+
+
+class StudentEnrollmentAttendanceItem(BaseModel):
+    """
+    Per-enrollment attendance summary with all session records.
+    Included in StudentWithDetails for complete attendance history.
+    """
+    enrollment_id: int
+    group_id: int
+    group_name: str
+    course_name: str
+    level_number: int
+    present_count: int
+    absent_count: int
+    sessions: List[SessionAttendanceItem] = Field(default_factory=list)
+
+    model_config = {"from_attributes": True}
+
+
+# Update forward references
 StudentWithDetails.model_rebuild()

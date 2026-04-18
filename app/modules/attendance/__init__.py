@@ -14,6 +14,8 @@ from .schemas.attendance_schemas import (
     SessionAttendanceRowDTO,
     EnrollmentAttendanceSummaryDTO,
     MarkAttendanceResponseDTO,
+    SessionAttendanceRecord,
+    StudentEnrollmentAttendanceDTO,
 )
 
 _attendance_svc = AttendanceService()
@@ -29,6 +31,8 @@ __all__ = [
     "SessionAttendanceRowDTO",
     "EnrollmentAttendanceSummaryDTO",
     "MarkAttendanceResponseDTO",
+    "SessionAttendanceRecord",
+    "StudentEnrollmentAttendanceDTO",
     "mark_session_attendance",
     "get_session_roster_with_attendance",
     "get_attendance_summary",

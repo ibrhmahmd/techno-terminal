@@ -2,21 +2,23 @@
 StudentProfileService - Handles student profile details, balance, siblings, and attendance.
 Replaces the deprecated ReportingService naming.
 """
-from datetime import date, datetime
-from typing import Optional, List, Tuple
+from typing import Optional, List
 
-from app.modules.crm.models.student_models import Student, StudentStatus
+from app.modules.crm.models.student_models import Student
 from app.modules.crm.repositories.unit_of_work import StudentUnitOfWork
 from app.modules.crm.validators.student_validator import StudentValidator
 from app.api.schemas.crm.student_details import (
     StudentWithDetails,
     ParentInfo,
     SiblingInfo,
-    EnrollmentInfo,
     StudentBalanceSummary,
     CurrentEnrollmentInfo,
+    StudentEnrollmentAttendanceItem,
+    SessionAttendanceItem,
+    EnrollmentInfo,
 )
 from app.modules.crm.interfaces.dtos import AttendanceStatsDTO
+from app.modules.attendance.schemas import StudentEnrollmentAttendanceDTO
 from app.shared.exceptions import NotFoundError
 
 
@@ -52,19 +54,13 @@ class StudentProfileService:
             return student.profile_metadata.get("school_name")
         return None
 
-    def _get_attendance_summary(self, student_id: int) -> tuple[int, int, Optional[datetime]]:
-        """Get attendance summary: (attended_count, absent_count, last_attended_date)."""
-        from app.modules.attendance.repositories.attendance_repository import AttendanceRepository
-        from app.db.connection import get_session
+    def _get_attendance_summary(self, student_id: int) -> List[StudentEnrollmentAttendanceDTO]:
+        """Get attendance summary grouped by enrollment with all session records."""
+        from app.modules.attendance.repositories.attendance_repository import (
+            get_student_attendance_summary,
+        )
 
-        with get_session() as session:
-            repo = AttendanceRepository(session)
-            summary = repo.get_student_attendance_summary(student_id)
-            return (
-                summary.get("attended_count", 0),
-                summary.get("absent_count", 0),
-                summary.get("last_attended_date"),
-            )
+        return get_student_attendance_summary(self._uow._session, student_id)
 
     def get_student_details(self, student_id: int) -> StudentWithDetails:
         """
@@ -90,7 +86,23 @@ class StudentProfileService:
             )
 
         # Get enrollments
-        enrollments_data = self._uow.students.get_student_enrollments_with_details(student_id)
+        enrollments_data = self._uow.students.get_active_enrollment_with_details(student_id)
+
+        # Convert tuple to EnrollmentInfo list
+        enrollments_list = []
+        if enrollments_data:
+            enrollments_list = [EnrollmentInfo(
+                enrollment_id=enrollments_data[0],
+                group_name=enrollments_data[1],
+                group_id=enrollments_data[2],
+                course_name=enrollments_data[3],
+                course_id=enrollments_data[4],
+                level_number=enrollments_data[6],
+                status="active",
+                amount_due=None,
+                discount_applied=0.0,
+                enrolled_at=None,
+            )]
 
         # Get balance summary
         balance_data = self._uow.students.get_student_balance_summary(student_id)
@@ -99,13 +111,42 @@ class StudentProfileService:
         siblings_data = self._uow.students.get_student_siblings_with_details(student_id)
 
         # Get attendance stats (existing field)
-        attendance_stats = self._uow.students.get_student_attendance_stats(student_id)
+        attendance_stats = self._uow.students.get_attendance_stats(student_id)
 
         # NEW: Current enrollment info
         current_enrollment = self._get_current_enrollment_info(student_id)
 
-        # NEW: Attendance summary counts
-        attended_count, absent_count, last_attended = self._get_attendance_summary(student_id)
+        # NEW: Attendance summary per enrollment
+        enrollment_attendance_data = self._get_attendance_summary(student_id)
+
+        # Calculate totals from enrollment attendance
+        total_present = sum(e.present_count for e in enrollment_attendance_data)
+        total_absent = sum(e.absent_count for e in enrollment_attendance_data)
+        # Find last attended date across all enrollments
+        last_attended = None
+        for e in enrollment_attendance_data:
+            for s in e.sessions:
+                if s.status in ("present", "late"):
+                    if last_attended is None or s.session_date > last_attended:
+                        last_attended = s.session_date
+
+        # Convert to API schema types
+        enrollment_attendance = [
+            StudentEnrollmentAttendanceItem(
+                enrollment_id=e.enrollment_id,
+                group_id=e.group_id,
+                group_name=e.group_name,
+                course_name=e.course_name,
+                level_number=e.level_number,
+                present_count=e.present_count,
+                absent_count=e.absent_count,
+                sessions=[
+                    SessionAttendanceItem(session_date=s.session_date, status=s.status)
+                    for s in e.sessions
+                ],
+            )
+            for e in enrollment_attendance_data
+        ]
 
         # NEW: School name from metadata
         school_name = self._get_school_name(student)
@@ -127,14 +168,15 @@ class StudentProfileService:
             created_at=student.created_at,
             updated_at=student.updated_at,
             primary_parent=primary_parent,
-            enrollments=enrollments_data,
+            enrollments=enrollments_list,
             current_enrollment=current_enrollment,
-            sessions_attended_count=attended_count,
-            sessions_absent_count=absent_count,
+            sessions_attended_count=total_present,
+            sessions_absent_count=total_absent,
             last_session_attended=last_attended,
             balance_summary=balance_data if balance_data else StudentBalanceSummary(),
             siblings=siblings_data,
             attendance_stats=attendance_stats,
+            enrollment_attendance=enrollment_attendance,
         )
     
     def get_student_siblings(self, student_id: int) -> List[SiblingInfo]:
