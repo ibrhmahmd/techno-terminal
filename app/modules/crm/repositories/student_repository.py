@@ -171,7 +171,7 @@ class StudentRepository(IStudentRepository):
                 .where(Payment.enrollment_id == enrollment.id)
                 .where(Payment.transaction_type == 'payment')
             ).first()
-            paid = Decimal(str(result[0] or 0)) if result and result[0] else Decimal('0.00')
+            paid = Decimal(str(result or 0)) if result is not None else Decimal('0.00')
             total_due += due
             total_discounts += discount
             total_paid += paid
@@ -275,7 +275,7 @@ class StudentRepository(IStudentRepository):
 
     def get_student_parents(self, student_id: int) -> list["StudentParent"]:
         """Get all parent links for a student."""
-        from app.modules.crm.models.student_models import StudentParent
+        from app.modules.crm.models.link_models import StudentParent
         stmt = select(StudentParent).where(StudentParent.student_id == student_id)
         return list(self._session.exec(stmt).all())
 
@@ -338,7 +338,7 @@ class StudentRepository(IStudentRepository):
         from app.modules.enrollments.models.enrollment_models import Enrollment
         from app.modules.academics.models.group_models import Group
         from app.modules.academics.models.course_models import Course
-        from app.modules.auth.models.user_models import User
+        from app.modules.auth.models.auth_models import User
 
         stmt = (
             select(
@@ -347,7 +347,7 @@ class StudentRepository(IStudentRepository):
                 Group.id,
                 Course.name,
                 Course.id,
-                User.full_name,
+                User.username.label("instructor_name"),
                 Enrollment.level_number,
             )
             .join(Group, Enrollment.group_id == Group.id)
@@ -362,4 +362,31 @@ class StudentRepository(IStudentRepository):
         )
         result = self._session.exec(stmt).first()
         return result
-        return list(self._session.exec(stmt).all())
+
+    def get_student_with_parent(
+        self, student_id: int
+    ) -> Tuple[Optional[Student], Optional["Parent"]]:
+        """Get a student with their primary parent (if any).
+        
+        Returns:
+            Tuple of (student, parent) where parent may be None.
+        """
+        from app.modules.crm.models.parent_models import Parent
+        from app.modules.crm.models.link_models import StudentParent
+        
+        # Get student
+        student = self.get_by_id(student_id)
+        if not student:
+            return None, None
+        
+        # Get primary parent
+        stmt = (
+            select(Parent)
+            .join(StudentParent, Parent.id == StudentParent.parent_id)
+            .where(
+                StudentParent.student_id == student_id,
+                StudentParent.is_primary == True
+            )
+        )
+        parent = self._session.exec(stmt).first()
+        return student, parent

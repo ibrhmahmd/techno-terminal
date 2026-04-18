@@ -216,10 +216,7 @@ class StudentCrudService:
 
         student_name = student.full_name  # Save before deletion
 
-        self._uow.students.delete(student_id)
-        self._uow.commit()
-
-        # Log deletion activity
+        # Log deletion activity BEFORE deleting (to satisfy FK constraint)
         if self._activity_svc:
             from app.modules.crm.interfaces.dtos.log_deletion_dto import LogDeletionDTO
             self._activity_svc.log_deletion(
@@ -229,6 +226,9 @@ class StudentCrudService:
                     performed_by=performed_by,
                 )
             )
+
+        self._uow.students.delete(student_id)
+        self._uow.commit()
 
         return True
     

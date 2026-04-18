@@ -52,7 +52,7 @@ def search_students(
     _user: User = Depends(require_any),
     svc: SearchService = Depends(get_student_search_service),
 ):
-    if len(q.strip()) >= 2:
+    if q is not None and len(q.strip()) >= 2:
         results = svc.search(query=q)
         total = len(results)  # search returns bounded set (max 50)
     else:
@@ -82,6 +82,9 @@ def create_student(
     # Normalize frontend-sent 0 values to None
     if body.parent_id == 0:
         body.parent_id = None
+    # Set created_by to current user if not provided or is 0
+    if body.created_by_user_id is None or body.created_by_user_id == 0:
+        body.created_by_user_id = _user.id
     # register_student returns (student, siblings) — drop siblings here
     student, _siblings = svc.register_student(body)
     return ApiResponse(
@@ -97,15 +100,22 @@ def create_student(
     "/students/grouped",
     response_model=ApiResponse[StudentGroupedResultDTO],
     summary="Get grouped students",
-    description="Group students by status, gender, or age_bucket."
+    description="Group students by status, gender, or age_bucket. Supports pagination within groups."
 )
 def get_grouped_students(
     group_by: str = Query("status", description="Group by: status, gender, age_bucket"),
     include_inactive: bool = Query(False, description="Include inactive students"),
+    skip: int = Query(0, ge=0, description="Number of students to skip per group"),
+    limit: int = Query(50, ge=1, le=200, description="Max students per group"),
     current_user: User = Depends(require_admin),
     svc: SearchService = Depends(get_student_search_service),
 ):
-    result = svc.get_grouped(group_by=group_by, include_inactive=include_inactive)
+    result = svc.get_grouped(
+        group_by=group_by,
+        include_inactive=include_inactive,
+        skip=skip,
+        limit=limit
+    )
     return ApiResponse(data=result)
 
 

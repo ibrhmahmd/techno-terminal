@@ -29,7 +29,7 @@ from app.modules.auth.models import User
 from app.modules.crm.services import StudentActivityService
 
 
-router = APIRouter(tags=["Student History"])
+router = APIRouter(prefix="/crm", tags=["Student History"])
 
 
 # Get student activity history
