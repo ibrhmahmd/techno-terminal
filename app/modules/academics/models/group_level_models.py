@@ -9,6 +9,7 @@ from decimal import Decimal
 from typing import Optional
 
 from sqlmodel import SQLModel, Field, Column, String
+from app.shared.constants import DEFAULT_SESSIONS_PER_LEVEL
 
 
 class GroupLevel(SQLModel, table=True):
@@ -21,7 +22,7 @@ class GroupLevel(SQLModel, table=True):
     level_number: int = Field(index=True)
     course_id: int = Field(foreign_key="courses.id")
     instructor_id: Optional[int] = Field(default=None, foreign_key="employees.id")
-    sessions_planned: int = Field(default=12)
+    sessions_planned: int = Field(default=DEFAULT_SESSIONS_PER_LEVEL)
     price_override: Optional[Decimal] = Field(default=None, decimal_places=2, max_digits=10)
     status: str = Field(default="active", sa_column=Column(String, index=True))
     effective_from: datetime = Field(default_factory=datetime.utcnow)

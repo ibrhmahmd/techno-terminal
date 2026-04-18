@@ -12,6 +12,7 @@ from app.modules.academics.models import Group, GroupLevel, Course
 from app.modules.academics import repositories as repo
 from app.modules.academics.schemas.group_level_schemas import GroupLevelReadDTO, GroupLevelDetailDTO
 from app.modules.hr.hr_models import Employee
+from app.shared.constants import DEFAULT_SESSIONS_PER_LEVEL
 
 
 class GroupLevelService:
@@ -93,7 +94,7 @@ class GroupLevelService:
         level_number: int,
         course_id: int,
         instructor_id: int | None = None,
-        sessions_planned: int = 12,
+        sessions_planned: int = DEFAULT_SESSIONS_PER_LEVEL,
         price_override: Decimal | None = None,
     ) -> GroupLevel:
         """

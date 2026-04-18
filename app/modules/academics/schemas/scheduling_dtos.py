@@ -12,6 +12,8 @@ from decimal import Decimal
 from typing import Literal, Optional, List
 from pydantic import BaseModel, Field, model_validator
 
+from app.shared.constants import DEFAULT_SESSIONS_PER_LEVEL
+
 WeekDay = Literal[
     "Monday", "Tuesday", "Wednesday", "Thursday",
     "Friday", "Saturday", "Sunday"
@@ -46,7 +48,7 @@ class CreateGroupLevelDTO(BaseModel):
     level_number: int
     course_id: int
     instructor_id: Optional[int] = None
-    sessions_planned: int = Field(default=12)
+    sessions_planned: int = Field(default=DEFAULT_SESSIONS_PER_LEVEL)
     price_override: Optional[Decimal] = None
     start_date: Optional[date] = None
     status: str = "active"
@@ -74,7 +76,7 @@ class ProgressLevelDTO(BaseModel):
 class CreateGroupWithLevelDTO(BaseModel):
     """Input for creating group with first level."""
     group_input: CreateGroupDTO
-    sessions_per_level: int = 12
+    sessions_per_level: int = DEFAULT_SESSIONS_PER_LEVEL
     start_date: Optional[date] = None
 
 
