@@ -7,6 +7,7 @@ from app.shared.datetime_utils import utc_now
 from app.modules.crm.repositories.unit_of_work import StudentUnitOfWork
 from app.modules.crm.services.student_crud_service import StudentCrudService
 from app.modules.crm.services.activity_service import StudentActivityService
+from app.modules.crm.models.student_models import StudentStatus
 import app.modules.academics as acad_srv
 from app.modules.academics.models.group_models import Group
 from app.modules.enrollments.models.enrollment_models import Enrollment
@@ -53,8 +54,10 @@ class EnrollmentService:
         student = student_svc.get_by_id(data.student_id)
         if not student:
             raise NotFoundError(f"Student ID {data.student_id} not found.")
-        if not student.is_active:
-            raise BusinessRuleError(f"Student '{student.full_name}' is not active.")
+        # Allow enrollment for waiting students (they'll be activated)
+        # Reject only if student is explicitly inactive
+        if student.status == StudentStatus.INACTIVE:
+            raise BusinessRuleError(f"Student '{student.full_name}' is inactive and cannot be enrolled.")
 
         group = acad_srv.get_group_by_id(data.group_id)
         if not group:
@@ -83,6 +86,25 @@ class EnrollmentService:
                     created_at=utc_now(),
                 )
                 created = repo.create_enrollment(session, enrollment)
+
+                # Auto-activate waiting students on first enrollment
+                if student.status == StudentStatus.WAITING:
+                    old_status = student.status
+                    student.status = StudentStatus.ACTIVE
+                    student.is_active = True
+                    session.add(student)
+
+                    # Log status change activity
+                    if self._activity_svc:
+                        from app.modules.crm.interfaces.dtos.log_status_change_dto import LogStatusChangeDTO
+                        self._activity_svc.log_status_change(
+                            LogStatusChangeDTO(
+                                student_id=student.id,
+                                old_status=old_status.value if hasattr(old_status, 'value') else str(old_status),
+                                new_status=student.status.value if hasattr(student.status, 'value') else str(student.status),
+                                performed_by=data.created_by,
+                            )
+                        )
 
                 # Log enrollment activity
                 if self._activity_svc:

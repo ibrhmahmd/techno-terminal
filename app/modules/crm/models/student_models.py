@@ -32,9 +32,10 @@ class StudentBase(SQLModel):
     # DEPRECATED: is_active - now replaced by status enum
     is_active: bool = True  # Keep for backward compatibility
     # NEW FIELD: Use String type to match database enum
+    # Default to WAITING - student becomes ACTIVE upon first enrollment
     status: StudentStatus = Field(
-        default=StudentStatus.ACTIVE,
-        sa_column=Column(String, default="active")
+        default=StudentStatus.WAITING,
+        sa_column=Column(String, default="waiting")
     )
 
 
@@ -58,6 +59,11 @@ class Student(StudentBase, table=True):
     waiting_since: Optional[datetime] = None
     waiting_priority: Optional[int] = None
     waiting_notes: Optional[str] = None
+    
+    # NEW: Soft delete fields
+    deleted_at: Optional[datetime] = Field(default=None, description="Soft delete timestamp")
+    deleted_by: Optional[int] = Field(default=None, foreign_key="users.id")
+    
     parent_links: List["StudentParent"] = Relationship(
         back_populates="student",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
@@ -81,3 +87,6 @@ class StudentRead(StudentBase):
     status_history: list[dict] = []
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    # Soft delete fields
+    deleted_at: Optional[datetime] = None
+    deleted_by: Optional[int] = None
