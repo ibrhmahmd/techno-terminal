@@ -3,13 +3,14 @@ app/modules/crm/interfaces/iactivity_repository.py
 ────────────────────────────────────────────────
 Protocol for activity repository operations.
 """
-from typing import Protocol, Optional, List, Dict, Any
+from typing import Protocol, Optional, List, Dict, Any, Tuple
 from datetime import datetime
 
-from app.modules.crm.models.activity_models import (
-    StudentActivityLog,
-    StudentEnrollmentHistory,
-    StudentCompetitionHistory,
+from app.modules.crm.models.activity_models import StudentActivityLog
+from app.modules.crm.interfaces.dtos import (
+    EnrollmentHistoryDTO,
+    StatusHistoryDTO,
+    CompetitionHistoryDTO,
 )
 
 
@@ -36,9 +37,17 @@ class IActivityRepository(Protocol):
         limit: int = 100,
     ) -> List[StudentActivityLog]: ...
 
-    def get_enrollment_changes(self, student_id: int) -> List[StudentEnrollmentHistory]: ...
+    def get_enrollment_history_by_student(
+        self, student_id: int, limit: int, offset: int
+    ) -> Tuple[List[EnrollmentHistoryDTO], int]: ...
 
-    def get_competition_participations(self, student_id: int) -> List[StudentCompetitionHistory]: ...
+    def get_status_history_by_student(
+        self, student_id: int, limit: int, offset: int
+    ) -> Tuple[List[StatusHistoryDTO], int]: ...
+
+    def get_competition_history_by_student(
+        self, student_id: int, limit: int, offset: int
+    ) -> Tuple[List[CompetitionHistoryDTO], int]: ...
 
     def get_payment_activities(self, student_id: int, limit: int = 50) -> List[StudentActivityLog]: ...
 
@@ -47,3 +56,5 @@ class IActivityRepository(Protocol):
         days: int = 7,
         limit: int = 100,
     ) -> List[StudentActivityLog]: ...
+
+    def get_activity_summary(self, student_id: int) -> Dict[str, Any]: ...

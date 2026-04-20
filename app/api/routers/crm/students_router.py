@@ -238,7 +238,7 @@ def get_student_parents(
     "/students/{student_id}/status",
     response_model=ApiResponse[StudentResponseDTO],
     summary="Update student enrollment status",
-    description="Update student status (active/waiting/inactive/graduated) with optional audit notes."
+    description="Update student status (active/waiting/inactive) with optional audit notes."
 )
 def update_student_status(
     student_id: int,
@@ -396,16 +396,115 @@ def get_student_siblings(
 ):
     """
     Get siblings for a student.
-    
+
     Returns siblings who share the same parent(s), including:
     - Student ID and name
     - Age and gender
     - Parent information
     - Enrollment count
-    
+
     Returns empty array [] if:
     - Student has no linked parent
     - Student is an only child
     """
     siblings = svc.get_student_siblings(student_id)
     return ApiResponse(data=siblings)
+
+
+# ── Soft Delete Endpoints ─────────────────────────────────────────────────────
+
+@router.delete(
+    "/students/{student_id}/soft",
+    response_model=ApiResponse[dict],
+    summary="Soft delete a student",
+    description="Marks a student as deleted without removing from database. Student can be restored later."
+)
+def soft_delete_student(
+    student_id: int,
+    current_user: User = Depends(require_admin),
+    svc: StudentCrudService = Depends(get_student_crud_service),
+):
+    """
+    Soft delete a student (logically removed, recoverable).
+    Also cascades soft-delete to related payments.
+    """
+    try:
+        success = svc.soft_delete_student(student_id, deleted_by=current_user.id)
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Student {student_id} not found or already deleted")
+
+        return ApiResponse(
+            data={"student_id": student_id, "status": "soft_deleted"},
+            message="Student soft-deleted successfully. Use restore endpoint to recover."
+        )
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail=f"Student {student_id} not found")
+
+
+@router.post(
+    "/students/{student_id}/restore",
+    response_model=ApiResponse[dict],
+    summary="Restore a soft-deleted student",
+    description="Restores a previously soft-deleted student and their payments."
+)
+def restore_student(
+    student_id: int,
+    current_user: User = Depends(require_admin),
+    svc: StudentCrudService = Depends(get_student_crud_service),
+):
+    """Restore a soft-deleted student."""
+    try:
+        success = svc.restore_student(student_id, restored_by=current_user.id)
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Student {student_id} not found or not deleted")
+
+        return ApiResponse(
+            data={"student_id": student_id, "status": "restored"},
+            message="Student restored successfully"
+        )
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail=f"Student {student_id} not found")
+
+
+@router.delete(
+    "/students/{student_id}/hard",
+    response_model=ApiResponse[dict],
+    summary="Permanently delete a student",
+    description="Admin-only: Permanently removes a student and all related data. Cannot be undone."
+)
+def hard_delete_student(
+    student_id: int,
+    current_user: User = Depends(require_admin),
+    svc: StudentCrudService = Depends(get_student_crud_service),
+):
+    """Permanently delete a student (cannot be undone)."""
+    try:
+        success = svc.hard_delete_student(student_id)
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Student {student_id} not found")
+
+        return ApiResponse(
+            data={"student_id": student_id, "status": "permanently_deleted"},
+            message="Student permanently deleted. This action cannot be undone."
+        )
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail=f"Student {student_id} not found")
+
+
+@router.get(
+    "/admin/deleted-students",
+    response_model=ApiResponse[List[StudentListItem]],
+    summary="List deleted students (Admin)",
+    description="Admin-only: List all soft-deleted students for recovery."
+)
+def list_deleted_students(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    current_user: User = Depends(require_admin),
+    svc: StudentCrudService = Depends(get_student_crud_service),
+):
+    """List all soft-deleted students."""
+    students = svc.list_deleted_students(limit=limit, offset=skip)
+    return ApiResponse(
+        data=[StudentListItem.model_validate(s) for s in students]
+    )

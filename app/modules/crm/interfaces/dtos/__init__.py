@@ -11,7 +11,6 @@ from .student_group_bucket_dto import StudentGroupBucketDTO
 from .student_balance_summary_dto import StudentBalanceSummaryDTO
 from .student_status_summary_dto import StudentStatusSummaryDTO
 from .attendance_stats_dto import AttendanceStatsDTO
-from .status_history_entry_dto import StatusHistoryEntryDTO
 from .activity_log_dto import ActivityLogDTO
 from .timeline_filter_dto import TimelineFilterDTO
 from .activity_summary_dto import ActivitySummaryDTO
@@ -23,6 +22,9 @@ from .log_payment_dto import LogPaymentDTO
 from .log_deletion_dto import LogDeletionDTO
 from .log_note_added_dto import LogNoteAddedDTO
 from .log_competition_registration_dto import LogCompetitionRegistrationDTO
+from .enrollment_history_dto import EnrollmentHistoryDTO
+from .status_history_dto import StatusHistoryDTO
+from .competition_history_dto import CompetitionHistoryDTO
 
 __all__ = [
     # Student DTOs
@@ -32,7 +34,6 @@ __all__ = [
     "StudentBalanceSummaryDTO",
     "StudentStatusSummaryDTO",
     "AttendanceStatsDTO",
-    "StatusHistoryEntryDTO",
     # Activity DTOs
     "ActivityLogDTO",
     "TimelineFilterDTO",
@@ -45,4 +46,8 @@ __all__ = [
     "LogDeletionDTO",
     "LogNoteAddedDTO",
     "LogCompetitionRegistrationDTO",
+    # History DTOs
+    "EnrollmentHistoryDTO",
+    "StatusHistoryDTO",
+    "CompetitionHistoryDTO",
 ]

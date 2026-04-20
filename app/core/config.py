@@ -13,6 +13,12 @@ class Settings(BaseSettings):
     supabase_anon_key: str
     supabase_service_role_key: Optional[str] = None
 
+    twilio_account_sid: str
+    twilio_auth_token: str 
+    twilio_whatsapp_from: str
+    gmail_sender_address: str 
+    gmail_app_password: str 
+
     # PDF Export Configuration
     pdf_logo_path: Optional[str] = None
     pdf_company_name: str = "Techno Terminal"

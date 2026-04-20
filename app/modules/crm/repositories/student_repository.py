@@ -1,4 +1,4 @@
-from typing import Optional, Sequence, Tuple
+from typing import Optional, Sequence, Tuple, List
 from sqlmodel import Session, select, delete, func
 from sqlalchemy import or_
 import json
@@ -9,26 +9,43 @@ from app.modules.crm.interfaces import IStudentRepository, StudentSummaryDTO, St
 from app.api.schemas.crm.student_details import SiblingInfo
 from app.modules.crm.models import Student, StudentStatus, StudentParent, Parent
 from app.shared.audit_utils import apply_create_audit
+from app.db.soft_delete_mixin import SoftDeleteMixin
 
-class StudentRepository(IStudentRepository):
+class StudentRepository(IStudentRepository, SoftDeleteMixin[Student]):
     """
-    Repository for student data access.
+    Repository for student data access with soft-delete support.
     Session is injected via constructor — never acquired internally.
     Never calls session.commit(). Only flush().
     """
     def __init__(self, session: Session) -> None:
         self._session = session
+        super().__init__(session)
 
     def create(self, student: Student) -> Student:
         self._session.add(student)
         self._session.flush()
         return student
 
-    def get_by_id(self, student_id: int) -> Optional[Student]:
-        return self._session.get(Student, student_id)
+    def get_by_id(self, student_id: int, include_deleted: bool = False) -> Optional[Student]:
+        """Get student by ID with option to include soft-deleted records."""
+        student = self._session.get(Student, student_id)
+        if student and not include_deleted and student.deleted_at is not None:
+            return None
+        return student
 
-    def get_all(self, skip: int, limit: int) -> list[Student]:
-        stmt = select(Student).offset(skip).limit(limit)
+    def get_all(self, skip: int, limit: int, include_deleted: bool = False) -> list[Student]:
+        """Get all students with optional inclusion of soft-deleted records."""
+        stmt = select(Student)
+        if not include_deleted:
+            stmt = stmt.where(Student.deleted_at.is_(None))
+        stmt = stmt.offset(skip).limit(limit)
+        return list(self._session.exec(stmt).all())
+    
+    def get_deleted(self, limit: int = 100, offset: int = 0) -> List[Student]:
+        """Get soft-deleted students for admin recovery."""
+        stmt = select(Student).where(Student.deleted_at.is_not(None))
+        stmt = stmt.order_by(Student.deleted_at.desc())
+        stmt = stmt.offset(offset).limit(limit)
         return list(self._session.exec(stmt).all())
 
     def search(self, query: str) -> list[Student]:
@@ -92,10 +109,63 @@ class StudentRepository(IStudentRepository):
         self._session.flush()
         return student
 
-    def delete(self, student_id: int) -> bool:
+    def soft_delete_student(self, student_id: int, deleted_by: int) -> bool:
         """
-        Deletes ONLY student + cascade via ORM (StudentParent).
-        Cross-domain cleanup (attendance, payments) delegated to StudentService.
+        Soft deletes a student and cascades to related payments.
+        The student and payments are marked deleted but recoverable.
+        """
+        from app.modules.finance.models.payment import Payment
+        
+        student = self._session.get(Student, student_id)
+        if not student or student.deleted_at is not None:
+            return False
+        
+        # Soft delete student
+        student.deleted_at = datetime.utcnow()
+        student.deleted_by = deleted_by
+        self._session.add(student)
+        
+        # Cascade soft delete to related payments
+        stmt = select(Payment).where(Payment.student_id == student_id)
+        payments = self._session.exec(stmt).all()
+        for payment in payments:
+            payment.deleted_at = datetime.utcnow()
+            payment.deleted_by = deleted_by
+            self._session.add(payment)
+        
+        self._session.flush()
+        return True
+    
+    def restore_student(self, student_id: int) -> bool:
+        """
+        Restores a soft-deleted student and their payments.
+        """
+        from app.modules.finance.models.payment import Payment
+        
+        student = self._session.get(Student, student_id)
+        if not student or student.deleted_at is None:
+            return False
+        
+        # Restore student
+        student.deleted_at = None
+        student.deleted_by = None
+        self._session.add(student)
+        
+        # Restore related payments
+        stmt = select(Payment).where(Payment.student_id == student_id)
+        payments = self._session.exec(stmt).all()
+        for payment in payments:
+            payment.deleted_at = None
+            payment.deleted_by = None
+            self._session.add(payment)
+        
+        self._session.flush()
+        return True
+    
+    def hard_delete(self, student_id: int) -> bool:
+        """
+        Permanently deletes a student and all related data.
+        Admin-only operation - cannot be undone.
         """
         student = self._session.get(Student, student_id)
         if not student:

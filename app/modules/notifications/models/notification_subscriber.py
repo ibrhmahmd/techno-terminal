@@ -3,6 +3,7 @@ app/modules/notifications/models/notification_subscriber.py
 ──────────────────────────────────────────────────────────
 Employees who are subscribed to various automated reports.
 """
+from datetime import datetime
 from typing import Optional
 
 from sqlmodel import SQLModel, Field
@@ -16,3 +17,4 @@ class NotificationSubscriber(SQLModel, table=True):
     report_type: str = Field(description="'DAILY', 'WEEKLY', 'MONTHLY' or 'ALL'")
     channel: str = Field(description="'EMAIL' or 'WHATSAPP'")
     is_active: bool = Field(default=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)

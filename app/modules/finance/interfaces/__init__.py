@@ -24,6 +24,8 @@ from app.modules.finance.interfaces.dto import (
     IssueRefundDTO,
     # Balance DTOs
     OverpaymentRiskItem,
+    StudentBalanceSummaryDTO,
+    PaginatedEnrollmentBalancesDTO,
     # Reporting DTOs
     ReceiptTemplateContextDTO,
 )
@@ -57,6 +59,8 @@ __all__ = [
     "RefundResultDTO",
     "IssueRefundDTO",
     "OverpaymentRiskItem",
+    "StudentBalanceSummaryDTO",
+    "PaginatedEnrollmentBalancesDTO",
     "ReceiptTemplateContextDTO",
     # Repository Protocols
     "IReceiptRepository",

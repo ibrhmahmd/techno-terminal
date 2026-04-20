@@ -264,3 +264,81 @@ class StudentCrudService:
     def get_student_parents(self, student_id: int) -> list:
         """Get all parent links for a student."""
         return list(self._uow.students.get_student_parents(student_id))
+
+    # ── Soft Delete Methods ─────────────────────────────────────────────────────
+
+    def soft_delete_student(self, student_id: int, deleted_by: int) -> bool:
+        """
+        Soft delete a student (marks as deleted without removing from database).
+        Also cascades soft-delete to related payments.
+        """
+        student = self._uow.students.get_by_id(student_id)
+        if not student:
+            return False
+
+        # Check if already deleted
+        if getattr(student, 'deleted_at', None) is not None:
+            return False
+
+        # Perform soft delete
+        success = self._uow.students.soft_delete_student(student_id, deleted_by)
+        if success:
+            self._uow.commit()
+
+            # Log soft deletion activity
+            if self._activity_svc:
+                from app.modules.crm.interfaces.dtos.log_deletion_dto import LogDeletionDTO
+                self._activity_svc.log_deletion(
+                    LogDeletionDTO(
+                        student_id=student_id,
+                        student_name=student.full_name,
+                        performed_by=deleted_by,
+                    )
+                )
+
+        return success
+
+    def restore_student(self, student_id: int, restored_by: Optional[int] = None) -> bool:
+        """Restore a previously soft-deleted student and their payments."""
+        student = self._uow.students.get_by_id(student_id, include_deleted=True)
+        if not student:
+            return False
+
+        # Check if actually deleted
+        if getattr(student, 'deleted_at', None) is None:
+            return False
+
+        success = self._uow.students.restore_student(student_id)
+        if success:
+            self._uow.commit()
+
+            # Log restoration activity
+            if self._activity_svc:
+                from app.modules.crm.interfaces.dtos.log_registration_dto import LogRegistrationDTO
+                self._activity_svc.log_registration(
+                    LogRegistrationDTO(
+                        student_id=student_id,
+                        student_name=student.full_name,
+                        performed_by=restored_by,
+                    )
+                )
+
+        return success
+
+    def hard_delete_student(self, student_id: int) -> bool:
+        """
+        Permanently delete a student and all related data.
+        Admin-only operation - cannot be undone.
+        """
+        student = self._uow.students.get_by_id(student_id, include_deleted=True)
+        if not student:
+            return False
+
+        success = self._uow.students.hard_delete(student_id)
+        if success:
+            self._uow.commit()
+        return success
+
+    def list_deleted_students(self, limit: int = 100, offset: int = 0) -> List[Student]:
+        """List all soft-deleted students (for admin recovery)."""
+        return self._uow.students.get_deleted(limit=limit, offset=offset)

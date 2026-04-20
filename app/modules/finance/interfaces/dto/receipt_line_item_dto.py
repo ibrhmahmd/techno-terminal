@@ -17,3 +17,5 @@ class ReceiptLineItemDTO:
     amount: Decimal
     transaction_type: str
     payment_type: Optional[str]
+    discount: Decimal
+    notes: Optional[str] = None

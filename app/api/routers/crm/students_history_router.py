@@ -10,10 +10,12 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, Query
 
 from app.api.dependencies import require_any, require_admin, get_student_activity_service
-from app.api.schemas.common import ApiResponse
+from app.api.schemas.common import ApiResponse, PaginatedResponse
 from app.api.schemas.crm.history import (
     ActivityLogRequest,
     EnrollmentHistoryEntry,
+    StatusHistoryEntry,
+    CompetitionHistoryEntry,
     ActivitySummaryItem,
     ActivitySearchParams,
 )
@@ -51,7 +53,6 @@ def get_student_history(
 ):
     """
     Get activity history for a student.
-    
     Supports filtering by:
     - Activity types (enrollment, payment, group_change, etc.)
     - Date range
@@ -90,7 +91,7 @@ def get_student_history(
     )
 
 
-# 
+# Get summary of activities by type for a student.
 @router.get(
     "/students/{student_id}/activity-summary",
     response_model=ApiResponse[List[ActivitySummaryItem]],
@@ -111,41 +112,128 @@ def get_activity_summary(
     )
 
 
+# Get enrollment history for a student.
 @router.get(
     "/students/{student_id}/enrollment-history",
-    response_model=ApiResponse[List[EnrollmentHistoryEntry]],
+    response_model=PaginatedResponse[EnrollmentHistoryEntry],
     summary="Get enrollment history",
     description="Get detailed enrollment history for a student."
 )
 def get_enrollment_history(
     student_id: int,
     limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     current_user: User = Depends(require_any),
     svc: StudentActivityService = Depends(get_student_activity_service),
 ):
     """Get enrollment history including transfers and level changes."""
-    history = svc.get_enrollment_history(student_id, limit)
-    
-    return ApiResponse(
+    history, total = svc.get_enrollment_history(student_id, limit, offset)
+
+    return PaginatedResponse(
         data=[EnrollmentHistoryEntry(
             id=h.id,
             student_id=h.student_id,
             enrollment_id=h.enrollment_id,
             group_id=h.group_id,
+            group_name=h.group_name,
             level_number=h.level_number,
+            enrollment_status=h.enrollment_status,
             action=h.action,
             action_date=h.action_date,
             previous_group_id=h.previous_group_id,
             previous_level_number=h.previous_level_number,
-            amount_due=h.amount_due,
-            amount_paid=h.amount_paid,
-            final_status=h.final_status,
+            previous_status=h.previous_status,
+            amount_due=float(h.amount_due) if h.amount_due else None,
+            discount_applied=float(h.discount_applied) if h.discount_applied else None,
+            transfer_reason=h.transfer_reason,
+            performed_by=h.performed_by,
+            performed_by_name=h.performed_by_name,
             notes=h.notes
         ) for h in history],
-        message=f"Retrieved {len(history)} enrollment history entries"
+        total=total,
+        skip=offset,
+        limit=limit
     )
 
 
+# Get status change history for a student.
+@router.get(
+    "/students/{student_id}/status-history",
+    response_model=PaginatedResponse[StatusHistoryEntry],
+    summary="Get status history",
+    description="Get status change history for a student."
+)
+def get_status_history(
+    student_id: int,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    current_user: User = Depends(require_any),
+    svc: StudentActivityService = Depends(get_student_activity_service),
+):
+    """Get status change history for a student."""
+    history, total = svc.get_status_history(student_id, limit, offset)
+
+    return PaginatedResponse(
+        data=[StatusHistoryEntry(
+            id=h.id,
+            student_id=h.student_id,
+            old_status=h.old_status,
+            new_status=h.new_status,
+            changed_at=h.changed_at,
+            changed_by=h.changed_by,
+            changed_by_name=h.changed_by_name,
+            reason=h.reason,
+            notes=h.notes
+        ) for h in history],
+        total=total,
+        skip=offset,
+        limit=limit
+    )
+
+
+# Get competition participation history for a student.
+@router.get(
+    "/students/{student_id}/competition-history",
+    response_model=PaginatedResponse[CompetitionHistoryEntry],
+    summary="Get competition history",
+    description="Get competition participation history for a student."
+)
+def get_competition_history(
+    student_id: int,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    current_user: User = Depends(require_any),
+    svc: StudentActivityService = Depends(get_student_activity_service),
+):
+    """Get competition participation history for a student."""
+    history, total = svc.get_competition_history(student_id, limit, offset)
+
+    return PaginatedResponse(
+        data=[CompetitionHistoryEntry(
+            id=h.id,
+            student_id=h.student_id,
+            competition_id=h.competition_id,
+            competition_name=h.competition_name,
+            team_id=h.team_id,
+            team_name=h.team_name,
+            participation_type=h.participation_type,
+            registration_date=h.registration_date,
+            subscription_amount=float(h.subscription_amount) if h.subscription_amount else None,
+            subscription_paid=h.subscription_paid,
+            payment_id=h.payment_id,
+            result_position=h.result_position,
+            result_notes=h.result_notes,
+            performed_by=h.performed_by,
+            performed_by_name=h.performed_by_name,
+            created_at=h.created_at
+        ) for h in history],
+        total=total,
+        skip=offset,
+        limit=limit
+    )
+
+
+# Manually log an activity for a student (admin only).
 @router.post(
     "/students/{student_id}/log-activity",
     response_model=ApiResponse[ManualActivityResponseDTO],
@@ -182,6 +270,7 @@ def log_manual_activity(
     )
 
 
+# Get recent activity across all students (admin/finance only).
 @router.get(
     "/history/recent",
     response_model=ApiResponse[List[RecentActivityItemDTO]],
@@ -209,6 +298,7 @@ def get_recent_activity(
     )
 
 
+# Search activities with filters.
 @router.post(
     "/history/search",
     response_model=ApiResponse[List[ActivitySearchResultItemDTO]],

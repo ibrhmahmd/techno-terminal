@@ -30,3 +30,10 @@ class IPaymentRepository(Protocol):
     def get_student_balances(
         self, student_id: int
     ) -> List["EnrollmentBalanceItem"]: ...
+
+    def get_unpaid_enrollments(
+        self,
+        group_id: Optional[int] = None,
+        skip: int = 0,
+        limit: int = 50,
+    ) -> tuple[List["EnrollmentBalanceItem"], int]: ...

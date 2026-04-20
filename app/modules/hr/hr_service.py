@@ -9,6 +9,7 @@ from app.modules.auth import UserCreate
 from app.modules.auth import is_valid_role
 from app.modules.hr import hr_repository as hr_repo
 from app.modules.hr.hr_repository import EMPLOYEE_FIELD_KEYS
+from app.modules.hr.interfaces.dtos import CreateEmployeeAccountDTO, EmployeeAccountResultDTO
 import app.modules.auth.repositories as auth_repo
 from app.shared.constants import EMPLOYMENT_TYPES, MIN_PASSWORD_LENGTH
 from app.shared.exceptions import ValidationError, ConflictError, NotFoundError
@@ -212,3 +213,92 @@ def update_staff_account(user_id: int, is_active: bool, role: str) -> bool:
     with get_session() as session:
         hr_repo.update_user_and_employee(session, user_id, is_active, role)
         return True
+
+
+def create_employee_account(dto: CreateEmployeeAccountDTO) -> EmployeeAccountResultDTO:
+    """Create a user account for an existing employee.
+    
+    Args:
+        dto: CreateEmployeeAccountDTO with employee_id, email, password, role
+        
+    Returns:
+        EmployeeAccountResultDTO with created account details
+        
+    Raises:
+        NotFoundError: If employee not found
+        ConflictError: If employee already has account or email exists
+        ValidationError: If password too short or invalid role
+    """
+    from datetime import datetime
+    from app.modules.hr.interfaces.dtos import CreateEmployeeAccountDTO, EmployeeAccountResultDTO
+    from app.modules.auth.models.auth_models import User
+    from app.db.connection import get_session
+    from app.shared.exceptions import NotFoundError, ConflictError, ValidationError
+    from app.core.supabase import get_supabase_admin
+    
+    MIN_PASSWORD_LENGTH = 8
+    VALID_ROLES = {"admin", "system_admin"}
+    
+    # Validate role
+    if dto.role not in VALID_ROLES:
+        raise ValidationError(f"Invalid role: {dto.role!r}. Must be 'admin' or 'system_admin'.")
+    
+    # Validate password length
+    if len(dto.password) < MIN_PASSWORD_LENGTH:
+        raise ValidationError(f"Password must be at least {MIN_PASSWORD_LENGTH} characters.")
+    
+    with get_session() as session:
+        # 1. Verify employee exists
+        from app.modules.hr.hr_repository import hr_repository
+        emp = hr_repository.get_by_id(session, dto.employee_id)
+        if not emp:
+            raise NotFoundError(f"Employee {dto.employee_id} not found.")
+        
+        # 2. Check if employee already has an account
+        if emp.user_id is not None:
+            raise ConflictError(f"Employee {dto.employee_id} already has an account.")
+        
+        # 3. Check if email is already in use locally
+        from app.modules.auth.repositories.auth_repository import auth_repository
+        existing_user = auth_repository.get_user_by_email(session, dto.email)
+        if existing_user:
+            raise ConflictError(f"Email {dto.email} is already registered.")
+        
+        # 4. Create Supabase user
+        try:
+            supabase_admin = get_supabase_admin()
+            auth_response = supabase_admin.auth.admin.create_user(
+                {
+                    "email": dto.email,
+                    "password": dto.password,
+                    "email_confirm": True,
+                }
+            )
+            supabase_uid = auth_response.user.id
+        except Exception as e:
+            raise ConflictError(f"Supabase account creation failed: {str(e)}") from e
+        
+        # 5. Create local User record
+        user = User(
+            username=dto.email,
+            email=dto.email,
+            role=dto.role,
+            supabase_uid=supabase_uid,
+            is_active=True,
+        )
+        session.add(user)
+        session.flush()
+        session.refresh(user)
+        
+        # 6. Link employee to user
+        emp.user_id = user.id
+        session.add(emp)
+        session.flush()
+        
+        return EmployeeAccountResultDTO(
+            employee_id=emp.id,
+            user_id=user.id,
+            email=user.email,
+            role=user.role,
+            created_at=datetime.utcnow(),
+        )

@@ -8,15 +8,18 @@ Endpoints:
 - POST /finance/refunds               - Issue refund
 - GET  /finance/competition-fees      - Get unpaid competition fees
 - POST /finance/risk/overpayment        - Assess overpayment risk
+- GET  /students/{id}/balance           - Get student balance summary
+- GET  /balance/unpaid-enrollments      - List unpaid enrollments
 
 Prefix: /api/v1 (mounted in main.py)
 Tag:    Finance
 """
 from decimal import Decimal
+from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, status, BackgroundTasks
 
-from app.api.schemas.common import ApiResponse
+from app.api.schemas.common import ApiResponse, PaginatedResponse
 from app.api.schemas.finance.receipt import (
     ReceiptCreationResponse,
     RefundResponse,
@@ -24,6 +27,11 @@ from app.api.schemas.finance.receipt import (
     IssueRefundRequest,
 )
 from app.api.schemas.finance.risk import PreviewOverpaymentRequest, OverpaymentRiskResponse
+from app.api.schemas.finance.balance import (
+    StudentBalanceResponse,
+    EnrollmentBalanceResponse,
+    UnpaidEnrollmentItem,
+)
 from app.api.dependencies import (
     require_admin,
     require_any,
@@ -211,4 +219,102 @@ def assess_overpayment_risk(
             )
             for r in risks
         ]
+    )
+
+
+@router.get(
+    "/students/{student_id}/balance",
+    response_model=ApiResponse[StudentBalanceResponse],
+    summary="Get student balance summary",
+)
+def get_student_balance(
+    student_id: int,
+    _user: User = Depends(require_any),
+    service: BalanceService = Depends(get_balance_service),
+) -> ApiResponse[StudentBalanceResponse]:
+    """
+    Get comprehensive balance summary for a student across all enrollments.
+    
+    Returns aggregated totals and per-enrollment breakdown.
+    """
+    summary = service.get_student_balance_summary(student_id)
+    
+    # Convert enrollment items to response schema
+    enrollments = [
+        EnrollmentBalanceResponse(
+            enrollment_id=e.enrollment_id,
+            student_id=e.student_id,
+            group_id=e.group_id,
+            level_number=e.level_number,
+            amount_due=e.amount_due,
+            discount_applied=e.discount_applied,
+            total_paid=e.amount_paid,
+            total_refunded=0.0,  # Not tracked per enrollment in current view
+            remaining_balance=e.remaining_balance,
+            status=e.status,
+            is_paid=e.remaining_balance >= 0,
+        )
+        for e in summary.enrollments
+    ]
+    
+    return ApiResponse(
+        data=StudentBalanceResponse(
+            student_id=summary.student_id,
+            total_amount_due=summary.total_amount_due,
+            total_discounts=summary.total_discounts,
+            total_paid=summary.total_paid,
+            net_balance=summary.net_balance,
+            enrollment_count=summary.enrollment_count,
+            unpaid_enrollments=summary.unpaid_enrollments,
+            enrollments=enrollments,
+        )
+    )
+
+
+@router.get(
+    "/balance/unpaid-enrollments",
+    response_model=PaginatedResponse[UnpaidEnrollmentItem],
+    summary="List unpaid enrollments",
+)
+def get_unpaid_enrollments(
+    group_id: Optional[int] = Query(None, description="Filter by group ID"),
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(50, ge=1, le=200, description="Records per page"),
+    _user: User = Depends(require_any),
+    service: BalanceService = Depends(get_balance_service),
+) -> PaginatedResponse[UnpaidEnrollmentItem]:
+    """
+    Get all unpaid enrollments across all students.
+    
+    Unpaid = remaining_balance < 0 (debt).
+    Supports pagination and optional group filtering.
+    """
+    result = service.get_unpaid_enrollments(
+        group_id=group_id, skip=skip, limit=limit
+    )
+    
+    # Convert to response schema
+    response_items = [
+        UnpaidEnrollmentItem(
+            enrollment_id=item.enrollment_id,
+            student_id=item.student_id,
+            student_name="",  # Not available in current view
+            group_id=item.group_id,
+            group_name="",  # Not available in current view
+            course_name=None,  # Not available in current view
+            level_number=item.level_number,
+            amount_due=item.amount_due,
+            discount_applied=item.discount_applied,
+            total_paid=item.amount_paid,
+            remaining_balance=item.remaining_balance,
+            enrolled_at=None,  # Not available in current view
+        )
+        for item in result.items
+    ]
+    
+    return PaginatedResponse(
+        data=response_items,
+        total=result.total,
+        skip=skip,
+        limit=limit,
     )

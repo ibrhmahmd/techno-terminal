@@ -5,8 +5,6 @@ from .activity_models import (
     StudentActivityLog,
     StudentActivityLogCreate,
     StudentActivityLogRead,
-    StudentEnrollmentHistory,
-    StudentCompetitionHistory,
 )
 
 __all__ = [
@@ -17,7 +15,5 @@ __all__ = [
     "StudentActivityLog",
     "StudentActivityLogCreate",
     "StudentActivityLogRead",
-    "StudentEnrollmentHistory",
-    "StudentCompetitionHistory",
 ]
 

@@ -23,6 +23,7 @@ from .receipt import (
 from .balance import (
     UnpaidEnrollmentItem,
     EnrollmentBalanceResponse,
+    StudentBalanceResponse,
 )
 from .risk import (
     PreviewOverpaymentRequest,
@@ -46,6 +47,7 @@ __all__ = [
     # Balance (view-based)
     "UnpaidEnrollmentItem",
     "EnrollmentBalanceResponse",
+    "StudentBalanceResponse",
     # Risk
     "PreviewOverpaymentRequest",
     "OverpaymentRiskResponse",

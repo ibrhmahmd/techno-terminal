@@ -129,3 +129,66 @@ class PaymentRepository(IPaymentRepository):
             )
             for row in rows
         ]
+
+    def get_unpaid_enrollments(
+        self,
+        group_id: Optional[int] = None,
+        skip: int = 0,
+        limit: int = 50,
+    ) -> tuple[List[EnrollmentBalanceItem], int]:
+        """
+        Get unpaid enrollment balances (where balance < 0).
+        Returns items and total count for pagination.
+        """
+        # Build base query
+        base_where = "balance < 0"
+        params = {}
+        
+        if group_id:
+            base_where += " AND group_id = :gid"
+            params["gid"] = group_id
+        
+        # Get total count
+        count_stmt = text(f"""
+            SELECT COUNT(*)
+            FROM v_enrollment_balance
+            WHERE {base_where}
+        """)
+        total = self._session.execute(count_stmt, params).scalar() or 0
+        
+        # Get paginated results
+        query_params = {**params, "skip": skip, "limit": limit}
+        stmt = text(f"""
+            SELECT 
+                enrollment_id,
+                student_id,
+                group_id,
+                level_number,
+                amount_due,
+                discount_applied,
+                total_paid as amount_paid,
+                balance as remaining_balance,
+                payment_status as status
+            FROM v_enrollment_balance
+            WHERE {base_where}
+            ORDER BY balance ASC, enrollment_id DESC
+            LIMIT :limit OFFSET :skip
+        """)
+        rows = self._session.execute(stmt, query_params).all()
+        
+        items = [
+            EnrollmentBalanceItem(
+                enrollment_id=row.enrollment_id,
+                student_id=row.student_id,
+                group_id=row.group_id,
+                level_number=row.level_number,
+                amount_due=float(row.amount_due or 0),
+                discount_applied=float(row.discount_applied or 0),
+                amount_paid=float(row.amount_paid or 0),
+                remaining_balance=float(row.remaining_balance or 0),
+                status=row.status or "unknown",
+            )
+            for row in rows
+        ]
+        
+        return items, total

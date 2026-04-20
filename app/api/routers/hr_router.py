@@ -12,7 +12,9 @@ from pydantic import BaseModel
 
 from app.api.schemas.common import ApiResponse
 from app.api.schemas.hr.employee import EmployeePublic, EmployeeListItem, EmployeeCreateInput, StaffAccountPublic
+from app.api.schemas.hr.employee_account import CreateEmployeeAccountRequest, EmployeeAccountResponse
 from app.modules.hr.hr_models import EmployeeCreate
+from app.modules.hr import hr_repository as hr_repo
 from app.shared.exceptions import NotFoundError, ConflictError, ValidationError
 from app.api.dependencies import require_admin, get_hr_service
 from app.modules.auth import User
@@ -177,3 +179,50 @@ def log_attendance(
         ),
         message="HR attendance logging stub completed."
     )
+
+
+# create employee account
+@router.post(
+    "/hr/employees/{employee_id}/create-account",
+    response_model=ApiResponse[EmployeeAccountResponse],
+    status_code=201,
+    summary="Create user account for employee",
+)
+def create_employee_account_endpoint(
+    employee_id: int,
+    body: CreateEmployeeAccountRequest,
+    _user: User = Depends(require_admin),
+):
+    """
+    Creates a Supabase user account for an existing employee.
+    Only admin or system_admin roles are allowed.
+    """
+    from app.modules.hr.hr_service import create_employee_account
+    from app.modules.hr.interfaces.dtos import CreateEmployeeAccountDTO
+    from app.shared.exceptions import NotFoundError, ConflictError, ValidationError
+
+    try:
+        # Wrap API request into service DTO
+        dto = CreateEmployeeAccountDTO(
+            employee_id=employee_id,
+            email=body.email,
+            password=body.password,
+            role=body.role,
+        )
+        result = create_employee_account(dto)
+        return ApiResponse(
+            data=EmployeeAccountResponse(
+                employee_id=result.employee_id,
+                user_id=result.user_id,
+                email=result.email,
+                role=result.role,
+                created_at=result.created_at,
+            ),
+            message="Employee account created successfully.",
+        )
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ConflictError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))

@@ -4,12 +4,11 @@ app/modules/crm/models/activity_models.py
 Activity and history tracking models for comprehensive student audit trails.
 """
 from datetime import datetime
-from decimal import Decimal
 from typing import Optional, List, Any, Dict
 
 from sqlalchemy import Column as SAColumn
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlmodel import SQLModel, Field, Relationship
+from sqlmodel import SQLModel, Field
 
 
 # ── Student Activity Log ───────────────────────────────────────────────────
@@ -55,80 +54,6 @@ class StudentActivityLogCreate(SQLModel):
     reference_id: Optional[int] = None
     description: str
     meta: Optional[Dict[str, Any]] = None
-    performed_by: Optional[int] = None
-
-
-# ── Student Enrollment History ─────────────────────────────────────────────
-
-class StudentEnrollmentHistoryBase(SQLModel):
-    """Base model for student enrollment lifecycle tracking."""
-    action: str  # 'enrolled', 'transferred_in', 'transferred_out', 'completed', 'cancelled', 'reinstated'
-    action_date: datetime
-    previous_group_id: Optional[int] = None
-    previous_level_number: Optional[int] = None
-    amount_due: Optional[Decimal] = Field(default=None, decimal_places=2)
-    amount_paid: Optional[Decimal] = Field(default=None, decimal_places=2)
-    final_status: Optional[str] = None
-    notes: Optional[str] = None
-    created_at: Optional[datetime] = None
-
-
-class StudentEnrollmentHistory(StudentEnrollmentHistoryBase, table=True):
-    """Tracks student enrollment lifecycle events."""
-    __tablename__ = "student_enrollment_history"
-    __table_args__ = {"extend_existing": True}
-    
-    id: Optional[int] = Field(default=None, primary_key=True)
-    student_id: int = Field(foreign_key="students.id")
-    enrollment_id: Optional[int] = Field(default=None, foreign_key="enrollments.id")
-    group_id: Optional[int] = Field(default=None, foreign_key="groups.id")
-    performed_by: Optional[int] = Field(default=None, foreign_key="users.id")
-
-
-class StudentEnrollmentHistoryRead(StudentEnrollmentHistoryBase):
-    """DTO for reading enrollment history."""
-    id: int
-    student_id: int
-    enrollment_id: Optional[int] = None
-    group_id: Optional[int] = None
-    performed_by: Optional[int] = None
-
-
-# ── Student Competition History ─────────────────────────────────────────────
-
-class StudentCompetitionHistoryBase(SQLModel):
-    """Base model for student competition participation history."""
-    participation_type: str  # 'registered', 'participated', 'awarded', 'cancelled'
-    registration_date: Optional[datetime] = None
-    fee_amount: Optional[Decimal] = Field(default=None, decimal_places=2)
-    fee_paid: bool = False
-    result_position: Optional[int] = None
-    result_notes: Optional[str] = None
-    created_at: Optional[datetime] = None
-
-
-class StudentCompetitionHistory(StudentCompetitionHistoryBase, table=True):
-    """Tracks student competition participation."""
-    __tablename__ = "student_competition_history"
-    __table_args__ = {"extend_existing": True}
-    
-    id: Optional[int] = Field(default=None, primary_key=True)
-    student_id: int = Field(foreign_key="students.id")
-    competition_id: int = Field(foreign_key="competitions.id")
-    team_id: Optional[int] = Field(default=None, foreign_key="teams.id")
-    team_member_id: Optional[int] = Field(default=None, foreign_key="team_members.id")
-    payment_id: Optional[int] = Field(default=None, foreign_key="payments.id")
-    performed_by: Optional[int] = Field(default=None, foreign_key="users.id")
-
-
-class StudentCompetitionHistoryRead(StudentCompetitionHistoryBase):
-    """DTO for reading competition history."""
-    id: int
-    student_id: int
-    competition_id: int
-    team_id: Optional[int] = None
-    team_member_id: Optional[int] = None
-    payment_id: Optional[int] = None
     performed_by: Optional[int] = None
 
 

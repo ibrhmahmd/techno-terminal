@@ -15,4 +15,4 @@ def render_retention_funnel():
     pivot = df.pivot_table(index="course_name", columns="level_number", values="student_count", fill_value=0)
     
     st.dataframe(pivot, use_container_width=True)
-    st.caption("Rows: Course | Columns: Level Number | Values: Active/Graduated Students")
+    st.caption("Rows: Course | Columns: Level Number | Values: Active Students")

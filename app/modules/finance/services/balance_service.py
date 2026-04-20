@@ -9,6 +9,8 @@ from typing import Optional, List
 from app.modules.finance.interfaces import (
     IBalanceService,
     OverpaymentRiskItem,
+    StudentBalanceSummaryDTO,
+    PaginatedEnrollmentBalancesDTO,
 )
 from app.modules.finance import ReceiptLineInput, EnrollmentBalanceItem
 from app.modules.finance.repositories.unit_of_work import FinanceUnitOfWork
@@ -48,11 +50,52 @@ class BalanceService(IBalanceService):
             status=balance_dto.status,
         )
 
-    def get_student_balances(
+    def get_student_balance_summary(
         self, student_id: int
-    ) -> List[EnrollmentBalanceItem]:
-        """Get all enrollment balances for a student."""
-        return self._uow.payments.get_student_balances(student_id)
+    ) -> StudentBalanceSummaryDTO:
+        """
+        Get aggregated balance summary for a student.
+
+        Returns StudentBalanceSummaryDTO containing:
+        - Aggregated totals (amount_due, discounts, paid, net_balance)
+        - Enrollment counts (total and unpaid)
+        - Full list of enrollment balances (enrollments field)
+        """
+        enrollments = self._uow.payments.get_student_balances(student_id)
+        
+        total_amount_due = sum(e.amount_due for e in enrollments)
+        total_discounts = sum(e.discount_applied for e in enrollments)
+        total_paid = sum(e.amount_paid for e in enrollments)
+        net_balance = sum(e.remaining_balance for e in enrollments)
+        
+        # Count unpaid (remaining_balance < 0 means debt)
+        unpaid_count = sum(1 for e in enrollments if e.remaining_balance < 0)
+        
+        return StudentBalanceSummaryDTO(
+            student_id=student_id,
+            total_amount_due=total_amount_due,
+            total_discounts=total_discounts,
+            total_paid=total_paid,
+            net_balance=net_balance,
+            enrollment_count=len(enrollments),
+            unpaid_enrollments=unpaid_count,
+            enrollments=enrollments,
+        )
+
+    def get_unpaid_enrollments(
+        self,
+        group_id: Optional[int] = None,
+        skip: int = 0,
+        limit: int = 50,
+    ) -> PaginatedEnrollmentBalancesDTO:
+        """
+        Get all unpaid enrollments with pagination.
+        Returns PaginatedEnrollmentBalancesDTO with items and total count.
+        """
+        items, total = self._uow.payments.get_unpaid_enrollments(
+            group_id=group_id, skip=skip, limit=limit
+        )
+        return PaginatedEnrollmentBalancesDTO(items=items, total=total)
 
     def assess_overpayment_risk(
         self, lines: List[ReceiptLineInput]

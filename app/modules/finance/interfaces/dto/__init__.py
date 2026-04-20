@@ -14,6 +14,8 @@ from .refund_result_dto import RefundResultDTO
 from .issue_refund_dto import IssueRefundDTO
 from .overpayment_risk_item import OverpaymentRiskItem
 from .receipt_template_context_dto import ReceiptTemplateContextDTO
+from .student_balance_summary_dto import StudentBalanceSummaryDTO
+from .paginated_enrollment_balances_dto import PaginatedEnrollmentBalancesDTO
 
 __all__ = [
     "ReceiptWithLinesDTO",
@@ -29,4 +31,6 @@ __all__ = [
     "IssueRefundDTO",
     "OverpaymentRiskItem",
     "ReceiptTemplateContextDTO",
+    "StudentBalanceSummaryDTO",
+    "PaginatedEnrollmentBalancesDTO",
 ]

@@ -17,7 +17,6 @@ from .dtos import (
     StudentGroupBucketDTO,
     StudentBalanceSummaryDTO,
     AttendanceStatsDTO,
-    StatusHistoryEntryDTO,
 )
 
 __all__ = [
@@ -27,7 +26,6 @@ __all__ = [
     "StudentGroupBucketDTO",
     "StudentBalanceSummaryDTO",
     "AttendanceStatsDTO",
-    "StatusHistoryEntryDTO",
     # Protocols remain private to this module
 ]
 

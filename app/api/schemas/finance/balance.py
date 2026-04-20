@@ -40,3 +40,15 @@ class EnrollmentBalanceResponse(BaseModel):
     is_paid: bool
 
     model_config = {"from_attributes": True}
+
+
+class StudentBalanceResponse(BaseModel):
+    """Aggregated balance response for a student across all enrollments."""
+    student_id: int
+    total_amount_due: float
+    total_discounts: float
+    total_paid: float
+    net_balance: float  # Positive = credit, Negative = debt
+    enrollment_count: int
+    unpaid_enrollments: int
+    enrollments: list[EnrollmentBalanceResponse]

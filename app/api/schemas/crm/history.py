@@ -47,15 +47,53 @@ class EnrollmentHistoryEntry(BaseModel):
     student_id: int
     enrollment_id: Optional[int] = None
     group_id: Optional[int] = None
+    group_name: Optional[str] = None
     level_number: Optional[int] = None
+    enrollment_status: Optional[str] = None
     action: str
     action_date: datetime
     previous_group_id: Optional[int] = None
     previous_level_number: Optional[int] = None
+    previous_status: Optional[str] = None
     amount_due: Optional[float] = None
-    amount_paid: Optional[float] = None
-    final_status: Optional[str] = None
+    discount_applied: Optional[float] = None
+    transfer_reason: Optional[str] = None
+    performed_by: Optional[int] = None
+    performed_by_name: Optional[str] = None
     notes: Optional[str] = None
+
+
+class StatusHistoryEntry(BaseModel):
+    """DTO for status change history entry."""
+    id: int
+    student_id: int
+    old_status: Optional[str] = None
+    new_status: str
+    changed_at: datetime
+    changed_by: Optional[int] = None
+    changed_by_name: Optional[str] = None
+    reason: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class CompetitionHistoryEntry(BaseModel):
+    """DTO for competition participation history entry."""
+    id: int
+    student_id: int
+    competition_id: int
+    competition_name: Optional[str] = None
+    team_id: Optional[int] = None
+    team_name: Optional[str] = None
+    participation_type: str
+    registration_date: Optional[datetime] = None
+    subscription_amount: Optional[float] = None
+    subscription_paid: Optional[bool] = None
+    payment_id: Optional[int] = None
+    result_position: Optional[int] = None
+    result_notes: Optional[str] = None
+    performed_by: Optional[int] = None
+    performed_by_name: Optional[str] = None
+    created_at: datetime
 
 
 class ActivitySummaryItem(BaseModel):

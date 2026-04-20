@@ -21,7 +21,9 @@ async def start_report_scheduler(notification_service: NotificationService) -> N
         try:
             now = datetime.now()
 
-            if now.hour == 8 and now.minute == 0:
+            # Default execution window is 08:00-08:05 local server time.
+            # Window-based check prevents missed reports if server is busy at exact 08:00:00.
+            if now.hour == 8 and now.minute < 5:
                 today = now.date()
                 if last_daily != today:
                     await notification_service.send_daily_report()

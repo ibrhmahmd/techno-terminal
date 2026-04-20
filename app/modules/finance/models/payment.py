@@ -33,3 +33,6 @@ class Payment(SQLModel, table=True):
         default=None,
         sa_column=SAColumn("metadata", JSONB),
     )
+    # Soft delete fields
+    deleted_at: Optional[datetime] = Field(default=None, description="Soft delete timestamp")
+    deleted_by: Optional[int] = Field(default=None, foreign_key="users.id")

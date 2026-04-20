@@ -4,7 +4,7 @@ app/modules/crm/services/activity_service.py
 Student activity logging and history service.
 Integrates with CRM services for automatic activity tracking.
 """
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime
 from decimal import Decimal
 
@@ -20,11 +20,12 @@ from app.modules.crm.interfaces.dtos.log_payment_dto import LogPaymentDTO
 from app.modules.crm.interfaces.dtos.log_deletion_dto import LogDeletionDTO
 from app.modules.crm.interfaces.dtos.log_note_added_dto import LogNoteAddedDTO
 from app.modules.crm.interfaces.dtos.log_competition_registration_dto import LogCompetitionRegistrationDTO
-from app.modules.crm.models.activity_models import (
-    StudentActivityLog,
-    StudentEnrollmentHistory,
-    StudentCompetitionHistory,
+from app.modules.crm.interfaces.dtos import (
+    EnrollmentHistoryDTO,
+    StatusHistoryDTO,
+    CompetitionHistoryDTO,
 )
+from app.modules.crm.models.activity_models import StudentActivityLog
 
 
 class StudentActivityService:
@@ -201,13 +202,23 @@ class StudentActivityService:
             last_activity_date=summary["last_activity_date"],
         )
 
-    def get_enrollment_history(self, student_id: int) -> List[StudentEnrollmentHistory]:
-        """Get enrollment lifecycle history for a student."""
-        return self._uow.activities.get_enrollment_changes(student_id)
+    def get_enrollment_history(
+        self, student_id: int, limit: int = 50, offset: int = 0
+    ) -> Tuple[List[EnrollmentHistoryDTO], int]:
+        """Get enrollment lifecycle history for a student with pagination."""
+        return self._uow.activities.get_enrollment_history_by_student(student_id, limit, offset)
 
-    def get_competition_history(self, student_id: int) -> List[StudentCompetitionHistory]:
-        """Get competition participation history for a student."""
-        return self._uow.activities.get_competition_participations(student_id)
+    def get_status_history(
+        self, student_id: int, limit: int = 50, offset: int = 0
+    ) -> Tuple[List[StatusHistoryDTO], int]:
+        """Get status change history for a student with pagination."""
+        return self._uow.activities.get_status_history_by_student(student_id, limit, offset)
+
+    def get_competition_history(
+        self, student_id: int, limit: int = 50, offset: int = 0
+    ) -> Tuple[List[CompetitionHistoryDTO], int]:
+        """Get competition participation history for a student with pagination."""
+        return self._uow.activities.get_competition_history_by_student(student_id, limit, offset)
 
     # ── Private Helpers ──────────────────────────────────────────────────
 
