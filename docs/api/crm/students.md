@@ -7,6 +7,70 @@ Student management endpoints for the CRM module.
 
 ---
 
+## Quick Reference
+
+| Endpoint | Method | Auth | Response |
+|----------|--------|------|----------|
+| `/students` | GET | `require_any` | `PaginatedResponse<StudentListItem>` |
+| `/students` | POST | `require_admin` | `ApiResponse<StudentPublic>` |
+| `/students/{id}` | GET | `require_any` | `ApiResponse<StudentPublic>` |
+| `/students/{id}` | PATCH | `require_admin` | `ApiResponse<StudentPublic>` |
+| `/students/{id}` | DELETE | `require_admin` | `ApiResponse<null>` |
+| `/students/grouped` | GET | `require_admin` | `ApiResponse<StudentGroupedResultDTO>` |
+| `/students/waiting-list` | GET | `require_admin` | `ApiResponse<List<StudentResponseDTO>>` |
+| `/students/by-status/{status}` | GET | `require_admin` | `ApiResponse<List<StudentResponseDTO>>` |
+| `/students/status-summary` | GET | `require_admin` | `ApiResponse<StudentStatusSummaryDTO>` |
+| `/students/{id}/status` | PATCH | `require_admin` | `ApiResponse<StudentResponseDTO>` |
+| `/students/{id}/status/toggle` | POST | `require_admin` | `ApiResponse<StudentResponseDTO>` |
+| `/students/{id}/waiting-priority` | PATCH | `require_admin` | `ApiResponse<StudentResponseDTO>` |
+| `/students/{id}/status-history` | GET | `require_admin` | `ApiResponse<List<StatusHistoryEntry>>` |
+| `/students/{id}/details` | GET | `require_any` | `ApiResponse<StudentWithDetails>` |
+| `/students/{id}/siblings` | GET | `require_any` | `ApiResponse<List<SiblingInfo>>` |
+| `/students/{id}/parents` | GET | `require_any` | `ApiResponse<List<ParentPublic>>` |
+| `/students/{id}/soft` | DELETE | `require_admin` | `ApiResponse<dict>` |
+| `/students/{id}/restore` | POST | `require_admin` | `ApiResponse<dict>` |
+| `/students/{id}/hard` | DELETE | `require_admin` | `ApiResponse<dict>` |
+| `/admin/deleted-students` | GET | `require_admin` | `ApiResponse<List<StudentListItem>>` |
+
+---
+
+## Common Patterns
+
+### Authentication
+- `require_any` = Any authenticated user with valid JWT
+- `require_admin` = User must have admin role
+
+### Path Parameters
+All `/{id}` endpoints require integer `student_id` as path parameter.
+
+### Response Wrappers
+
+**ApiResponse<T>**
+```json
+{
+  "data": T,
+  "message": "Optional message",
+  "success": true
+}
+```
+
+**PaginatedResponse<T>**
+```json
+{
+  "data": [T],
+  "total": 100,
+  "skip": 0,
+  "limit": 50
+}
+```
+
+### Common Errors
+- **401 Unauthorized** - Invalid or missing JWT
+- **404 Not Found** - Resource doesn't exist
+- **400 Bad Request** - Invalid input data
+
+---
+
 ## List & Search Endpoints
 
 ### GET /crm/students
@@ -23,27 +87,6 @@ List and search students with pagination.
 | limit | integer | No | 50 | 1-200 | Page size |
 
 **Response:** `PaginatedResponse<StudentListItem>`
-
-```json
-{
-  "data": [
-    {
-      "id": 1,
-      "full_name": "John Doe",
-      "phone": "+1234567890",
-      "status": "active",
-      "date_of_birth": "2010-01-15",
-      "gender": "male"
-    }
-  ],
-  "total": 150,
-  "skip": 0,
-  "limit": 50
-}
-```
-
-**Error Codes:**
-- 401: Unauthorized
 
 ---
 
@@ -67,14 +110,7 @@ Group students by status, gender, or age bucket.
 
 Get students on the waiting list, ordered by priority.
 
-**Authentication:** `require_admin`
-
-**Query Parameters:**
-| Name | Type | Required | Default | Constraints | Description |
-|------|------|----------|---------|-------------|-------------|
-| skip | integer | No | 0 | ≥ 0 | Pagination offset |
-| limit | integer | No | 200 | 1-200 | Page size |
-| order_by_priority | boolean | No | true | - | Sort by priority |
+**Query Parameters:** `skip`, `limit`, `order_by_priority`
 
 **Response:** `ApiResponse<List<StudentResponseDTO>>`
 
@@ -84,31 +120,19 @@ Get students on the waiting list, ordered by priority.
 
 Get students filtered by enrollment status.
 
-**Authentication:** `require_admin`
+**Path Parameters:** `status` (active, waiting, inactive)
 
-**Path Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| status | string | Yes | active, waiting, inactive, graduated |
-
-**Query Parameters:**
-| Name | Type | Required | Default | Constraints | Description |
-|------|------|----------|---------|-------------|-------------|
-| skip | integer | No | 0 | ≥ 0 | Pagination offset |
-| limit | integer | No | 200 | 1-200 | Page size |
+**Query Parameters:** `skip`, `limit`
 
 **Response:** `ApiResponse<List<StudentResponseDTO>>`
 
-**Error Codes:**
-- 400: Invalid status value
+**Errors:** 400 for invalid status
 
 ---
 
 ### GET /crm/students/status-summary
 
 Get counts of students by enrollment status.
-
-**Authentication:** `require_admin`
 
 **Response:** `ApiResponse<StudentStatusSummaryDTO>`
 
@@ -117,8 +141,7 @@ Get counts of students by enrollment status.
   "data": {
     "active": 120,
     "waiting": 15,
-    "inactive": 5,
-    "graduated": 30
+    "inactive": 5
   }
 }
 ```
@@ -129,118 +152,45 @@ Get counts of students by enrollment status.
 
 ### POST /crm/students
 
-Register a new student.
+Register a new student. **Auth:** `require_admin`
 
-**Authentication:** `require_admin`
-
-**Request Body:** `RegisterStudentCommandDTO`
-
-```json
-{
-  "full_name": "Jane Smith",
-  "date_of_birth": "2012-03-20",
-  "gender": "female",
-  "phone": "+1234567890",
-  "parent_id": 1,
-  "notes": "New enrollment"
-}
-```
+**Request:** `RegisterStudentCommandDTO`
 
 **Response:** `ApiResponse<StudentPublic>` (201 Created)
 
-```json
-{
-  "data": {
-    "id": 101,
-    "full_name": "Jane Smith",
-    "date_of_birth": "2012-03-20",
-    "gender": "female",
-    "phone": "+1234567890",
-    "status": "active",
-    "notes": "New enrollment",
-    "is_active": true,
-    "created_at": "2024-01-15T10:30:00Z",
-    "updated_at": "2024-01-15T10:30:00Z"
-  },
-  "message": "Student registered successfully."
-}
-```
-
-**Error Codes:**
-- 400: Invalid input data
-- 401: Unauthorized
+**Errors:** 400 for invalid input
 
 ---
 
 ### GET /crm/students/{student_id}
 
-Get student by ID.
-
-**Authentication:** `require_any`
-
-**Path Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| student_id | integer | Yes | Student ID (positive) |
+Get student by ID. **Auth:** `require_any`
 
 **Response:** `ApiResponse<StudentPublic>`
 
-**Error Codes:**
-- 404: Student not found
+**Errors:** 404
 
 ---
 
 ### PATCH /crm/students/{student_id}
 
-Update student profile.
+Update student profile. **Auth:** `require_admin`
 
-**Authentication:** `require_admin`
-
-**Path Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| student_id | integer | Yes | Student ID |
-
-**Request Body:** `UpdateStudentDTO` (all fields optional)
-
-```json
-{
-  "full_name": "Jane Doe",
-  "phone": "+1987654321",
-  "notes": "Updated notes"
-}
-```
+**Request:** `UpdateStudentDTO` (all fields optional)
 
 **Response:** `ApiResponse<StudentPublic>`
 
-**Error Codes:**
-- 400: Invalid input
-- 404: Student not found
+**Errors:** 400, 404
 
 ---
 
 ### DELETE /crm/students/{student_id}
 
-Delete a student by ID.
-
-**Authentication:** `require_admin`
-
-**Path Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| student_id | integer | Yes | Student ID |
+Delete a student by ID. **Auth:** `require_admin`
 
 **Response:** `ApiResponse<null>`
 
-```json
-{
-  "data": null,
-  "message": "Student deleted successfully."
-}
-```
-
-**Error Codes:**
-- 404: Student not found
+**Errors:** 404
 
 ---
 
@@ -248,98 +198,47 @@ Delete a student by ID.
 
 ### PATCH /crm/students/{student_id}/status
 
-Update student enrollment status.
+Update student enrollment status. **Auth:** `require_admin`
 
-**Authentication:** `require_admin`
-
-**Path Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| student_id | integer | Yes | Student ID |
-
-**Request Body:** `UpdateStudentStatusDTO`
-
-```json
-{
-  "status": "waiting",
-  "notes": "Moving to waiting list"
-}
-```
+**Request:** `UpdateStudentStatusDTO` (`status`, `notes`)
 
 **Response:** `ApiResponse<StudentResponseDTO>`
 
-**Error Codes:**
-- 400: Invalid status
-- 404: Student not found
+**Errors:** 400 for invalid status, 404
 
 ---
 
 ### POST /crm/students/{student_id}/status/toggle
 
-Toggle student status between active and waiting.
+Toggle student status between active and waiting. **Auth:** `require_admin`
 
-**Authentication:** `require_admin`
-
-**Path Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| student_id | integer | Yes | Student ID |
-
-**Query Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| notes | string | No | Audit notes |
+**Query:** `notes` (optional audit notes)
 
 **Response:** `ApiResponse<StudentResponseDTO>`
 
-**Error Codes:**
-- 400: Cannot toggle (e.g., graduated/inactive)
-- 404: Student not found
+**Errors:** 400 (cannot toggle inactive), 404
 
 ---
 
 ### PATCH /crm/students/{student_id}/waiting-priority
 
-Set waiting list priority.
+Set waiting list priority. **Auth:** `require_admin`
 
-**Authentication:** `require_admin`
-
-**Path Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| student_id | integer | Yes | Student ID |
-
-**Request Body:** `SetWaitingPriorityDTO`
-
-```json
-{
-  "priority": 1,
-  "notes": "High priority request"
-}
-```
+**Request:** `SetWaitingPriorityDTO` (`priority`, `notes`)
 
 **Response:** `ApiResponse<StudentResponseDTO>`
 
-**Error Codes:**
-- 404: Student not found or not on waiting list
+**Errors:** 404 if not on waiting list
 
 ---
 
 ### GET /crm/students/{student_id}/status-history
 
-Get student status change history.
+Get student status change history. **Auth:** `require_admin`
 
-**Authentication:** `require_admin`
+**Response:** `ApiResponse<List<StatusHistoryEntry>>`
 
-**Path Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| student_id | integer | Yes | Student ID |
-
-**Response:** `ApiResponse<List<dict>>` (audit log entries)
-
-**Error Codes:**
-- 404: Student not found
+**Errors:** 404
 
 ---
 
@@ -347,352 +246,133 @@ Get student status change history.
 
 ### GET /crm/students/{student_id}/details
 
-Get complete student profile with enrollments, balance, siblings.
+Get complete student profile with enrollments, balance, siblings. **Auth:** `require_any`
 
-**Authentication:** `require_any`
+**Response:** `ApiResponse<StudentWithDetails>` - see Schema section for full structure
 
-**Path Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| student_id | integer | Yes | Student ID |
-
-**Response:** `ApiResponse<StudentWithDetails>`
-
-```json
-{
-  "data": {
-    "id": 1,
-    "full_name": "John Doe",
-    "date_of_birth": "2010-01-15",
-    "age": 14,
-    "gender": "male",
-    "phone": "+1234567890",
-    "notes": "Student notes",
-    "status": "active",
-    "is_active": true,
-    "school_name": "Springfield Elementary",
-    "waiting_since": null,
-    "waiting_priority": null,
-    "waiting_notes": null,
-    "created_at": "2020-01-15T10:00:00Z",
-    "updated_at": "2024-01-10T08:30:00Z",
-    "primary_parent": {
-      "id": 1,
-      "full_name": "Parent Name",
-      "phone": "+1234567890",
-      "email": "parent@example.com",
-      "relationship": null
-    },
-    "current_enrollment": {
-      "enrollment_id": 10,
-      "group_id": 5,
-      "group_name": "Beginners A",
-      "course_id": 2,
-      "course_name": "Introduction to Programming",
-      "level_number": 1,
-      "instructor_name": "Prof. Smith"
-    },
-    "enrollments": [...],
-    "balance_summary": {
-      "total_due": 1000.00,
-      "total_discount": 100.00,
-      "total_paid": 500.00,
-      "net_balance": 400.00
-    },
-    "siblings": [...],
-    "sessions_attended_count": 45,
-    "sessions_absent_count": 3,
-    "last_session_attended": "2024-01-08",
-    "attendance_stats": {
-      "attended": 45,
-      "absent": 3,
-      "late": 2
-    }
-  }
-}
-```
-
-**Error Codes:**
-- 404: Student not found
+**Errors:** 404
 
 ---
 
 ### GET /crm/students/{student_id}/siblings
 
-Get student's siblings.
-
-**Authentication:** `require_any`
-
-**Path Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| student_id | integer | Yes | Student ID |
+Get student's siblings. **Auth:** `require_any`
 
 **Response:** `ApiResponse<List<SiblingInfo>>`
 
-```json
-{
-  "data": [
-    {
-      "id": 2,
-      "full_name": "Jane Doe",
-      "date_of_birth": "2012-03-20",
-      "age": 12,
-      "gender": "female",
-      "parent_name": "Parent Name",
-      "enrollment_count": 1
-    }
-  ]
-}
-```
+**Errors:** 404
 
 ---
 
 ### GET /crm/students/{student_id}/parents
 
-Get all parents linked to a student.
-
-**Authentication:** `require_any`
-
-**Path Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| student_id | integer | Yes | Student ID |
+Get all parents linked to a student. **Auth:** `require_any`
 
 **Response:** `ApiResponse<List<ParentPublic>>`
 
 ---
 
-## Schema Definitions
+## Soft Delete Endpoints
 
-### StudentPublic
+### DELETE /crm/students/{student_id}/soft
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| id | integer | Yes | Student ID |
-| full_name | string | Yes | Full name |
-| date_of_birth | date | No | Date of birth (YYYY-MM-DD) |
-| gender | string | No | male, female, other |
-| phone | string | No | Contact phone |
-| status | string | Yes | active, waiting, inactive, graduated |
-| notes | string | No | Additional notes |
-| is_active | boolean | Yes | Active flag |
-| created_at | datetime | Yes | Creation timestamp |
-| updated_at | datetime | Yes | Last update timestamp |
+Soft delete a student (logically removed, recoverable). Also cascades to payments. **Auth:** `require_admin`
+
+**Response:** `ApiResponse<dict>` - `{student_id, status: "soft_deleted"}`
+
+**Errors:** 404 (not found or already deleted)
 
 ---
 
-### StudentListItem
+### POST /crm/students/{student_id}/restore
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| id | integer | Yes | Student ID |
-| full_name | string | Yes | Full name |
-| phone | string | No | Contact phone |
-| status | string | Yes | Enrollment status |
-| date_of_birth | date | No | Date of birth |
-| gender | string | No | Gender |
+Restore a previously soft-deleted student and their payments. **Auth:** `require_admin`
+
+**Response:** `ApiResponse<dict>` - `{student_id, status: "restored"}`
+
+**Errors:** 404 (not found or not deleted)
 
 ---
 
-### StudentWithDetails
+### DELETE /crm/students/{student_id}/hard
 
-Extends `StudentPublic` with additional fields:
+Permanently delete a student and all related data. Cannot be undone. **Auth:** `require_admin`
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| age | integer | No | Computed age from date_of_birth |
-| school_name | string | No | From profile_metadata |
-| waiting_since | datetime | No | When added to waiting list |
-| waiting_priority | integer | No | Waiting list priority (1=highest) |
-| waiting_notes | string | No | Waiting list notes |
-| primary_parent | ParentInfo | No | Primary parent contact |
-| current_enrollment | CurrentEnrollmentInfo | No | Active enrollment details |
-| enrollments | List<EnrollmentInfo> | Yes | All enrollments |
-| balance_summary | StudentBalanceSummary | Yes | Financial summary |
-| siblings | List<SiblingInfo> | Yes | Sibling list |
-| sessions_attended_count | integer | Yes | Total attended sessions |
-| sessions_absent_count | integer | Yes | Total absent sessions |
-| last_session_attended | date | No | Last attendance date |
-| attendance_stats | AttendanceStatsDTO | Yes | Attendance statistics |
+**Response:** `ApiResponse<dict>` - `{student_id, status: "permanently_deleted"}`
+
+**Errors:** 404 (not found)
 
 ---
 
-### ParentInfo
+### GET /crm/admin/deleted-students
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| id | integer | Yes | Parent ID |
-| full_name | string | Yes | Full name |
-| phone | string | No | Phone number |
-| email | string | No | Email address |
-| relationship | string | No | Relationship to student |
+List all soft-deleted students for recovery. **Auth:** `require_admin`
+
+**Query Parameters:** `skip` (default: 0), `limit` (default: 50, max: 100)
+
+**Response:** `ApiResponse<List<StudentListItem>>`
 
 ---
 
-### CurrentEnrollmentInfo
+## Schema Reference
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| enrollment_id | integer | Yes | Enrollment ID |
-| group_id | integer | Yes | Group ID |
-| group_name | string | Yes | Group name |
-| course_id | integer | Yes | Course ID |
-| course_name | string | Yes | Course name |
-| level_number | integer | Yes | Level number |
-| instructor_name | string | No | Instructor name |
+### Core Student Schemas
 
----
+**StudentPublic**
+| Field | Type | Req | Description |
+|-------|------|-----|-------------|
+| id | integer | Y | Student ID |
+| full_name | string | Y | Full name |
+| date_of_birth | date | N | YYYY-MM-DD |
+| gender | string | N | male, female, other |
+| phone | string | N | Contact phone |
+| status | string | Y | active, waiting, inactive |
+| notes | string | N | Additional notes |
+| is_active | boolean | Y | Active flag |
+| created_at | datetime | Y | Creation timestamp |
+| updated_at | datetime | Y | Last update timestamp |
 
-### SiblingInfo
+**StudentListItem** - Subset of StudentPublic (id, full_name, phone, status, date_of_birth, gender)
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| id | integer | Yes | Student ID |
-| full_name | string | Yes | Full name |
-| date_of_birth | date | No | Date of birth |
-| age | integer | No | Computed age |
-| gender | string | No | Gender |
-| parent_name | string | No | Shared parent's name |
-| enrollment_count | integer | Yes | Number of enrollments |
+**StudentResponseDTO** - Core fields (id, full_name, status, date_of_birth, gender, phone, is_active, waiting_since, waiting_priority)
 
----
+**StudentWithDetails** extends StudentPublic with:
+- `age`, `school_name`, `waiting_since`, `waiting_priority`, `waiting_notes`
+- `primary_parent` (ParentInfo), `current_enrollment` (CurrentEnrollmentInfo)
+- `enrollments`[], `balance_summary` (StudentBalanceSummary), `siblings`[]
+- `sessions_attended_count`, `sessions_absent_count`, `last_session_attended`, `attendance_stats`
 
-### StudentBalanceSummary
+### Nested Objects
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| total_due | decimal | Yes | Total amount due |
-| total_discount | decimal | Yes | Total discounts applied |
-| total_paid | decimal | Yes | Total amount paid |
-| net_balance | decimal | Yes | Net balance (due - paid - discount) |
+**ParentInfo**: id, full_name, phone, email, relationship
 
----
+**ParentPublic**: id, full_name, phone, email, relationship (parent info for listings)
 
-### AttendanceStatsDTO
+**CurrentEnrollmentInfo**: enrollment_id, group_id, group_name, course_id, course_name, level_number, instructor_name
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| attended | integer | Yes | Sessions attended |
-| absent | integer | Yes | Sessions absent |
-| late | integer | Yes | Sessions late |
+**SiblingInfo**: id, full_name, date_of_birth, age, gender, parent_name, enrollment_count
 
----
+**StudentBalanceSummary**: total_due, total_discount, total_paid, net_balance
 
-### RegisterStudentCommandDTO
+**AttendanceStatsDTO**: attended, absent, late
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| full_name | string | Yes | Full name |
-| date_of_birth | date | No | Date of birth (YYYY-MM-DD) |
-| gender | string | No | male, female, other |
-| phone | string | No | Contact phone |
-| parent_id | integer | No | Parent ID (0 or null = none) |
-| notes | string | No | Additional notes |
+**StatusHistoryEntry**: id, student_id, old_status, new_status, changed_at, changed_by, changed_by_name, reason, notes
 
----
+### Request DTOs
 
-### UpdateStudentDTO
+**RegisterStudentCommandDTO**: full_name (Y), date_of_birth, gender, phone, parent_id, notes
 
-All fields optional:
+**UpdateStudentDTO** (all optional): full_name, date_of_birth, gender, phone, notes
 
-| Field | Type | Description |
-|-------|------|-------------|
-| full_name | string | Full name |
-| date_of_birth | date | Date of birth |
-| gender | string | Gender |
-| phone | string | Phone number |
-| notes | string | Notes |
+**UpdateStudentStatusDTO**: status (Y: active/waiting/inactive), notes
 
----
+**SetWaitingPriorityDTO**: priority (Y: 1=highest), notes
 
-### UpdateStudentStatusDTO
+### Summary DTOs
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| status | string | Yes | active, waiting, inactive, graduated |
-| notes | string | No | Audit notes |
+**StudentStatusSummaryDTO**: active, waiting, inactive counts
 
----
-
-### SetWaitingPriorityDTO
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| priority | integer | Yes | Priority value (1 = highest) |
-| notes | string | No | Notes |
-
----
-
-### StudentResponseDTO
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| id | integer | Yes | Student ID |
-| full_name | string | Yes | Full name |
-| status | string | Yes | Current status |
-| date_of_birth | date | No | Date of birth |
-| gender | string | No | Gender |
-| phone | string | No | Phone |
-| is_active | boolean | Yes | Active flag |
-| waiting_since | datetime | No | Waiting since timestamp |
-| waiting_priority | integer | No | Waiting priority |
-
----
-
-### StudentStatusSummaryDTO
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| active | integer | Yes | Count of active students |
-| waiting | integer | Yes | Count of waiting students |
-| inactive | integer | Yes | Count of inactive students |
-| graduated | integer | Yes | Count of graduated students |
-
----
-
-### StudentGroupedResultDTO
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| groups | dict | Yes | Grouped data with counts |
-| total | integer | Yes | Total count |
-
----
-
-## Common Response Wrappers
-
-### ApiResponse<T>
-
-```json
-{
-  "data": T,
-  "message": "Optional message",
-  "success": true
-}
-```
-
-### PaginatedResponse<T>
-
-```json
-{
-  "data": [T],
-  "total": 100,
-  "skip": 0,
-  "limit": 50
-}
-```
-
----
-
-## Error Response Format
-
-```json
-{
-  "detail": "Error message",
-  "status_code": 400
-}
-```
+**StudentGroupedResultDTO**: groups (dict), total
 
 ---
 
@@ -702,3 +382,11 @@ All fields optional:
 - All decimal amounts are returned as numbers (not strings)
 - `require_any` = any authenticated user with valid JWT
 - `require_admin` = user must have admin role
+
+### Error Response Format
+```json
+{
+  "detail": "Error message",
+  "status_code": 400
+}
+```
