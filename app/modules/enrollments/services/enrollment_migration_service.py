@@ -73,6 +73,7 @@ class EnrollmentMigrationService:
             # Mark old enrollment as completed
             enrollment.status = "completed"
             enrollment.completed_at = datetime.utcnow()
+            enrollment.updated_at = datetime.utcnow()
             session.add(enrollment)
             migrated_ids.append(enrollment.id)
             
@@ -140,6 +141,7 @@ class EnrollmentMigrationService:
         for enrollment in enrollments:
             enrollment.status = "completed"
             enrollment.completed_at = datetime.utcnow()
+            enrollment.updated_at = datetime.utcnow()
             # Store notes in metadata if needed
             if completion_notes:
                 if enrollment.enrollment_metadata is None:
