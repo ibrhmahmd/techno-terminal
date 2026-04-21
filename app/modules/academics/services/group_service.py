@@ -13,7 +13,7 @@ from app.modules.academics.models import CourseSession
 from app.modules.academics.models.group_level_models import GroupLevel
 from app.modules.academics.schemas import (
     ScheduleGroupInput, UpdateGroupDTO, EnrichedGroupDTO,
-    ScheduleGroupLevelInput, ProgressGroupLevelInput, ProgressGroupLevelResult,
+    ProgressGroupLevelInput, ProgressGroupLevelResult,
 )
 from app.modules.academics.schemas.grouped_schemas import GroupedItemDTO, GroupedGroupsResult
 from app.modules.academics.helpers.time_helpers import fmt_12h, next_weekday, validate_times
@@ -65,99 +65,6 @@ class GroupService:
             )
             return group, sessions
         # ← SINGLE COMMIT — group + sessions or nothing
-
-    def schedule_group_level(
-        self, data: ScheduleGroupLevelInput
-    ) -> tuple[GroupLevel, list[CourseSession]]:
-        """
-        Schedule a new level for an existing group.
-        Creates GroupLevel record and generates sessions.
-        ATOMIC — all operations in one transaction.
-        """
-        from app.modules.enrollments.models.enrollment_models import Enrollment
-        from sqlmodel import select
-
-        with get_session() as session:
-            # 1. Validate group exists and is active
-            group = session.get(Group, data.group_id)
-            if not group:
-                raise NotFoundError(f"Group {data.group_id} not found.")
-            if group.status != "active":
-                raise BusinessRuleError(f"Group {data.group_id} is not active (status: {group.status})")
-
-            # 2. Check if any levels exist for this group (lazy-create logic)
-            existing_levels = repo.list_group_levels(
-                session, data.group_id, include_inactive=True
-            )
-            if not existing_levels:
-                # No levels exist yet - only allow level 1 to be created first
-                if data.level_number != 1:
-                    raise BusinessRuleError(
-                        f"Group {data.group_id} has no levels. Level 1 must be created first."
-                    )
-                # Level 1 can be created - continue to create it
-            else:
-                # Levels exist - check if this specific level already exists
-                existing_level = repo.get_group_level_by_number(
-                    session, data.group_id, data.level_number
-                )
-                if existing_level:
-                    raise BusinessRuleError(
-                        f"Level {data.level_number} already exists for group {data.group_id}"
-                    )
-
-            # 3. Get course for pricing
-            course = session.get(Course, group.course_id)
-            if not course:
-                raise NotFoundError(f"Course {group.course_id} for group not found.")
-
-            # 4. Determine price (use course default if override is None or 0)
-            price_override = data.price_override
-            if price_override is None or price_override == 0:
-                price_override = None  # Will use course default
-
-            # 5. Determine instructor (use override or group's default)
-            instructor_id = data.instructor_id or group.instructor_id
-
-            # 6. Create GroupLevel record
-            level = GroupLevel(
-                group_id=data.group_id,
-                level_number=data.level_number,
-                course_id=group.course_id,
-                instructor_id=instructor_id,
-                sessions_planned=DEFAULT_SESSIONS_PER_LEVEL,
-                price_override=price_override,
-                status="active",
-            )
-            session.add(level)
-            session.flush()
-
-            # 7. Determine start date
-            start_date = data.start_date
-            if not start_date:
-                start_date = (
-                    next_weekday(date.today(), group.default_day)
-                    if group.default_day else date.today()
-                )
-
-            # 8. Create sessions for this level
-            sessions = create_sessions_in_session(
-                session,
-                group.id,
-                data.level_number,
-                start_date,
-                DEFAULT_SESSIONS_PER_LEVEL,
-                group.default_time_start,
-                group.default_time_end,
-                instructor_id,
-            )
-
-            # 9. Update group's level_number to match the new level
-            group.level_number = data.level_number
-            session.add(group)
-
-            session.commit()
-            return level, sessions
 
     def progress_group_level(
         self, data: ProgressGroupLevelInput

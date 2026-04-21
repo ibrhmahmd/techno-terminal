@@ -51,15 +51,6 @@ class UpdateGroupDTO(BaseModel):
 
 # ── Group Level Management DTOs ───────────────────────────────────────────────
 
-class ScheduleGroupLevelInput(BaseModel):
-    """Input for scheduling a new level for an existing group."""
-    group_id: int
-    level_number: int = 1
-    instructor_id: Optional[int] = None  # Override group's default instructor
-    price_override: Optional[Decimal] = None  # None/0 uses course default price
-    start_date: Optional[date] = None  # Default: next weekday from today
-
-
 class ProgressGroupLevelInput(BaseModel):
     """Input for progressing a group to the next level."""
     group_id: int

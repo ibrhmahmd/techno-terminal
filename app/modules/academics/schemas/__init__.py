@@ -7,7 +7,7 @@ Import from this module or from individual entity schema files.
 from .course_schemas import AddNewCourseInput, UpdateCourseDTO, CourseStatsDTO
 from .group_schemas import (
     ScheduleGroupInput, UpdateGroupDTO, EnrichedGroupDTO, WeekDay,
-    ScheduleGroupLevelInput, ProgressGroupLevelInput, ProgressGroupLevelResult,
+    ProgressGroupLevelInput, ProgressGroupLevelResult,
 )
 from .session_schemas import AddExtraSessionInput, GenerateLevelSessionsInput, UpdateSessionDTO
 
@@ -22,7 +22,6 @@ __all__ = [
     "EnrichedGroupDTO",
     "WeekDay",
     # Group Level Management
-    "ScheduleGroupLevelInput",
     "ProgressGroupLevelInput",
     "ProgressGroupLevelResult",
     # Session

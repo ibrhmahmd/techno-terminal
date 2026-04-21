@@ -5,12 +5,12 @@ Orchestration service for complex group workflows.
 Coordinates GroupService, GroupLevelService, SessionService,
 and EnrollmentMigrationService to perform atomic operations.
 """
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 
 from app.db.connection import get_session
 from app.modules.academics.models import Course, Group, CourseSession
-from app.modules.academics.models.group_level_models import GroupLevel
+from app.modules.academics.models.group_level_models import GroupLevel, GroupCourseHistory
 from app.modules.academics.services.group_level_service import GroupLevelService
 from app.modules.academics.services.session_service import SessionService
 from app.modules.enrollments.services.enrollment_migration_service import (
@@ -164,9 +164,16 @@ class GroupLifecycleService:
                 raise ValueError(f"No active level found for group {data.group_id}")
 
             current_level_number = current_level.level_number
-            new_level_number = current_level_number + 1
+            # Use target_level if provided, otherwise default to next sequential level
+            new_level_number = data.target_level or (current_level_number + 1)
 
-            # Phase 2: Check if next level already exists
+            # Validate: target level must be greater than current level
+            if new_level_number <= current_level_number:
+                raise ValueError(
+                    f"Target level {new_level_number} must be greater than current level {current_level_number}"
+                )
+
+            # Phase 2: Check if target level already exists
             existing_next = repo.get_group_level_by_number(
                 session, data.group_id, new_level_number
             )
@@ -175,15 +182,48 @@ class GroupLifecycleService:
                     f"Level {new_level_number} already exists for group {data.group_id}"
                 )
 
-            # Phase 3: Complete current level
-            repo.complete_group_level(session, data.group_id, current_level_number)
+            # Phase 3: Complete current level (if enabled)
+            if data.complete_current_level:
+                repo.complete_group_level(session, data.group_id, current_level_number)
 
-            # Phase 4: Get group and course for pricing
+            # Phase 4: Get group and handle course override
             group = session.get(Group, data.group_id)
             if not group:
                 raise ValueError(f"Group {data.group_id} not found")
-            
-            course = session.get(Course, group.course_id)
+
+            old_course_id = group.course_id
+            new_course_id = data.course_id or group.course_id
+
+            # Validate course override if provided
+            if data.course_id:
+                new_course = session.get(Course, data.course_id)
+                if not new_course:
+                    raise ValueError(f"Course {data.course_id} not found")
+                # Update group's course_id
+                group.course_id = data.course_id
+                # Log course change in history
+                history_record = GroupCourseHistory(
+                    group_id=data.group_id,
+                    course_id=old_course_id,
+                    notes=f"Course changed from {old_course_id} to {data.course_id} during level progression",
+                    assigned_at=datetime.utcnow(),
+                )
+                session.add(history_record)
+
+            # Handle instructor override
+            if data.instructor_id:
+                # Validate instructor exists (employees table)
+                from app.modules.hr.hr_models import Employee
+                instructor = session.get(Employee, data.instructor_id)
+                if not instructor:
+                    raise ValueError(f"Instructor {data.instructor_id} not found")
+                # Update group's instructor_id
+                group.instructor_id = data.instructor_id
+
+            # Get course for pricing (may be new course if overridden)
+            course = session.get(Course, new_course_id)
+            if not course:
+                raise ValueError(f"Course {new_course_id} not found")
 
             # Phase 5: Create new level
             new_level = GroupLevel(
@@ -199,10 +239,14 @@ class GroupLifecycleService:
             session.flush()
 
             # Phase 6: Generate sessions for new level
-            start_date = (
-                next_weekday(date.today(), group.default_day)
-                if group.default_day else date.today()
-            )
+            # Use session_start_date override if provided, otherwise calculate from group default
+            if data.session_start_date:
+                start_date = data.session_start_date
+            elif group.default_day:
+                start_date = next_weekday(date.today(), group.default_day)
+            else:
+                start_date = date.today()
+
             sessions = self._create_sessions_in_transaction(
                 session=session,
                 group_id=group.id,
@@ -230,11 +274,20 @@ class GroupLifecycleService:
                 )
                 enrollments_migrated = migration_result.count
 
-            # Phase 8: Update group's level_number
+            # Phase 8: Update group's level_number and optional name
             group.level_number = new_level_number
+            if data.group_name:
+                group.name = data.group_name.strip()
             session.add(group)
 
             session.commit()
+
+            # Build appropriate message based on what was done
+            action_desc = "progressed" if data.complete_current_level else "added"
+            migration_desc = f", {enrollments_migrated} enrollments migrated" if data.auto_migrate_enrollments else ", no enrollments migrated"
+            name_desc = ", name updated" if data.group_name else ""
+            course_desc = f", course changed to {new_course_id}" if data.course_id else ""
+            instructor_desc = ", instructor updated" if data.instructor_id else ""
 
             return LevelProgressionResult(
                 old_level_number=current_level_number,
@@ -242,8 +295,8 @@ class GroupLifecycleService:
                 new_level_id=new_level.id,
                 sessions_created=len(sessions),
                 enrollments_migrated=enrollments_migrated,
-                message=f"Group progressed from level {current_level_number} to {new_level_number}. "
-                       f"{len(sessions)} sessions created, {enrollments_migrated} enrollments migrated.",
+                message=f"Group {action_desc} from level {current_level_number} to {new_level_number}. "
+                       f"{len(sessions)} sessions created{migration_desc}{name_desc}{course_desc}{instructor_desc}.",
             )
 
     def add_level_to_existing_group(

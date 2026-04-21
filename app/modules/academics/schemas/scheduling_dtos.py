@@ -71,6 +71,12 @@ class ProgressLevelDTO(BaseModel):
     group_id: int
     price_override: Optional[Decimal] = None
     auto_migrate_enrollments: bool = True
+    target_level: Optional[int] = None  # If None, defaults to current + 1
+    complete_current_level: bool = True  # If False, keeps current level active
+    instructor_id: Optional[int] = None  # Override group's default instructor
+    session_start_date: Optional[date] = None  # Override default session start date
+    course_id: Optional[int] = None  # Override group's course
+    group_name: Optional[str] = None  # Override group name
 
 
 class CreateGroupWithLevelDTO(BaseModel):

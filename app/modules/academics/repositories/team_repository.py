@@ -30,9 +30,9 @@ def get_teams_by_group(
         Tuple of (teams list, total count)
     """
     stmt = select(Team).where(Team.group_id == group_id)
-    
+
     if not include_inactive:
-        stmt = stmt.where(Team.is_deleted == False)
+        stmt = stmt.where(Team.deleted_at.is_(None))
     
     # Get total count
     count_stmt = select(func.count()).select_from(stmt.subquery())
