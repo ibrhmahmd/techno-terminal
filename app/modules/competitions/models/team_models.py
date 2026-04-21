@@ -1,26 +1,29 @@
 from datetime import datetime
-from typing import Any, Optional
+from typing import Optional
+from decimal import Decimal
 
-from sqlalchemy import Column as SAColumn
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import SQLModel, Field
 
 # Ensure related models are loaded so SQLAlchemy can resolve foreign keys
-import app.modules.finance
-import app.modules.crm
-import app.modules.academics.models
-import app.modules.auth
-import app.modules.enrollments.models.enrollment_models
-from app.modules.competitions.models.competition_models import CompetitionCategory
+import app.modules.finance  # noqa: F401
+import app.modules.crm  # noqa: F401
+import app.modules.academics.models  # noqa: F401
 
 
 # --- Team Models ---
 
 class TeamBase(SQLModel):
-    category_id: int = Field(foreign_key="competition_categories.id")
+    competition_id: int = Field(foreign_key="competitions.id")  # Direct FK to competition
     group_id: Optional[int] = Field(default=None, foreign_key="groups.id")
     team_name: str
     coach_id: Optional[int] = Field(default=None, foreign_key="employees.id")
+    # Category/subcategory stored as citext in DB (case-insensitive)
+    category: str  # Required category name
+    subcategory: Optional[str] = None  # Optional subcategory
+    fee: Optional[Decimal] = None  # Academy-set fee for this team
+    placement_rank: Optional[int] = None  # 1=1st place, 2=2nd, etc.
+    placement_label: Optional[str] = None  # "Gold", "3rd Place", etc.
+    notes: Optional[str] = None  # Additional notes
 
 class Team(TeamBase, table=True):
     __tablename__ = "teams"
@@ -28,10 +31,11 @@ class Team(TeamBase, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     created_at: Optional[datetime] = None
-    team_metadata: Optional[dict[str, Any]] = Field(
-        default=None,
-        sa_column=SAColumn("metadata", JSONB),
-    )
+    deleted_at: Optional[datetime] = None  # Soft delete timestamp
+    deleted_by: Optional[int] = Field(default=None, foreign_key="users.id")  # Who soft deleted
+
+    # Use explicit SQLAlchemy column for citext type
+    # Note: The actual citext type is set at the database level via migration
 
 
 # --- Team Member Models ---
