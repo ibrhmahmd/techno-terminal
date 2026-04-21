@@ -37,13 +37,14 @@ Status legend:
 - [x] `GET /api/v1/academics/groups/{group_id}/sessions` -> documented in `academics/groups.md`
 - [x] `DELETE /api/v1/academics/groups/{group_id}` -> documented in `academics/groups.md`
 - [x] `POST /api/v1/academics/groups/{group_id}/generate-sessions` -> documented in `academics/groups.md`
-- [x] `POST /api/v1/academics/groups/{group_id}/schedule-level` -> documented in `academics/groups.md`
 - [x] `POST /api/v1/academics/groups/{group_id}/progress-level` -> documented in `academics/groups.md`
 - [x] `GET /api/v1/academics/groups/search` -> documented in `academics/groups.md`
 - [x] `GET /api/v1/academics/groups/by-type/{group_type}` -> documented in `academics/groups.md`
 - [x] `GET /api/v1/academics/groups/by-course/{course_id}` -> documented in `academics/groups.md`
 
-**Total: 17 endpoints**
+**Total: 16 endpoints**
+
+**Note:** The `POST /api/v1/academics/groups/{group_id}/schedule-level` endpoint has been removed. Use `progress-level` with `auto_migrate_enrollments: false` and `complete_current_level: false` for equivalent functionality.
 
 ---
 

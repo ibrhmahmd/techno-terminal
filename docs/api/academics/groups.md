@@ -91,31 +91,31 @@ Validation:
 - `level_number` required (integer)
 - `start_date` optional (`YYYY-MM-DD`), defaults to current date if omitted
 
-#### ScheduleGroupLevelRequest
-```json
-{
-  "level_number": 2,
-  "instructor_id": 8,
-  "price_override": 1200.00,
-  "start_date": "2026-05-01"
-}
-```
-
-Validation:
-- `level_number` required integer
-- `instructor_id` optional (override group's default instructor)
-- `price_override` optional (None/0 uses course default price)
-- `start_date` optional date, defaults to next weekday from today
-
 #### ProgressGroupLevelRequest
 ```json
 {
-  "price_override": 1200.00
+  "price_override": 1200.00,
+  "target_level": 3,
+  "auto_migrate_enrollments": true,
+  "complete_current_level": true,
+  "instructor_id": 8,
+  "session_start_date": "2026-05-01",
+  "course_id": 5,
+  "group_name": "Advanced Python - Mon 6PM"
 }
 ```
 
 Validation:
 - `price_override` optional (None/0 uses course default price)
+- `target_level` optional (defaults to current + 1; must be > current level)
+- `auto_migrate_enrollments` optional boolean (default: true)
+- `complete_current_level` optional boolean (default: true)
+- `instructor_id` optional (must exist in employees table; updates group and new level)
+- `session_start_date` optional (YYYY-MM-DD format; overrides default session scheduling)
+- `course_id` optional (must exist in courses table; changes group's course and logs to history)
+- `group_name` optional (max 255 chars; updates group name if provided)
+
+**Migration Note:** The `schedule-level` endpoint has been removed. Use `progress-level` with `auto_migrate_enrollments: false` and `complete_current_level: false` for equivalent functionality.
 
 #### CancelLevelInput
 ```json
@@ -441,30 +441,7 @@ Errors:
 
 `409` occurs when sessions already exist for that group level.
 
-### 12) Schedule a new level for a group
-**POST** `/api/v1/academics/groups/{group_id}/schedule-level`  
-Auth: `require_admin`
-
-Path params:
-- `group_id` (integer, required)
-
-Request body:
-- `ScheduleGroupLevelRequest`
-
-Response:
-- `201 Created` -> `ApiResponse<dict>`:
-  - `level_id`, `level_number`, `group_id`
-  - `sessions_created`: count
-  - `sessions`: array of `{id, session_number, date}`
-
-Errors:
-- `401`, `403`, `404`, `422`
-
-Notes:
-- Creates GroupLevel record and generates sessions for the new level.
-- Uses group's default instructor if `instructor_id` not provided.
-
-### 13) Progress group to next level
+### 12) Progress group to next level
 **POST** `/api/v1/academics/groups/{group_id}/progress-level`  
 Auth: `require_admin`
 
@@ -472,7 +449,7 @@ Path params:
 - `group_id` (integer, required)
 
 Request body:
-- `ProgressGroupLevelRequest` (price_override optional)
+- `ProgressGroupLevelRequest` (all fields optional)
 
 Response:
 - `200 OK` -> `ApiResponse<ProgressGroupLevelResult>`
@@ -481,9 +458,15 @@ Errors:
 - `401`, `403`, `404`, `422`
 
 Notes:
-- Completes current level, creates new level, migrates enrollments.
+- Completes current level (unless `complete_current_level: false`), creates target level, migrates enrollments (unless `auto_migrate_enrollments: false`).
+- Default behavior progresses to next sequential level. Use `target_level` to jump to a specific level.
+- Returns `409` if target level already exists.
+- **Course override**: Changes group's `course_id`, creates `GroupCourseHistory` audit record, and uses new course for pricing.
+- **Instructor override**: Updates group's `instructor_id` and assigns to new level. New enrollments use this instructor.
+- **Session start date override**: Sets first session date. Subsequent sessions calculated from this date using group's `default_day` pattern.
+- **Group name override**: Updates group name atomically with level progression.
 
-### 14) Search groups by name
+### 13) Search groups by name
 **GET** `/api/v1/academics/groups/search`  
 Auth: `require_any`
 
@@ -499,7 +482,7 @@ Response:
 Errors:
 - `401`, `403`, `422`
 
-### 15) List groups by type
+### 14) List groups by type
 **GET** `/api/v1/academics/groups/by-type/{group_type}`  
 Auth: `require_any`
 
