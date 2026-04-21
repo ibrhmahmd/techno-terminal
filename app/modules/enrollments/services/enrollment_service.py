@@ -1,4 +1,4 @@
-from typing import Optional, TYPE_CHECKING
+from typing import Any, Optional, TYPE_CHECKING
 from sqlalchemy.exc import IntegrityError
 from fastapi import BackgroundTasks
 from app.db.connection import get_session
@@ -92,7 +92,9 @@ class EnrollmentService:
                     old_status = student.status
                     student.status = StudentStatus.ACTIVE
                     student.is_active = True
-                    session.add(student)
+                    # Use merge to handle cross-session object
+                    merged_student = session.merge(student)
+                    session.add(merged_student)
 
                     # Log status change activity
                     if self._activity_svc:
@@ -145,7 +147,9 @@ class EnrollmentService:
 
 
     def transfer_student(
-        self, data: TransferStudentInput
+        self,
+        data: TransferStudentInput,
+        background_tasks: Optional[Any] = None,
     ) -> EnrollmentDTO:
         target_group = acad_srv.get_group_by_id(data.to_group_id)
         if not target_group:
@@ -189,14 +193,36 @@ class EnrollmentService:
                     )
                 )
 
+            # Trigger transfer notification
+            if self._notification_svc and background_tasks:
+                self._notification_svc.notify_enrollment_transferred(
+                    student_id=source.student_id,
+                    from_enrollment_id=data.from_enrollment_id,
+                    to_enrollment_id=created.id,
+                    from_group_id=source.group_id,
+                    to_group_id=data.to_group_id,
+                    transferred_by_user_id=data.created_by,
+                    background_tasks=background_tasks,
+                )
+
             return EnrollmentDTO.model_validate(created)
 
 
-    def drop_enrollment(self, enrollment_id: int, performed_by: Optional[int] = None) -> EnrollmentDTO:
+    def drop_enrollment(
+        self,
+        enrollment_id: int,
+        performed_by: Optional[int] = None,
+        reason: Optional[str] = None,
+        background_tasks: Optional[Any] = None,
+    ) -> EnrollmentDTO:
         with get_session() as session:
             enrollment = repo.get_enrollment(session, enrollment_id)
             if not enrollment:
                 raise NotFoundError(f"Enrollment {enrollment_id} not found.")
+
+            group_id = enrollment.group_id  # Save before update
+            student_id = enrollment.student_id  # Save before update
+
             updated = repo.update_enrollment_status(session, enrollment_id, "dropped")
 
             # Log enrollment change activity
@@ -211,14 +237,35 @@ class EnrollmentService:
                     )
                 )
 
+            # Trigger drop notification
+            if self._notification_svc and background_tasks:
+                self._notification_svc.notify_enrollment_dropped(
+                    student_id=student_id,
+                    enrollment_id=enrollment_id,
+                    group_id=group_id,
+                    reason=reason,
+                    dropped_by_user_id=performed_by,
+                    background_tasks=background_tasks,
+                )
+
             return EnrollmentDTO.model_validate(updated)
 
 
-    def complete_enrollment(self, enrollment_id: int, performed_by: Optional[int] = None) -> EnrollmentDTO:
+    def complete_enrollment(
+        self,
+        enrollment_id: int,
+        performed_by: Optional[int] = None,
+        background_tasks: Optional[Any] = None,
+    ) -> EnrollmentDTO:
         with get_session() as session:
             enrollment = repo.get_enrollment(session, enrollment_id)
             if not enrollment:
                 raise NotFoundError(f"Enrollment {enrollment_id} not found.")
+
+            group_id = enrollment.group_id  # Save before update
+            student_id = enrollment.student_id  # Save before update
+            level_number = enrollment.level_number  # Save before update
+
             updated = repo.update_enrollment_status(session, enrollment_id, "completed")
 
             # Log enrollment change activity
@@ -231,6 +278,17 @@ class EnrollmentService:
                         action="completed",
                         performed_by=performed_by,
                     )
+                )
+
+            # Trigger completion notification
+            if self._notification_svc and background_tasks:
+                self._notification_svc.notify_enrollment_completed(
+                    student_id=student_id,
+                    enrollment_id=enrollment_id,
+                    group_id=group_id,
+                    level_number=level_number,
+                    completion_date=datetime.utcnow(),
+                    background_tasks=background_tasks,
                 )
 
             return EnrollmentDTO.model_validate(updated)

@@ -116,7 +116,19 @@ class StudentCrudService:
             raise NotFoundError(f"Student with ID {student_id} not found.")
         
         old_status = student.status
+        
+        # Only proceed if status actually changed
+        if old_status == new_status:
+            return student
+        
         student.status = new_status
+        
+        # Sync is_active flag with status
+        if new_status == StudentStatus.ACTIVE:
+            student.is_active = True
+        elif new_status == StudentStatus.INACTIVE:
+            student.is_active = False
+        
         apply_update_audit(student)
         
         # Log status change
@@ -129,12 +141,12 @@ class StudentCrudService:
         )
         
         # Log status change activity
-        if student.status != new_status and self._activity_svc:
+        if self._activity_svc:
             from app.modules.crm.interfaces.dtos.log_status_change_dto import LogStatusChangeDTO
             self._activity_svc.log_status_change(
                 LogStatusChangeDTO(
                     student_id=student.id,
-                    old_status=student.status.value if hasattr(student.status, 'value') else str(student.status),
+                    old_status=old_status.value if hasattr(old_status, 'value') else str(old_status),
                     new_status=new_status.value if hasattr(new_status, 'value') else str(new_status),
                     performed_by=changed_by_user_id,
                 )

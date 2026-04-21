@@ -122,7 +122,7 @@ class ActivityRepository(IActivityRepository):
                 al.meta->>'old_status' as previous_status,
                 al.meta->>'transfer_reason' as transfer_reason,
                 al.performed_by,
-                u.full_name as performed_by_name,
+                u.username as performed_by_name,
                 al.description as notes
             FROM student_activity_log al
             LEFT JOIN users u ON u.id = al.performed_by
@@ -187,7 +187,7 @@ class ActivityRepository(IActivityRepository):
                 COALESCE(al.meta->>'new_status', al.activity_subtype) as new_status,
                 al.created_at as changed_at,
                 al.performed_by as changed_by,
-                u.full_name as changed_by_name,
+                u.username as changed_by_name,
                 al.meta->>'reason' as reason,
                 al.description as notes
             FROM student_activity_log al
@@ -252,7 +252,7 @@ class ActivityRepository(IActivityRepository):
                 (al.meta->>'result_position')::int as result_position,
                 al.meta->>'result_notes' as result_notes,
                 al.performed_by,
-                u.full_name as performed_by_name,
+                u.username as performed_by_name,
                 al.created_at
             FROM student_activity_log al
             LEFT JOIN users u ON u.id = al.performed_by

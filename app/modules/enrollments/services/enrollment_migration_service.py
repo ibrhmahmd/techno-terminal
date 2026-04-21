@@ -5,8 +5,7 @@ Service for handling enrollment transitions between group levels.
 Manages the migration of active enrollments when groups progress.
 """
 from datetime import datetime
-from decimal import Decimal
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from sqlmodel import Session, select
 
@@ -20,10 +19,16 @@ from app.modules.academics.schemas.scheduling_dtos import (
 
 
 class EnrollmentMigrationService:
-    """
-    Handles enrollment migrations between levels.
-    Responsible for completing old enrollments and creating new ones.
-    """
+    """Handles enrollment migrations between levels."""
+
+    def __init__(self, notification_svc: Optional[Any] = None):
+        """
+        Initialize the migration service.
+
+        Args:
+            notification_svc: Optional notification service for sending alerts
+        """
+        self._notification_svc = notification_svc
 
     def migrate_enrollments_to_next_level(
         self,
@@ -72,7 +77,6 @@ class EnrollmentMigrationService:
         for enrollment in active_enrollments:
             # Mark old enrollment as completed
             enrollment.status = "completed"
-            enrollment.completed_at = datetime.utcnow()
             enrollment.updated_at = datetime.utcnow()
             session.add(enrollment)
             migrated_ids.append(enrollment.id)
@@ -100,6 +104,18 @@ class EnrollmentMigrationService:
             session.add(new_enrollment)
             session.flush()  # Get the new enrollment ID
             new_enrollment_ids.append(new_enrollment.id)
+            
+            # TODO: Trigger level progression notification
+            # Requires background_tasks from router layer
+            # if self._notification_svc and background_tasks:
+            #     self._notification_svc.notify_level_progression(
+            #         student_id=enrollment.student_id,
+            #         old_level=data.from_level,
+            #         new_level=data.to_level,
+            #         group_id=data.group_id,
+            #         enrollment_id=new_enrollment.id,
+            #         background_tasks=background_tasks,
+            #     )
         
         return EnrollmentMigrationResult(
             count=len(active_enrollments),
@@ -149,7 +165,20 @@ class EnrollmentMigrationService:
                 enrollment.enrollment_metadata["completion_notes"] = completion_notes
             session.add(enrollment)
             completed_ids.append(enrollment.id)
+            
+            # TODO: Trigger enrollment completed notification
+            # Requires background_tasks from router layer
+            # if self._notification_svc and background_tasks:
+            #     self._notification_svc.notify_enrollment_completed(
+            #         student_id=enrollment.student_id,
+            #         enrollment_id=enrollment.id,
+            #         group_id=group_id,
+            #         level_number=level_number,
+            #         completion_date=datetime.utcnow(),
+            #         background_tasks=background_tasks,
+            #     )
         
+        session.commit()
         return completed_ids
 
     def get_active_enrollments_for_level(
