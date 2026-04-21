@@ -6,6 +6,7 @@ Repository for admin notification settings and additional recipients.
 from typing import Optional, List
 from datetime import datetime
 
+from sqlalchemy import text
 from sqlmodel import Session, select
 
 from app.modules.auth.models.auth_models import User
@@ -26,9 +27,9 @@ class AdminSettingsRepository:
             # Using text() for now
         )
         result = self._session.exec(
-            f"""SELECT notification_type, is_enabled, channel 
+            text(f"""SELECT notification_type, is_enabled, channel 
                 FROM admin_notification_settings 
-                WHERE admin_id = {admin_id}"""
+                WHERE admin_id = {admin_id}""")
         ).all()
         return [
             {"notification_type": r[0], "is_enabled": r[1], "channel": r[2]}
@@ -38,9 +39,9 @@ class AdminSettingsRepository:
     def get_setting(self, admin_id: int, notification_type: str) -> Optional[dict]:
         """Get specific setting for an admin."""
         result = self._session.exec(
-            f"""SELECT notification_type, is_enabled, channel 
+            text(f"""SELECT notification_type, is_enabled, channel 
                 FROM admin_notification_settings 
-                WHERE admin_id = {admin_id} AND notification_type = '{notification_type}'"""
+                WHERE admin_id = {admin_id} AND notification_type = '{notification_type}'""")
         ).first()
         if result:
             return {"notification_type": result[0], "is_enabled": result[1], "channel": result[2]}
@@ -53,15 +54,15 @@ class AdminSettingsRepository:
         existing = self.get_setting(admin_id, notification_type)
         if existing:
             self._session.exec(
-                f"""UPDATE admin_notification_settings 
+                text(f"""UPDATE admin_notification_settings 
                     SET is_enabled = {is_enabled}, channel = '{channel}', updated_at = NOW()
-                    WHERE admin_id = {admin_id} AND notification_type = '{notification_type}'"""
+                    WHERE admin_id = {admin_id} AND notification_type = '{notification_type}'""")
             )
         else:
             self._session.exec(
-                f"""INSERT INTO admin_notification_settings 
+                text(f"""INSERT INTO admin_notification_settings 
                     (admin_id, notification_type, is_enabled, channel)
-                    VALUES ({admin_id}, '{notification_type}', {is_enabled}, '{channel}')"""
+                    VALUES ({admin_id}, '{notification_type}', {is_enabled}, '{channel}')""")
             )
         self._session.commit()
 
@@ -80,23 +81,22 @@ class AdminSettingsRepository:
                 self.upsert_setting(admin_id, notif_type, True, "EMAIL")
 
     def get_enabled_admins_for_notification(self, notification_type: str) -> List[tuple[int, str]]:
-        """Get list of (admin_id, email) for admins who have this notification enabled."""
-        result = self._session.exec(
-            f"""SELECT a.admin_id, u.email 
-                FROM admin_notification_settings a
-                JOIN users u ON a.admin_id = u.id
-                WHERE a.notification_type = '{notification_type}' AND a.is_enabled = true"""
-        ).all()
-        return [(r[0], r[1]) for r in result if r[1]]
+        """Get list of (admin_id, email) for admins who have this notification enabled.
+        
+        NOTE: Currently returns empty list - all notifications go through
+        notification_additional_recipients table only.
+        """
+        # Return empty list - we don't use User/Employee emails anymore
+        # All recipients are managed through notification_additional_recipients
+        return []
 
     # ── Additional Recipients ────────────────────────────────────────────
 
-    def get_additional_recipients(self, admin_id: int) -> List[dict]:
-        """Get all additional recipients for an admin."""
+    def get_additional_recipients(self, admin_id: int = None) -> List[dict]:
+        """Get all additional recipients (global - ignores admin_id)."""
         result = self._session.exec(
-            f"""SELECT id, email, label, notification_types, is_active
-                FROM notification_additional_recipients
-                WHERE admin_id = {admin_id}"""
+            text("""SELECT id, email, label, notification_types, is_active
+                FROM notification_additional_recipients""")
         ).all()
         return [
             {
@@ -109,9 +109,9 @@ class AdminSettingsRepository:
     def get_recipient(self, recipient_id: int) -> Optional[dict]:
         """Get specific recipient."""
         result = self._session.exec(
-            f"""SELECT id, email, label, notification_types, is_active
+            text(f"""SELECT id, email, label, notification_types, is_active
                 FROM notification_additional_recipients
-                WHERE id = {recipient_id}"""
+                WHERE id = {recipient_id}""")
         ).first()
         if result:
             return {
@@ -129,10 +129,10 @@ class AdminSettingsRepository:
         label_str = "NULL" if label is None else f"'{label}'"
         
         result = self._session.exec(
-            f"""INSERT INTO notification_additional_recipients 
+            text(f"""INSERT INTO notification_additional_recipients 
                 (admin_id, email, label, notification_types)
                 VALUES ({admin_id}, '{email}', {label_str}, {types_str})
-                RETURNING id"""
+                RETURNING id""")
         ).first()
         self._session.commit()
         return result[0] if result else 0
@@ -159,9 +159,9 @@ class AdminSettingsRepository:
         updates.append("updated_at = NOW()")
         
         self._session.exec(
-            f"""UPDATE notification_additional_recipients
+            text(f"""UPDATE notification_additional_recipients
                 SET {', '.join(updates)}
-                WHERE id = {recipient_id}"""
+                WHERE id = {recipient_id}""")
         )
         self._session.commit()
         return True
@@ -169,20 +169,20 @@ class AdminSettingsRepository:
     def delete_recipient(self, recipient_id: int) -> bool:
         """Delete recipient. Returns True if found."""
         result = self._session.exec(
-            f"DELETE FROM notification_additional_recipients WHERE id = {recipient_id}"
+            text(f"DELETE FROM notification_additional_recipients WHERE id = {recipient_id}")
         )
         self._session.commit()
         return result.rowcount > 0
 
     def get_active_additional_recipients(
-        self, admin_id: int, notification_type: str
+        self, admin_id: int = None, notification_type: str = None
     ) -> List[tuple[str, Optional[str]]]:
-        """Get (email, label) for active recipients who should receive this notification."""
+        """Get (email, label) for active recipients who should receive this notification (global)."""
+        # Both parameters ignored - returns all global active recipients for the notification type
         result = self._session.exec(
-            f"""SELECT email, label
+            text(f"""SELECT email, label
                 FROM notification_additional_recipients
-                WHERE admin_id = {admin_id} 
-                AND is_active = true
-                AND (notification_types IS NULL OR '{notification_type}' = ANY(notification_types))"""
+                WHERE is_active = true
+                AND (notification_types IS NULL OR '{notification_type}' = ANY(notification_types))""")
         ).all()
         return [(r[0], r[1]) for r in result]

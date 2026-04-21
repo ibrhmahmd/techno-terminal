@@ -25,6 +25,8 @@ from .log_competition_registration_dto import LogCompetitionRegistrationDTO
 from .enrollment_history_dto import EnrollmentHistoryDTO
 from .status_history_dto import StatusHistoryDTO
 from .competition_history_dto import CompetitionHistoryDTO
+from .student_filter_dto import StudentFilterDTO
+from .student_filter_result_dto import StudentFilterResultDTO, StudentFilterItemDTO
 
 __all__ = [
     # Student DTOs
@@ -34,6 +36,9 @@ __all__ = [
     "StudentBalanceSummaryDTO",
     "StudentStatusSummaryDTO",
     "AttendanceStatsDTO",
+    "StudentFilterDTO",
+    "StudentFilterResultDTO",
+    "StudentFilterItemDTO",
     # Activity DTOs
     "ActivityLogDTO",
     "TimelineFilterDTO",

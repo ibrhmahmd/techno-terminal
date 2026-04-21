@@ -24,10 +24,13 @@ app/modules/notifications/
 │   └── i_notification_repository.py      # Protocol contracts
 ├── models/
 │   ├── notification_template.py           # Template entity
-│   ├── notification_log.py                # Audit log entity
-│   └── notification_subscriber.py         # Report subscriber entity
+│   └── notification_log.py                # Audit log entity
+├── schemas/
+│   ├── admin_settings_dto.py              # Admin settings DTOs
+│   └── template_dto.py                    # Template DTOs
 ├── repositories/
-│   └── notification_repository.py         # Data access layer
+│   ├── notification_repository.py         # Data access layer
+│   └── admin_settings_repository.py       # Admin settings data access
 ├── dispatchers/
 │   ├── i_dispatcher.py                    # Abstract dispatcher interface
 │   ├── email_dispatcher.py                # Gmail SMTP implementation
@@ -116,15 +119,6 @@ erDiagram
         datetime sent_at
     }
     
-    NOTIFICATION_SUBSCRIBER {
-        int id PK
-        int employee_id FK
-        string report_type "DAILY|WEEKLY|MONTHLY"
-        string channel "EMAIL|WHATSAPP"
-        boolean is_active
-        datetime created_at
-    }
-    
     ADMIN_NOTIFICATION_SETTINGS {
         int id PK
         int admin_id FK
@@ -136,7 +130,19 @@ erDiagram
     }
     
     USERS ||--o{ ADMIN_NOTIFICATION_SETTINGS : configures
-    EMPLOYEE ||--o{ NOTIFICATION_SUBSCRIBER : subscribes
+    
+    NOTIFICATION_ADDITIONAL_RECIPIENTS {
+        int id PK
+        int admin_id FK
+        string email
+        string label
+        string[] notification_types
+        boolean is_active
+        datetime created_at
+        datetime updated_at
+    }
+    
+    ADMIN_NOTIFICATION_SETTINGS ||--o{ NOTIFICATION_ADDITIONAL_RECIPIENTS : has
 ```
 
 ### Template Variables
@@ -485,11 +491,20 @@ flowchart TD
 | `app/modules/notifications/services/report_notifications.py` | Scheduled reports | `ReportNotificationService` - 3 report types + bulk |
 | `app/modules/notifications/services/competition_notifications.py` | Competition events | `CompetitionNotificationService` - 3 notification types (NEW) |
 
+### API Routers
+
+| File | Purpose | Base Path |
+|------|---------|-----------|
+| `app/api/routers/notifications/admin_settings_router.py` | Admin settings & additional recipients | `/api/v1/notifications/admin` |
+| `app/api/routers/notifications/templates_router.py` | Template CRUD operations | `/api/v1/notifications/templates` |
+| `app/api/routers/notifications/bulk_router.py` | Bulk messaging | `/api/v1/notifications/bulk` |
+| `app/api/routers/notifications/notifications_router.py` | Notification logs & history | `/api/v1/notifications/logs` |
+
 ### Infrastructure Files
 
 | File | Purpose |
 |------|---------|
-| `app/modules/notifications/repositories/notification_repository.py` | Data access for templates, logs, subscribers |
+| `app/modules/notifications/repositories/notification_repository.py` | Data access for templates and logs |
 | `app/modules/notifications/dispatchers/email_dispatcher.py` | Gmail SMTP implementation |
 | `app/modules/notifications/dispatchers/whatsapp_dispatcher.py` | Twilio WhatsApp (currently disabled) |
 | `app/modules/notifications/dispatchers/i_dispatcher.py` | Protocol interface for dispatchers |
@@ -501,7 +516,6 @@ flowchart TD
 |------|--------|
 | `app/modules/notifications/models/notification_template.py` | `NotificationTemplate` |
 | `app/modules/notifications/models/notification_log.py` | `NotificationLog` |
-| `app/modules/notifications/models/notification_subscriber.py` | `NotificationSubscriber` |
 
 ### Database Migrations
 
@@ -509,7 +523,9 @@ flowchart TD
 |------|---------|
 | `db/migrations/020_notification_templates.sql` | Initial templates (enrollment, payment, reports) |
 | `db/migrations/034_notification_templates.sql` | Extended templates |
-| `db/migrations/036_admin_notification_settings.sql` | Admin preferences table (future feature) |
+| `db/migrations/038_admin_notification_settings.sql` | Admin notification preferences table |
+| `db/migrations/039_notification_additional_recipients.sql` | Additional email recipients table |
+| `db/migrations/040_competition_templates.sql` | Competition notification templates |
 
 ### Scheduler
 

@@ -29,6 +29,10 @@ router = APIRouter(prefix="/admin", tags=["Admin Notification Settings"])
 
 # ── Dependencies ────────────────────────────────────────────────────────
 
+# System-wide admin ID for global notification settings
+# All admins share the same settings (no per-admin settings)
+SYSTEM_ADMIN_ID = 1
+
 def get_settings_repo():
     with get_session() as session:
         yield AdminSettingsRepository(session)
@@ -64,11 +68,11 @@ def get_my_settings(
     repo: AdminSettingsRepository = Depends(get_settings_repo),
 ):
     """Get current admin's notification settings."""
-    # Initialize defaults if no settings exist
-    settings = repo.get_admin_settings(current_user.id)
+    # Initialize defaults if no settings exist (global settings for all admins)
+    settings = repo.get_admin_settings(SYSTEM_ADMIN_ID)
     if not settings:
-        repo.initialize_default_settings(current_user.id)
-        settings = repo.get_admin_settings(current_user.id)
+        repo.initialize_default_settings(SYSTEM_ADMIN_ID)
+        settings = repo.get_admin_settings(SYSTEM_ADMIN_ID)
     
     # Build response with descriptions
     settings_with_desc = [
@@ -81,8 +85,8 @@ def get_my_settings(
         for s in settings
     ]
     
-    # Get additional recipients
-    recipients = repo.get_additional_recipients(current_user.id)
+    # Get additional recipients (global - all admins share same recipients)
+    recipients = repo.get_additional_recipients()
     recipients_dto = [
         AdditionalRecipientDTO(
             id=r["id"],
@@ -96,7 +100,7 @@ def get_my_settings(
     
     return ApiResponse(
         data=AdminSettingsResponse(
-            admin_id=current_user.id,
+            admin_id=SYSTEM_ADMIN_ID,
             settings=settings_with_desc,
             additional_recipients=recipients_dto,
         )
@@ -114,9 +118,9 @@ def update_my_settings(
     current_user: User = Depends(require_admin),
     repo: AdminSettingsRepository = Depends(get_settings_repo),
 ):
-    """Update current admin's notification settings."""
+    """Update global notification settings (shared by all admins)."""
     for notification_type, is_enabled in request.settings.items():
-        repo.upsert_setting(current_user.id, notification_type, is_enabled)
+        repo.upsert_setting(SYSTEM_ADMIN_ID, notification_type, is_enabled)
     
     return ApiResponse(data=request.settings)
 
@@ -132,7 +136,7 @@ def get_notification_setting(
     repo: AdminSettingsRepository = Depends(get_settings_repo),
 ):
     """Get specific notification type setting."""
-    setting = repo.get_setting(current_user.id, notification_type)
+    setting = repo.get_setting(SYSTEM_ADMIN_ID, notification_type)
     if not setting:
         raise HTTPException(status_code=404, detail="Notification setting not found")
     
@@ -158,7 +162,7 @@ def toggle_notification(
     repo: AdminSettingsRepository = Depends(get_settings_repo),
 ):
     """Enable or disable specific notification type."""
-    repo.upsert_setting(current_user.id, notification_type, request.is_enabled)
+    repo.upsert_setting(SYSTEM_ADMIN_ID, notification_type, request.is_enabled)
     
     return ApiResponse(
         data=AdminNotificationSettingDTO(
@@ -181,8 +185,8 @@ def list_additional_recipients(
     current_user: User = Depends(require_admin),
     repo: AdminSettingsRepository = Depends(get_settings_repo),
 ):
-    """List all additional email recipients for current admin."""
-    recipients = repo.get_additional_recipients(current_user.id)
+    """List all additional email recipients (global)."""
+    recipients = repo.get_additional_recipients()
     return ApiResponse(
         data=[
             AdditionalRecipientDTO(
@@ -208,9 +212,9 @@ def add_additional_recipient(
     current_user: User = Depends(require_admin),
     repo: AdminSettingsRepository = Depends(get_settings_repo),
 ):
-    """Add new additional email recipient."""
+    """Add new additional email recipient (global)."""
     recipient_id = repo.add_recipient(
-        admin_id=current_user.id,
+        admin_id=SYSTEM_ADMIN_ID,
         email=request.email,
         label=request.label,
         notification_types=request.notification_types,

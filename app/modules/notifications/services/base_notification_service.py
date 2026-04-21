@@ -68,56 +68,28 @@ class BaseNotificationService:
     ) -> list[tuple[str, int, str]]:
         """
         Returns list of (email, recipient_id, recipient_type) tuples.
-        Filters by admin settings - only returns admins who have this notification enabled.
-        Also includes additional recipients (non-admins).
-        recipient_type: 'ADMIN' or 'ADDITIONAL'
+        Uses only notification_additional_recipients table (global recipients).
+        recipient_type: 'ADDITIONAL' (all recipients are treated as additional)
         """
-        from app.modules.auth.models.auth_models import User
-        
+        from sqlalchemy import text
+
         recipients = []
-        
-        # 1. Get admins who have this notification enabled
-        # Check if admin_notification_settings table exists and has settings
+
+        # Get all active additional recipients for this notification type (global - no admin_id filter)
         try:
-            stmt = f"""
-                SELECT u.id, u.email 
-                FROM users u
-                LEFT JOIN admin_notification_settings ans ON u.id = ans.admin_id 
-                    AND ans.notification_type = '{notification_type}'
-                WHERE u.role = 'admin'
-                AND (ans.is_enabled IS NULL OR ans.is_enabled = true)
-            """
+            stmt = text(f"""
+                SELECT id, email
+                FROM notification_additional_recipients
+                WHERE is_active = true
+                AND (notification_types IS NULL OR '{notification_type}' = ANY(notification_types))
+            """)
             result = self._repo._session.exec(stmt).all()
-            for admin_id, email in result:
+            for recipient_id, email in result:
                 if email:
-                    recipients.append((email, admin_id, "ADMIN"))
-        except Exception:
-            # Fallback: if table doesn't exist or error, return all admins
-            stmt = select(User).where(User.role == "admin")
-            admins = self._repo._session.exec(stmt).all()
-            for admin in admins:
-                if admin.email:
-                    recipients.append((admin.email, admin.id, "ADMIN"))
-        
-        # 2. Get additional recipients for enabled admins
-        # For each admin that has this notification enabled, get their additional recipients
-        try:
-            for admin_email, admin_id, _ in recipients:
-                stmt_additional = f"""
-                    SELECT email
-                    FROM notification_additional_recipients
-                    WHERE admin_id = {admin_id}
-                    AND is_active = true
-                    AND (notification_types IS NULL OR '{notification_type}' = ANY(notification_types))
-                """
-                additional = self._repo._session.exec(stmt_additional).all()
-                for (email,) in additional:
-                    if email and email not in [r[0] for r in recipients]:
-                        recipients.append((email, admin_id, "ADDITIONAL"))
-        except Exception:
-            # Ignore errors if table doesn't exist
-            pass
-        
+                    recipients.append((email, recipient_id, "ADDITIONAL"))
+        except Exception as e:
+            logger.warning(f"Could not fetch additional recipients: {e}")
+
         return recipients
     
     def _render_template(self, template: NotificationTemplate, variables: dict) -> str:
