@@ -326,8 +326,8 @@ class SearchService:
             WHERE s.deleted_at IS NULL
               AND (:min_age IS NULL OR s.date_of_birth <= :max_dob)
               AND (:max_age IS NULL OR s.date_of_birth >= :min_dob)
-              AND (:statuses_empty OR s.status = ANY(:statuses))
-              AND (:genders_empty OR s.gender = ANY(:genders))
+              AND (:statuses_empty OR s.status::text = ANY(:statuses))
+              AND (:genders_empty OR s.gender::text = ANY(:genders))
               {instructor_filter_sql}
               {day_filter_sql}
               {course_filter_sql}
