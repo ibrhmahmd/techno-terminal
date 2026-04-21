@@ -10,6 +10,7 @@ Role policy:
   READ  -> require_any
   WRITE -> require_admin
 """
+from typing import Optional
 from fastapi import APIRouter, Depends, Query, BackgroundTasks
 
 from app.api.schemas.common import ApiResponse
@@ -55,10 +56,17 @@ def enroll_student(
 )
 def drop_enrollment(
     enrollment_id: int,
+    background_tasks: BackgroundTasks,
+    reason: Optional[str] = None,
     _user: User = Depends(require_admin),
     svc: EnrollmentService = Depends(get_enrollment_service),
 ):
-    enr = svc.drop_enrollment(enrollment_id)
+    enr = svc.drop_enrollment(
+        enrollment_id,
+        performed_by=_user.id,
+        reason=reason,
+        background_tasks=background_tasks,
+    )
     return ApiResponse(
         data=EnrollmentPublic.model_validate(enr),
         message="Enrollment dropped successfully."
@@ -73,11 +81,12 @@ def drop_enrollment(
 )
 def transfer_student(
     body: TransferStudentInput,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(require_admin),
     svc: EnrollmentService = Depends(get_enrollment_service),
 ):
     transfer_data = body.model_copy(update={"created_by": current_user.id})
-    new_enr = svc.transfer_student(transfer_data)
+    new_enr = svc.transfer_student(transfer_data, background_tasks=background_tasks)
     
     return ApiResponse(
         data=EnrollmentPublic.model_validate(new_enr),

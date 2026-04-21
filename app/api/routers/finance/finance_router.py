@@ -17,7 +17,7 @@ Tag:    Finance
 from decimal import Decimal
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, status, BackgroundTasks
+from fastapi import APIRouter, Depends, Query, status, BackgroundTasks, HTTPException
 
 from app.api.schemas.common import ApiResponse, PaginatedResponse
 from app.api.schemas.finance.receipt import (
@@ -32,6 +32,11 @@ from app.api.schemas.finance.balance import (
     EnrollmentBalanceResponse,
     UnpaidEnrollmentItem,
 )
+from app.api.schemas.finance.payment import (
+    PaymentDetailsResponse,
+    SendReceiptRequest,
+    SendReceiptResponse,
+)
 from app.api.dependencies import (
     require_admin,
     require_any,
@@ -39,7 +44,9 @@ from app.api.dependencies import (
     get_refund_service,
     get_balance_service,
     get_reporting_service,
+    get_student_payment_service,
 )
+from app.modules.finance.services.student_payment_service import StudentPaymentService
 from app.modules.finance.services.receipt_service import ReceiptService
 from app.modules.finance.services.refund_service import RefundService
 from app.modules.finance.services.balance_service import BalanceService
@@ -318,3 +325,123 @@ def get_unpaid_enrollments(
         skip=skip,
         limit=limit,
     )
+
+
+@router.get(
+    "/finance/payments/{payment_id}",
+    response_model=ApiResponse[PaymentDetailsResponse],
+    summary="Get payment details",
+    description="Get comprehensive payment information including receipt, enrollment, course, and parent details."
+)
+def get_payment_details(
+    payment_id: int,
+    _user: User = Depends(require_any),
+    svc: StudentPaymentService = Depends(get_student_payment_service),
+):
+    """
+    Get detailed payment information.
+    
+    Returns:
+    - Payment fields (amount, type, discount, notes)
+    - Receipt information (number, date, method, issued by)
+    - Enrollment, group, course details
+    - Instructor name
+    - Student snapshot at time of payment
+    - Parent contact information
+    """
+    try:
+        result = svc.get_payment_details(payment_id)
+        
+        # Import nested schemas
+        from app.api.schemas.finance.payment import ReceiptDetails, EnrollmentInfo, StudentSnapshot, ParentInfo
+        
+        # Map to response schema
+        return ApiResponse(
+            data=PaymentDetailsResponse(
+                id=result.payment_id,
+                student_id=result.student_id,
+                amount=result.amount,
+                payment_type=result.payment_type,
+                transaction_type=result.transaction_type,
+                discount_amount=result.discount_amount,
+                notes=result.notes,
+                created_at=result.created_at,
+                receipt=ReceiptDetails(
+                    receipt_id=result.receipt_id,
+                    receipt_number=result.receipt_number,
+                    issued_date=result.paid_at,
+                    payment_method=result.payment_method,
+                    issued_by=result.received_by_name,
+                    notes=result.receipt_notes,
+                ),
+                enrollment=EnrollmentInfo(
+                    enrollment_id=result.enrollment_id,
+                    group_id=result.group_id,
+                    group_name=result.group_name,
+                    course_name=result.course_name,
+                    level_number=result.level_number,
+                    instructor_id=result.instructor_id,
+                    instructor_name=result.instructor_name,
+                ),
+                student=StudentSnapshot(
+                    full_name=result.student_name,
+                    phone=result.student_phone,
+                ),
+                parent=ParentInfo(
+                    parent_id=result.parent_id,
+                    full_name=result.parent_name,
+                    phone=result.parent_phone,
+                ),
+            )
+        )
+    except Exception as e:
+        from app.shared.exceptions import NotFoundError
+        if isinstance(e, NotFoundError):
+            raise HTTPException(status_code=404, detail=str(e))
+        raise
+
+
+@router.post(
+    "/finance/payments/{payment_id}/send-receipt",
+    response_model=ApiResponse[SendReceiptResponse],
+    summary="Send receipt to parent",
+    description="Send the receipt PDF to the student's primary parent via WhatsApp or Email."
+)
+def send_payment_receipt(
+    payment_id: int,
+    body: SendReceiptRequest,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(require_admin),
+    svc: StudentPaymentService = Depends(get_student_payment_service),
+):
+    """
+    Send the receipt to the student's primary parent.
+    
+    - Validates payment exists and has associated receipt
+    - Determines recipient contact based on method (whatsapp/email)
+    - Queues the notification via background tasks
+    - Returns success/failure with contact used
+    """
+    try:
+        result = svc.send_receipt(
+            payment_id=payment_id,
+            method=body.method,
+            background_tasks=background_tasks,
+            sent_by_user_id=current_user.id,
+        )
+        
+        return ApiResponse(
+            data=SendReceiptResponse(
+                success=result.success,
+                message=result.message,
+                receipt_id=result.receipt_id,
+                recipient_contact=result.recipient_contact,
+                sent_at=result.sent_at,
+            ),
+            message=result.message,
+        )
+    except Exception as e:
+        from app.shared.exceptions import NotFoundError
+        if isinstance(e, NotFoundError):
+            raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))

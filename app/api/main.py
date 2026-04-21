@@ -12,7 +12,7 @@ from app.api.middleware.logging_middleware import logging_middleware
 from app.api.routers import auth_router
 from app.api.routers import attendance_router
 from app.api.routers import enrollments_router
-from app.api.routers import competitions_router
+from app.api.routers.competitions import competitions_router, teams_router
 from app.api.routers import hr_router
 from app.api.routers.crm import (
     students_router,
@@ -101,7 +101,9 @@ def create_app() -> FastAPI:
     # Student History & Activity
     app.include_router(students_history_router,     prefix="/api/v1", tags=["Student History"])
     # Phase 5.5 — Auxiliary
-    app.include_router(competitions_router.router, prefix="/api/v1", tags=["Competitions"])
+    # Competitions (split into competitions and teams)
+    app.include_router(competitions_router, prefix="/api/v1", tags=["Competitions"])
+    app.include_router(teams_router, prefix="/api/v1", tags=["Teams"])
     app.include_router(hr_router.router,           prefix="/api/v1", tags=["HR"])
     # Analytics (split into 4 sub-domains)
     app.include_router(academic_router,    prefix="/api/v1", tags=["Analytics — Academic"])

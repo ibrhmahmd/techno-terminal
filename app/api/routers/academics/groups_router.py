@@ -15,7 +15,6 @@ from app.api.schemas.academics.group import (
     GroupPublic,
     GroupListItem,
     EnrichedGroupPublic,
-    ScheduleGroupLevelRequest,
     ProgressGroupLevelRequest,
 )
 from app.api.schemas.academics.session import (
@@ -295,47 +294,6 @@ def list_group_sessions(
     return ApiResponse(data=[SessionPublic.model_validate(s) for s in sessions])
 
 
-# schedule group level
-@router.post(
-    "/academics/groups/{group_id}/schedule-level",
-    response_model=ApiResponse[dict],
-    status_code=201,
-    summary="Schedule a new level for an existing group",
-)
-def schedule_group_level(
-    group_id: int,
-    body: ScheduleGroupLevelRequest,
-    _user: User = Depends(require_admin),
-    svc: GroupService = Depends(get_group_service),
-):
-    """
-    Schedule a new level for an existing group.
-    Creates GroupLevel record and generates 5 sessions.
-    """
-    from app.modules.academics.schemas import ScheduleGroupLevelInput
-
-    data = ScheduleGroupLevelInput(
-        group_id=group_id,
-        level_number=body.level_number,
-        instructor_id=body.instructor_id,
-        price_override=body.price_override,
-        start_date=body.start_date,
-    )
-
-    level, sessions = svc.schedule_group_level(data)
-
-    return ApiResponse(
-        data={
-            "level_id": level.id,
-            "level_number": level.level_number,
-            "group_id": level.group_id,
-            "sessions_created": len(sessions),
-            "sessions": [{"id": s.id, "session_number": s.session_number, "date": s.session_date.isoformat()} for s in sessions],
-        },
-        message=f"Level {level.level_number} scheduled for group {group_id} with {len(sessions)} sessions.",
-    )
-
-
 # progress group level
 @router.post(
     "/academics/groups/{group_id}/progress-level",
@@ -352,13 +310,20 @@ def progress_group_level(
     """
     Progress a group to the next level.
     Completes current level, creates new level, migrates enrollments.
+    Supports optional overrides: instructor_id, session_start_date, course_id, group_name.
     """
     from app.modules.academics.schemas.scheduling_dtos import ProgressLevelDTO
 
     data = ProgressLevelDTO(
         group_id=group_id,
         price_override=body.price_override,
-        auto_migrate_enrollments=True,
+        auto_migrate_enrollments=body.auto_migrate_enrollments,
+        target_level=body.target_level,
+        complete_current_level=body.complete_current_level,
+        instructor_id=body.instructor_id,
+        session_start_date=body.session_start_date,
+        course_id=body.course_id,
+        group_name=body.group_name,
     )
 
     result = lifecycle_svc.progress_to_next_level(data)

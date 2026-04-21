@@ -26,6 +26,13 @@ class Settings(BaseSettings):
     pdf_primary_signature: str = "Financial Manager"
     pdf_secondary_signature: Optional[str] = None
 
+    # Receipt PDF Configuration (Techno Kids Techno Future)
+    receipt_company_name: str = "Techno Kids Techno Future"
+    receipt_company_address: str = ""  # Center address/branch location
+    receipt_tax_id: Optional[str] = None  # Company tax registration number
+    receipt_signature_label: str = "Financial Manager"
+    receipt_receipt_label: str = "Payment Receipt"
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 # Instantiate identically so it acts as a global singleton 

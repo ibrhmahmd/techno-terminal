@@ -141,6 +141,7 @@ from app.modules.academics.services.group_competition_service import GroupCompet
 from app.modules.academics.services.session_service import SessionService
 from app.modules.academics.services.group_analytics_service import GroupAnalyticsService
 from app.modules.enrollments.services.enrollment_service import EnrollmentService
+from app.modules.enrollments.services.enrollment_migration_service import EnrollmentMigrationService
 
 def get_auth_service() -> AuthService:
     return AuthService()
@@ -223,6 +224,13 @@ def get_enrollment_service(
         )
 
 
+def get_enrollment_migration_service(
+    notification_svc: "NotificationService" = Depends(get_notification_service),
+) -> EnrollmentMigrationService:
+    """Returns an EnrollmentMigrationService with notification support."""
+    return EnrollmentMigrationService(notification_svc=notification_svc)
+
+
 # ── Finance Service Factories (SOLID Refactored) ──────────────────────────────
 
 from app.modules.finance.repositories.unit_of_work import FinanceUnitOfWork
@@ -262,6 +270,13 @@ def get_reporting_service() -> ReportingService:
     """Returns a ReportingService with a fresh UnitOfWork."""
     with FinanceUnitOfWork() as uow:
         return ReportingService(uow)
+
+
+def get_student_payment_service() -> "StudentPaymentService":
+    """Returns a StudentPaymentService with a fresh UnitOfWork."""
+    from app.modules.finance.services.student_payment_service import StudentPaymentService
+    with FinanceUnitOfWork() as uow:
+        return StudentPaymentService(uow)
 
 
 # ── Additional Service Factories (Standardizing DI pattern) ─────────────────────

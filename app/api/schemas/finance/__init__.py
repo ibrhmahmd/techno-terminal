@@ -29,6 +29,12 @@ from .risk import (
     PreviewOverpaymentRequest,
     OverpaymentRiskResponse,
 )
+from .payment import (
+    PaymentListItem,
+    PaymentDetailsResponse,
+    SendReceiptRequest,
+    SendReceiptResponse,
+)
 
 __all__ = [
     # Receipt
@@ -51,4 +57,9 @@ __all__ = [
     # Risk
     "PreviewOverpaymentRequest",
     "OverpaymentRiskResponse",
+    # Payment
+    "PaymentListItem",
+    "PaymentDetailsResponse",
+    "SendReceiptRequest",
+    "SendReceiptResponse",
 ]

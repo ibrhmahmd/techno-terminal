@@ -87,20 +87,16 @@ class EnrichedGroupPublic(BaseModel):
 
 # ── Group Level Management Request Schemas ────────────────────────────────────
 
-class ScheduleGroupLevelRequest(BaseModel):
-    """
-    Request body for POST /academics/groups/{id}/schedule-level.
-    Schedule a new level for an existing group.
-    """
-    level_number: int = 1
-    instructor_id: Optional[int] = None  # Override group's default instructor
-    price_override: Optional[Decimal] = None  # None/0 uses course default price
-    start_date: Optional[date] = None  # Default: next weekday from today
-
-
 class ProgressGroupLevelRequest(BaseModel):
     """
     Request body for POST /academics/groups/{id}/progress-level.
     Progress group to next level.
     """
     price_override: Optional[Decimal] = None  # None/0 uses course default price
+    target_level: Optional[int] = None  # If None, defaults to current + 1
+    auto_migrate_enrollments: bool = True  # If False, creates empty level
+    complete_current_level: bool = True  # If False, keeps current level active
+    instructor_id: Optional[int] = None  # Override group's default instructor
+    session_start_date: Optional[date] = None  # Override default session start date (YYYY-MM-DD)
+    course_id: Optional[int] = None  # Override group's course
+    group_name: Optional[str] = None  # Override group name
