@@ -15,7 +15,6 @@ from sqlmodel import Session, select, col
 
 from app.modules.notifications.models.notification_template import NotificationTemplate
 from app.modules.notifications.models.notification_log import NotificationLog
-from app.modules.notifications.models.notification_subscriber import NotificationSubscriber
 
 
 class NotificationRepository:
@@ -28,6 +27,11 @@ class NotificationRepository:
 
     def get_template_by_name(self, name: str) -> Optional[NotificationTemplate]:
         stmt = select(NotificationTemplate).where(NotificationTemplate.name == name)
+        return self._session.exec(stmt).first()
+
+    def get_template_by_code(self, code: str) -> Optional[NotificationTemplate]:
+        """Get template by code (unique identifier like 'ENROLLMENT_COMPLETED')."""
+        stmt = select(NotificationTemplate).where(NotificationTemplate.code == code)
         return self._session.exec(stmt).first()
 
     def get_template_by_id(self, template_id: int) -> Optional[NotificationTemplate]:
@@ -155,42 +159,3 @@ class NotificationRepository:
             stmt = stmt.where(NotificationLog.recipient_id == recipient_id)
         return self._session.exec(stmt).one()
 
-    # ── Subscribers ──────────────────────────────────────────────────────────
-
-    def get_report_subscribers(
-        self, report_type: str
-    ) -> List[NotificationSubscriber]:
-        stmt = select(NotificationSubscriber).where(
-            NotificationSubscriber.is_active == True,
-            (NotificationSubscriber.report_type == report_type)
-            | (NotificationSubscriber.report_type == "ALL"),
-        )
-        return list(self._session.exec(stmt).all())
-
-    def add_subscriber(
-        self, employee_id: int, report_type: str, channel: str
-    ) -> NotificationSubscriber:
-        sub = NotificationSubscriber(
-            employee_id=employee_id,
-            report_type=report_type,
-            channel=channel,
-            is_active=True,
-        )
-        self._session.add(sub)
-        self._session.flush()
-        self._session.refresh(sub)
-        return sub
-
-    def remove_subscriber(self, subscriber_id: int) -> bool:
-        sub = self._session.get(NotificationSubscriber, subscriber_id)
-        if not sub:
-            return False
-        self._session.delete(sub)
-        self._session.flush()
-        return True
-
-    def get_all_subscribers(self) -> List[NotificationSubscriber]:
-        stmt = select(NotificationSubscriber).where(
-            NotificationSubscriber.is_active == True
-        ).order_by(NotificationSubscriber.employee_id)
-        return list(self._session.exec(stmt).all())
