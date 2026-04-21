@@ -51,7 +51,6 @@ class GroupCompetitionService:
         group_id: int,
         team_id: int,
         competition_id: int,
-        category_id: int | None = None,
         notes: str | None = None,
     ) -> GroupCompetitionParticipation:
         """
@@ -81,7 +80,6 @@ class GroupCompetitionService:
                 group_id=group_id,
                 team_id=team_id,
                 competition_id=competition_id,
-                category_id=category_id,
                 entered_at=datetime.utcnow(),
                 is_active=True,
                 notes=notes,
@@ -141,18 +139,14 @@ class GroupCompetitionService:
                 
                 competition = session.get(Competition, p.competition_id)
                 team = session.get(Team, p.team_id)
-                category = None
-                if p.category_id:
-                    from app.modules.competitions.models.competition_models import CompetitionCategory
-                    category = session.get(CompetitionCategory, p.category_id)
-                
+
                 # this needs to be wrapped in a DTO
                 result.append({
                     "participation_id": p.id,
                     "competition_id": p.competition_id,
                     "competition_name": competition.name if competition else None,
-                    "category_id": p.category_id,
-                    "category_name": category.name if category else None,
+                    "category": team.category if team else None,
+                    "subcategory": team.subcategory if team else None,
                     "team_id": p.team_id,
                     "team_name": team.team_name if team else None,
                     "entered_at": p.entered_at,

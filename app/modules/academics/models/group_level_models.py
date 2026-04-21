@@ -55,7 +55,6 @@ class GroupCompetitionParticipation(SQLModel, table=True):
     group_id: int = Field(foreign_key="groups.id", index=True)
     team_id: int = Field(foreign_key="teams.id", index=True)
     competition_id: int = Field(foreign_key="competitions.id")
-    category_id: Optional[int] = Field(default=None, foreign_key="competition_categories.id")
     entered_at: datetime = Field(default_factory=datetime.utcnow)
     left_at: Optional[datetime] = None
     is_active: bool = Field(default=True, index=True)

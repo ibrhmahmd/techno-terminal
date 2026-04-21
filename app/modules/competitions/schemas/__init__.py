@@ -1,8 +1,6 @@
 from .competition_schemas import (
     CompetitionDTO,
-    CompetitionCategoryDTO,
     CreateCompetitionInput,
-    AddCategoryInput,
 )
 
 from .team_schemas import (
@@ -23,13 +21,11 @@ from .team_schemas import (
 __all__ = [
     # Basic DTOs
     "CompetitionDTO",
-    "CompetitionCategoryDTO",
     "TeamDTO",
     "TeamMemberDTO",
     
     # Input Commands
     "CreateCompetitionInput",
-    "AddCategoryInput",
     "RegisterTeamInput",
     "PayCompetitionFeeInput",
     

@@ -2,10 +2,7 @@ from datetime import date
 from typing import Optional
 from sqlmodel import Session, select
 from app.shared.datetime_utils import utc_now
-from app.modules.competitions.models.competition_models import (
-    Competition,
-    CompetitionCategory,
-)
+from app.modules.competitions.models.competition_models import Competition
 
 
 # ── Competitions ──────────────────────────────────────────────────────────────
@@ -17,13 +14,23 @@ def create_competition(
     competition_date: Optional[date],
     location: Optional[str],
     notes: Optional[str],
+    fee_per_student: float = 0.0,
+    edition_year: Optional[int] = None,
 ) -> Competition:
+    # Auto-calculate edition_year from competition_date if not provided
+    if edition_year is None and competition_date:
+        edition_year = competition_date.year
+    elif edition_year is None:
+        edition_year = utc_now().year
+
     c = Competition(
         name=name,
         edition=edition,
+        edition_year=edition_year,
         competition_date=competition_date,
         location=location,
         notes=notes,
+        fee_per_student=fee_per_student,
         created_at=utc_now(),
     )
     db.add(c)
@@ -31,8 +38,11 @@ def create_competition(
     return c
 
 
-def list_competitions(db: Session) -> list[Competition]:
-    stmt = select(Competition).order_by(Competition.competition_date.desc())
+def list_competitions(db: Session, include_deleted: bool = False) -> list[Competition]:
+    stmt = select(Competition)
+    if not include_deleted:
+        stmt = stmt.where(Competition.deleted_at.is_(None))
+    stmt = stmt.order_by(Competition.competition_date.desc())
     return list(db.exec(stmt).all())
 
 
@@ -52,60 +62,31 @@ def update_competition(
     return c
 
 
-def delete_competition(db: Session, competition_id: int) -> bool:
+def delete_competition(db: Session, competition_id: int, deleted_by: Optional[int] = None) -> bool:
+    """Soft delete a competition."""
     c = db.get(Competition, competition_id)
     if c:
-        db.delete(c)
+        c.deleted_at = utc_now()
+        c.deleted_by = deleted_by
+        db.add(c)
         db.flush()
         return True
     return False
 
 
-# ── Categories ────────────────────────────────────────────────────────────────
-
-def add_category(
-    db: Session,
-    competition_id: int,
-    category_name: str,
-    notes: Optional[str] = None,
-) -> CompetitionCategory:
-    cat = CompetitionCategory(
-        competition_id=competition_id,
-        category_name=category_name,
-        notes=notes,
-    )
-    db.add(cat)
-    db.flush()
-    return cat
+def restore_competition(db: Session, competition_id: int) -> bool:
+    """Restore a soft-deleted competition."""
+    c = db.get(Competition, competition_id)
+    if c:
+        c.deleted_at = None
+        c.deleted_by = None
+        db.add(c)
+        db.flush()
+        return True
+    return False
 
 
-def list_categories(db: Session, competition_id: int) -> list[CompetitionCategory]:
-    stmt = select(CompetitionCategory).where(
-        CompetitionCategory.competition_id == competition_id
-    )
+def list_deleted_competitions(db: Session) -> list[Competition]:
+    """List all soft-deleted competitions."""
+    stmt = select(Competition).where(Competition.deleted_at.is_not(None))
     return list(db.exec(stmt).all())
-
-
-def get_category(db: Session, category_id: int) -> CompetitionCategory | None:
-    return db.get(CompetitionCategory, category_id)
-
-
-def update_category(
-    db: Session, category_id: int, **kwargs
-) -> CompetitionCategory | None:
-    cat = db.get(CompetitionCategory, category_id)
-    if cat:
-        for k, v in kwargs.items():
-            setattr(cat, k, v)
-        db.add(cat)
-        db.flush()
-    return cat
-
-
-def delete_category(db: Session, category_id: int) -> bool:
-    cat = db.get(CompetitionCategory, category_id)
-    if cat:
-        db.delete(cat)
-        db.flush()
-        return True
-    return False

@@ -1,7 +1,7 @@
 """
 app/modules/competitions/schemas/competition_schemas.py
 ─────────────────────────────────────────────────
-Typed DTOs for Competitions and Categories.
+Typed DTOs for Competitions.
 """
 from datetime import date, datetime
 from typing import Optional
@@ -15,20 +15,13 @@ class CompetitionDTO(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     name: str
-    edition: Optional[str] = None
+    edition: Optional[str] = None  # Deprecated
+    edition_year: int  # New: the year of this competition edition
     competition_date: Optional[date] = None
     location: Optional[str] = None
     notes: Optional[str] = None
     fee_per_student: float = 0.0
     created_at: Optional[datetime] = None
-
-
-class CompetitionCategoryDTO(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    id: int
-    competition_id: int
-    category_name: str
-    notes: Optional[str] = None
 
 
 # ── Competition Input Command DTOs ───────────────────────────────────────
@@ -47,12 +40,3 @@ class CreateCompetitionInput(BaseModel):
         return validate_non_empty_string(v, field="competition name")
 
 
-class AddCategoryInput(BaseModel):
-    competition_id: int
-    category_name: str
-    notes: Optional[str] = None
-
-    @field_validator("category_name", mode="before")
-    @classmethod
-    def name_not_empty(cls, v: str) -> str:
-        return validate_non_empty_string(v, field="category name")

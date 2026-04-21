@@ -9,18 +9,16 @@ UI components import the two singletons below.
 from .services.competition_service import CompetitionService
 from .services.team_service import TeamService
 
-from .models.competition_models import Competition, CompetitionCategory
+from .models.competition_models import Competition
 from .models.team_models import Team, TeamMember
 
 from .schemas import (
     # Basic DTOs
     CompetitionDTO,
-    CompetitionCategoryDTO,
     TeamDTO,
     TeamMemberDTO,
     # Input Commands
     CreateCompetitionInput,
-    AddCategoryInput,
     RegisterTeamInput,
     PayCompetitionFeeInput,
     # Outputs
@@ -47,16 +45,13 @@ __all__ = [
     "team_service",
     # Models
     "Competition",
-    "CompetitionCategory",
     "Team",
     "TeamMember",
     # Schemas
     "CompetitionDTO",
-    "CompetitionCategoryDTO",
     "TeamDTO",
     "TeamMemberDTO",
     "CreateCompetitionInput",
-    "AddCategoryInput",
     "RegisterTeamInput",
     "PayCompetitionFeeInput",
     "StudentCompetitionDTO",

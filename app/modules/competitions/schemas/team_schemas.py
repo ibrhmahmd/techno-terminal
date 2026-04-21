@@ -3,22 +3,29 @@ app/modules/competitions/schemas/team_schemas.py
 ─────────────────────────────────────────────────
 Typed DTOs for Teams, Team Members, and complex cross-entity responses.
 """
-from datetime import date, datetime
+from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, ConfigDict, field_validator
 from app.shared.validators import validate_non_empty_string
-from app.modules.competitions.schemas.competition_schemas import CompetitionDTO, CompetitionCategoryDTO
+from app.modules.competitions.schemas.competition_schemas import CompetitionDTO
 
 
 # ── Internal Output DTOs ──────────────────────────────────────────────────
 
 class TeamDTO(BaseModel):
+    """Team output DTO for 3-table schema."""
     model_config = ConfigDict(from_attributes=True)
     id: int
-    category_id: int
+    competition_id: int  # Direct FK to competition
+    category: str  # Category name
+    subcategory: Optional[str] = None  # Optional subcategory
     group_id: Optional[int] = None
     team_name: str
     coach_id: Optional[int] = None
+    fee: Optional[float] = None  # Team fee
+    placement_rank: Optional[int] = None  # Competition placement
+    placement_label: Optional[str] = None  # Placement description
+    notes: Optional[str] = None
     created_at: Optional[datetime] = None
 
 
@@ -35,11 +42,16 @@ class TeamMemberDTO(BaseModel):
 # ── Service Input Command DTOs ────────────────────────────────────────────
 
 class RegisterTeamInput(BaseModel):
-    category_id: int
+    """Input for registering a team in 3-table schema."""
+    competition_id: int  # Direct FK to competition
     team_name: str
+    category: str  # Category name (citext in DB)
+    subcategory: Optional[str] = None  # Optional subcategory
     student_ids: list[int]
     coach_id: Optional[int] = None
     group_id: Optional[int] = None
+    fee: Optional[float] = None  # Custom fee (None = use competition default)
+    notes: Optional[str] = None  # Additional notes
 
     @field_validator("student_ids")
     @classmethod
@@ -47,11 +59,16 @@ class RegisterTeamInput(BaseModel):
         if not v:
             raise ValueError("At least one student is required.")
         return v
-        
+
     @field_validator("team_name", mode="before")
     @classmethod
     def name_not_empty(cls, v: str) -> str:
         return validate_non_empty_string(v, field="team name")
+
+    @field_validator("category", mode="before")
+    @classmethod
+    def category_not_empty(cls, v: str) -> str:
+        return validate_non_empty_string(v, field="category")
 
 
 class PayCompetitionFeeInput(BaseModel):
@@ -67,7 +84,8 @@ class StudentCompetitionDTO(BaseModel):
     """Returned by get_student_competitions"""
     membership: TeamMemberDTO
     team: TeamDTO
-    category: CompetitionCategoryDTO
+    category: str  # Category name from 3-table schema
+    subcategory: Optional[str] = None
     competition: Optional[CompetitionDTO] = None
 
 
@@ -109,7 +127,8 @@ class TeamWithMembersDTO(BaseModel):
 
 
 class CategoryWithTeamsDTO(BaseModel):
-    category: CompetitionCategoryDTO
+    category: str  # Category name from 3-table schema
+    subcategory: Optional[str] = None
     teams: list[TeamWithMembersDTO]
 
 

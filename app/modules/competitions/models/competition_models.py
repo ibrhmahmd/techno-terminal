@@ -8,14 +8,15 @@ import app.modules.finance
 import app.modules.crm
 import app.modules.academics.models
 import app.modules.auth
-import app.modules.enrollments.models.enrollment_models
+import app.modules.enrollments.models.enrollment_models  # noqa: F401
 
 
 # --- Competition Models ---
 
 class CompetitionBase(SQLModel):
     name: str
-    edition: Optional[str] = None
+    edition: Optional[str] = None  # Deprecated: use edition_year
+    edition_year: int  # New: the year of this competition edition
     competition_date: Optional[date] = None
     location: Optional[str] = None
     notes: Optional[str] = None
@@ -27,17 +28,5 @@ class Competition(CompetitionBase, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     created_at: Optional[datetime] = None
-
-
-# --- Competition Category Models ---
-
-class CompetitionCategoryBase(SQLModel):
-    competition_id: int = Field(foreign_key="competitions.id")
-    category_name: str
-    notes: Optional[str] = None
-
-class CompetitionCategory(CompetitionCategoryBase, table=True):
-    __tablename__ = "competition_categories"
-    __table_args__ = {"extend_existing": True}
-
-    id: Optional[int] = Field(default=None, primary_key=True)
+    deleted_at: Optional[datetime] = None  # Soft delete timestamp
+    deleted_by: Optional[int] = Field(default=None, foreign_key="users.id")  # Who soft deleted

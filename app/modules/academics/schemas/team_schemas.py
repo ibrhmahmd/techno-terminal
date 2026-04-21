@@ -10,10 +10,13 @@ from pydantic import BaseModel
 
 
 class TeamReadDTO(BaseModel):
-    """Internal DTO for reading team data."""
+    """Internal DTO for reading team data (3-table schema)."""
     id: int
     team_name: str
-    group_id: int
+    competition_id: int
+    category: str
+    subcategory: Optional[str] = None
+    group_id: Optional[int] = None
     coach_id: Optional[int] = None
     created_at: datetime
     is_deleted: bool

@@ -10,12 +10,13 @@ from pydantic import BaseModel
 
 
 class CompetitionParticipationReadDTO(BaseModel):
-    """Internal DTO for reading competition participation."""
+    """Internal DTO for reading competition participation (3-table schema)."""
     id: int
     group_id: int
     team_id: int
     competition_id: int
-    category_id: Optional[int] = None
+    category: Optional[str] = None
+    subcategory: Optional[str] = None
     entered_at: datetime
     is_active: bool
     left_at: Optional[datetime] = None

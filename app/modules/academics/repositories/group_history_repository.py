@@ -352,7 +352,7 @@ def get_group_competition_participations(
     Returns tuples with full participation details.
     """
     from app.modules.academics.models.group_level_models import GroupCompetitionParticipation
-    from app.modules.competitions.models.competition_models import Competition, CompetitionCategory
+    from app.modules.competitions.models.competition_models import Competition
     from app.modules.competitions.models.team_models import Team
     
     stmt = (
@@ -360,14 +360,11 @@ def get_group_competition_participations(
             GroupCompetitionParticipation,
             Competition.name.label("competition_name"),
             Team.team_name,
-            CompetitionCategory.name.label("category_name"),
+            Team.category.label("category"),
+            Team.subcategory.label("subcategory"),
         )
         .join(Competition, GroupCompetitionParticipation.competition_id == Competition.id)
         .join(Team, GroupCompetitionParticipation.team_id == Team.id)
-        .outerjoin(
-            CompetitionCategory,
-            GroupCompetitionParticipation.category_id == CompetitionCategory.id
-        )
         .where(GroupCompetitionParticipation.group_id == group_id)
         .order_by(GroupCompetitionParticipation.entered_at.desc())
     )

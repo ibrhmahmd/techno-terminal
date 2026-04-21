@@ -108,7 +108,6 @@ def register_team_for_competition(
     group_id: int,
     competition_id: int,
     team_id: int,
-    category_id: int | None = None,
     _user: User = Depends(require_admin),
     svc: GroupCompetitionService = Depends(get_group_competition_service),
 ):
@@ -118,14 +117,12 @@ def register_team_for_competition(
     
     Args:
         team_id: The team to register
-        category_id: Optional competition category
     """
     try:
         participation = svc.register_team(
             group_id=group_id,
             team_id=team_id,
             competition_id=competition_id,
-            category_id=category_id,
         )
         return ApiResponse(
             data={
@@ -133,6 +130,8 @@ def register_team_for_competition(
                 "group_id": participation.group_id,
                 "team_id": participation.team_id,
                 "competition_id": participation.competition_id,
+                "category": participation.team.category if participation.team else None,
+                "subcategory": participation.team.subcategory if participation.team else None,
                 "entered_at": participation.entered_at,
                 "is_active": participation.is_active,
             },
