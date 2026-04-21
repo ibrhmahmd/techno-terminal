@@ -9,6 +9,8 @@ if TYPE_CHECKING:
     from app.modules.finance.interfaces.dto import (
         EnrollmentBalanceDTO,
         AddPaymentLineDTO,
+        PaymentWithDetailsDTO,
+        PaymentListItemDTO,
     )
     from app.modules.finance.schemas import EnrollmentBalanceItem
 
@@ -37,3 +39,11 @@ class IPaymentRepository(Protocol):
         skip: int = 0,
         limit: int = 50,
     ) -> tuple[List["EnrollmentBalanceItem"], int]: ...
+
+    def get_payments_by_student(
+        self, student_id: int, skip: int = 0, limit: int = 50
+    ) -> tuple[List["PaymentListItemDTO"], int]: ...
+
+    def get_payment_with_details(
+        self, payment_id: int
+    ) -> Optional["PaymentWithDetailsDTO"]: ...

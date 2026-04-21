@@ -18,6 +18,7 @@ from app.modules.finance.interfaces import (
     ReceiptLineItemDTO,
     CreateReceiptServiceDTO,
     SearchReceiptsDTO,
+    EnhancedReceiptLineDTO,
 )
 from app.modules.finance import ReceiptSearchItem, ReceiptLineInput
 from app.modules.finance.repositories.unit_of_work import FinanceUnitOfWork
@@ -185,32 +186,136 @@ class ReceiptService(IReceiptService):
         return self._uow.receipts.search(criteria)
 
     def generate_pdf(self, receipt_id: int) -> bytes:
-        """Generate PDF bytes for a receipt."""
+        """Generate PDF bytes for a receipt with enriched data."""
         data = self._uow.receipts.get_with_lines(receipt_id)
         if not data:
             raise NotFoundError(f"Receipt {receipt_id} not found.")
 
         total = self._uow.receipts.get_total(receipt_id)
 
-        # Get parent name from first student
-        parent_name = "N/A"
-        if data.lines:
-            from app.modules.crm.models import Student
-            student = self._uow._session.get(Student, data.lines[0].student_id)
-            if student and student.parent_links:
-                primary_link = next(
-                    (link for link in student.parent_links if link.is_primary),
-                    student.parent_links[0] if student.parent_links else None
-                )
-                if primary_link and primary_link.parent:
-                    parent_name = primary_link.parent.full_name
+        # Build enriched lines with full student, enrollment, and balance data
+        enhanced_lines = self._build_enhanced_lines(data.lines)
+
+        # Get payer info from first line
+        payer_name = data.receipt.payer_name or "N/A"
+        payer_phone = None
+        if enhanced_lines:
+            payer_phone = enhanced_lines[0].display_phone
+            if not data.receipt.payer_name:
+                payer_name = enhanced_lines[0].display_contact_name
 
         return build_receipt_pdf(
             receipt=data.receipt,
-            lines=data.lines,
+            lines=enhanced_lines,
             total=float(total),
-            parent_name=parent_name,
+            payer_name=payer_name,
+            payer_phone=payer_phone,
+            currency="EGP",
         )
+
+    def _build_enhanced_lines(self, payments) -> List[EnhancedReceiptLineDTO]:
+        """
+        Build enriched receipt line DTOs with student, enrollment, group, and balance data.
+        """
+        from app.modules.crm.models.student_models import Student
+        from app.modules.crm.models.parent_models import Parent
+        from app.modules.crm.models.link_models import StudentParent
+        from app.modules.enrollments.models.enrollment_models import Enrollment
+        from app.modules.academics.models.group_models import Group
+        from app.modules.academics.models.course_models import Course
+
+        enhanced = []
+
+        for payment in payments:
+            # Get student
+            student = self._uow._session.get(Student, payment.student_id)
+            student_name = student.full_name if student else f"Student #{payment.student_id}"
+            student_phone = getattr(student, 'phone', None)
+
+            # Get parent info (preferred contact)
+            parent_id = None
+            parent_name = None
+            parent_phone = None
+            if student:
+                parent_link = self._uow._session.query(StudentParent).filter(
+                    StudentParent.student_id == student.id
+                ).first()
+                if parent_link:
+                    parent = self._uow._session.get(Parent, parent_link.parent_id)
+                    if parent:
+                        parent_id = parent.id
+                        parent_name = parent.full_name
+                        parent_phone = parent.phone_primary or parent.phone_secondary
+
+            # Get enrollment and group info
+            enrollment_id = payment.enrollment_id
+            enrollment_status = None
+            level_number = None
+            group_id = None
+            group_name = None
+            course_name = None
+
+            if enrollment_id:
+                enrollment = self._uow._session.get(Enrollment, enrollment_id)
+                if enrollment:
+                    enrollment_status = enrollment.status
+                    level_number = enrollment.level_number
+                    group_id = enrollment.group_id
+
+                    if group_id:
+                        group = self._uow._session.get(Group, group_id)
+                        if group:
+                            group_name = group.name
+                            if group.course_id:
+                                course = self._uow._session.get(Course, group.course_id)
+                                if course:
+                                    course_name = course.name
+
+            # Get balance status for partial payment detection
+            is_partial = False
+            remaining_amount = 0.0
+            balance_status = "unknown"
+
+            if enrollment_id:
+                balance_dto = self._uow.payments.get_enrollment_balance(enrollment_id)
+                if balance_dto and hasattr(balance_dto, 'status'):
+                    balance_status = balance_dto.status
+                    is_partial = balance_status in ('partial', 'unpaid')
+                    if hasattr(balance_dto, 'remaining_balance') and balance_dto.remaining_balance < 0:
+                        remaining_amount = abs(balance_dto.remaining_balance)
+
+            enhanced.append(
+                EnhancedReceiptLineDTO(
+                    payment_id=payment.id,
+                    amount=float(payment.amount),
+                    transaction_type=payment.transaction_type,
+                    payment_type=payment.payment_type,
+                    discount_amount=float(getattr(payment, 'discount_amount', 0.0)),
+                    notes=payment.notes,
+                    student_id=payment.student_id,
+                    student_name=student_name,
+                    student_phone=student_phone,
+                    parent_id=parent_id,
+                    parent_name=parent_name,
+                    parent_phone=parent_phone,
+                    enrollment_id=enrollment_id,
+                    enrollment_status=enrollment_status,
+                    level_number=level_number,
+                    group_id=group_id,
+                    group_name=group_name,
+                    course_name=course_name,
+                    is_partial_payment=is_partial,
+                    remaining_amount=remaining_amount,
+                    balance_status=balance_status,
+                    payment=payment,
+                    student=student,
+                    enrollment=enrollment if enrollment_id else None,
+                    group=None,  # Not loading ORM to avoid lazy loading issues
+                    parent=None,  # Not loading ORM to avoid lazy loading issues
+                )
+            )
+
+        return enhanced
 
     def mark_as_sent(self, receipt_id: int) -> None:
         """Mark a receipt as sent (notification status)."""

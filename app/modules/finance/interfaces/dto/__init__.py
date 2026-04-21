@@ -16,6 +16,11 @@ from .overpayment_risk_item import OverpaymentRiskItem
 from .receipt_template_context_dto import ReceiptTemplateContextDTO
 from .student_balance_summary_dto import StudentBalanceSummaryDTO
 from .paginated_enrollment_balances_dto import PaginatedEnrollmentBalancesDTO
+from .enhanced_receipt_line_dto import EnhancedReceiptLineDTO
+from .payment_with_details_dto import PaymentWithDetailsDTO
+from .payment_list_item_dto import PaymentListItemDTO
+from .paginated_student_payments_dto import PaginatedStudentPaymentsDTO
+from .send_receipt_result_dto import SendReceiptResultDTO
 
 __all__ = [
     "ReceiptWithLinesDTO",
@@ -33,4 +38,9 @@ __all__ = [
     "ReceiptTemplateContextDTO",
     "StudentBalanceSummaryDTO",
     "PaginatedEnrollmentBalancesDTO",
+    "EnhancedReceiptLineDTO",
+    "PaymentWithDetailsDTO",
+    "PaymentListItemDTO",
+    "PaginatedStudentPaymentsDTO",
+    "SendReceiptResultDTO",
 ]

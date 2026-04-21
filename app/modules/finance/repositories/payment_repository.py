@@ -14,6 +14,8 @@ from app.modules.finance.interfaces import (
     IPaymentRepository,
     EnrollmentBalanceDTO,
     AddPaymentLineDTO,
+    PaymentWithDetailsDTO,
+    PaymentListItemDTO,
 )
 from app.modules.finance import EnrollmentBalanceItem
 from app.shared.datetime_utils import utc_now
@@ -192,3 +194,193 @@ class PaymentRepository(IPaymentRepository):
         ]
         
         return items, total
+
+    def get_payments_by_student(
+        self, student_id: int, skip: int = 0, limit: int = 50
+    ) -> tuple[List[PaymentListItemDTO], int]:
+        """
+        Get paginated payments for a specific student with receipt and course info.
+        
+        Returns:
+            Tuple of (list of PaymentListItemDTO, total count)
+        """
+        # Build base query with joins for all needed data
+        base_where = "p.student_id = :sid AND p.deleted_at IS NULL"
+        params = {"sid": student_id}
+        
+        # Count query
+        count_stmt = text(f"""
+            SELECT COUNT(*)
+            FROM payments p
+            WHERE {base_where}
+        """)
+        total = self._session.execute(count_stmt, params).scalar() or 0
+        
+        # Data query with joins
+        query_params = {**params, "skip": skip, "limit": limit}
+        stmt = text(f"""
+            SELECT 
+                p.id,
+                p.student_id,
+                p.amount,
+                COALESCE(r.paid_at, p.created_at) as payment_date,
+                r.payment_method,
+                'completed' as status,
+                p.receipt_id,
+                r.receipt_number,
+                c.name as course_name,
+                cg.name as group_name,
+                p.enrollment_id,
+                p.transaction_type,
+                e.level_number
+            FROM payments p
+            LEFT JOIN receipts r ON p.receipt_id = r.id
+            LEFT JOIN enrollments e ON p.enrollment_id = e.id
+            LEFT JOIN groups cg ON e.group_id = cg.id
+            LEFT JOIN courses c ON cg.course_id = c.id
+            WHERE {base_where}
+            ORDER BY COALESCE(r.paid_at, p.created_at) DESC
+            LIMIT :limit OFFSET :skip
+        """)
+        
+        rows = self._session.execute(stmt, query_params).all()
+        
+        items = [
+            PaymentListItemDTO(
+                id=row.id,
+                student_id=row.student_id,
+                amount=Decimal(str(row.amount or 0)),
+                payment_date=row.payment_date,
+                payment_method=row.payment_method,
+                status=row.status,
+                receipt_id=row.receipt_id,
+                receipt_number=row.receipt_number,
+                course_name=row.course_name,
+                group_name=row.group_name,
+                level_number=row.level_number,
+                transaction_type=row.transaction_type or "payment",
+            )
+            for row in rows
+        ]
+        
+        return items, total
+
+    def get_payment_with_details(
+        self, payment_id: int
+    ) -> Optional[PaymentWithDetailsDTO]:
+        """
+        Get detailed payment information with all related data.
+        
+        Includes:
+        - Payment fields
+        - Receipt fields
+        - Enrollment, group, course info
+        - Instructor name
+        - Student snapshot
+        - Parent contact info
+        """
+        stmt = text("""
+            SELECT 
+                -- Payment fields
+                p.id as payment_id,
+                p.student_id,
+                p.amount,
+                p.payment_type,
+                p.transaction_type,
+                COALESCE(p.discount_amount, 0) as discount_amount,
+                p.notes as payment_notes,
+                p.created_at,
+                p.enrollment_id,
+                
+                -- Receipt fields
+                r.id as receipt_id,
+                r.receipt_number,
+                r.payment_method,
+                r.paid_at,
+                r.received_by,
+                r.notes as receipt_notes,
+                u.username as received_by_name,
+                
+                -- Group/Course fields
+                cg.id as group_id,
+                cg.name as group_name,
+                c.name as course_name,
+                e.level_number,
+                
+                -- Instructor fields
+                emp.id as instructor_id,
+                emp.full_name as instructor_name,
+                
+                -- Student fields
+                s.full_name as student_name,
+                s.phone as student_phone,
+                
+                -- Parent fields (get primary parent - first one)
+                par.id as parent_id,
+                par.full_name as parent_name,
+                par.phone as parent_phone
+                
+            FROM payments p
+            LEFT JOIN receipts r ON p.receipt_id = r.id
+            LEFT JOIN users u ON r.received_by = u.id
+            LEFT JOIN enrollments e ON p.enrollment_id = e.id
+            LEFT JOIN groups cg ON e.group_id = cg.id
+            LEFT JOIN courses c ON cg.course_id = c.id
+            LEFT JOIN employees emp ON cg.instructor_id = emp.id
+            LEFT JOIN students s ON p.student_id = s.id
+            LEFT JOIN LATERAL (
+                SELECT parent.id, parent.full_name, parent.phone_primary as phone
+                FROM parents parent
+                JOIN student_parents sp ON parent.id = sp.parent_id
+                WHERE sp.student_id = p.student_id
+                ORDER BY sp.is_primary DESC, parent.id
+                LIMIT 1
+            ) par ON true
+            WHERE p.id = :pid AND p.deleted_at IS NULL
+        """)
+        
+        row = self._session.execute(stmt, {"pid": payment_id}).first()
+        
+        if not row:
+            return None
+        
+        return PaymentWithDetailsDTO(
+            # Payment fields
+            payment_id=row.payment_id,
+            student_id=row.student_id,
+            amount=Decimal(str(row.amount or 0)),
+            payment_type=row.payment_type,
+            transaction_type=row.transaction_type or "payment",
+            discount_amount=Decimal(str(row.discount_amount or 0)),
+            notes=row.payment_notes,
+            created_at=row.created_at,
+            
+            # Receipt fields
+            receipt_id=row.receipt_id,
+            receipt_number=row.receipt_number,
+            payment_method=row.payment_method,
+            paid_at=row.paid_at,
+            received_by=row.received_by,
+            received_by_name=row.received_by_name,
+            receipt_notes=row.receipt_notes,
+            
+            # Enrollment/Group/Course fields
+            enrollment_id=row.enrollment_id,
+            group_id=row.group_id,
+            group_name=row.group_name,
+            course_name=row.course_name,
+            level_number=row.level_number,
+            
+            # Instructor fields
+            instructor_id=row.instructor_id,
+            instructor_name=row.instructor_name,
+            
+            # Student fields
+            student_name=row.student_name or f"Student #{row.student_id}",
+            student_phone=row.student_phone,
+            
+            # Parent fields
+            parent_id=row.parent_id,
+            parent_name=row.parent_name,
+            parent_phone=row.parent_phone,
+        )
