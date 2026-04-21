@@ -12,6 +12,7 @@ Student management endpoints for the CRM module.
 | Endpoint | Method | Auth | Response |
 |----------|--------|------|----------|
 | `/students` | GET | `require_any` | `PaginatedResponse<StudentListItem>` |
+| `/students/filter` | GET | `require_any` | `ApiResponse<StudentFilterResultDTO>` |
 | `/students` | POST | `require_admin` | `ApiResponse<StudentPublic>` |
 | `/students/{id}` | GET | `require_any` | `ApiResponse<StudentPublic>` |
 | `/students/{id}` | PATCH | `require_admin` | `ApiResponse<StudentPublic>` |
@@ -103,6 +104,20 @@ Group students by status, gender, or age bucket.
 | include_inactive | boolean | No | false | Include inactive students |
 
 **Response:** `ApiResponse<StudentGroupedResultDTO>`
+
+---
+
+### GET /crm/students/filter
+
+Advanced student filtering with multiple criteria (age, status, courses, balance, etc.).
+
+**Authentication:** `require_any`
+
+**Full Documentation:** [students-filter.md](students-filter.md)
+
+**Query Parameters:** See detailed documentation for all 14+ filter parameters.
+
+**Response:** `ApiResponse<StudentFilterResultDTO>`
 
 ---
 

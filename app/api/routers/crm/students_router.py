@@ -5,7 +5,8 @@ Students router.
 
 Endpoints for student management.
 """
-from typing import List
+from typing import List, Optional
+from datetime import date
 
 from fastapi import APIRouter, Depends, Query, HTTPException
 
@@ -13,7 +14,7 @@ from app.api.schemas.common import ApiResponse, PaginatedResponse
 from app.api.schemas.crm.student import StudentPublic, StudentListItem
 from app.api.schemas.crm.parent import ParentPublic
 from app.api.schemas.crm.student_details import StudentWithDetails, SiblingInfo
-from app.modules.crm.interfaces.dtos import StudentGroupedResultDTO
+from app.modules.crm.interfaces.dtos import StudentGroupedResultDTO, StudentFilterDTO, StudentFilterResultDTO
 from app.api.dependencies import (
     require_any,
     require_admin,
@@ -119,6 +120,51 @@ def get_grouped_students(
         skip=skip,
         limit=limit
     )
+    return ApiResponse(data=result)
+
+
+# Filter students
+@router.get(
+    "/students/filter",
+    response_model=ApiResponse[StudentFilterResultDTO],
+    summary="Filter students with multiple criteria",
+    description="Filter students by age range, status, gender, courses, groups, balance status, and enrollment dates."
+)
+def filter_students(
+    min_age: Optional[int] = Query(None, ge=0, le=100, description="Minimum student age"),
+    max_age: Optional[int] = Query(None, ge=0, le=100, description="Maximum student age"),
+    status: Optional[List[str]] = Query(None, description="Student statuses to filter by"),
+    gender: Optional[List[str]] = Query(None, description="Genders to filter by"),
+    course_ids: Optional[List[int]] = Query(None, description="Course IDs to filter by"),
+    group_default_day: Optional[List[str]] = Query(None, description="Group meeting days (e.g., 'Monday', 'Saturday')"),
+    instructor_name: Optional[str] = Query(None, description="Partial instructor name search"),
+    has_unpaid_balance: Optional[bool] = Query(None, description="Filter by unpaid balance status"),
+    enrollment_date_from: Optional[date] = Query(None, description="Enrolled on or after this date (YYYY-MM-DD)"),
+    enrollment_date_to: Optional[date] = Query(None, description="Enrolled on or before this date (YYYY-MM-DD)"),
+    min_enrollments: Optional[int] = Query(None, ge=0, description="Minimum number of enrollments"),
+    max_enrollments: Optional[int] = Query(None, ge=0, description="Maximum number of enrollments"),
+    skip: int = Query(0, ge=0, description="Number of students to skip"),
+    limit: int = Query(50, ge=1, le=200, description="Maximum students to return"),
+    current_user: User = Depends(require_any),
+    svc: SearchService = Depends(get_student_search_service),
+):
+    filters = StudentFilterDTO(
+        min_age=min_age,
+        max_age=max_age,
+        status=status,
+        gender=gender,
+        course_ids=course_ids,
+        group_default_day=group_default_day,
+        instructor_name=instructor_name,
+        has_unpaid_balance=has_unpaid_balance,
+        enrollment_date_from=enrollment_date_from,
+        enrollment_date_to=enrollment_date_to,
+        min_enrollments=min_enrollments,
+        max_enrollments=max_enrollments,
+        skip=skip,
+        limit=limit,
+    )
+    result = svc.filter_students(filters)
     return ApiResponse(data=result)
 
 
