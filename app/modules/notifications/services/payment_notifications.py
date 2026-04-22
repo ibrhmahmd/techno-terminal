@@ -3,10 +3,13 @@ app/modules/notifications/services/payment_notifications.py
 ─────────────────────────────────────────────────────────────
 Payment notification handlers.
 """
+import logging
 from fastapi import BackgroundTasks
 
-from app.modules.notifications.services.base_notification_service import BaseNotificationService
+from app.modules.notifications.services.base_notification_service import BaseNotificationService, FALLBACK_RECIPIENT_ID
 from app.modules.notifications.repositories.notification_repository import NotificationRepository
+
+logger = logging.getLogger(__name__)
 
 
 class PaymentNotificationService(BaseNotificationService):
@@ -39,12 +42,16 @@ class PaymentNotificationService(BaseNotificationService):
                                  amount: str, receipt_number: str) -> None:
         template = self._repo.get_template_by_name("payment_receipt")
         if not template or not template.is_active:
+            logger.warning(f"Payment receipt template not found or inactive for receipt {receipt_id}")
             return
         
         # Get notification recipients based on admin settings
         recipients = self._resolve_notification_recipients("payment_received")
-        if not recipients:
-            return
+        
+        # Check if fallback was triggered
+        fallback_triggered = any(r[2] == "FALLBACK" for r in recipients)
+        if fallback_triggered:
+            logger.warning(f"FALLBACK ACTIVE: Sending payment receipt {receipt_id} to fallback email")
         
         # Get student info for variables
         from app.modules.crm.models.student_models import Student
@@ -59,19 +66,27 @@ class PaymentNotificationService(BaseNotificationService):
             "receipt_id": str(receipt_id),
         }
         
-        # Send to all enabled recipients (admins + additional recipients)
+        # Send to all enabled recipients (includes fallback if triggered)
         for email, recipient_id, recipient_type in recipients:
             await self._dispatch(template, "EMAIL", recipient_type, recipient_id, email, variables)
+            
+        # If fallback triggered, also send alert notification to fallback email
+        if fallback_triggered:
+            await self._send_fallback_alert("payment_received", receipt_id, len(recipients) - 1)
     
     async def _process_reminder(self, student_id: int, amount_due: str, due_date: str) -> None:
         template = self._repo.get_template_by_name("payment_reminder")
         if not template or not template.is_active:
+            logger.warning(f"Payment reminder template not found or inactive for student {student_id}")
             return
         
         # Get notification recipients based on admin settings
         recipients = self._resolve_notification_recipients("payment_reminder")
-        if not recipients:
-            return
+        
+        # Check if fallback was triggered
+        fallback_triggered = any(r[2] == "FALLBACK" for r in recipients)
+        if fallback_triggered:
+            logger.warning(f"FALLBACK ACTIVE: Sending payment reminder to fallback email for student {student_id}")
         
         # Get student info for variables
         from app.modules.crm.models.student_models import Student
@@ -85,6 +100,10 @@ class PaymentNotificationService(BaseNotificationService):
             "due_date": due_date,
         }
         
-        # Send to all enabled recipients (admins + additional recipients)
+        # Send to all enabled recipients (includes fallback if triggered)
         for email, recipient_id, recipient_type in recipients:
             await self._dispatch(template, "EMAIL", recipient_type, recipient_id, email, variables)
+            
+        # If fallback triggered, also send alert notification to fallback email
+        if fallback_triggered:
+            await self._send_fallback_alert("payment_reminder", student_id, len(recipients) - 1)

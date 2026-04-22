@@ -5,8 +5,15 @@ Base helpers for all notification services.
 No business logic - just contact resolution, template rendering, dispatch.
 """
 import logging
+import os
+import re
+from datetime import datetime
 from typing import Optional, Tuple
 from sqlmodel import select
+
+# Fallback email configuration from environment variable
+FALLBACK_EMAIL = os.getenv("NOTIFICATION_FALLBACK_EMAIL", "ibrahim.ahmd.net@gmail.com")
+FALLBACK_RECIPIENT_ID = -1  # Special ID to indicate fallback
 
 from app.modules.notifications.repositories.notification_repository import NotificationRepository
 from app.modules.notifications.dispatchers.email_dispatcher import GmailEmailDispatcher
@@ -27,6 +34,14 @@ class BaseNotificationService:
         self._repo = repo
         self._email = GmailEmailDispatcher()
         self._whatsapp = TwilioWhatsAppDispatcher()
+    
+    @staticmethod
+    def _is_valid_email(email: str) -> bool:
+        """Validate email format using regex pattern."""
+        if not email or not isinstance(email, str):
+            return False
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        return bool(re.match(pattern, email.strip()))
     
     def _resolve_contact(
         self, student_id: int, channel: str
@@ -68,12 +83,14 @@ class BaseNotificationService:
     ) -> list[tuple[str, int, str]]:
         """
         Returns list of (email, recipient_id, recipient_type) tuples.
-        Uses only notification_additional_recipients table (global recipients).
-        recipient_type: 'ADDITIONAL' (all recipients are treated as additional)
+        Uses notification_additional_recipients table with fallback to env-configured email.
+        recipient_type: 'ADDITIONAL' for table recipients, 'FALLBACK' for fallback email.
         """
         from sqlalchemy import text
 
         recipients = []
+        invalid_emails_found = []
+        fallback_triggered = False
 
         # Get all active additional recipients for this notification type (global - no admin_id filter)
         try:
@@ -85,10 +102,55 @@ class BaseNotificationService:
             """)
             result = self._repo._session.exec(stmt).all()
             for recipient_id, email in result:
-                if email:
+                if email and self._is_valid_email(email):
                     recipients.append((email, recipient_id, "ADDITIONAL"))
+                elif email:
+                    invalid_emails_found.append((recipient_id, email))
         except Exception as e:
-            logger.warning(f"Could not fetch additional recipients: {e}")
+            logger.error(f"Failed to fetch additional recipients: {e}")
+            fallback_triggered = True
+
+        # Check if we need to trigger fallback
+        if not recipients:
+            fallback_triggered = True
+
+            # Validate and use fallback email
+            if self._is_valid_email(FALLBACK_EMAIL):
+                recipients.append((FALLBACK_EMAIL, FALLBACK_RECIPIENT_ID, "FALLBACK"))
+
+                # Log warning
+                logger.warning(
+                    f"FALLBACK TRIGGERED: No valid recipients for '{notification_type}'. "
+                    f"Using fallback email: {FALLBACK_EMAIL}"
+                )
+
+                # Create notification log entry for fallback activation
+                try:
+                    self._repo.create_log(
+                        template_id=None,
+                        channel="EMAIL",
+                        recipient_type="FALLBACK_ALERT",
+                        recipient_id=FALLBACK_RECIPIENT_ID,
+                        recipient_contact=FALLBACK_EMAIL,
+                        body=f"Fallback triggered for notification type: {notification_type}. "
+                             f"No valid recipients found in notification_additional_recipients. "
+                             f"Invalid emails found: {len(invalid_emails_found)}",
+                        subject="Notification Fallback Activated",
+                    )
+                except Exception as log_error:
+                    logger.error(f"Failed to create fallback alert log: {log_error}")
+            else:
+                logger.error(
+                    f"CRITICAL: Fallback email '{FALLBACK_EMAIL}' is invalid. "
+                    f"Notification '{notification_type}' will not be delivered."
+                )
+
+        # Log invalid emails if found
+        if invalid_emails_found:
+            logger.warning(
+                f"Found {len(invalid_emails_found)} invalid email(s) in recipients table: "
+                f"{[e for _, e in invalid_emails_found]}"
+            )
 
         return recipients
     
@@ -98,6 +160,53 @@ class BaseNotificationService:
         for key, val in variables.items():
             body = body.replace(f"{{{{{key}}}}}", str(val))
         return body
+    
+    async def _send_fallback_alert(
+        self, notification_type: str, entity_id: int, intended_recipients_count: int
+    ) -> None:
+        """
+        Send alert notification to fallback email about fallback activation.
+        This is separate from the main notification to alert admins about the issue.
+        """
+        from app.modules.notifications.models.notification_log import NotificationLog
+        
+        subject = f"[ALERT] Notification Fallback Activated - {notification_type}"
+        body = f"""NOTIFICATION FALLBACK ALERT
+
+A notification fallback was triggered due to empty or invalid recipient configuration.
+
+Details:
+- Notification Type: {notification_type}
+- Entity ID: {entity_id}
+- Intended Recipients: {intended_recipients_count}
+- Fallback Email: {FALLBACK_EMAIL}
+- Timestamp: {datetime.utcnow().isoformat()}
+
+ACTION REQUIRED:
+Please check the notification_additional_recipients table configuration.
+Add valid email recipients to ensure notifications are delivered properly.
+        """
+        
+        try:
+            # Send alert email to fallback address
+            await self._email.send(FALLBACK_EMAIL, body, subject)
+            logger.info(f"Fallback alert sent to {FALLBACK_EMAIL} for {notification_type}")
+            
+            # Update the fallback alert log entry status to SENT
+            # Find the most recent fallback alert log for this notification type
+            stmt = select(NotificationLog).where(
+                NotificationLog.recipient_type == "FALLBACK_ALERT",
+                NotificationLog.subject == "Notification Fallback Activated"
+            ).order_by(NotificationLog.created_at.desc()).limit(1)
+            
+            log_entry = self._repo._session.exec(stmt).first()
+            if log_entry:
+                log_entry.status = "SENT"
+                self._repo._session.add(log_entry)
+                self._repo._session.commit()
+                
+        except Exception as e:
+            logger.error(f"Failed to send fallback alert: {e}")
     
     async def _dispatch(
         self, template: NotificationTemplate, channel: str, recipient_type: str,
