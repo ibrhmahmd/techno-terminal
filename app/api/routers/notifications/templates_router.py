@@ -5,7 +5,7 @@ from app.api.dependencies import require_admin, get_notification_service
 from app.api.schemas.common import ApiResponse
 from app.modules.auth.models import User
 from app.modules.notifications.services.notification_service import NotificationService
-from app.modules.notifications.schemas.template_dto import TemplateDTO, CreateTemplateRequest, UpdateTemplateRequest
+from app.modules.notifications.schemas.template_dto import TemplateDTO, CreateTemplateRequest, UpdateTemplateRequest, TemplateTestResultDTO
 
 router = APIRouter()
 
@@ -79,3 +79,32 @@ def delete_template(
         
     svc._repo.delete_template(template_id)
     return ApiResponse(data="Template deleted successfully")
+
+
+# ── Template Testing ────────────────────────────────────────────────────────
+
+@router.post(
+    "/templates/{template_id}/test",
+    response_model=ApiResponse[TemplateTestResultDTO],
+    summary="Test template rendering",
+    description="Render template with placeholder values and send test email to all additional recipients."
+)
+def test_template(
+    template_id: int,
+    _user: User = Depends(require_admin),
+    svc: NotificationService = Depends(get_notification_service),
+):
+    """
+    Test a notification template by:
+    1. Rendering it with placeholder values (e.g., [Student Name])
+    2. Sending test email to all additional recipients
+    3. Returning full render details and send status
+    """
+    try:
+        result = svc.test_template(template_id)
+        return ApiResponse(
+            data=result,
+            message=f"Test email would be sent to {result.recipients_sent} recipients"
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))

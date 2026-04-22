@@ -31,3 +31,14 @@ class UpdateTemplateRequest(BaseModel):
     body: Optional[str] = None
     variables: Optional[list[str]] = None
     is_active: Optional[bool] = None
+
+
+class TemplateTestResultDTO(BaseModel):
+    """Response DTO for template test endpoint."""
+    template_id: int
+    template_name: str
+    rendered_subject: str
+    rendered_body: str
+    recipients_sent: int
+    recipients_failed: int
+    errors: list[str]

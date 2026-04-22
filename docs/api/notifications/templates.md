@@ -188,6 +188,43 @@ Quickly enable/disable a template.
 
 ---
 
+## Test Template
+
+**POST** `/templates/{template_id}/test`
+
+Test a template by rendering it with placeholder values and previewing email delivery to additional recipients.
+
+**Auth:** `require_admin`
+
+**Path Parameters:**
+- `template_id` (integer, required)
+
+**Request Body:** None
+
+Automatically generates placeholder values like `[Student Name]` for template variables.
+
+**Response:** `ApiResponse<TemplateTestResultDTO>`
+
+```json
+{
+  "data": {
+    "template_id": 4,
+    "template_name": "enrollment_confirmation",
+    "rendered_subject": "[TEST] Welcome! [Student Name] enrolled",
+    "rendered_body": "Dear [Parent Name], your child [Student Name]...",
+    "recipients_sent": 2,
+    "recipients_failed": 0,
+    "errors": []
+  },
+  "message": "Test email would be sent to 2 recipients"
+}
+```
+
+**Errors:**
+- `404` - Template not found
+
+---
+
 ## DTO Schemas
 
 ### TemplateSummaryDTO
@@ -241,6 +278,19 @@ Quickly enable/disable a template.
 ```typescript
 {
   is_active: boolean;
+}
+```
+
+### TemplateTestResultDTO
+```typescript
+{
+  template_id: number;        // ID of the tested template
+  template_name: string;      // Name of the template
+  rendered_subject: string;   // Subject with placeholders rendered
+  rendered_body: string;      // Body with placeholders rendered
+  recipients_sent: number;    // Count of additional recipients
+  recipients_failed: number;  // Failed send attempts
+  errors: string[];          // Error messages (if any)
 }
 ```
 
