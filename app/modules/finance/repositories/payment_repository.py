@@ -99,21 +99,29 @@ class PaymentRepository(IPaymentRepository):
     def get_student_balances(
         self, student_id: int
     ) -> List[EnrollmentBalanceItem]:
-        """Get all enrollment balances for a student."""
+        """Get all enrollment balances for a student with group details."""
         stmt = text("""
-            SELECT 
-                enrollment_id,
-                student_id,
-                group_id,
-                level_number,
-                amount_due,
-                discount_applied,
-                total_paid as amount_paid,
-                balance as remaining_balance,
-                payment_status as status
-            FROM v_enrollment_balance
-            WHERE student_id = :sid
-            ORDER BY enrollment_id DESC
+            SELECT
+                vb.enrollment_id,
+                vb.student_id,
+                s.full_name as student_name,
+                vb.group_id,
+                g.name as group_name,
+                c.name as course_name,
+                vb.level_number,
+                vb.amount_due,
+                vb.discount_applied,
+                vb.total_paid as amount_paid,
+                vb.balance as remaining_balance,
+                vb.payment_status as status,
+                e.enrolled_at
+            FROM v_enrollment_balance vb
+            JOIN students s ON s.id = vb.student_id
+            JOIN groups g ON g.id = vb.group_id
+            LEFT JOIN courses c ON c.id = g.course_id
+            JOIN enrollments e ON e.id = vb.enrollment_id
+            WHERE vb.student_id = :sid
+            ORDER BY vb.enrollment_id DESC
         """)
         rows = self._session.execute(stmt, {"sid": student_id}).all()
 
@@ -121,13 +129,17 @@ class PaymentRepository(IPaymentRepository):
             EnrollmentBalanceItem(
                 enrollment_id=row.enrollment_id,
                 student_id=row.student_id,
+                student_name=row.student_name or "",
                 group_id=row.group_id,
+                group_name=row.group_name or "",
+                course_name=row.course_name,
                 level_number=row.level_number,
                 amount_due=float(row.amount_due or 0),
                 discount_applied=float(row.discount_applied or 0),
                 amount_paid=float(row.amount_paid or 0),
                 remaining_balance=float(row.remaining_balance or 0),
                 status=row.status or "unknown",
+                enrolled_at=str(row.enrolled_at) if row.enrolled_at else None,
             )
             for row in rows
         ]
@@ -139,60 +151,69 @@ class PaymentRepository(IPaymentRepository):
         limit: int = 50,
     ) -> tuple[List[EnrollmentBalanceItem], int]:
         """
-        Get unpaid enrollment balances (where balance < 0).
+        Get unpaid enrollment balances from v_unpaid_enrollments view.
         Returns items and total count for pagination.
         """
-        # Build base query
-        base_where = "balance < 0"
+        # Build base query - v_unpaid_enrollments already filters for unpaid
+        base_where = "1=1"
         params = {}
-        
+
         if group_id:
             base_where += " AND group_id = :gid"
             params["gid"] = group_id
-        
+
         # Get total count
         count_stmt = text(f"""
             SELECT COUNT(*)
-            FROM v_enrollment_balance
+            FROM v_unpaid_enrollments
             WHERE {base_where}
         """)
         total = self._session.execute(count_stmt, params).scalar() or 0
-        
+
         # Get paginated results
         query_params = {**params, "skip": skip, "limit": limit}
         stmt = text(f"""
-            SELECT 
+            SELECT
                 enrollment_id,
                 student_id,
+                student_name,
                 group_id,
+                group_name,
+                course_name,
                 level_number,
                 amount_due,
                 discount_applied,
                 total_paid as amount_paid,
-                balance as remaining_balance,
-                payment_status as status
-            FROM v_enrollment_balance
+                remaining_balance,
+                balance,
+                payment_status as status,
+                enrolled_at
+            FROM v_unpaid_enrollments
             WHERE {base_where}
-            ORDER BY balance ASC, enrollment_id DESC
+            ORDER BY remaining_balance ASC, enrollment_id DESC
             LIMIT :limit OFFSET :skip
         """)
         rows = self._session.execute(stmt, query_params).all()
-        
+
         items = [
             EnrollmentBalanceItem(
                 enrollment_id=row.enrollment_id,
                 student_id=row.student_id,
+                student_name=row.student_name or "",
                 group_id=row.group_id,
+                group_name=row.group_name or "",
+                course_name=row.course_name,
                 level_number=row.level_number,
                 amount_due=float(row.amount_due or 0),
                 discount_applied=float(row.discount_applied or 0),
                 amount_paid=float(row.amount_paid or 0),
                 remaining_balance=float(row.remaining_balance or 0),
                 status=row.status or "unknown",
+                enrolled_at=str(row.enrolled_at) if row.enrolled_at else None,
             )
             for row in rows
         ]
-        
+
         return items, total
 
     def get_payments_by_student(

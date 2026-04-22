@@ -305,16 +305,16 @@ def get_unpaid_enrollments(
         UnpaidEnrollmentItem(
             enrollment_id=item.enrollment_id,
             student_id=item.student_id,
-            student_name="",  # Not available in current view
+            student_name=item.student_name,
             group_id=item.group_id,
-            group_name="",  # Not available in current view
-            course_name=None,  # Not available in current view
+            group_name=item.group_name,
+            course_name=item.course_name,
             level_number=item.level_number,
             amount_due=item.amount_due,
             discount_applied=item.discount_applied,
             total_paid=item.amount_paid,
             remaining_balance=item.remaining_balance,
-            enrolled_at=None,  # Not available in current view
+            enrolled_at=item.enrolled_at,
         )
         for item in result.items
     ]
