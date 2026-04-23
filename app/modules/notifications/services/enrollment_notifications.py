@@ -76,10 +76,12 @@ class EnrollmentNotificationService(BaseNotificationService):
         if not template or not template.is_active:
             return
         
-        # Get notification recipients based on admin settings
-        recipients = self._resolve_notification_recipients("enrollment_created")
-        if not recipients:
-            return
+        # Get notification recipients with entity context for fallback alert
+        recipients = self._resolve_notification_recipients(
+            "enrollment_created",
+            entity_id=enrollment_id,
+            entity_description=f"Enrollment #{enrollment_id}"
+        )
         
         # Fetch group and student info
         group_name = self._get_group_name(group_id)
@@ -113,10 +115,12 @@ class EnrollmentNotificationService(BaseNotificationService):
         if not template or not template.is_active:
             return
         
-        # Get notification recipients based on admin settings
-        recipients = self._resolve_notification_recipients("enrollment_completed")
-        if not recipients:
-            return
+        # Get notification recipients with entity context for fallback alert
+        recipients = self._resolve_notification_recipients(
+            "enrollment_completed",
+            entity_id=enrollment_id,
+            entity_description=f"Enrollment #{enrollment_id}"
+        )
         
         student_name = self._get_student_name(student_id)
         
@@ -140,10 +144,12 @@ class EnrollmentNotificationService(BaseNotificationService):
         if not template or not template.is_active:
             return
         
-        # Get notification recipients based on admin settings
-        recipients = self._resolve_notification_recipients("enrollment_dropped")
-        if not recipients:
-            return
+        # Get notification recipients with entity context for fallback alert
+        recipients = self._resolve_notification_recipients(
+            "enrollment_dropped",
+            entity_id=enrollment_id,
+            entity_description=f"Enrollment #{enrollment_id}"
+        )
         
         student_name = self._get_student_name(student_id)
         
@@ -155,9 +161,9 @@ class EnrollmentNotificationService(BaseNotificationService):
             "enrollment_id": str(enrollment_id),
         }
         
-        # Send to all admins
-        for email, admin_id in admin_contacts:
-            await self._dispatch(template, "EMAIL", "ADMIN", admin_id, email, variables)
+        # Send to all enabled recipients
+        for email, recipient_id, recipient_type in recipients:
+            await self._dispatch(template, "EMAIL", recipient_type, recipient_id, email, variables)
         
         # PARENT CODE PRESERVED (disabled):
         # email, parent_id, parent_name, student_name = self._resolve_contact(
@@ -173,10 +179,12 @@ class EnrollmentNotificationService(BaseNotificationService):
         if not template or not template.is_active:
             return
         
-        # Get all admin contacts
-        admin_contacts = self._resolve_admin_contacts()
-        if not admin_contacts:
-            return
+        # Get notification recipients with entity context for fallback alert
+        recipients = self._resolve_notification_recipients(
+            "enrollment_transferred",
+            entity_id=from_enrollment_id,
+            entity_description=f"Transfer from Enrollment #{from_enrollment_id} to #{to_enrollment_id}"
+        )
         
         student_name = self._get_student_name(student_id)
         
@@ -189,9 +197,9 @@ class EnrollmentNotificationService(BaseNotificationService):
             "to_enrollment_id": str(to_enrollment_id),
         }
         
-        # Send to all admins
-        for email, admin_id in admin_contacts:
-            await self._dispatch(template, "EMAIL", "ADMIN", admin_id, email, variables)
+        # Send to all enabled recipients
+        for email, recipient_id, recipient_type in recipients:
+            await self._dispatch(template, "EMAIL", recipient_type, recipient_id, email, variables)
         
         # PARENT CODE PRESERVED (disabled):
         # email, parent_id, parent_name, student_name = self._resolve_contact(
@@ -206,10 +214,12 @@ class EnrollmentNotificationService(BaseNotificationService):
         if not template or not template.is_active:
             return
         
-        # Get all admin contacts
-        admin_contacts = self._resolve_admin_contacts()
-        if not admin_contacts:
-            return
+        # Get notification recipients with entity context for fallback alert
+        recipients = self._resolve_notification_recipients(
+            "level_progression",
+            entity_id=enrollment_id,
+            entity_description=f"Enrollment #{enrollment_id} Level {old_level} -> {new_level}"
+        )
         
         student_name = self._get_student_name(student_id)
         
@@ -222,9 +232,9 @@ class EnrollmentNotificationService(BaseNotificationService):
             "enrollment_id": str(enrollment_id),
         }
         
-        # Send to all admins
-        for email, admin_id in admin_contacts:
-            await self._dispatch(template, "EMAIL", "ADMIN", admin_id, email, variables)
+        # Send to all enabled recipients
+        for email, recipient_id, recipient_type in recipients:
+            await self._dispatch(template, "EMAIL", recipient_type, recipient_id, email, variables)
         
         # PARENT CODE PRESERVED (disabled):
         # email, parent_id, parent_name, student_name = self._resolve_contact(
@@ -236,13 +246,13 @@ class EnrollmentNotificationService(BaseNotificationService):
     # ── Helpers ───────────────────────────────────────────────────────────
     
     def _get_group_name(self, group_id: int) -> str:
-        from app.modules.academics.academics_models import Group
+        from app.modules.academics.models import Group
         group = self._repo._session.get(Group, group_id)
         return group.name if group else "Unknown Group"
     
     def _get_instructor_name(self, group_id: int) -> str:
-        from app.modules.academics.academics_models import Group
-        from app.modules.hr.hr_models import Employee
+        from app.modules.academics.models import Group
+        from app.modules.hr.models import Employee
         group = self._repo._session.get(Group, group_id)
         if group and group.instructor_id:
             instructor = self._repo._session.get(Employee, group.instructor_id)

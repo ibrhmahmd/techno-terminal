@@ -28,11 +28,8 @@ class ReportNotificationService(BaseNotificationService):
             logger.warning("daily_report template not found or inactive - skipping.")
             return
         
-        # Get notification recipients based on admin settings
+        # Get notification recipients (fallback handled automatically by base service)
         recipients = self._resolve_notification_recipients("daily_report")
-        if not recipients:
-            logger.info("No recipients enabled for daily report - skipping.")
-            return
         
         today = date.today()
         aggregates = self._fetch_daily_aggregates(today)
@@ -56,11 +53,8 @@ class ReportNotificationService(BaseNotificationService):
             logger.warning("weekly_report template not found or inactive - skipping.")
             return
         
-        # Get notification recipients based on admin settings
+        # Get notification recipients (fallback handled automatically by base service)
         recipients = self._resolve_notification_recipients("weekly_report")
-        if not recipients:
-            logger.info("No recipients enabled for weekly report - skipping.")
-            return
         
         today = date.today()
         week_start = today - timedelta(days=today.weekday())
@@ -87,11 +81,8 @@ class ReportNotificationService(BaseNotificationService):
             logger.warning("monthly_report template not found or inactive - skipping.")
             return
         
-        # Get notification recipients based on admin settings
+        # Get notification recipients (fallback handled automatically by base service)
         recipients = self._resolve_notification_recipients("monthly_report")
-        if not recipients:
-            logger.info("No recipients enabled for monthly report - skipping.")
-            return
         
         today = date.today()
         month_start = today.replace(day=1)
@@ -248,10 +239,8 @@ class ReportNotificationService(BaseNotificationService):
         if not template or not template.is_active:
             return 0
         
-        # Get notification recipients based on admin settings
+        # Get notification recipients (fallback handled automatically by base service)
         recipients = self._resolve_notification_recipients("bulk")
-        if not recipients:
-            return 0
         
         count = 0
         for email, recipient_id, recipient_type in recipients:

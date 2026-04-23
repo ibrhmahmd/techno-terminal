@@ -84,10 +84,12 @@ class CompetitionNotificationService(BaseNotificationService):
         if not template or not template.is_active:
             return
 
-        # Get notification recipients based on admin settings
-        recipients = self._resolve_notification_recipients("competition_team_registration")
-        if not recipients:
-            return
+        # Get notification recipients with entity context for fallback alert
+        recipients = self._resolve_notification_recipients(
+            "competition_team_registration",
+            entity_id=team_id,
+            entity_description=f"Team {team_name} registration"
+        )
 
         # Get student name
         student_name = self._get_student_name(student_id)
@@ -119,10 +121,12 @@ class CompetitionNotificationService(BaseNotificationService):
         if not template or not template.is_active:
             return
 
-        # Get notification recipients based on admin settings
-        recipients = self._resolve_notification_recipients("competition_fee_payment")
-        if not recipients:
-            return
+        # Get notification recipients with entity context for fallback alert
+        recipients = self._resolve_notification_recipients(
+            "competition_fee_payment",
+            entity_id=team_id,
+            entity_description=f"Team {team_name} fee payment"
+        )
 
         # Get student name
         student_name = self._get_student_name(student_id)
@@ -154,10 +158,12 @@ class CompetitionNotificationService(BaseNotificationService):
         if not template or not template.is_active:
             return
 
-        # Get notification recipients based on admin settings
-        recipients = self._resolve_notification_recipients("competition_placement")
-        if not recipients:
-            return
+        # Get notification recipients with entity context for fallback alert
+        recipients = self._resolve_notification_recipients(
+            "competition_placement",
+            entity_id=team_id,
+            entity_description=f"Team {team_name} placement announcement"
+        )
 
         # Get student name
         student_name = self._get_student_name(student_id)

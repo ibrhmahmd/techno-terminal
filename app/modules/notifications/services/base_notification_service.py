@@ -19,6 +19,7 @@ from app.modules.notifications.repositories.notification_repository import Notif
 from app.modules.notifications.dispatchers.email_dispatcher import GmailEmailDispatcher
 from app.modules.notifications.dispatchers.whatsapp_dispatcher import TwilioWhatsAppDispatcher
 from app.modules.notifications.models.notification_template import NotificationTemplate
+from app.modules.notifications.schemas.fallback_dto import FallbackAlertContext
 from app.modules.crm.models.parent_models import Parent
 from app.modules.crm.models.link_models import StudentParent
 from app.modules.crm.models.student_models import Student
@@ -79,18 +80,28 @@ class BaseNotificationService:
         return None, None, "", student.full_name
     
     def _resolve_notification_recipients(
-        self, notification_type: str
+        self,
+        notification_type: str,
+        entity_id: Optional[int] = None,
+        entity_description: Optional[str] = None
     ) -> list[tuple[str, int, str]]:
         """
         Returns list of (email, recipient_id, recipient_type) tuples.
         Uses notification_additional_recipients table with fallback to env-configured email.
-        recipient_type: 'ADDITIONAL' for table recipients, 'FALLBACK' for fallback email.
+        Automatically sends fallback alert if no valid recipients found.
+        
+        Args:
+            notification_type: Type of notification being sent
+            entity_id: Optional ID of the entity (receipt, student, etc.) for alert context
+            entity_description: Optional human-readable description for alert context
+        
+        Returns:
+            List of (email, recipient_id, recipient_type) tuples
         """
         from sqlalchemy import text
 
         recipients = []
         invalid_emails_found = []
-        fallback_triggered = False
 
         # Get all active additional recipients for this notification type (global - no admin_id filter)
         try:
@@ -108,12 +119,9 @@ class BaseNotificationService:
                     invalid_emails_found.append((recipient_id, email))
         except Exception as e:
             logger.error(f"Failed to fetch additional recipients: {e}")
-            fallback_triggered = True
 
         # Check if we need to trigger fallback
         if not recipients:
-            fallback_triggered = True
-
             # Validate and use fallback email
             if self._is_valid_email(FALLBACK_EMAIL):
                 recipients.append((FALLBACK_EMAIL, FALLBACK_RECIPIENT_ID, "FALLBACK"))
@@ -139,6 +147,19 @@ class BaseNotificationService:
                     )
                 except Exception as log_error:
                     logger.error(f"Failed to create fallback alert log: {log_error}")
+
+                # Send alert to fallback email with full context
+                context = FallbackAlertContext(
+                    notification_type=notification_type,
+                    entity_id=entity_id,
+                    entity_description=entity_description,
+                    intended_recipients_count=0
+                )
+                try:
+                    import asyncio
+                    asyncio.create_task(self._send_fallback_alert(context))
+                except Exception as alert_error:
+                    logger.error(f"Failed to send fallback alert: {alert_error}")
             else:
                 logger.error(
                     f"CRITICAL: Fallback email '{FALLBACK_EMAIL}' is invalid. "
@@ -161,24 +182,32 @@ class BaseNotificationService:
             body = body.replace(f"{{{{{key}}}}}", str(val))
         return body
     
-    async def _send_fallback_alert(
-        self, notification_type: str, entity_id: int, intended_recipients_count: int
-    ) -> None:
+    async def _send_fallback_alert(self, context: FallbackAlertContext) -> None:
         """
         Send alert notification to fallback email about fallback activation.
         This is separate from the main notification to alert admins about the issue.
+        
+        Args:
+            context: FallbackAlertContext containing notification details and entity info
         """
         from app.modules.notifications.models.notification_log import NotificationLog
         
-        subject = f"[ALERT] Notification Fallback Activated - {notification_type}"
+        subject = f"[ALERT] Notification Fallback Activated - {context.notification_type}"
+        
+        # Build entity info section if available
+        entity_info = ""
+        if context.entity_id:
+            entity_info = f"- Entity ID: {context.entity_id}\n"
+        if context.entity_description:
+            entity_info += f"- Entity Description: {context.entity_description}\n"
+        
         body = f"""NOTIFICATION FALLBACK ALERT
 
 A notification fallback was triggered due to empty or invalid recipient configuration.
 
 Details:
-- Notification Type: {notification_type}
-- Entity ID: {entity_id}
-- Intended Recipients: {intended_recipients_count}
+- Notification Type: {context.notification_type}
+{entity_info}- Intended Recipients: {context.intended_recipients_count}
 - Fallback Email: {FALLBACK_EMAIL}
 - Timestamp: {datetime.utcnow().isoformat()}
 
@@ -190,7 +219,7 @@ Add valid email recipients to ensure notifications are delivered properly.
         try:
             # Send alert email to fallback address
             await self._email.send(FALLBACK_EMAIL, body, subject)
-            logger.info(f"Fallback alert sent to {FALLBACK_EMAIL} for {notification_type}")
+            logger.info(f"Fallback alert sent to {FALLBACK_EMAIL} for {context.notification_type}")
             
             # Update the fallback alert log entry status to SENT
             # Find the most recent fallback alert log for this notification type
