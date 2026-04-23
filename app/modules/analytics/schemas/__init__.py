@@ -34,6 +34,19 @@ from .bi_schemas import (
     FlightRiskStudentDTO,
     RetentionCohortDTO,
 )
+from .dashboard_schemas import (
+    GroupSessionInfoDTO,
+    GroupMetadataResultDTO,
+    InstructorInfoDTO,
+    GroupInfoDTO,
+    AttendanceRecordDTO,
+    SessionWithAttendanceDTO,
+    TodaySessionDTO as DashboardTodaySessionDTO,
+    CurrentLevelDTO,
+    ScheduledGroupDTO,
+    DashboardSummaryDTO as DashboardOverviewSummaryDTO,
+    DashboardDailyOverviewDTO,
+)
 
 __all__ = [
     # Financial
@@ -65,4 +78,17 @@ __all__ = [
     "ScheduleUtilizationDTO",
     "FlightRiskStudentDTO",
     "RetentionCohortDTO",
+
+    # Dashboard
+    "GroupSessionInfoDTO",
+    "GroupMetadataResultDTO",
+    "InstructorInfoDTO",
+    "GroupInfoDTO",
+    "AttendanceRecordDTO",
+    "SessionWithAttendanceDTO",
+    "DashboardTodaySessionDTO",
+    "CurrentLevelDTO",
+    "ScheduledGroupDTO",
+    "DashboardOverviewSummaryDTO",
+    "DashboardDailyOverviewDTO",
 ]

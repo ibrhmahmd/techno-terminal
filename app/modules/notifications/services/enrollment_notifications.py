@@ -72,6 +72,9 @@ class EnrollmentNotificationService(BaseNotificationService):
     
     async def _process_created(self, student_id: int, enrollment_id: int, 
                                group_id: int, level_number: int) -> None:
+        from app.modules.academics.models.group_models import Group
+        from app.modules.crm.models.enrollment import Enrollment
+        
         template = self._repo.get_template_by_name("enrollment_confirmation")
         if not template or not template.is_active:
             return
@@ -83,21 +86,38 @@ class EnrollmentNotificationService(BaseNotificationService):
             entity_description=f"Enrollment #{enrollment_id}"
         )
         
-        # Fetch group and student info
+        # Fetch group, enrollment and student info
         group_name = self._get_group_name(group_id)
         instructor = self._get_instructor_name(group_id)
         student_name = self._get_student_name(student_id)
+        
+        # Get schedule info from group
+        schedule = "Schedule not available"
+        group = self._repo._session.get(Group, group_id)
+        if group and group.default_day:
+            from datetime import time as dt_time
+            start_time = group.default_time_start.strftime("%I:%M %p") if group.default_time_start else "TBD"
+            end_time = group.default_time_end.strftime("%I:%M %p") if group.default_time_end else "TBD"
+            schedule = f"{group.default_day} {start_time} - {end_time}"
+        
+        # Get enrollment date
+        enrollment_date = "N/A"
+        enrollment = self._repo._session.get(Enrollment, enrollment_id)
+        if enrollment and enrollment.created_at:
+            enrollment_date = enrollment.created_at.strftime("%Y-%m-%d")
         
         variables = {
             "parent_name": "Admin",
             "student_name": student_name,
             "group_name": group_name,
             "level_number": str(level_number),
-            "instructor_name": instructor,
+            "instructor": instructor,
+            "schedule": schedule,
             "enrollment_id": str(enrollment_id),
+            "enrollment_date": enrollment_date,
         }
         
-        # Send to all enabled recipients (admins + additional recipients)
+        # Send to all enabled recipients
         for email, recipient_id, recipient_type in recipients:
             await self._dispatch(template, "EMAIL", recipient_type, recipient_id, email, variables)
         

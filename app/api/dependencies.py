@@ -318,10 +318,16 @@ def get_hr_service():
 from app.modules.analytics.services.academic_service import AcademicAnalyticsService
 from app.modules.analytics.services.financial_service import FinancialAnalyticsService
 from app.modules.analytics.services.bi_service import BIAnalyticsService
+from app.modules.analytics.services.dashboard_service import DashboardService
 
 def get_academic_analytics_service() -> AcademicAnalyticsService:
     """Returns a fresh AcademicAnalyticsService instance per request."""
     return AcademicAnalyticsService()
+
+
+def get_dashboard_service() -> DashboardService:
+    """Returns a fresh DashboardService instance per request."""
+    return DashboardService()
 
 
 def get_financial_analytics_service() -> FinancialAnalyticsService:

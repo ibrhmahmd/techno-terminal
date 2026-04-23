@@ -95,6 +95,21 @@ def create_competition(
 
 
 @router.get(
+    "/competitions/deleted",
+    response_model=ApiResponse[list[CompetitionDTO]],
+    summary="List deleted competitions",
+    description="List all soft-deleted competitions (admin only).",
+)
+def list_deleted_competitions(
+    current_user: User = Depends(require_admin),
+    svc: CompetitionService = Depends(get_competition_service),
+):
+    """List all soft-deleted competitions."""
+    result = svc.list_deleted_competitions()
+    return ApiResponse(data=result)
+
+
+@router.get(
     "/competitions/{competition_id}",
     response_model=ApiResponse[CompetitionDTO],
     summary="Get competition details",
@@ -205,21 +220,6 @@ def restore_competition(
     """Restore a soft-deleted competition."""
     result = svc.restore_competition(competition_id)
     return ApiResponse(data=result, message="Competition restored successfully.")
-
-
-@router.get(
-    "/competitions/deleted",
-    response_model=ApiResponse[list[CompetitionDTO]],
-    summary="List deleted competitions",
-    description="List all soft-deleted competitions (admin only).",
-)
-def list_deleted_competitions(
-    current_user: User = Depends(require_admin),
-    svc: CompetitionService = Depends(get_competition_service),
-):
-    """List all soft-deleted competitions."""
-    result = svc.list_deleted_competitions()
-    return ApiResponse(data=result)
 
 
 @router.get(

@@ -73,7 +73,7 @@ class StudentProgressDTO(BaseModel):
     attendance_pct: float
     progress_status: str  # "on_track", "at_risk", "behind"
     estimated_completion_date: Optional[date]
-    enrollment_date: date
+    enrollment_date: Optional[date]
     last_attendance_date: Optional[date]
 
 

@@ -326,7 +326,10 @@ def progress_group_level(
         group_name=body.group_name,
     )
 
-    result = lifecycle_svc.progress_to_next_level(data)
+    try:
+        result = lifecycle_svc.progress_to_next_level(data)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     # Convert to legacy result format for API compatibility
     legacy_result = ProgressGroupLevelResult(

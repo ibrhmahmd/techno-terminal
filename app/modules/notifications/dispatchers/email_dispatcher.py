@@ -6,11 +6,14 @@ Gmail SMTP email dispatcher — implements IMessageDispatcher.
 Uses Python stdlib smtplib (zero dependencies).
 Architecture is abstract — swap for SendGrid/Resend by replacing this file only.
 """
+import asyncio
 import logging
 import smtplib
+from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Optional, Tuple
+from email import encoders
+from typing import List, Optional, Tuple
 
 from app.core.config import settings
 
@@ -29,40 +32,61 @@ class GmailEmailDispatcher:
     SMTP_HOST = "smtp.gmail.com"
     SMTP_PORT = 465
 
-    def send(
+    async def send(
         self,
         recipient: str,
         body: str,
         subject: Optional[str] = None,
+        attachments: Optional[List[Tuple[str, bytes, str]]] = None,
     ) -> Tuple[bool, Optional[str]]:
         """
-        Send an HTML email.
+        Send an HTML email with optional attachments.
 
         Args:
             recipient: Email address.
             body: HTML email body.
             subject: Email subject line.
+            attachments: List of (filename, file_bytes, mimetype) tuples.
 
         Returns:
             (True, None) on success, (False, error_message) on failure.
         """
         try:
-            msg = MIMEMultipart("alternative")
+            # Create message container
+            msg = MIMEMultipart("mixed")
             msg["Subject"] = subject or "Techno Kids Notification"
             msg["From"] = settings.gmail_sender_address
             msg["To"] = recipient
+
+            # Attach HTML body
             msg.attach(MIMEText(body, "html"))
 
-            with smtplib.SMTP_SSL(self.SMTP_HOST, self.SMTP_PORT) as server:
-                server.login(
-                    settings.gmail_sender_address,
-                    settings.gmail_app_password,
-                )
-                server.sendmail(
-                    settings.gmail_sender_address,
-                    recipient,
-                    msg.as_string(),
-                )
+            # Attach files if provided
+            if attachments:
+                for filename, file_bytes, mimetype in attachments:
+                    part = MIMEBase("application", mimetype)
+                    part.set_payload(file_bytes)
+                    encoders.encode_base64(part)
+                    part.add_header(
+                        "Content-Disposition",
+                        f"attachment; filename=\"{filename}\"",
+                    )
+                    msg.attach(part)
+
+            # Run blocking SMTP operations in thread pool
+            def _send_email():
+                with smtplib.SMTP_SSL(self.SMTP_HOST, self.SMTP_PORT) as server:
+                    server.login(
+                        settings.gmail_sender_address,
+                        settings.gmail_app_password,
+                    )
+                    server.sendmail(
+                        settings.gmail_sender_address,
+                        recipient,
+                        msg.as_string(),
+                    )
+
+            await asyncio.to_thread(_send_email)
 
             logger.info("Email sent to %s — subject: %s", recipient, subject)
             return True, None

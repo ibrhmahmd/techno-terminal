@@ -9,12 +9,14 @@ from app.api.routers.analytics.academic import router as academic_router
 from app.api.routers.analytics.financial import router as financial_router
 from app.api.routers.analytics.competition import router as competition_router
 from app.api.routers.analytics.bi import router as bi_router
+from app.api.routers.analytics.dashboard import router as dashboard_router
 
 __all__ = [
     "academic_router",
     "financial_router",
     "competition_router",
     "bi_router",
+    "dashboard_router",
 ]
 
 

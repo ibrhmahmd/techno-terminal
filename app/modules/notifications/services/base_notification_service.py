@@ -20,6 +20,7 @@ from app.modules.notifications.dispatchers.email_dispatcher import GmailEmailDis
 from app.modules.notifications.dispatchers.whatsapp_dispatcher import TwilioWhatsAppDispatcher
 from app.modules.notifications.models.notification_template import NotificationTemplate
 from app.modules.notifications.schemas.fallback_dto import FallbackAlertContext
+from typing import List, Optional, Tuple
 from app.modules.crm.models.parent_models import Parent
 from app.modules.crm.models.link_models import StudentParent
 from app.modules.crm.models.student_models import Student
@@ -239,9 +240,20 @@ Add valid email recipients to ensure notifications are delivered properly.
     
     async def _dispatch(
         self, template: NotificationTemplate, channel: str, recipient_type: str,
-        recipient_id: int, contact: str, variables: dict
+        recipient_id: int, contact: str, variables: dict,
+        attachments: Optional[List[Tuple[str, bytes, str]]] = None
     ) -> None:
-        """Send notification and log result."""
+        """Send notification and log result.
+        
+        Args:
+            template: Notification template
+            channel: "EMAIL" or "WHATSAPP"
+            recipient_type: "ADDITIONAL", "FALLBACK", etc.
+            recipient_id: ID of recipient
+            contact: Email address or phone number
+            variables: Template variable substitutions
+            attachments: Optional list of (filename, bytes, mimetype) for email attachments
+        """
         body = self._render_template(template, variables)
         
         subject = None
@@ -267,7 +279,7 @@ Add valid email recipients to ensure notifications are delivered properly.
             logger.info(f"WhatsApp notifications disabled - skipping message to {recipient_type} {recipient_id}")
             success = True  # Mark as success to avoid retry attempts
         elif channel == "EMAIL":
-            success, error = await self._email.send(contact, body, subject)
+            success, error = await self._email.send(contact, body, subject, attachments)
         
         # Update log
         status = "SENT" if success else "FAILED"

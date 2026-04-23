@@ -31,6 +31,7 @@ from app.api.routers.analytics import (
     financial_router,
     competition_router,
     bi_router,
+    dashboard_router,
 )
 from app.api.routers.finance import (
     receipt_router,
@@ -105,11 +106,12 @@ def create_app() -> FastAPI:
     app.include_router(competitions_router, prefix="/api/v1", tags=["Competitions"])
     app.include_router(teams_router, prefix="/api/v1", tags=["Teams"])
     app.include_router(hr_router.router,           prefix="/api/v1", tags=["HR"])
-    # Analytics (split into 4 sub-domains)
+    # Analytics (split into 5 sub-domains)
     app.include_router(academic_router,    prefix="/api/v1", tags=["Analytics — Academic"])
     app.include_router(financial_router,   prefix="/api/v1", tags=["Analytics — Financial"])
     app.include_router(competition_router, prefix="/api/v1", tags=["Analytics — Competition"])
     app.include_router(bi_router,          prefix="/api/v1", tags=["Analytics — BI"])
+    app.include_router(dashboard_router,    prefix="/api/v1", tags=["Analytics — Dashboard"])
 
     # Notifications router
     from app.api.routers.notifications import router as notifications_router
