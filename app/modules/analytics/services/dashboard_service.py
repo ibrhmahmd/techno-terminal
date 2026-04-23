@@ -62,7 +62,7 @@ class DashboardService:
                 group_id = session_info.group_id
                 if group_id not in today_session_by_group:
                     today_session_by_group[group_id] = TodaySessionDTO(
-                        session_id=str(session_info.session_id),
+                        session_id=session_info.session_id,
                         date=session_info.session_date,
                         time_start=session_info.start_time or '',
                         time_end=session_info.end_time or '',
@@ -77,24 +77,24 @@ class DashboardService:
             instructors_lookup = {inst.id: inst for inst in metadata_result.instructors}
             
             # Build level mapping for Query 3
-            group_level_map = {int(g.id): g.current_level for g in metadata_result.groups}
+            group_level_map = {g.id: g.current_level for g in metadata_result.groups}
             
             # Query 3: Get all sessions for current levels
             all_level_sessions = repo.get_sessions_for_levels(db, group_level_map)
             
             # Get all session IDs
-            session_ids = [int(s.session_id) for s in all_level_sessions]
+            session_ids = [s.session_id for s in all_level_sessions]
             
             # Build session_id -> group_id mapping
-            session_to_group: dict[str, int] = {
-                str(session_info.session_id): session_info.group_id 
+            session_to_group: dict[int, int] = {
+                session_info.session_id: session_info.group_id 
                 for session_info in groups_with_sessions
             }
             
             # Fetch remaining group mappings for historical sessions
             if session_ids:
                 all_ids = set(session_ids)
-                mapped_ids = set(int(sid) for sid in session_to_group.keys())
+                mapped_ids = set(session_to_group.keys())
                 unmapped = list(all_ids - mapped_ids)
                 
                 if unmapped:
@@ -102,10 +102,10 @@ class DashboardService:
                     stmt = text("SELECT id, group_id FROM sessions WHERE id IN :session_ids")
                     result = db.execute(stmt, {"session_ids": ids_tuple}).all()
                     for row in result:
-                        session_to_group[str(row.id)] = row.group_id
+                        session_to_group[row.id] = row.group_id
             
             # Query 4: Get attendance if requested
-            attendance_by_session: dict[str, list[AttendanceRecordDTO]] = {}
+            attendance_by_session: dict[int, list[AttendanceRecordDTO]] = {}
             if include_attendance and session_ids:
                 attendance_list = repo.get_attendance_for_sessions(db, session_ids)
                 # Group attendance by session_id - need to query session_id since DTO doesn't have it
@@ -122,49 +122,52 @@ class DashboardService:
                     att_result = db.execute(stmt, {"session_ids": ids_tuple}).all()
                     
                     # Map student_id -> session_id
-                    student_to_session: dict[int, str] = {}
+                    student_to_session: dict[int, int] = {}
                     for row in att_result:
-                        student_to_session[row.student_id] = str(row.session_id)
+                        student_to_session[row.student_id] = row.session_id
                     
                     # Build attendance_by_session
                     for record in attendance_list:
-                        session_id = student_to_session.get(int(record.student_id))
+                        session_id = student_to_session.get(record.student_id)
                         if session_id:
                             if session_id not in attendance_by_session:
                                 attendance_by_session[session_id] = []
                             attendance_by_session[session_id].append(record)
             
             # Group sessions by group_id
-            sessions_by_group: dict[str, list[SessionWithAttendanceDTO]] = {}
+            sessions_by_group: dict[int, list[SessionWithAttendanceDTO]] = {}
             for session in all_level_sessions:
                 group_id = session_to_group.get(session.session_id)
                 if group_id:
-                    group_id_str = str(group_id)
-                    if group_id_str not in sessions_by_group:
-                        sessions_by_group[group_id_str] = []
+                    if group_id not in sessions_by_group:
+                        sessions_by_group[group_id] = []
                     
                     # Add attendance if requested
                     if include_attendance:
                         session.attendance = attendance_by_session.get(session.session_id, [])
                     
-                    sessions_by_group[group_id_str].append(session)
+                    sessions_by_group[group_id].append(session)
             
             # Build scheduled_groups
             scheduled_groups: list[ScheduledGroupDTO] = []
-            for group_id_str in groups_lookup.keys():
-                group_id = int(group_id_str)
+            for group_id in groups_lookup.keys():
                 today_session = today_session_by_group.get(group_id)
-                level_sessions = sessions_by_group.get(group_id_str, [])
+                level_sessions = sessions_by_group.get(group_id, [])
                 
                 if level_sessions:
-                    group_info = groups_lookup[group_id_str]
+                    group_info = groups_lookup[group_id]
+                    
+                    # Query 5: Get roster for this group/level
+                    roster = repo.get_roster_for_group_level(db, group_id, group_info.current_level)
+                    
                     scheduled_group = ScheduledGroupDTO(
-                        group_id=group_id_str,
+                        group_id=group_id,
                         today_session=today_session,
                         current_level=CurrentLevelDTO(
                             level_number=group_info.current_level,
                             sessions=level_sessions
-                        )
+                        ),
+                        roster=roster
                     )
                     scheduled_groups.append(scheduled_group)
             

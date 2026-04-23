@@ -122,7 +122,9 @@ class GroupAnalyticsService:
             for enrollment, student_name, student_phone in enrollments_data:
                 # Calculate payments
                 payments_made = get_enrollment_payments(session, enrollment.id)
-                balance_remaining = enrollment.amount_due - payments_made - enrollment.discount_applied
+                amount_due = enrollment.amount_due or 0.0
+                discount_applied = enrollment.discount_applied or 0.0
+                balance_remaining = amount_due - payments_made - discount_applied
 
                 enrollment_dtos.append(EnrollmentHistoryItemDTO(
                     enrollment_id=enrollment.id,

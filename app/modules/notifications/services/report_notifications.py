@@ -34,12 +34,25 @@ class ReportNotificationService(BaseNotificationService):
         today = date.today()
         aggregates = self._fetch_daily_aggregates(today)
         
+        # Format payment methods for display
+        payment_methods_str = ", ".join(
+            [f"{method}: {count}" for method, count in aggregates["payment_methods"].items()]
+        ) if aggregates["payment_methods"] else "N/A"
+        
+        # Format instructors list
+        instructors_str = ", ".join(aggregates["instructors_list"]) if aggregates["instructors_list"] else "N/A"
+        
         variables = {
             "date": today.strftime("%Y-%m-%d"),
             "total_revenue": f"{aggregates['total_revenue']:.2f}",
             "new_enrollments": aggregates["new_enrollments"],
             "sessions_held": aggregates["sessions_held"],
             "absent_count": aggregates["absent_count"],
+            "payment_count": aggregates["payment_count"],
+            "payment_methods": payment_methods_str,
+            "instructors_list": instructors_str,
+            "attendance_rate": f"{aggregates['attendance_rate']:.1%}",
+            "unpaid_count": aggregates["unpaid_count"],
         }
         
         # Send to all enabled recipients (admins + additional recipients)
@@ -103,11 +116,16 @@ class ReportNotificationService(BaseNotificationService):
     # ── Private Helpers ──────────────────────────────────────────────────
     
     def _fetch_daily_aggregates(self, target_date: date) -> dict:
-        """Fetch daily metrics."""
+        """Fetch daily metrics with enhanced data for rich reporting."""
         total_revenue = 0.0
         new_enrollments = 0
         sessions_held = 0
         absent_count = 0
+        payment_count = 0
+        payment_methods = {}
+        instructors_list = []
+        attendance_rate = 0.0
+        unpaid_count = 0
         
         try:
             from app.modules.analytics.services.financial_service import FinancialAnalyticsService
@@ -123,27 +141,80 @@ class ReportNotificationService(BaseNotificationService):
             summary = academic_svc.get_dashboard_summary()
             sessions_held = summary.today_sessions_count
             absent_count = sum(s.absent for s in summary.sessions)
+            
+            # Calculate attendance rate
+            total_students = sum(s.present + s.absent + s.excused + s.late for s in summary.sessions)
+            total_present = sum(s.present for s in summary.sessions)
+            if total_students > 0:
+                attendance_rate = total_present / total_students
         except Exception as e:
             logger.warning(f"Could not fetch daily academic summary: {e}")
         
         try:
             from app.db.connection import get_session
-            from sqlmodel import select, func
+            from sqlmodel import select, func, text
             from app.modules.enrollments.models.enrollment_models import Enrollment
+            from app.modules.finance.models.payment import Payment
+            
             with get_session() as session:
+                # New enrollments count
                 stmt = select(func.count()).select_from(Enrollment).where(
                     Enrollment.enrolled_at >= target_date,
                     Enrollment.enrolled_at < target_date + timedelta(days=1),
                 )
                 new_enrollments = session.exec(stmt).one() or 0
+                
+                # Payment count and methods breakdown
+                payment_stmt = select(Payment).where(
+                    Payment.created_at >= target_date,
+                    Payment.created_at < target_date + timedelta(days=1)
+                )
+                payments = session.exec(payment_stmt).all()
+                payment_count = len(payments)
+                
+                # Payment methods breakdown
+                for payment in payments:
+                    method = str(payment.payment_method) if payment.payment_method else "unknown"
+                    payment_methods[method] = payment_methods.get(method, 0) + 1
+                
+                # Instructors who had sessions today
+                instructor_stmt = text("""
+                    SELECT DISTINCT e.name
+                    FROM sessions s
+                    JOIN employees e ON s.instructor_id = e.id
+                    WHERE s.date = :target_date
+                """)
+                result = session.exec(instructor_stmt, {"target_date": target_date})
+                instructors_list = [row[0] for row in result]
+                
+                # Unpaid enrollments count (students with balance > 0)
+                unpaid_stmt = text("""
+                    SELECT COUNT(DISTINCT e.id)
+                    FROM enrollments e
+                    LEFT JOIN (
+                        SELECT enrollment_id, COALESCE(SUM(amount), 0) as total_paid
+                        FROM payments
+                        WHERE deleted_at IS NULL
+                        GROUP BY enrollment_id
+                    ) p ON e.id = p.enrollment_id
+                    WHERE e.status = 'active'
+                    AND (e.amount_due - COALESCE(e.discount_applied, 0) - COALESCE(p.total_paid, 0)) > 0
+                """)
+                unpaid_count = session.exec(unpaid_stmt).one() or 0
+                
         except Exception as e:
-            logger.warning(f"Could not fetch new enrollments count: {e}")
+            logger.warning(f"Could not fetch enhanced daily metrics: {e}")
         
         return {
             "total_revenue": total_revenue,
             "new_enrollments": new_enrollments,
             "sessions_held": sessions_held,
             "absent_count": absent_count,
+            "payment_count": payment_count,
+            "payment_methods": payment_methods,
+            "instructors_list": instructors_list,
+            "attendance_rate": attendance_rate,
+            "unpaid_count": unpaid_count,
         }
     
     def _fetch_weekly_aggregates(self, week_start: date, week_end: date) -> dict:

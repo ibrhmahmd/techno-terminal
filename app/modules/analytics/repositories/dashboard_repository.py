@@ -22,6 +22,7 @@ from app.modules.analytics.schemas.dashboard_schemas import (
     InstructorInfoDTO,
     SessionWithAttendanceDTO,
     AttendanceRecordDTO,
+    StudentRosterDTO,
 )
 
 
@@ -125,10 +126,10 @@ def get_group_metadata(
         
         # Build GroupInfoDTO
         group = GroupInfoDTO(
-            id=str(mapping['id']),
+            id=mapping['id'],
             name=mapping['name'],
             course_name=mapping['course_name'],
-            instructor_id=str(mapping['instructor_id']) if mapping['instructor_id'] else '',
+            instructor_id=mapping['instructor_id'] or 0,
             current_level=mapping['current_level'] or 1,
             default_day=mapping.get('default_day') or '',
             default_time_start=str(mapping['default_time_start']) if mapping['default_time_start'] else '',
@@ -145,7 +146,7 @@ def get_group_metadata(
     
     # Build InstructorInfoDTO list
     instructors: list[InstructorInfoDTO] = [
-        InstructorInfoDTO(id=str(inst_id), name=name)
+        InstructorInfoDTO(id=inst_id, name=name)
         for inst_id, name in instructors_map.items()
     ]
     
@@ -205,14 +206,14 @@ def get_sessions_for_levels(
     for row in rows:
         row_dict = dict(row._mapping)
         session = SessionWithAttendanceDTO(
-            session_id=str(row_dict['session_id']),
+            session_id=row_dict['session_id'],
             session_number=row_dict['session_number'],
             date=str(row_dict['session_date']),
             time_start=str(row_dict['start_time'])[:5] if row_dict['start_time'] else '',
             time_end=str(row_dict['end_time'])[:5] if row_dict['end_time'] else '',
             status=row_dict['status'],
             is_extra_session=row_dict.get('is_extra_session') or False,
-            actual_instructor_id=str(row_dict['actual_instructor_id']) if row_dict['actual_instructor_id'] else '',
+            actual_instructor_id=row_dict['actual_instructor_id'] or 0,
             instructor_name=row_dict.get('instructor_name'),
             is_substitute=row_dict.get('is_substitute') or False,
         )
@@ -254,7 +255,7 @@ def get_attendance_for_sessions(
     for row in rows:
         mapping = row._mapping
         record = AttendanceRecordDTO(
-            student_id=str(mapping['student_id']),
+            student_id=mapping['student_id'],
             student_name=mapping['student_name'],
             gender=mapping['gender'] or 'male',
             status=mapping['status'],
@@ -262,6 +263,58 @@ def get_attendance_for_sessions(
         attendance.append(record)
     
     return attendance
+
+
+def get_roster_for_group_level(
+    db: Session, 
+    group_id: int, 
+    level_number: int
+) -> list[StudentRosterDTO]:
+    """
+    Query 5: Fetch active enrollments with student details and calculated billing status.
+    
+    Balance formula: (amount_due - discount_applied) - total_payments
+    billing_status: 'due' if balance > 0 else 'paid'
+    
+    Returns list of StudentRosterDTO ordered by student name.
+    """
+    stmt = text("""
+        SELECT 
+            s.id AS student_id,
+            s.full_name AS student_name,
+            s.gender,
+            e.amount_due,
+            COALESCE(e.discount_applied, 0) AS discount_applied,
+            COALESCE(p.total_paid, 0) AS total_paid,
+            (e.amount_due - COALESCE(e.discount_applied, 0) - COALESCE(p.total_paid, 0)) AS balance
+        FROM enrollments e
+        JOIN students s ON e.student_id = s.id
+        LEFT JOIN (
+            SELECT enrollment_id, SUM(amount) as total_paid
+            FROM payments
+            WHERE deleted_at IS NULL
+            GROUP BY enrollment_id
+        ) p ON e.id = p.enrollment_id
+        WHERE e.group_id = :group_id
+            AND e.level_number = :level_number
+            AND e.status = 'active'
+        ORDER BY s.full_name
+    """)
+    
+    rows = db.execute(stmt, {"group_id": group_id, "level_number": level_number}).all()
+    
+    result: list[StudentRosterDTO] = []
+    for row in rows:
+        mapping = row._mapping
+        balance = float(mapping['balance'])
+        result.append(StudentRosterDTO(
+            student_id=mapping['student_id'],
+            student_name=mapping['student_name'],
+            gender=mapping['gender'] or 'male',
+            billing_status='due' if balance > 0 else 'paid',
+            balance=balance
+        ))
+    return result
 
 
 def _format_schedule_display(

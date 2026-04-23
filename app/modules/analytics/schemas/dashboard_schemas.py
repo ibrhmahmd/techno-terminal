@@ -40,16 +40,16 @@ class GroupMetadataResultDTO(BaseModel):
 
 class InstructorInfoDTO(BaseModel):
     """Instructor metadata for lookup table (instructor_id -> InstructorInfo)."""
-    id: str
+    id: int
     name: str
 
 
 class GroupInfoDTO(BaseModel):
     """Group metadata for lookup table (group_id -> GroupInfo)."""
-    id: str
+    id: int
     name: str
     course_name: str
-    instructor_id: str
+    instructor_id: int
     current_level: int
     default_day: str
     default_time_start: str
@@ -65,7 +65,7 @@ class GroupInfoDTO(BaseModel):
 
 class AttendanceRecordDTO(BaseModel):
     """Single attendance record for a student in a session."""
-    student_id: str
+    student_id: int
     student_name: str
     gender: str  # "male" | "female"
     status: Optional[str]  # "present" | "absent" | "cancelled" | null
@@ -73,7 +73,7 @@ class AttendanceRecordDTO(BaseModel):
 
 class SessionWithAttendanceDTO(BaseModel):
     """Session with optional attendance data (ALL sessions for current level)."""
-    session_id: str
+    session_id: int
     session_number: int  # Sequential within level
     date: str  # "2024-01-10"
     time_start: str  # "15:00"
@@ -82,7 +82,7 @@ class SessionWithAttendanceDTO(BaseModel):
     is_extra_session: bool
     
     # Per-session instructor (may differ from group's default instructor)
-    actual_instructor_id: str
+    actual_instructor_id: int
     instructor_name: Optional[str] = None
     is_substitute: bool = False
     
@@ -95,7 +95,7 @@ class SessionWithAttendanceDTO(BaseModel):
 
 class TodaySessionDTO(BaseModel):
     """Session occurring on the target date."""
-    session_id: str
+    session_id: int
     date: str  # "2024-01-15"
     time_start: str  # "15:00"
     time_end: str  # "16:30"
@@ -106,6 +106,15 @@ class TodaySessionDTO(BaseModel):
 # Main Data Structure DTOs
 # ═════════════════════════════════════════════════════════════════════════════
 
+class StudentRosterDTO(BaseModel):
+    """Student roster entry with billing status for dashboard."""
+    student_id: int
+    student_name: str
+    gender: str  # 'male' | 'female'
+    billing_status: str  # 'paid' | 'due'
+    balance: float
+
+
 class CurrentLevelDTO(BaseModel):
     """Current level data with all sessions for that level."""
     level_number: int
@@ -114,20 +123,23 @@ class CurrentLevelDTO(BaseModel):
 
 class ScheduledGroupDTO(BaseModel):
     """Main data structure: One per scheduled group."""
-    group_id: str
+    group_id: int
     
     # Today's session info (if any)
     today_session: Optional[TodaySessionDTO] = None
     
     # Current level data (ALL sessions for this level)
     current_level: CurrentLevelDTO
+    
+    # Active enrollments with billing status
+    roster: list[StudentRosterDTO]
 
 
 class DashboardSummaryDTO(BaseModel):
     """Summary statistics for the dashboard."""
     total_groups_today: int
     total_instructors_today: int
-    unique_instructor_ids: list[str]
+    unique_instructor_ids: list[int]
 
 
 # ═════════════════════════════════════════════════════════════════════════════

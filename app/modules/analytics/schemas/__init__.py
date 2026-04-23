@@ -46,6 +46,7 @@ from .dashboard_schemas import (
     ScheduledGroupDTO,
     DashboardSummaryDTO as DashboardOverviewSummaryDTO,
     DashboardDailyOverviewDTO,
+    StudentRosterDTO,
 )
 
 __all__ = [
@@ -91,4 +92,5 @@ __all__ = [
     "ScheduledGroupDTO",
     "DashboardOverviewSummaryDTO",
     "DashboardDailyOverviewDTO",
+    "StudentRosterDTO",
 ]

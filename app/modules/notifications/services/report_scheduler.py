@@ -1,4 +1,5 @@
 import asyncio
+import os
 from datetime import datetime
 import logging
 
@@ -6,13 +7,17 @@ from app.modules.notifications.services.notification_service import Notification
 
 logger = logging.getLogger(__name__)
 
+# Load daily report schedule from environment (default: 20:00 = 8 PM)
+DAILY_REPORT_HOUR = int(os.getenv("DAILY_REPORT_HOUR", "20"))
+DAILY_REPORT_MINUTE = int(os.getenv("DAILY_REPORT_MINUTE", "0"))
+
 async def start_report_scheduler(notification_service: NotificationService) -> None:
     """
     Self-contained asyncio task. Started once at app lifespan.
     Checks every 60 seconds whether a scheduled report is due.
     Uses a 'last_sent' guard to prevent double-sends on fast restarts.
     """
-    logger.info("Notification report scheduler started.")
+    logger.info(f"Notification report scheduler started. Daily report at {DAILY_REPORT_HOUR:02d}:{DAILY_REPORT_MINUTE:02d}")
     last_daily = None
     last_weekly = None
     last_monthly = None
@@ -21,9 +26,9 @@ async def start_report_scheduler(notification_service: NotificationService) -> N
         try:
             now = datetime.now()
 
-            # Default execution window is 08:00-08:05 local server time.
-            # Window-based check prevents missed reports if server is busy at exact 08:00:00.
-            if now.hour == 8 and now.minute < 5:
+            # Check if we're in the execution window for daily report
+            # Window-based check prevents missed reports if server is busy at exact time
+            if now.hour == DAILY_REPORT_HOUR and now.minute >= DAILY_REPORT_MINUTE and now.minute < DAILY_REPORT_MINUTE + 5:
                 today = now.date()
                 if last_daily != today:
                     await notification_service.send_daily_report()

@@ -84,8 +84,8 @@ ApiResponse<DashboardDailyOverviewDTO>
 | `date` | `string` (YYYY-MM-DD) | No | The requested target date |
 | `generated_at` | `string` (ISO 8601) | No | Server timestamp when data was generated |
 | `cache_ttl` | `integer` | No | Recommended cache TTL in seconds (300 = 5 minutes) |
-| `groups` | `Record<string, GroupInfoDTO>` | No | Lookup table: group_id → GroupInfoDTO |
-| `instructors` | `Record<string, InstructorInfoDTO>` | No | Lookup table: instructor_id → InstructorInfoDTO |
+| `groups` | `Record<int, GroupInfoDTO>` | No | Lookup table: group_id → GroupInfoDTO |
+| `instructors` | `Record<int, InstructorInfoDTO>` | No | Lookup table: instructor_id → InstructorInfoDTO |
 | `scheduled_groups` | `ScheduledGroupDTO[]` | No | Array of groups with sessions on target date |
 | `summary` | `DashboardSummaryDTO` | No | Aggregate statistics |
 
@@ -95,10 +95,10 @@ ApiResponse<DashboardDailyOverviewDTO>
 
 | Field | Type | Nullable | Description |
 |-------|------|----------|-------------|
-| `id` | `string` | No | Unique group identifier |
+| `id` | `int` | No | Unique group identifier |
 | `name` | `string` | No | Group name (e.g., "Beginner Group A") |
 | `course_name` | `string` | No | Associated course name |
-| `instructor_id` | `string` | Yes | Assigned instructor ID (empty if unassigned) |
+| `instructor_id` | `int` | Yes | Assigned instructor ID (0 if unassigned) |
 | `current_level` | `integer` | No | Current level number (default: 1) |
 | `default_day` | `string` | Yes | Scheduled day of week (e.g., "Saturday") |
 | `default_time_start` | `string` (HH:MM) | Yes | Default start time in 24h format |
@@ -113,7 +113,7 @@ ApiResponse<DashboardDailyOverviewDTO>
 
 | Field | Type | Nullable | Description |
 |-------|------|----------|-------------|
-| `id` | `string` | No | Unique instructor identifier |
+| `id` | `int` | No | Unique instructor identifier |
 | `name` | `string` | No | Instructor full name (or "Unassigned") |
 
 ---
@@ -122,9 +122,22 @@ ApiResponse<DashboardDailyOverviewDTO>
 
 | Field | Type | Nullable | Description |
 |-------|------|----------|-------------|
-| `group_id` | `string` | No | Reference to groups lookup table |
+| `group_id` | `int` | No | Reference to groups lookup table |
 | `today_session` | `TodaySessionDTO` | Yes | Session scheduled for target date |
 | `current_level` | `CurrentLevelDTO` | No | All sessions for group's current level |
+| `roster` | `StudentRosterDTO[]` | No | Active enrollments with billing status |
+
+---
+
+#### StudentRosterDTO
+
+| Field | Type | Nullable | Description |
+|-------|------|----------|-------------|
+| `student_id` | `int` | No | Unique student identifier |
+| `student_name` | `string` | No | Student full name |
+| `gender` | `string` | No | `male` or `female` |
+| `billing_status` | `string` | No | `paid` or `due` (calculated from balance) |
+| `balance` | `float` | No | Outstanding balance amount (0 if fully paid) |
 
 ---
 
@@ -132,7 +145,7 @@ ApiResponse<DashboardDailyOverviewDTO>
 
 | Field | Type | Nullable | Description |
 |-------|------|----------|-------------|
-| `session_id` | `string` | No | Unique session identifier |
+| `session_id` | `int` | No | Unique session identifier |
 | `date` | `string` (YYYY-MM-DD) | No | Session date |
 | `time_start` | `string` (HH:MM) | No | Start time in 24h format |
 | `time_end` | `string` (HH:MM) | No | End time in 24h format |
@@ -153,14 +166,14 @@ ApiResponse<DashboardDailyOverviewDTO>
 
 | Field | Type | Nullable | Description |
 |-------|------|----------|-------------|
-| `session_id` | `string` | No | Unique session identifier |
+| `session_id` | `int` | No | Unique session identifier |
 | `session_number` | `integer` | No | Sequential session number within level |
 | `date` | `string` (YYYY-MM-DD) | No | Scheduled date |
 | `time_start` | `string` (HH:MM) | No | Start time |
 | `time_end` | `string` (HH:MM) | No | End time |
 | `status` | `string` | No | Session status |
 | `is_extra_session` | `boolean` | No | True if extra/make-up session |
-| `actual_instructor_id` | `string` | Yes | Substitute instructor ID (if different from assigned) |
+| `actual_instructor_id` | `int` | Yes | Substitute instructor ID (0 if same as assigned) |
 | `instructor_name` | `string` | Yes | Name of instructor who taught/will teach |
 | `is_substitute` | `boolean` | No | True if instructor is a substitute |
 | `attendance` | `AttendanceRecordDTO[]` | Yes | Present only if `include_attendance=true` |
@@ -171,7 +184,7 @@ ApiResponse<DashboardDailyOverviewDTO>
 
 | Field | Type | Nullable | Description |
 |-------|------|----------|-------------|
-| `student_id` | `string` | No | Unique student identifier |
+| `student_id` | `int` | No | Unique student identifier |
 | `student_name` | `string` | No | Student full name |
 | `gender` | `string` | No | `male` or `female` (default: `male`) |
 | `status` | `string` | No | Attendance status: `present`, `absent`, `excused`, `late` |
@@ -184,7 +197,7 @@ ApiResponse<DashboardDailyOverviewDTO>
 |-------|------|----------|-------------|
 | `total_groups_today` | `integer` | No | Count of groups with sessions on target date |
 | `total_instructors_today` | `integer` | No | Count of unique instructors for today's groups |
-| `unique_instructor_ids` | `string[]` | No | Array of instructor IDs scheduled today |
+| `unique_instructor_ids` | `int[]` | No | Array of instructor IDs scheduled today |
 
 ---
 
@@ -201,10 +214,10 @@ ApiResponse<DashboardDailyOverviewDTO>
     "cache_ttl": 300,
     "groups": {
       "101": {
-        "id": "101",
+        "id": 101,
         "name": "Beginner Group A",
         "course_name": "Robotics Basics",
-        "instructor_id": "55",
+        "instructor_id": 55,
         "current_level": 1,
         "default_day": "Saturday",
         "default_time_start": "15:00",
@@ -214,10 +227,10 @@ ApiResponse<DashboardDailyOverviewDTO>
         "student_count": 12
       },
       "102": {
-        "id": "102",
+        "id": 102,
         "name": "Advanced Builders",
         "course_name": "Advanced Robotics",
-        "instructor_id": "56",
+        "instructor_id": 56,
         "current_level": 3,
         "default_day": "Saturday",
         "default_time_start": "17:00",
@@ -229,19 +242,19 @@ ApiResponse<DashboardDailyOverviewDTO>
     },
     "instructors": {
       "55": {
-        "id": "55",
+        "id": 55,
         "name": "Ahmed Hassan"
       },
       "56": {
-        "id": "56",
+        "id": 56,
         "name": "Sara Mohamed"
       }
     },
     "scheduled_groups": [
       {
-        "group_id": "101",
+        "group_id": 101,
         "today_session": {
-          "session_id": "1001",
+          "session_id": 1001,
           "date": "2026-04-23",
           "time_start": "15:00",
           "time_end": "16:30",
@@ -251,25 +264,25 @@ ApiResponse<DashboardDailyOverviewDTO>
           "level_number": 1,
           "sessions": [
             {
-              "session_id": "1001",
+              "session_id": 1001,
               "session_number": 1,
               "date": "2026-04-23",
               "time_start": "15:00",
               "time_end": "16:30",
               "status": "scheduled",
               "is_extra_session": false,
-              "actual_instructor_id": "55",
+              "actual_instructor_id": 55,
               "instructor_name": "Ahmed Hassan",
               "is_substitute": false,
               "attendance": [
                 {
-                  "student_id": "2001",
+                  "student_id": 2001,
                   "student_name": "Omar Khaled",
                   "gender": "male",
                   "status": "present"
                 },
                 {
-                  "student_id": "2002",
+                  "student_id": 2002,
                   "student_name": "Laila Ahmad",
                   "gender": "female",
                   "status": "present"
@@ -277,25 +290,41 @@ ApiResponse<DashboardDailyOverviewDTO>
               ]
             },
             {
-              "session_id": "1002",
+              "session_id": 1002,
               "session_number": 2,
               "date": "2026-04-30",
               "time_start": "15:00",
               "time_end": "16:30",
               "status": "scheduled",
               "is_extra_session": false,
-              "actual_instructor_id": "55",
+              "actual_instructor_id": 55,
               "instructor_name": "Ahmed Hassan",
               "is_substitute": false,
               "attendance": []
             }
           ]
-        }
+        },
+        "roster": [
+          {
+            "student_id": 2001,
+            "student_name": "Omar Khaled",
+            "gender": "male",
+            "billing_status": "paid",
+            "balance": 0.00
+          },
+          {
+            "student_id": 2002,
+            "student_name": "Laila Ahmad",
+            "gender": "female",
+            "billing_status": "due",
+            "balance": 150.00
+          }
+        ]
       },
       {
-        "group_id": "102",
+        "group_id": 102,
         "today_session": {
-          "session_id": "2001",
+          "session_id": 2001,
           "date": "2026-04-23",
           "time_start": "17:00",
           "time_end": "18:30",
@@ -305,19 +334,19 @@ ApiResponse<DashboardDailyOverviewDTO>
           "level_number": 3,
           "sessions": [
             {
-              "session_id": "2001",
+              "session_id": 2001,
               "session_number": 5,
               "date": "2026-04-23",
               "time_start": "17:00",
               "time_end": "18:30",
               "status": "scheduled",
               "is_extra_session": false,
-              "actual_instructor_id": "56",
+              "actual_instructor_id": 56,
               "instructor_name": "Sara Mohamed",
               "is_substitute": false,
               "attendance": [
                 {
-                  "student_id": "3001",
+                  "student_id": 3001,
                   "student_name": "Youssef Ali",
                   "gender": "male",
                   "status": "present"
@@ -325,13 +354,22 @@ ApiResponse<DashboardDailyOverviewDTO>
               ]
             }
           ]
-        }
+        },
+        "roster": [
+          {
+            "student_id": 3001,
+            "student_name": "Youssef Ali",
+            "gender": "male",
+            "billing_status": "paid",
+            "balance": 0.00
+          }
+        ]
       }
     ],
     "summary": {
       "total_groups_today": 2,
       "total_instructors_today": 2,
-      "unique_instructor_ids": ["55", "56"]
+      "unique_instructor_ids": [55, 56]
     }
   },
   "message": "Dashboard overview loaded successfully."

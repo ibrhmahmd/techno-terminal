@@ -12,7 +12,7 @@ from typing import Optional, Tuple
 from sqlmodel import select
 
 # Fallback email configuration from environment variable
-FALLBACK_EMAIL = os.getenv("NOTIFICATION_FALLBACK_EMAIL", "ibrahim.ahmd.net@gmail.com")
+FALLBACK_EMAIL = os.getenv("FALLBACK_EMAIL", "ibrahim.ahmd.net@gmail.com")
 FALLBACK_RECIPIENT_ID = -1  # Special ID to indicate fallback
 
 from app.modules.notifications.repositories.notification_repository import NotificationRepository
