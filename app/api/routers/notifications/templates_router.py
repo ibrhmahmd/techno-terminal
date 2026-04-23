@@ -86,10 +86,10 @@ def delete_template(
 @router.post(
     "/templates/{template_id}/test",
     response_model=ApiResponse[TemplateTestResultDTO],
-    summary="Test template rendering",
-    description="Render template with placeholder values and send test email to all additional recipients."
+    summary="Test template rendering and send",
+    description="Render template with placeholder values and ACTUALLY send test email to all additional recipients."
 )
-def test_template(
+async def test_template(
     template_id: int,
     _user: User = Depends(require_admin),
     svc: NotificationService = Depends(get_notification_service),
@@ -97,14 +97,14 @@ def test_template(
     """
     Test a notification template by:
     1. Rendering it with placeholder values (e.g., [Student Name])
-    2. Sending test email to all additional recipients
-    3. Returning full render details and send status
+    2. ACTUALLY sending test email to all additional recipients
+    3. Returning full render details and actual send status
     """
     try:
-        result = svc.test_template(template_id)
+        result = await svc.test_and_send_template(template_id)
         return ApiResponse(
             data=result,
-            message=f"Test email would be sent to {result.recipients_sent} recipients"
+            message=f"Test email sent to {result.recipients_sent} recipients, {result.recipients_failed} failed"
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

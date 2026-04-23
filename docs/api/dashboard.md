@@ -84,8 +84,8 @@ ApiResponse<DashboardDailyOverviewDTO>
 | `date` | `string` (YYYY-MM-DD) | No | The requested target date |
 | `generated_at` | `string` (ISO 8601) | No | Server timestamp when data was generated |
 | `cache_ttl` | `integer` | No | Recommended cache TTL in seconds (300 = 5 minutes) |
-| `groups` | `Record<int, GroupInfoDTO>` | No | Lookup table: group_id → GroupInfoDTO |
-| `instructors` | `Record<int, InstructorInfoDTO>` | No | Lookup table: instructor_id → InstructorInfoDTO |
+| `groups` | `Record<integer, GroupInfoDTO>` | No | Lookup table: group_id → GroupInfoDTO |
+| `instructors` | `Record<integer, InstructorInfoDTO>` | No | Lookup table: instructor_id → InstructorInfoDTO |
 | `scheduled_groups` | `ScheduledGroupDTO[]` | No | Array of groups with sessions on target date |
 | `summary` | `DashboardSummaryDTO` | No | Aggregate statistics |
 

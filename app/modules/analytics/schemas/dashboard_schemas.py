@@ -161,8 +161,8 @@ class DashboardDailyOverviewDTO(BaseModel):
     cache_ttl: int  # Seconds (recommend: 300)
     
     # Lookup tables (deduplicated data)
-    groups: dict[str, GroupInfoDTO]  # group_id -> GroupInfo
-    instructors: dict[str, InstructorInfoDTO]  # instructor_id -> InstructorInfo
+    groups: dict[int, GroupInfoDTO]  # group_id -> GroupInfo
+    instructors: dict[int, InstructorInfoDTO]  # instructor_id -> InstructorInfo
     
     # Main data: Active groups with sessions on the target date
     # - Sorted by default_time_start ASC (earliest first)
