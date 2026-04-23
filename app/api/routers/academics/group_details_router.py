@@ -21,6 +21,7 @@ from app.modules.academics.schemas.group_details_schemas import (
     LevelDeleteResultDTO,
     GroupLevelsDetailedResponseDTO,
     GroupAttendanceResponseDTO,
+    GroupPaymentsResponseDTO,
 )
 from app.shared.exceptions import NotFoundError, ConflictError
 
@@ -138,4 +139,32 @@ def get_attendance(
     return ApiResponse(
         data=result,
         message="Attendance grid loaded successfully.",
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# GET /finance/groups/{group_id}/payments
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.get(
+    "/finance/groups/{group_id}/payments",
+    response_model=ApiResponse[GroupPaymentsResponseDTO],
+    summary="Get payments grouped by level",
+)
+def get_group_payments(
+    group_id: int = Path(..., ge=1, description="Group ID"),
+    _user=Depends(require_any),
+    svc: GroupDetailsService = Depends(get_group_details_service),
+):
+    """
+    Get payments grouped by level for the Payments tab.
+    
+    Returns:
+    - Summary: Total expected, collected, due across all levels
+    - Per-level breakdown with payment list
+    """
+    result = svc.get_group_payments(group_id)
+    return ApiResponse(
+        data=result,
+        message="Group payments loaded successfully.",
     )

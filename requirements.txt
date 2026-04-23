@@ -14,5 +14,6 @@ supabase>=2.0.0
 gunicorn>=21.0.0
 twilio
 fpdf2>=2.8.0
+reportlab>=4.0.0
 arabic-reshaper>=3.0.0
 python-bidi>=0.4.2

@@ -409,3 +409,118 @@ class GroupDetailsService:
                 roster=roster,
                 sessions=session_dtos,
             )
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # GET Group Payments (Phase 3)
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    def get_group_payments(
+        self, group_id: int
+    ) -> "GroupPaymentsResponseDTO":  # type: ignore
+        """
+        Get payments grouped by level for Payments tab.
+        
+        Returns payment summary and per-level breakdown.
+        """
+        from app.modules.academics.schemas.group_details_schemas import (
+            GroupPaymentsResponseDTO,
+            GroupPaymentsSummaryDTO,
+            LevelPaymentSummaryDTO,
+            PaymentInLevelDTO,
+        )
+        from app.modules.finance.repositories.payment_repository import PaymentRepository
+        from app.modules.academics.repositories.group_level_repository import list_group_levels
+        from collections import defaultdict
+        
+        with get_session() as session:
+            # Get all levels for this group
+            levels = list_group_levels(session, group_id, include_inactive=True)
+            
+            # Get all payments with level info
+            payment_repo = PaymentRepository(session)
+            payments_data = payment_repo.get_payments_by_group_with_levels(group_id)
+            
+            # Group payments by level
+            payments_by_level: dict[int, list[dict]] = defaultdict(list)
+            for p in payments_data:
+                payments_by_level[p["level_number"]].append(p)
+            
+            # Build per-level summaries
+            by_level: list[LevelPaymentSummaryDTO] = []
+            total_expected = 0.0
+            total_collected = 0.0
+            total_due = 0.0
+            
+            for level in levels:
+                ln = level.level_number
+                level_payments = payments_by_level.get(ln, [])
+                
+                # Calculate aggregates
+                expected = sum(p["amount_due"] - p["discount_applied"] for p in level_payments)
+                collected = sum(p["amount"] for p in level_payments if p["transaction_type"] != "refund")
+                refunds = sum(p["amount"] for p in level_payments if p["transaction_type"] == "refund")
+                net_collected = collected - refunds
+                due = max(0, expected - net_collected)
+                
+                # Count unique students who paid
+                paid_students = set(
+                    p["student_id"] for p in level_payments 
+                    if p["transaction_type"] != "refund"
+                )
+                total_students = len(set(p["student_id"] for p in level_payments))
+                
+                # Get course name
+                course = session.get(Course, level.course_id) if level.course_id else None
+                course_name = course.name if course else "Unknown"
+                
+                # Build payment DTOs
+                payment_dtos = [
+                    PaymentInLevelDTO(
+                        payment_id=p["payment_id"],
+                        student_id=p["student_id"],
+                        student_name=p["student_name"],
+                        amount=p["amount"],
+                        discount_amount=p["discount_amount"],
+                        payment_date=str(p["payment_date"])[:10] if p["payment_date"] else "",
+                        payment_method=p["payment_method"],
+                        status=p["status"],
+                        receipt_number=p["receipt_number"],
+                        transaction_type=p["transaction_type"],
+                    )
+                    for p in level_payments
+                ]
+                
+                by_level.append(LevelPaymentSummaryDTO(
+                    level_number=ln,
+                    level_status=level.status,
+                    course_name=course_name,
+                    expected=expected,
+                    collected=net_collected,
+                    due=due,
+                    total_students=total_students,
+                    paid_count=len(paid_students),
+                    unpaid_count=total_students - len(paid_students),
+                    payments=payment_dtos,
+                ))
+                
+                total_expected += expected
+                total_collected += net_collected
+                total_due += due
+            
+            # Calculate overall collection rate
+            collection_rate = 0.0
+            if total_expected > 0:
+                collection_rate = total_collected / total_expected
+            
+            return GroupPaymentsResponseDTO(
+                group_id=group_id,
+                generated_at=utc_now().isoformat(),
+                cache_ttl=300,
+                summary=GroupPaymentsSummaryDTO(
+                    total_expected_all_levels=total_expected,
+                    total_collected_all_levels=total_collected,
+                    total_due_all_levels=total_due,
+                    collection_rate=collection_rate,
+                ),
+                by_level=by_level,
+            )

@@ -405,3 +405,73 @@ class PaymentRepository(IPaymentRepository):
             parent_name=row.parent_name,
             parent_phone=row.parent_phone,
         )
+
+    def get_payments_by_group_with_levels(
+        self, group_id: int
+    ) -> list[dict]:
+        """
+        Get all payments for a group with level breakdown.
+        Joins through enrollments to get level_number.
+        
+        Returns list of dicts with payment + enrollment data including:
+        - payment_id, student_id, student_name
+        - enrollment_id, level_number
+        - amount, discount, payment_date, payment_method, status
+        - receipt_number, transaction_type
+        """
+        stmt = text("""
+            SELECT 
+                p.id AS payment_id,
+                p.student_id,
+                s.full_name AS student_name,
+                p.enrollment_id,
+                e.level_number,
+                p.amount,
+                COALESCE(p.discount_amount, 0) AS discount_amount,
+                COALESCE(r.paid_at, p.created_at) AS payment_date,
+                r.payment_method,
+                CASE 
+                    WHEN p.transaction_type = 'refund' THEN 'refunded'
+                    WHEN p.transaction_type = 'adjustment' THEN 'completed'
+                    ELSE 'completed'
+                END AS status,
+                r.receipt_number,
+                p.transaction_type,
+                COALESCE(c.name, 'Unknown') AS course_name,
+                e.amount_due,
+                e.discount_applied
+            FROM payments p
+            JOIN enrollments e ON p.enrollment_id = e.id
+            JOIN students s ON p.student_id = s.id
+            LEFT JOIN receipts r ON p.receipt_id = r.id
+            LEFT JOIN groups g ON e.group_id = g.id
+            LEFT JOIN courses c ON g.course_id = c.id
+            WHERE e.group_id = :group_id
+                AND p.deleted_at IS NULL
+            ORDER BY e.level_number, p.created_at DESC
+        """)
+        
+        rows = self._session.execute(stmt, {"group_id": group_id}).all()
+        
+        result = []
+        for row in rows:
+            mapping = row._mapping
+            result.append({
+                "payment_id": mapping["payment_id"],
+                "student_id": mapping["student_id"],
+                "student_name": mapping["student_name"],
+                "enrollment_id": mapping["enrollment_id"],
+                "level_number": mapping["level_number"],
+                "amount": float(mapping["amount"] or 0),
+                "discount_amount": float(mapping["discount_amount"] or 0),
+                "payment_date": mapping["payment_date"],
+                "payment_method": mapping["payment_method"] or "unknown",
+                "status": mapping["status"],
+                "receipt_number": mapping["receipt_number"],
+                "transaction_type": mapping["transaction_type"],
+                "course_name": mapping["course_name"],
+                "amount_due": float(mapping["amount_due"] or 0),
+                "discount_applied": float(mapping["discount_applied"] or 0),
+            })
+        
+        return result
