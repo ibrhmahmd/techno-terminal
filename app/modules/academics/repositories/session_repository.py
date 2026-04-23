@@ -74,3 +74,32 @@ def update_session_instructor(
         cs.is_substitute = True
         session.add(cs)
     return cs
+
+
+def get_sessions_for_levels(
+    session: Session, group_id: int, level_numbers: list[int]
+) -> Sequence[CourseSession]:
+    """
+    Get all sessions for a group filtered by multiple level numbers.
+    Used by the detailed levels endpoint.
+    """
+    stmt = (
+        select(CourseSession)
+        .where(CourseSession.group_id == group_id)
+        .where(CourseSession.level_number.in_(level_numbers))
+        .order_by(CourseSession.level_number, CourseSession.session_number)
+    )
+    return session.exec(stmt).all()
+
+
+def get_sessions_for_level(
+    session: Session, group_id: int, level_number: int
+) -> Sequence[CourseSession]:
+    """Get all sessions for a specific group level."""
+    stmt = (
+        select(CourseSession)
+        .where(CourseSession.group_id == group_id)
+        .where(CourseSession.level_number == level_number)
+        .order_by(CourseSession.session_number)
+    )
+    return session.exec(stmt).all()

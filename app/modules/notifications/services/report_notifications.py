@@ -42,6 +42,30 @@ class ReportNotificationService(BaseNotificationService):
         # Format instructors list
         instructors_str = ", ".join(aggregates["instructors_list"]) if aggregates["instructors_list"] else "N/A"
         
+        # Format payment details for template
+        payment_details_html = ""
+        if aggregates["payment_details"]:
+            payment_rows = ""
+            for payment in aggregates["payment_details"]:
+                payment_rows += f"<tr><td>{payment['student_name']}</td><td>{payment['group_name']}</td><td>{payment['amount']:.2f} EGP</td><td>{payment['payment_type']}</td></tr>"
+            payment_details_html = f"""
+            <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                <thead>
+                    <tr style="background: #2c3e50; color: white;">
+                        <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Student</th>
+                        <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Group</th>
+                        <th style="padding: 10px; text-align: right; border: 1px solid #ddd;">Amount</th>
+                        <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Type</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {payment_rows}
+                </tbody>
+            </table>
+            """
+        else:
+            payment_details_html = "<p style='color: #666; font-style: italic;'>No payments recorded today.</p>"
+        
         variables = {
             "date": today.strftime("%Y-%m-%d"),
             "total_revenue": f"{aggregates['total_revenue']:.2f}",
@@ -50,14 +74,36 @@ class ReportNotificationService(BaseNotificationService):
             "absent_count": aggregates["absent_count"],
             "payment_count": aggregates["payment_count"],
             "payment_methods": payment_methods_str,
+            "payment_details": payment_details_html,
             "instructors_list": instructors_str,
             "attendance_rate": f"{aggregates['attendance_rate']:.1%}",
             "unpaid_count": aggregates["unpaid_count"],
         }
         
-        # Send to all enabled recipients (admins + additional recipients)
+        # Generate PDF attachment
+        pdf_bytes = None
+        try:
+            from app.modules.notifications.pdf.daily_report_pdf import generate_daily_report_pdf
+            pdf_bytes = generate_daily_report_pdf(
+                date_str=today.strftime("%Y-%m-%d"),
+                aggregates=aggregates
+            )
+            logger.info(f"Generated daily report PDF for {today}")
+        except Exception as e:
+            logger.error(f"Failed to generate daily report PDF: {e}")
+        
+        # Prepare attachments
+        attachments = None
+        if pdf_bytes:
+            filename = f"daily_report_{today.strftime('%Y-%m-%d')}.pdf"
+            attachments = [(filename, pdf_bytes, "application/pdf")]
+        
+        # Send to all enabled recipients with PDF attachment
         for email, recipient_id, recipient_type in recipients:
-            await self._dispatch(template, "EMAIL", recipient_type, recipient_id, email, variables)
+            await self._dispatch(
+                template, "EMAIL", recipient_type, recipient_id, email,
+                variables, attachments=attachments
+            )
     
     async def send_weekly_report(self) -> None:
         """Weekly business summary to all admins."""
@@ -126,6 +172,7 @@ class ReportNotificationService(BaseNotificationService):
         instructors_list = []
         attendance_rate = 0.0
         unpaid_count = 0
+        payment_details = []  # List of {student_name, group_name, amount}
         
         try:
             from app.modules.analytics.services.financial_service import FinancialAnalyticsService
@@ -155,6 +202,8 @@ class ReportNotificationService(BaseNotificationService):
             from sqlmodel import select, func, text
             from app.modules.enrollments.models.enrollment_models import Enrollment
             from app.modules.finance.models.payment import Payment
+            from app.modules.students.models.student_models import Student
+            from app.modules.groups.models.group_models import Group
             
             with get_session() as session:
                 # New enrollments count
@@ -172,10 +221,31 @@ class ReportNotificationService(BaseNotificationService):
                 payments = session.exec(payment_stmt).all()
                 payment_count = len(payments)
                 
-                # Payment methods breakdown
+                # Payment methods breakdown and details
                 for payment in payments:
-                    method = str(payment.payment_method) if payment.payment_method else "unknown"
+                    # Use payment_type instead of payment_method
+                    method = str(payment.payment_type) if payment.payment_type else "unknown"
                     payment_methods[method] = payment_methods.get(method, 0) + 1
+                    
+                    # Get student and group details for each payment
+                    try:
+                        student = session.get(Student, payment.student_id)
+                        student_name = student.full_name if student else "Unknown"
+                        
+                        group = session.get(Group, payment.group_id) if payment.group_id else None
+                        group_name = group.name if group else "N/A"
+                        
+                        payment_details.append({
+                            "student_name": student_name,
+                            "group_name": group_name,
+                            "amount": float(payment.amount),
+                            "payment_type": method
+                        })
+                    except Exception as e:
+                        logger.warning(f"Could not fetch payment details for payment {payment.id}: {e}")
+                
+                # Sort payment details by amount descending
+                payment_details.sort(key=lambda x: x["amount"], reverse=True)
                 
                 # Instructors who had sessions today
                 instructor_stmt = text("""
@@ -212,6 +282,7 @@ class ReportNotificationService(BaseNotificationService):
             "absent_count": absent_count,
             "payment_count": payment_count,
             "payment_methods": payment_methods,
+            "payment_details": payment_details,
             "instructors_list": instructors_list,
             "attendance_rate": attendance_rate,
             "unpaid_count": unpaid_count,

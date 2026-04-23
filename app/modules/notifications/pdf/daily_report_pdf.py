@@ -187,6 +187,52 @@ def generate_daily_report_pdf(
     elements.append(metrics_table)
     elements.append(Spacer(1, 1*cm))
     
+    # Payment Details Section
+    payment_details = aggregates.get('payment_details', [])
+    if payment_details:
+        elements.append(Paragraph("Payment Details", heading_style))
+        elements.append(Spacer(1, 0.3*cm))
+        
+        # Payment details table
+        payment_data = [['Student', 'Group', 'Amount', 'Type']]
+        for payment in payment_details:
+            payment_data.append([
+                payment['student_name'],
+                payment['group_name'],
+                f"{payment['amount']:.2f} EGP",
+                payment['payment_type']
+            ])
+        
+        payment_table = Table(payment_data, colWidths=[5*cm, 4*cm, 3*cm, 2*cm])
+        payment_table.setStyle(TableStyle([
+            # Header
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2c3e50')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+            
+            # Body rows - alternating colors
+            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#ffffff')),
+            ('TEXTCOLOR', (0, 1), (-1, -1), colors.HexColor('#333333')),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('ALIGN', (0, 1), (1, -1), 'LEFT'),
+            ('ALIGN', (2, 1), (2, -1), 'RIGHT'),
+            ('ALIGN', (3, 1), (3, -1), 'CENTER'),
+            
+            # Grid
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
+            ('BOX', (0, 0), (-1, 0), 1.5, colors.HexColor('#2c3e50')),
+            
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        ]))
+        
+        elements.append(payment_table)
+        elements.append(Spacer(1, 1*cm))
+    
     # Footer
     footer_style = ParagraphStyle(
         'Footer',

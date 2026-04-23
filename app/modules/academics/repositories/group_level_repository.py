@@ -136,3 +136,50 @@ def get_current_group_level(session: Session, group_id: int) -> GroupLevel | Non
         .order_by(GroupLevel.level_number.desc())
     )
     return session.exec(stmt).first()
+
+
+def has_sessions_for_level(session: Session, group_id: int, level_number: int) -> bool:
+    """Check if any sessions exist for this group level."""
+    from app.modules.academics.models.session_models import CourseSession
+    stmt = (
+        select(func.count())
+        .select_from(CourseSession)
+        .where(CourseSession.group_id == group_id)
+        .where(CourseSession.level_number == level_number)
+    )
+    count = session.exec(stmt).one()
+    return count > 0
+
+
+def has_enrollments_for_level(session: Session, group_id: int, level_number: int) -> bool:
+    """Check if any active enrollments exist at this level."""
+    from app.modules.enrollments.models.enrollment_models import Enrollment
+    stmt = (
+        select(func.count())
+        .select_from(Enrollment)
+        .where(Enrollment.group_id == group_id)
+        .where(Enrollment.level_number == level_number)
+        .where(Enrollment.status == "active")
+    )
+    count = session.exec(stmt).one()
+    return count > 0
+
+
+def soft_delete_level(
+    session: Session, group_id: int, level_number: int
+) -> GroupLevel | None:
+    """
+    Soft delete a level by setting status='deleted' and deleted_at timestamp.
+    
+    Returns the deleted level or None if not found.
+    """
+    from datetime import datetime
+    
+    level = get_group_level_by_number(session, group_id, level_number)
+    if level:
+        level.status = "deleted"
+        level.effective_to = datetime.utcnow()
+        # Note: GroupLevel model doesn't have deleted_at field, using effective_to
+        session.add(level)
+        session.flush()
+    return level
