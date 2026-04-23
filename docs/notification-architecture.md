@@ -27,7 +27,8 @@ app/modules/notifications/
 │   └── notification_log.py                # Audit log entity
 ├── schemas/
 │   ├── admin_settings_dto.py              # Admin settings DTOs
-│   └── template_dto.py                    # Template DTOs
+│   ├── template_dto.py                    # Template DTOs
+│   └── fallback_dto.py                    # Fallback alert DTOs
 ├── repositories/
 │   ├── notification_repository.py         # Data access layer
 │   └── admin_settings_repository.py       # Admin settings data access
@@ -42,7 +43,7 @@ app/modules/notifications/
     ├── enrollment_notifications.py      # Enrollment lifecycle
     ├── payment_notifications.py          # Payment events
     ├── report_notifications.py            # Scheduled reports
-    └── competition_notifications.py     # Competition events (NEW)
+    └── competition_notifications.py     # Competition events
 ```
 
 ### Service Hierarchy Diagram
@@ -52,7 +53,7 @@ graph TD
     NS[NotificationService<br/>Orchestrator/Facade] --> EN[EnrollmentNotificationService]
     NS --> PN[PaymentNotificationService]
     NS --> RN[ReportNotificationService]
-    NS --> CN[CompetitionNotificationService<br/>NEW]
+    NS --> CN[CompetitionNotificationService]
     
     EN --> BNS[BaseNotificationService]
     PN --> BNS
@@ -133,7 +134,6 @@ erDiagram
     
     NOTIFICATION_ADDITIONAL_RECIPIENTS {
         int id PK
-        int admin_id FK
         string email
         string label
         string[] notification_types
@@ -141,8 +141,6 @@ erDiagram
         datetime created_at
         datetime updated_at
     }
-    
-    ADMIN_NOTIFICATION_SETTINGS ||--o{ NOTIFICATION_ADDITIONAL_RECIPIENTS : has
 ```
 
 ### Template Variables
@@ -178,7 +176,9 @@ classDiagram
         +GmailEmailDispatcher _email
         +TwilioWhatsAppDispatcher _whatsapp
         +_resolve_contact(student_id, channel) Tuple
-        +_resolve_admin_contacts() list
+        +_resolve_notification_recipients(notification_type, entity_id, entity_description) list
+        +_is_valid_email(email) bool
+        +_send_fallback_alert(context) None
         +_render_template(template, variables) str
         +_dispatch(template, channel, recipient_type, recipient_id, contact, variables) None
     }
@@ -223,8 +223,7 @@ classDiagram
         -_process_team_registration()
         -_process_fee_payment()
         -_process_placement()
-        -_resolve_parent_contacts()
-        -_dispatch_notifications()
+        -_get_student_name()
         -_get_ordinal_suffix()
     }
     
@@ -260,17 +259,17 @@ sequenceDiagram
         DB-->>Repo: template
         Repo-->>EN: template
         
-        EN->>BNS: _resolve_admin_contacts()
-        BNS->>DB: SELECT users WHERE role='admin'
-        DB-->>BNS: admin list
-        BNS-->>EN: [(email, id), ...]
+        EN->>BNS: _resolve_notification_recipients("enrollment_created", enrollment_id, desc)
+        BNS->>DB: SELECT notification_additional_recipients
+        DB-->>BNS: [(email, id, type), ...]
+        BNS-->>EN: recipients list
         
         EN->>EN: _get_student_name()
         EN->>EN: _get_group_name()
         EN->>EN: _get_instructor_name()
         
-        loop For each admin
-            EN->>BNS: _dispatch(template, "EMAIL", "ADMIN", admin_id, email, variables)
+        loop For each recipient
+            EN->>BNS: _dispatch(template, "EMAIL", recipient_type, recipient_id, email, variables)
             BNS->>BNS: _render_template()
             BNS->>Repo: create_log()
             Repo->>DB: INSERT notification_log
@@ -302,16 +301,16 @@ sequenceDiagram
         Repo->>DB: SELECT template
         DB-->>Repo: template
         
-        PN->>BNS: _resolve_admin_contacts()
-        BNS->>DB: SELECT users WHERE role='admin'
-        DB-->>BNS: admin list
-        BNS-->>PN: [(email, id), ...]
+        PN->>BNS: _resolve_notification_recipients("payment_received", receipt_id, desc)
+        BNS->>DB: SELECT notification_additional_recipients
+        DB-->>BNS: [(email, id, type), ...]
+        BNS-->>PN: recipients list
         
         PN->>DB: SELECT student name
         DB-->>PN: student_name
         
-        loop For each admin
-            PN->>BNS: _dispatch(template, "EMAIL", "ADMIN", admin_id, email, variables)
+        loop For each recipient
+            PN->>BNS: _dispatch(template, "EMAIL", recipient_type, recipient_id, email, variables)
             BNS->>Repo: create_log()
             Repo->>DB: INSERT notification_log
             BNS->>Email: send()
@@ -342,18 +341,18 @@ sequenceDiagram
     Repo->>DB: SELECT template
     DB-->>Repo: template
     
-    RN->>BNS: _resolve_admin_contacts()
-    BNS->>DB: SELECT users WHERE role='admin'
-    DB-->>BNS: admin list
-    BNS-->>RN: [(email, id), ...]
+    RN->>BNS: _resolve_notification_recipients("daily_report", None, None)
+    BNS->>DB: SELECT notification_additional_recipients
+    DB-->>BNS: [(email, id, type), ...]
+    BNS-->>RN: recipients list
     
     RN->>Analytics: _fetch_daily_aggregates()
     Analytics->>DB: Aggregate queries
     DB-->>Analytics: metrics
     Analytics-->>RN: {revenue, enrollments, sessions, absences}
     
-    loop For each admin
-        RN->>BNS: _dispatch(template, "EMAIL", "ADMIN", admin_id, email, variables)
+    loop For each recipient
+        RN->>BNS: _dispatch(template, "EMAIL", recipient_type, recipient_id, email, variables)
         BNS->>Repo: create_log()
         Repo->>DB: INSERT notification_log
         BNS->>Email: send()
@@ -362,7 +361,7 @@ sequenceDiagram
     end
 ```
 
-### 4.4 Competition Notification Flow (NEW)
+### 4.4 Competition Notification Flow
 
 ```mermaid
 sequenceDiagram
@@ -467,18 +466,35 @@ flowchart TD
 
 ### 5.5 Contact Resolution Strategy
 
-**Decision:** Two resolution paths:
-1. `_resolve_contact()` - for parent contact (preserved, disabled)
-2. `_resolve_admin_contacts()` - for admin emails (current)
+**Decision:** Single resolution path using `notification_additional_recipients` table globally.
+
+**Key Points:**
+- Recipients are configured globally in `notification_additional_recipients` table
+- No per-admin filtering - all active recipients receive notifications
+- `_resolve_notification_recipients(notification_type, entity_id, entity_description)` handles resolution
+- Entity context (ID and description) passed for fallback alert context
 
 **Rationale:**
-- Clean separation of concerns
-- Easy to switch between modes
-- Admin resolution queries `users` table by `role='admin'`
+- Simplified configuration - one global recipient list
+- No dependency on `users` table for email delivery
+- Easy to manage via admin settings API
 
----
+### 5.6 Centralized Fallback Mechanism
 
-## 6. File Reference
+**Decision:** Automatic fallback to environment-configured email when no valid recipients exist.
+
+**Implementation:**
+- `_resolve_notification_recipients()` automatically detects empty recipient list
+- Fallback email configured via `NOTIFICATION_FALLBACK_EMAIL` environment variable (default: `ibrahim.ahmd.net@gmail.com`)
+- `FallbackAlertContext` DTO provides notification type, entity ID, and description
+- `_send_fallback_alert()` sends alert to fallback email with full context
+- Fallback activations logged to `notification_log` table with `FALLBACK_ALERT` recipient type
+
+**Rationale:**
+- Ensures no notifications are silently lost
+- Immediate alerting when configuration issues occur
+- Full context in alerts for rapid debugging
+- No duplicate code across notification services
 
 ### Core Files
 
@@ -489,7 +505,7 @@ flowchart TD
 | `app/modules/notifications/services/enrollment_notifications.py` | Enrollment lifecycle | `EnrollmentNotificationService` - 5 notification types |
 | `app/modules/notifications/services/payment_notifications.py` | Payment events | `PaymentNotificationService` - 2 notification types |
 | `app/modules/notifications/services/report_notifications.py` | Scheduled reports | `ReportNotificationService` - 3 report types + bulk |
-| `app/modules/notifications/services/competition_notifications.py` | Competition events | `CompetitionNotificationService` - 3 notification types (NEW) |
+| `app/modules/notifications/services/competition_notifications.py` | Competition events | `CompetitionNotificationService` - 3 notification types |
 
 ### API Routers
 
@@ -499,6 +515,19 @@ flowchart TD
 | `app/api/routers/notifications/templates_router.py` | Template CRUD operations | `/api/v1/notifications/templates` |
 | `app/api/routers/notifications/bulk_router.py` | Bulk messaging | `/api/v1/notifications/bulk` |
 | `app/api/routers/notifications/notifications_router.py` | Notification logs & history | `/api/v1/notifications/logs` |
+
+### API Documentation
+
+Comprehensive API documentation is available under `docs/api/notifications/`:
+
+| File | Description |
+|------|-------------|
+| `docs/api/notifications/index.md` | Overview and getting started guide |
+| `docs/api/notifications/admin_settings.md` | Admin notification settings API |
+| `docs/api/notifications/templates.md` | Template CRUD and test endpoint |
+| `docs/api/notifications/testing.md` | Template testing endpoint documentation |
+| `docs/api/notifications/bulk.md` | Bulk messaging API |
+| `docs/api/notifications/logs.md` | Notification logs API |
 
 ### Infrastructure Files
 
@@ -593,7 +622,7 @@ def send_bulk(
 ) -> int
 ```
 
-### CompetitionNotificationService (NEW)
+### CompetitionNotificationService
 
 ```python
 def notify_team_registration(
@@ -613,6 +642,28 @@ def notify_placement_announcement(
     competition_name: str, placement_rank: int,
     placement_label: Optional[str], background_tasks: BackgroundTasks
 ) -> None
+```
+
+### BaseNotificationService
+
+```python
+def _resolve_notification_recipients(
+    self,
+    notification_type: str,
+    entity_id: Optional[int] = None,
+    entity_description: Optional[str] = None
+) -> list[tuple[str, int, str]]
+"""Returns list of (email, recipient_id, recipient_type) tuples.
+Recipient types: 'ADDITIONAL' for table recipients, 'FALLBACK' for fallback email.
+Fallback is automatically triggered when no valid recipients exist."""
+
+@staticmethod
+def _is_valid_email(email: str) -> bool
+"""Validate email format using regex pattern."""
+
+async def _send_fallback_alert(self, context: FallbackAlertContext) -> None
+"""Send alert notification to fallback email about fallback activation.
+Triggered automatically by _resolve_notification_recipients when fallback occurs."""
 ```
 
 ---
