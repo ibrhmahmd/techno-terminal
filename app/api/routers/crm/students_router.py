@@ -42,6 +42,34 @@ from app.shared.exceptions import NotFoundError
 
 router = APIRouter(prefix="/crm", tags=["CRM — Students"])
 
+# Day name constants for filtering
+DAY_OPTIONS = [
+    "Monday", "Tuesday", "Wednesday", "Thursday",
+    "Friday", "Saturday", "Sunday"
+]
+
+DAY_ABBREV_MAP = {
+    "mon": "Monday",
+    "tue": "Tuesday",
+    "wed": "Wednesday",
+    "thu": "Thursday",
+    "thurs": "Thursday",
+    "fri": "Friday",
+    "sat": "Saturday",
+    "sun": "Sunday"
+}
+
+
+def normalize_day_names(days: Optional[List[str]]) -> Optional[List[str]]:
+    """Convert day abbreviations to full names (e.g., 'Fri' -> 'Friday')."""
+    if not days:
+        return days
+    result = []
+    for day in days:
+        key = day.lower()
+        result.append(DAY_ABBREV_MAP.get(key, day))
+    return result
+
 
 # List / search students
 @router.get(
@@ -136,7 +164,7 @@ def filter_students(
     status: Optional[List[str]] = Query(None, description="Student statuses to filter by"),
     gender: Optional[List[str]] = Query(None, description="Genders to filter by"),
     course_ids: Optional[List[int]] = Query(None, description="Course IDs to filter by"),
-    group_default_day: Optional[List[str]] = Query(None, description="Group meeting days (e.g., 'Monday', 'Saturday')"),
+    group_default_day: Optional[List[str]] = Query(None, enum=DAY_OPTIONS, description="Group meeting days (e.g., 'Monday', 'Saturday')"),
     instructor_name: Optional[str] = Query(None, description="Partial instructor name search"),
     has_unpaid_balance: Optional[bool] = Query(None, description="Filter by unpaid balance status"),
     enrollment_date_from: Optional[date] = Query(None, description="Enrolled on or after this date (YYYY-MM-DD)"),
@@ -154,7 +182,7 @@ def filter_students(
         status=status,
         gender=gender,
         course_ids=course_ids,
-        group_default_day=group_default_day,
+        group_default_day=normalize_day_names(group_default_day),
         instructor_name=instructor_name,
         has_unpaid_balance=has_unpaid_balance,
         enrollment_date_from=enrollment_date_from,
