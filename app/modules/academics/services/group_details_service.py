@@ -325,3 +325,87 @@ class GroupDetailsService:
                     instructor_name=instructor.full_name or "Unnamed",
                 )
         return lookup
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # GET Attendance Grid (P1)
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    def get_attendance_grid(
+        self, group_id: int, level_number: int
+    ) -> "GroupAttendanceResponseDTO":  # type: ignore
+        """
+        Get attendance data for a specific level.
+        
+        Returns roster + sessions with attendance map.
+        Uses 3-query pattern similar to dashboard.
+        """
+        from app.modules.academics.schemas.group_details_schemas import (
+            GroupAttendanceResponseDTO,
+            AttendanceRosterStudentDTO,
+            AttendanceSessionDTO,
+        )
+        import app.modules.enrollments.repositories.enrollment_repository as enrollment_repo
+        import app.modules.attendance.repositories.attendance_repository as attendance_repo
+        
+        with get_session() as session:
+            # Query 1: Get roster (active enrollments with billing status)
+            roster_data = enrollment_repo.get_roster_for_group_level(
+                session, group_id, level_number
+            )
+            
+            # Query 2: Get sessions for this level
+            sessions = session_repo.get_sessions_for_level(
+                session, group_id, level_number
+            )
+            
+            # Query 3: Get all attendance records for these sessions
+            attendance_records = attendance_repo.get_attendance_for_group_level(
+                session, group_id, level_number
+            )
+            
+            # Build roster DTOs
+            roster: list[AttendanceRosterStudentDTO] = [
+                AttendanceRosterStudentDTO(
+                    student_id=r["student_id"],
+                    student_name=r["student_name"],
+                    enrollment_id=r["enrollment_id"],
+                    billing_status=r["billing_status"],
+                    joined_at=r["joined_at"].isoformat() if r["joined_at"] else None,
+                )
+                for r in roster_data
+            ]
+            
+            # Build attendance map: (session_id, student_id) -> status
+            attendance_map: dict[tuple[int, int], str] = {
+                (a.session_id, a.student_id): a.status
+                for a in attendance_records
+            }
+            
+            # Build session DTOs with attendance maps
+            session_dtos: list[AttendanceSessionDTO] = []
+            for s in sessions:
+                # Build attendance map for this session
+                session_attendance: dict[int, str | None] = {}
+                for r in roster_data:
+                    key = (s.id, r["student_id"])
+                    session_attendance[r["student_id"]] = attendance_map.get(key)
+                
+                session_dtos.append(AttendanceSessionDTO(
+                    session_id=s.id,
+                    session_number=s.session_number,
+                    date=str(s.session_date),
+                    time_start=str(s.start_time)[:5] if s.start_time else "",
+                    time_end=str(s.end_time)[:5] if s.end_time else "",
+                    status=s.status,
+                    is_extra_session=s.is_extra_session,
+                    attendance=session_attendance,
+                ))
+            
+            return GroupAttendanceResponseDTO(
+                group_id=group_id,
+                level_number=level_number,
+                generated_at=utc_now().isoformat(),
+                cache_ttl=300,
+                roster=roster,
+                sessions=session_dtos,
+            )

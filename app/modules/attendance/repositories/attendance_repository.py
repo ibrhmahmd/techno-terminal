@@ -122,6 +122,25 @@ def get_student_attendance_summary(
     return dtos
 
 
+def get_attendance_for_group_level(
+    session: Session, group_id: int, level_number: int
+) -> Sequence[Attendance]:
+    """
+    Get all attendance records for a specific group level.
+    Used by the attendance grid endpoint.
+    """
+    from app.modules.academics.models.session_models import CourseSession
+    
+    # Join through sessions to get attendance for this group/level
+    stmt = (
+        select(Attendance)
+        .join(CourseSession, Attendance.session_id == CourseSession.id)
+        .where(CourseSession.group_id == group_id)
+        .where(CourseSession.level_number == level_number)
+    )
+    return session.exec(stmt).all()
+
+
 # ── RepositoryProtocol aliases ────────────────────────────────────────────────
 # Note: Attendance is upsert-only (no separate insert/update).
 create = upsert_attendance

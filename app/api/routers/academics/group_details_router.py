@@ -12,7 +12,7 @@ Endpoints for detailed group management:
 
 Auth: GET=require_any, DELETE=require_admin
 """
-from fastapi import APIRouter, Depends, Path, HTTPException, status
+from fastapi import APIRouter, Depends, Path, HTTPException, status, Query
 
 from app.api.schemas.common import ApiResponse
 from app.api.dependencies import require_any, require_admin
@@ -20,6 +20,7 @@ from app.modules.academics.services.group_details_service import GroupDetailsSer
 from app.modules.academics.schemas.group_details_schemas import (
     LevelDeleteResultDTO,
     GroupLevelsDetailedResponseDTO,
+    GroupAttendanceResponseDTO,
 )
 from app.shared.exceptions import NotFoundError, ConflictError
 
@@ -104,4 +105,37 @@ def get_levels_detailed(
     return ApiResponse(
         data=result,
         message="Group levels loaded successfully.",
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# GET /academics/groups/{group_id}/attendance
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.get(
+    "/academics/groups/{group_id}/attendance",
+    response_model=ApiResponse[GroupAttendanceResponseDTO],
+    summary="Get attendance grid for a level",
+)
+def get_attendance(
+    group_id: int = Path(..., ge=1, description="Group ID"),
+    level_number: int = Query(..., ge=1, description="Level number"),
+    _user=Depends(require_any),
+    svc: GroupDetailsService = Depends(get_group_details_service),
+):
+    """
+    Get attendance data for a specific group level.
+    
+    Returns:
+    - Roster: Active enrollments with billing status
+    - Sessions: All sessions for the level
+    - Attendance map: O(1) lookup by student_id per session
+    
+    Query param:
+    - `level_number` (required): The level to get attendance for
+    """
+    result = svc.get_attendance_grid(group_id, level_number)
+    return ApiResponse(
+        data=result,
+        message="Attendance grid loaded successfully.",
     )
