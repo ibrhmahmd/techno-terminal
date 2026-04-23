@@ -73,7 +73,7 @@ class EnrollmentNotificationService(BaseNotificationService):
     async def _process_created(self, student_id: int, enrollment_id: int, 
                                group_id: int, level_number: int) -> None:
         from app.modules.academics.models.group_models import Group
-        from app.modules.crm.models.enrollment import Enrollment
+        from app.modules.enrollments.models.enrollment_models import Enrollment
         
         template = self._repo.get_template_by_name("enrollment_confirmation")
         if not template or not template.is_active:
