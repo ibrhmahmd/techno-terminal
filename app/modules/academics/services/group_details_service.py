@@ -524,3 +524,136 @@ class GroupDetailsService:
                 ),
                 by_level=by_level,
             )
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # GET Group Enrollments (Phase 4)
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    def get_group_enrollments(
+        self, group_id: int
+    ) -> "GroupEnrollmentsResponseDTO":  # type: ignore
+        """
+        Get all enrollments grouped by level for Students tab.
+        
+        Returns enrollments with student lookup table and transfer options.
+        """
+        from app.modules.academics.schemas.group_details_schemas import (
+            GroupEnrollmentsResponseDTO,
+            StudentLookupDTO,
+            EnrollmentInLevelDTO,
+            LevelEnrollmentSummaryDTO,
+            LevelWithEnrollmentsDTO,
+            TransferOptionDTO,
+        )
+        import app.modules.enrollments.repositories.enrollment_repository as enrollment_repo
+        import app.modules.academics.repositories.group_repository as group_repo
+        from app.modules.academics.repositories.group_level_repository import list_group_levels
+        from collections import defaultdict
+        
+        with get_session() as session:
+            # Get all levels for this group
+            levels = list_group_levels(session, group_id, include_inactive=True)
+            
+            # Get all enrollments with student details
+            enrollments_data = enrollment_repo.get_enrollments_by_group_with_students(
+                session, group_id
+            )
+            
+            # Get transfer options (exclude current group)
+            transfer_options_data = group_repo.get_transfer_options(
+                session, exclude_group_id=group_id
+            )
+            
+            # Group enrollments by level
+            enrollments_by_level: dict[int, list[dict]] = defaultdict(list)
+            student_ids: set[int] = set()
+            
+            for e in enrollments_data:
+                enrollments_by_level[e["level_number"]].append(e)
+                student_ids.add(e["student_id"])
+            
+            # Build student lookup table
+            students_lookup: dict[int, StudentLookupDTO] = {}
+            for e in enrollments_data:
+                sid = e["student_id"]
+                if sid not in students_lookup:
+                    students_lookup[sid] = StudentLookupDTO(
+                        student_id=sid,
+                        student_name=e["student_name"],
+                        phone=e.get("student_phone"),
+                        parent_name=e.get("parent_name"),
+                    )
+            
+            # Build per-level enrollment DTOs
+            grouped_by_level: list[LevelWithEnrollmentsDTO] = []
+            
+            for level in levels:
+                ln = level.level_number
+                level_enrollments = enrollments_by_level.get(ln, [])
+                
+                # Build enrollment DTOs
+                enrollment_dtos = [
+                    EnrollmentInLevelDTO(
+                        enrollment_id=e["enrollment_id"],
+                        student_id=e["student_id"],
+                        status=e["status"],
+                        enrolled_at=e["enrolled_at"].isoformat() if e["enrolled_at"] else "",
+                        dropped_at=e["dropped_at"].isoformat() if e["dropped_at"] else None,
+                        sessions_attended=e["sessions_attended"],
+                        sessions_total=e["sessions_total"],
+                        payment_status=e["payment_status"],
+                        amount_due=e["amount_due"],
+                        amount_paid=e["amount_paid"],
+                        discount_applied=e["discount_applied"],
+                        can_transfer=e["can_transfer"],
+                        can_drop=e["can_drop"],
+                    )
+                    for e in level_enrollments
+                ]
+                
+                # Calculate summary
+                total = len(level_enrollments)
+                active = sum(1 for e in level_enrollments if e["status"] == "active")
+                completed = sum(1 for e in level_enrollments if e["status"] == "completed")
+                dropped = sum(1 for e in level_enrollments if e["status"] == "dropped")
+                paid = sum(1 for e in level_enrollments if e["payment_status"] == "paid")
+                unpaid = sum(1 for e in level_enrollments if e["payment_status"] == "due")
+                
+                # Get course name
+                course = session.get(Course, level.course_id) if level.course_id else None
+                course_name = course.name if course else "Unknown"
+                
+                grouped_by_level.append(LevelWithEnrollmentsDTO(
+                    level_number=ln,
+                    level_status=level.status,
+                    course_name=course_name,
+                    enrollments=enrollment_dtos,
+                    summary=LevelEnrollmentSummaryDTO(
+                        total=total,
+                        active=active,
+                        completed=completed,
+                        dropped=dropped,
+                        paid=paid,
+                        unpaid=unpaid,
+                    ),
+                ))
+            
+            # Build transfer options DTOs
+            transfer_dtos = [
+                TransferOptionDTO(
+                    group_id=t["group_id"],
+                    group_name=t["group_name"],
+                    course_name=t["course_name"],
+                    available_slots=t["available_slots"],
+                )
+                for t in transfer_options_data
+            ]
+            
+            return GroupEnrollmentsResponseDTO(
+                group_id=group_id,
+                generated_at=utc_now().isoformat(),
+                cache_ttl=300,
+                students=students_lookup,
+                grouped_by_level=grouped_by_level,
+                transfer_options=transfer_dtos,
+            )

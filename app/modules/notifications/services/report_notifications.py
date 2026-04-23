@@ -202,7 +202,7 @@ class ReportNotificationService(BaseNotificationService):
             from sqlmodel import select, func, text
             from app.modules.enrollments.models.enrollment_models import Enrollment
             from app.modules.finance.models.payment import Payment
-            from app.modules.students.models.student_models import Student
+            from app.modules.crm.models.student_models import Student
             from app.modules.groups.models.group_models import Group
             
             with get_session() as session:

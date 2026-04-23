@@ -305,3 +305,55 @@ def delete_group_by_id(session: Session, group_id: int) -> Group | None:
     session.delete(group)
     session.commit()
     return group
+
+
+def get_transfer_options(
+    session: Session, exclude_group_id: int | None = None
+) -> list[dict]:
+    """
+    Get active groups with available slots for transfer dropdown.
+    
+    Returns list of dicts with:
+    - group_id, group_name, course_name
+    - available_slots (max_capacity - active_count)
+    """
+    stmt = text("""
+        SELECT 
+            g.id AS group_id,
+            g.name AS group_name,
+            c.name AS course_name,
+            g.max_capacity,
+            COALESCE(e.active_count, 0) AS active_count
+        FROM groups g
+        JOIN courses c ON g.course_id = c.id
+        LEFT JOIN (
+            SELECT group_id, COUNT(*) AS active_count
+            FROM enrollments
+            WHERE status = 'active'
+            GROUP BY group_id
+        ) e ON g.id = e.group_id
+        WHERE g.status = 'active'
+            AND (:exclude_group_id IS NULL OR g.id != :exclude_group_id)
+        ORDER BY c.name, g.name
+    """)
+    
+    rows = session.execute(
+        stmt, 
+        {"exclude_group_id": exclude_group_id}
+    ).all()
+    
+    result = []
+    for row in rows:
+        mapping = row._mapping
+        max_cap = mapping["max_capacity"] or 999  # Default high if no limit
+        active = mapping["active_count"]
+        available = max(0, max_cap - active)
+        
+        result.append({
+            "group_id": mapping["group_id"],
+            "group_name": mapping["group_name"],
+            "course_name": mapping["course_name"],
+            "available_slots": available,
+        })
+    
+    return result

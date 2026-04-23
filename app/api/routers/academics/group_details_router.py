@@ -22,6 +22,7 @@ from app.modules.academics.schemas.group_details_schemas import (
     GroupLevelsDetailedResponseDTO,
     GroupAttendanceResponseDTO,
     GroupPaymentsResponseDTO,
+    GroupEnrollmentsResponseDTO,
 )
 from app.shared.exceptions import NotFoundError, ConflictError
 
@@ -167,4 +168,34 @@ def get_group_payments(
     return ApiResponse(
         data=result,
         message="Group payments loaded successfully.",
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# GET /academics/groups/{group_id}/enrollments/all
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.get(
+    "/academics/groups/{group_id}/enrollments/all",
+    response_model=ApiResponse[GroupEnrollmentsResponseDTO],
+    summary="Get all enrollments grouped by level",
+)
+def get_group_enrollments(
+    group_id: int = Path(..., ge=1, description="Group ID"),
+    _user=Depends(require_any),
+    svc: GroupDetailsService = Depends(get_group_details_service),
+):
+    """
+    Get all enrollments grouped by level for the Students tab.
+    
+    Returns:
+    - Students lookup table (student_id -> info)
+    - Enrollments grouped by level
+    - Per-level summary stats
+    - Transfer options (available groups)
+    """
+    result = svc.get_group_enrollments(group_id)
+    return ApiResponse(
+        data=result,
+        message="Group enrollments loaded successfully.",
     )
