@@ -41,7 +41,7 @@ class ReportingRepository(IReportingRepository):
             """
         )
         results = self._session.exec(
-            stmt, {"fd_start": fd_start, "fd_end": fd_end}
+            stmt, params={"fd_start": fd_start, "fd_end": fd_end}
         ).all()
 
         return [
@@ -82,7 +82,7 @@ class ReportingRepository(IReportingRepository):
             AND COALESCE(tm.fee_share, 0) > 0
             """
         )
-        results = self._session.exec(stmt, {"student_id": student_id}).all()
+        results = self._session.exec(stmt, params={"student_id": student_id}).all()
 
         return [
             UnpaidCompFeeItem(
