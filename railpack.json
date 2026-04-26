@@ -1,9 +1,9 @@
 {
-  "_cache_bust": "v4",
+  "_cache_bust": "v5",
   "build": {
     "cmd": "pip install -e ."
   },
   "start": {
-    "cmd": "gunicorn app.api.main:app -c gunicorn.conf.py --bind 0.0.0.0:8000"
+    "cmd": "uvicorn app.api.main:app --host 0.0.0.0 --port 8000"
   }
 }
