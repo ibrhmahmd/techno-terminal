@@ -124,6 +124,11 @@ def create_app() -> FastAPI:
     def health_check():
         return {"status": "ok", "service": "Techno Terminal API", "version": "1.0.0"}
 
+    # Leapcell platform health check endpoint
+    @app.get("/kaithhealthcheck", tags=["Health"])
+    def leapcell_health_check():
+        return {"status": "ok"}
+
     return app
 
 
