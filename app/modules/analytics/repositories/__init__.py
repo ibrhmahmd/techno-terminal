@@ -12,9 +12,7 @@ from .financial_repository import (
 )
 from .academic_repository import (
     get_active_enrollment_count,
-    get_today_sessions,
     get_today_unpaid_attendees,
-    get_group_roster,
     get_attendance_heatmap,
 )
 from .competition_repository import (

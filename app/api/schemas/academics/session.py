@@ -36,28 +36,6 @@ class SessionPublic(BaseModel):
         return time_to_str(value)
 
 
-class DailyScheduleItem(BaseModel):
-    session_id: int
-    date: date
-    time_start: Optional[str] = None
-    time_end: Optional[str] = None
-    status: str
-    notes: Optional[str] = None
-    group_id: int
-    group_name: str
-    level_number: int
-    course_id: int
-    course_name: str
-    enrolled_count: int = 0
-    
-    model_config = {"from_attributes": True}
-
-    @field_validator("time_start", "time_end", mode="before")
-    @classmethod
-    def parse_time(cls, value):
-        return time_to_str(value)
-
-
 class GenerateLevelSessionsRequest(BaseModel):
     """Input for generating level sessions (without group_id which comes from path)."""
     level_number: int

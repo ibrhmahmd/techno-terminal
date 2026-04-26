@@ -9,44 +9,23 @@ from typing import Optional
 from app.db.connection import get_session
 import app.modules.analytics.repositories.academic_repository as repo
 from app.modules.analytics.schemas import (
-    TodaySessionDTO,
     UnpaidAttendeeDTO,
-    GroupRosterRowDTO,
     AttendanceHeatmapRowDTO,
     StudentProgressDTO,
     CourseCompletionDTO,
-    DashboardSummaryDTO,
 )
 
 
 class AcademicAnalyticsService:
     """Service handling attendance, sessions, and roster reporting."""
 
-    def get_dashboard_summary(self, target_date: Optional[date] = None) -> DashboardSummaryDTO:
-        with get_session() as db:
-            active_enrollments = repo.get_active_enrollment_count(db)
-            today_sessions = repo.get_today_sessions(db, target_date)
-        return DashboardSummaryDTO(
-            active_enrollments=active_enrollments,
-            today_sessions_count=len(today_sessions),
-            sessions=today_sessions,
-        )
-
     def get_active_enrollment_count(self) -> int:
         with get_session() as db:
             return repo.get_active_enrollment_count(db)
 
-    def get_today_sessions(self, target_date: Optional[date] = None) -> list[TodaySessionDTO]:
-        with get_session() as db:
-            return repo.get_today_sessions(db, target_date)
-
     def get_today_unpaid_attendees(self, target_date: Optional[date] = None) -> list[UnpaidAttendeeDTO]:
         with get_session() as db:
             return repo.get_today_unpaid_attendees(db, target_date)
-
-    def get_group_roster(self, group_id: int, level_number: int) -> list[GroupRosterRowDTO]:
-        with get_session() as db:
-            return repo.get_group_roster(db, group_id, level_number)
 
     def get_attendance_heatmap(self, group_id: int, level_number: int) -> list[AttendanceHeatmapRowDTO]:
         with get_session() as db:

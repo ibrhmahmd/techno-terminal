@@ -183,17 +183,38 @@ class ReportNotificationService(BaseNotificationService):
             logger.warning(f"Could not fetch daily revenue: {e}")
         
         try:
-            from app.modules.analytics.services.academic_service import AcademicAnalyticsService
-            academic_svc = AcademicAnalyticsService()
-            summary = academic_svc.get_dashboard_summary()
-            sessions_held = summary.today_sessions_count
-            absent_count = sum(s.absent for s in summary.sessions)
+            from app.db.connection import get_session
+            from sqlmodel import select, func
+            from app.modules.academics.models import CourseSession
+            from app.modules.attendance.models.attendance_models import Attendance
             
-            # Calculate attendance rate
-            total_students = sum(s.present + s.absent + s.excused + s.late for s in summary.sessions)
-            total_present = sum(s.present for s in summary.sessions)
-            if total_students > 0:
-                attendance_rate = total_present / total_students
+            with get_session() as session:
+                # Count sessions held today
+                sessions_stmt = select(func.count()).select_from(CourseSession).where(
+                    CourseSession.session_date == target_date,
+                    CourseSession.status == "completed"
+                )
+                sessions_held = session.exec(sessions_stmt).one() or 0
+                
+                # Get attendance stats for today's sessions
+                att_stmt = select(
+                    func.count().filter(Attendance.status == "absent").label("absent"),
+                    func.count().filter(Attendance.status.in_(["present", "late"])).label("present"),
+                    func.count().filter(Attendance.status == "excused").label("excused")
+                ).where(
+                    Attendance.session_id.in_(
+                        select(CourseSession.id).where(CourseSession.session_date == target_date)
+                    )
+                )
+                att_result = session.exec(att_stmt).one()
+                absent_count = att_result.absent or 0
+                present_count = att_result.present or 0
+                excused_count = att_result.excused or 0
+                
+                # Calculate attendance rate
+                total_students = absent_count + present_count + excused_count
+                if total_students > 0:
+                    attendance_rate = present_count / total_students
         except Exception as e:
             logger.warning(f"Could not fetch daily academic summary: {e}")
         

@@ -15,11 +15,9 @@ from .financial_schemas import (
 from .academic_schemas import (
     TodaySessionDTO,
     UnpaidAttendeeDTO,
-    GroupRosterRowDTO,
     AttendanceHeatmapRowDTO,
     StudentProgressDTO,
     CourseCompletionDTO,
-    DashboardSummaryDTO,
 )
 from .competition_schemas import (
     CompetitionFeeSummaryDTO,
@@ -61,11 +59,9 @@ __all__ = [
     # Academic
     "TodaySessionDTO",
     "UnpaidAttendeeDTO",
-    "GroupRosterRowDTO",
     "AttendanceHeatmapRowDTO",
     "StudentProgressDTO",
     "CourseCompletionDTO",
-    "DashboardSummaryDTO",
 
     # Competition
     "CompetitionFeeSummaryDTO",

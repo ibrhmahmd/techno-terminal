@@ -25,30 +25,12 @@ class TodaySessionDTO(BaseModel):
     unmarked: int
     total_enrolled: int
 
-class DashboardSummaryDTO(BaseModel):
-    active_enrollments: int
-    today_sessions_count: int
-    sessions: list[TodaySessionDTO]
-
-
 class UnpaidAttendeeDTO(BaseModel):
     student_id: int
     student_name: str
     parent_name: Optional[str]
     phone_primary: Optional[str]
     total_balance: float
-
-
-class GroupRosterRowDTO(BaseModel):
-    student_id: int
-    student_name: str
-    enrollment_id: int
-    enrollment_status: str
-    balance: float
-    sessions_attended: int
-    sessions_missed: int
-    total_sessions: int
-    attendance_pct: float
 
 
 class AttendanceHeatmapRowDTO(BaseModel):

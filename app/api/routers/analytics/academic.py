@@ -11,13 +11,10 @@ from fastapi import APIRouter, Depends, Query
 
 from app.api.schemas.common import ApiResponse, ErrorResponse
 from app.modules.analytics.schemas.academic_schemas import (
-    TodaySessionDTO,
     UnpaidAttendeeDTO,
-    GroupRosterRowDTO,
     AttendanceHeatmapRowDTO,
     StudentProgressDTO,
     CourseCompletionDTO,
-    DashboardSummaryDTO,
 )
 from app.api.dependencies import require_admin, get_academic_analytics_service
 from app.modules.auth import User
@@ -34,22 +31,6 @@ router = APIRouter(
 
 
 @router.get(
-    "/analytics/dashboard/summary",
-    response_model=ApiResponse[DashboardSummaryDTO],
-    summary="Get high-level dashboard aggregates",
-)
-def get_dashboard_summary(
-    _user: User = Depends(require_admin),
-    svc: AcademicAnalyticsService = Depends(get_academic_analytics_service),
-):
-    """Provides a quick top-level aggregate of the system state."""
-    return ApiResponse(
-        data=svc.get_dashboard_summary(),
-        message="Dashboard summary loaded successfully.",
-    )
-
-
-@router.get(
     "/analytics/academics/unpaid-attendees",
     response_model=ApiResponse[list[UnpaidAttendeeDTO]],
     summary="Get unpaid attendees for today",
@@ -61,21 +42,6 @@ def get_unpaid_attendees(
 ):
     """Returns students attending sessions today who have unpaid balances."""
     return ApiResponse(data=svc.get_today_unpaid_attendees(target_date))
-
-
-@router.get(
-    "/analytics/academics/groups/{group_id}/roster",
-    response_model=ApiResponse[list[GroupRosterRowDTO]],
-    summary="Get group roster",
-)
-def get_group_roster(
-    group_id: int,
-    level_number: int = Query(..., ge=1, description="Level number"),
-    _user: User = Depends(require_admin),
-    svc: AcademicAnalyticsService = Depends(get_academic_analytics_service),
-):
-    """Returns roster for a specific group and level."""
-    return ApiResponse(data=svc.get_group_roster(group_id, level_number))
 
 
 @router.get(

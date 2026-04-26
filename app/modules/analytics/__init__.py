@@ -31,14 +31,8 @@ def get_top_debtors(*args, **kwargs):
 def get_active_enrollment_count(*args, **kwargs):
     return AcademicAnalyticsService().get_active_enrollment_count(*args, **kwargs)
 
-def get_today_sessions(*args, **kwargs):
-    return AcademicAnalyticsService().get_today_sessions(*args, **kwargs)
-
 def get_today_unpaid_attendees(*args, **kwargs):
     return AcademicAnalyticsService().get_today_unpaid_attendees(*args, **kwargs)
-
-def get_group_roster(*args, **kwargs):
-    return AcademicAnalyticsService().get_group_roster(*args, **kwargs)
 
 def get_attendance_heatmap(*args, **kwargs):
     return AcademicAnalyticsService().get_attendance_heatmap(*args, **kwargs)
@@ -78,9 +72,7 @@ __all__ = [
     "get_outstanding_by_group",
     "get_top_debtors",
     "get_active_enrollment_count",
-    "get_today_sessions",
     "get_today_unpaid_attendees",
-    "get_group_roster",
     "get_attendance_heatmap",
     "get_competition_fee_summary",
     "get_new_enrollments_trend",

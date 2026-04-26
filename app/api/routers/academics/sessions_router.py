@@ -5,33 +5,17 @@ Sessions router.
 
 Endpoints for session management.
 """
-from datetime import date
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from app.api.schemas.common import ApiResponse
-from app.api.schemas.academics.session import SessionPublic, DailyScheduleItem
+from app.api.schemas.academics.session import SessionPublic
 from app.api.dependencies import require_admin, require_any, get_session_service
 from app.modules.academics.schemas import AddExtraSessionInput, UpdateSessionDTO
 from app.modules.auth import User
 from app.modules.academics.services.session_service import SessionService
 
 router = APIRouter(tags=["Academics — Sessions"])
-
-# get daily schedule
-@router.get(
-    "/academics/sessions/daily-schedule",
-    response_model=ApiResponse[list[DailyScheduleItem]],
-    summary="Get daily session schedule",
-)
-def get_daily_schedule(
-    target_date: date = Query(default_factory=date.today, description="Date to fetch schedule for"),
-    _user: User = Depends(require_any),
-    svc: SessionService = Depends(get_session_service),
-):
-    sessions = svc.get_daily_schedule(target_date)
-    return ApiResponse(data=[DailyScheduleItem.model_validate(s) for s in sessions])
-
 
 # add an extra session to a group
 @router.post(
