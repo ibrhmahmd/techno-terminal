@@ -1,10 +1,46 @@
-# Database layout (hybrid: SQL + Alembic)
+# Database Layout (Hybrid: SQL + Alembic)
 
 ## Contents
 
-- **[schema.sql](schema.sql)** — Full PostgreSQL DDL (v3.3+). Source of truth for **table shapes** when creating a new environment with `psql`.
+- **[schema/](schema/)** — **Modular PostgreSQL DDL (v4.0)**. Source of truth organized by domain:
+  - `00-10` — Tables organized by domain (core, crm, academics, etc.)
+  - `20-60` — Database objects (indexes, views, functions, triggers, constraints)
+  - `90` — Seed data
+- **[schema.sql](schema.sql)** — **Orchestrator** that includes all modular files. Use for creating a new environment with `psql`.
 - **[migrations/](migrations/)** — Hand-written SQL for upgrading **existing** databases (CHECK changes, auth columns, DBA-reviewed scripts).
 - **Alembic** (repo root: `alembic.ini`, `alembic/`) — Revision history for evolving the schema from Python; use when the team prefers autogenerate/migrate workflows.
+
+## Schema Overview
+
+| Metric | Count |
+|--------|-------|
+| Tables | 33 |
+| Views | 15 |
+| Indexes | 94 |
+| Triggers | 17 |
+| Functions | 6 |
+
+## Schema Files Organization
+
+| File | Contents | Description |
+|------|----------|-------------|
+| `schema/00_extensions.sql` | PostgreSQL extensions | Required extensions (uuid-ossp, pgcrypto, citext) |
+| `schema/01_enums.sql` | Custom ENUM types | student_status and other custom types |
+| `schema/02_tables_core.sql` | Core tables | parents, employees, users |
+| `schema/03_tables_crm.sql` | CRM tables | students, student_parents, student_activity_log |
+| `schema/04_tables_academics.sql` | Academic tables | courses, groups, sessions, group_levels, group_course_history |
+| `schema/05_tables_enrollments.sql` | Enrollment tables | enrollments, enrollment_level_history, attendance |
+| `schema/06_tables_finance.sql` | Finance tables | receipts, payments, receipt_templates |
+| `schema/07_tables_competitions.sql` | Competition tables | competitions, competition_categories, teams, team_members, group_competition_participation |
+| `schema/08_tables_notifications.sql` | Notification tables | notification_templates, notification_logs, notification_subscribers, notification_additional_recipients, admin_notification_settings |
+| `schema/09_tables_history.sql` | History tables | Reserved for future audit tables |
+| `schema/10_tables_supabase.sql` | Supabase tables | subscription, hooks, buckets, objects |
+| `schema/20_indexes.sql` | All indexes | 94 indexes organized by table |
+| `schema/30_views.sql` | All views | 15 views including soft-delete filters and analytics |
+| `schema/40_functions.sql` | Custom functions | Trigger functions and utility functions |
+| `schema/50_triggers.sql` | All triggers | 17 triggers for audit and business logic |
+| `schema/60_constraints.sql` | Additional constraints | Complex constraints (mostly reserved) |
+| `schema/90_seed_data.sql` | Seed data | Initial data for templates, categories, admin employee |
 
 ## Environment variables
 
@@ -94,5 +130,70 @@ Avoid this if Supabase already has `schema.sql` applied — use Path A instead.
 ## Adding a new `users.role`
 
 1. Add the value to `app/modules/auth/role_types.py` (`UserRole` + `ALL_ROLE_VALUES`).
-2. Update `CHECK (role IN (...))` in `db/schema.sql` and add a new numbered file under `db/migrations/`.
+2. Update `CHECK (role IN (...))` in `db/schema/02_tables_core.sql` and add a new numbered file under `db/migrations/`.
 3. Add an Alembic revision if you use Alembic to alter constraints in deployed environments.
+
+## Schema Patterns
+
+### Soft Delete
+Tables with soft delete support include `deleted_at` and `deleted_by` columns:
+- `students`
+- `payments`
+- `enrollments`
+- `competitions`
+- `teams`
+
+Use `active_*` views (e.g., `active_students`) to filter out deleted records.
+
+### Status Tracking
+- `students.status` — ENUM: active, waiting, inactive
+- `students.status_history` — JSONB array tracking all status changes
+- `enrollments.status` — active, completed, transferred, dropped
+- `groups.status` — active, inactive, completed, archived
+
+### Audit Timestamps
+All tables have:
+- `created_at` — Set on INSERT (DEFAULT CURRENT_TIMESTAMP)
+- `updated_at` — Auto-updated via trigger on UPDATE
+
+Triggers are defined in `schema/50_triggers.sql` and use `tf_set_updated_at()` function.
+
+## Maintenance Guidelines
+
+### Adding a New Table
+
+1. Determine the appropriate domain file (e.g., academics → `04_tables_academics.sql`)
+2. Add the CREATE TABLE statement with:
+   - Primary key (SERIAL or UUID)
+   - Foreign key references with appropriate ON DELETE actions
+   - `created_at` and `updated_at` timestamps
+   - `metadata` JSONB for extensibility
+3. Add relevant indexes to `20_indexes.sql`
+4. Add updated_at trigger to `50_triggers.sql` if needed
+5. Update this README with the table name
+
+### Adding a New View
+
+1. Add to `schema/30_views.sql`
+2. Use `CREATE OR REPLACE VIEW` for idempotency
+3. Add a COMMENT ON VIEW statement
+4. Document any dependencies or soft-delete filtering
+
+### Modifying an Existing Table
+
+For existing databases, **always create a migration** in `db/migrations/`:
+```sql
+-- Migration XXX: Add column to table
+ALTER TABLE table_name ADD COLUMN new_column TYPE;
+```
+
+For new environments, update the appropriate `schema/*.sql` file.
+
+## Version History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| v4.0 | 2026-04-28 | Modular schema refactor — split monolithic schema.sql into domain-organized files |
+| v3.3 | 2025-XX-XX | Supabase auth integration, users table with supabase_uid |
+| v3.2 | 2025-XX-XX | ON DELETE CASCADE → RESTRICT changes for data integrity |
+| v3.1 | 2025-XX-XX | Initial soft-delete pattern implementation |
