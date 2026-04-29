@@ -262,38 +262,6 @@ This receipt was generated on {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}.
         
         return template.strip()
     
-    def mark_receipt_sent(
-        self,
-        receipt_id: int,
-        parent_email: Optional[str] = None
-    ) -> Receipt:
-        """
-        Mark a receipt as sent to parent.
-        
-        Args:
-            receipt_id: Receipt ID
-            parent_email: Email address receipt was sent to
-            
-        Returns:
-            Updated receipt
-        """
-        db = self._get_db()
-        
-        receipt = db.get(Receipt, receipt_id)
-        if not receipt:
-            raise NotFoundError(f"Receipt with ID {receipt_id} not found")
-        
-        receipt.sent_to_parent = True
-        receipt.sent_at = datetime.utcnow()
-        if parent_email:
-            receipt.parent_email = parent_email
-        
-        db.add(receipt)
-        db.commit()
-        db.refresh(receipt)
-        
-        return receipt
-    
     def generate_batch_receipts(
         self,
         receipt_ids: List[int],
@@ -337,51 +305,6 @@ This receipt was generated on {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}.
                 ))
         
         return results
-
-    def list_templates(self) -> List[Dict[str, Any]]:
-        """List active receipt templates for admin selection."""
-        db = self._get_db()
-        rows = db.execute(
-            text(
-                """
-                SELECT template_name, template_type, format, is_default, is_active, updated_at
-                FROM receipt_templates
-                WHERE is_active = TRUE
-                ORDER BY is_default DESC, template_name ASC
-                """
-            )
-        ).all()
-        return [dict(row._mapping) for row in rows]
-
-    def set_default_template(self, template_name: str) -> Dict[str, Any]:
-        """Set one template as default and unset others."""
-        db = self._get_db()
-        exists = db.execute(
-            text(
-                """
-                SELECT template_name
-                FROM receipt_templates
-                WHERE template_name = :name AND is_active = TRUE
-                """
-            ),
-            {"name": template_name},
-        ).first()
-        if not exists:
-            raise NotFoundError(f"Template '{template_name}' not found or inactive")
-
-        db.execute(text("UPDATE receipt_templates SET is_default = FALSE WHERE is_default = TRUE"))
-        db.execute(
-            text(
-                """
-                UPDATE receipt_templates
-                SET is_default = TRUE, updated_at = NOW()
-                WHERE template_name = :name
-                """
-            ),
-            {"name": template_name},
-        )
-        db.commit()
-        return {"template_name": template_name, "is_default": True}
 
 
 def get_receipt_generation_service(db = None):

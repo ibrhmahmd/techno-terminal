@@ -15,7 +15,6 @@ from app.api.dependencies import (
 )
 from app.api.schemas.common import ApiResponse
 from app.api.schemas.finance.receipt import (
-    MarkReceiptSentRequest,
     BatchGenerateRequest,
     BatchReceiptItem,
     ReceiptGenerationResponse,
@@ -166,33 +165,6 @@ def generate_receipt(
 
 
 @router.post(
-    "/finance/receipts/{receipt_id}/mark-sent",
-    response_model=ApiResponse[dict],
-    summary="Mark receipt as sent",
-    description="Mark a receipt as sent to parent/guardian."
-)
-def mark_receipt_sent(
-    receipt_id: int,
-    request: MarkReceiptSentRequest,
-    current_user: User = Depends(require_admin),
-    svc = Depends(get_receipt_generation_service),
-):
-    """Mark a receipt as sent with optional email tracking."""
-    receipt = svc.mark_receipt_sent(receipt_id, request.parent_email)
-    
-    return ApiResponse(
-        data={
-            "receipt_id": receipt.id,
-            "receipt_number": receipt.receipt_number,
-            "sent_to_parent": receipt.sent_to_parent,
-            "sent_at": receipt.sent_at.isoformat() if receipt.sent_at else None,
-            "parent_email": receipt.parent_email
-        },
-        message="Receipt marked as sent"
-    )
-
-
-@router.post(
     "/finance/receipts/batch-generate",
     response_model=ApiResponse[List[BatchReceiptItem]],
     summary="Batch generate receipts",
@@ -205,31 +177,3 @@ def batch_generate_receipts(
 ):
     results = svc.generate_batch_receipts(request.receipt_ids, request.template_name)
     return ApiResponse(success=True, data=results)
-
-
-@router.get(
-    "/finance/receipts/templates",
-    response_model=ApiResponse[List[dict]],
-    summary="List receipt templates",
-    description="List active templates available for receipt generation.",
-)
-def list_receipt_templates(
-    current_user: User = Depends(require_admin),
-    svc = Depends(get_receipt_generation_service),
-):
-    return ApiResponse(data=svc.list_templates())
-    
-
-@router.post(
-    "/finance/receipts/templates/{template_name}/set-default",
-    response_model=ApiResponse[dict],
-    summary="Set default receipt template",
-    description="Set one active receipt template as default for generation.",
-)
-def set_default_template(
-    template_name: str,
-    current_user: User = Depends(require_admin),
-    svc = Depends(get_receipt_generation_service),
-):
-    result = svc.set_default_template(template_name)
-    return ApiResponse(data=result, message="Default template updated successfully")
