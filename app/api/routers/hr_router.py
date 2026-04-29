@@ -1,26 +1,29 @@
 """
 app/api/routers/hr.py
 ──────────────────────
-HR domain router (Stub Phase 5).
+HR domain router using SOLID architecture.
 
 Prefix: /api/v1 (mounted in main.py)
 Tag:    HR
 """
-from typing import Any
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.schemas.common import ApiResponse
 from app.api.schemas.hr.employee import EmployeePublic, EmployeeListItem, EmployeeCreateInput, StaffAccountPublic
 from app.api.schemas.hr.employee_account import CreateEmployeeAccountRequest, EmployeeAccountResponse
-from app.modules.hr.hr_models import EmployeeCreate
-from app.modules.hr import hr_repository as hr_repo
+# New SOLID imports
+from app.modules.hr import (
+    EmployeeCrudService,
+    StaffAccountService,
+    CreateEmployeeDTO,
+    UpdateEmployeeDTO,
+    CreateEmployeeAccountDTO,
+    EmployeeReadDTO,
+    StaffAccountDTO,
+)
 from app.shared.exceptions import NotFoundError, ConflictError, ValidationError
-from app.api.dependencies import require_admin, get_hr_service
+from app.api.dependencies import require_admin, get_employee_crud_service, get_staff_account_service
 from app.modules.auth import User
-
-# Import types for annotation
-from app.modules.hr.hr_models import Employee
 
 router = APIRouter(tags=["HR"])
 
@@ -28,21 +31,26 @@ router = APIRouter(tags=["HR"])
 from app.api.schemas.hr.attendance import AttendanceLogInput, AttendanceLogOutput
 
 
-# list all employees
+# list all employees (paginated)
 @router.get(
     "/hr/employees",
     response_model=ApiResponse[list[EmployeeListItem]],
     summary="List all employees",
 )
 def list_employees(
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     _user: User = Depends(require_admin),
-    hr=Depends(get_hr_service),
+    service: EmployeeCrudService = Depends(get_employee_crud_service),
 ):
     """
-    Returns a list of all employees. Restricted to admin.
+    Returns a paginated list of all employees. Restricted to admin.
     """
-    employees = hr.list_all_employees()
-    return ApiResponse(data=[EmployeeListItem.model_validate(e) for e in employees])
+    result = service.list_paginated(page, page_size)
+    return ApiResponse(
+        data=[EmployeeListItem.model_validate(e) for e in result.items],
+        message=f"Showing {len(result.items)} of {result.total} employees"
+    )
 
 
 # get employee by ID
@@ -54,13 +62,13 @@ def list_employees(
 def get_employee(
     employee_id: int,
     _user: User = Depends(require_admin),
-    hr=Depends(get_hr_service),
+    service: EmployeeCrudService = Depends(get_employee_crud_service),
 ):
     """
     Returns a single employee by ID. Restricted to admin.
     """
     try:
-        emp = hr.get_employee_by_id(employee_id)
+        emp = service.get_by_id(employee_id)
         return ApiResponse(data=EmployeePublic.model_validate(emp))
     except NotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -76,14 +84,15 @@ def get_employee(
 def create_employee(
     body: EmployeeCreateInput,
     _user: User = Depends(require_admin),
-    hr=Depends(get_hr_service),
+    service: EmployeeCrudService = Depends(get_employee_crud_service),
 ):
     """
     Creates a new employee record. Restricted to admin.
     """
     try:
-        emp_in = EmployeeCreate(**body.model_dump())
-        emp = hr.create_employee_only(emp_in)
+        # Map API input to internal DTO
+        dto = CreateEmployeeDTO(**body.model_dump())
+        emp = service.create(dto)
         return ApiResponse(
             data=EmployeePublic.model_validate(emp),
             message="Employee created successfully.",
@@ -104,14 +113,15 @@ def update_employee(
     employee_id: int,
     body: EmployeeCreateInput,
     _user: User = Depends(require_admin),
-    hr=Depends(get_hr_service),
+    service: EmployeeCrudService = Depends(get_employee_crud_service),
 ):
     """
     Updates an existing employee record. Restricted to admin.
     """
     try:
-        emp_in = EmployeeCreate(**body.model_dump())
-        emp = hr.update_employee_only(employee_id, emp_in)
+        # Map API input to internal DTO (partial update)
+        dto = UpdateEmployeeDTO(**body.model_dump(exclude_unset=True))
+        emp = service.update(employee_id, dto)
         return ApiResponse(
             data=EmployeePublic.model_validate(emp),
             message="Employee updated successfully.",
@@ -132,23 +142,23 @@ def update_employee(
 )
 def list_staff_accounts(
     _user: User = Depends(require_admin),
-    hr=Depends(get_hr_service),
+    service: StaffAccountService = Depends(get_staff_account_service),
 ):
     """
     Returns all staff accounts with linked employee info. Restricted to admin.
     """
-    accounts = hr.list_staff_accounts()
-    # Transform raw dicts to typed DTOs
+    accounts = service.list_accounts()
+    # Transform DTOs to API response shape
     typed_accounts = [
         StaffAccountPublic(
-            id=acc.get("id", 0),
-            username=acc.get("username", ""),
-            email=acc.get("email"),
-            employee_id=acc.get("employee_id", 0),
-            employee_name=acc.get("employee_name", ""),
-            job_title=acc.get("job_title"),
-            is_active=acc.get("is_active", True),
-            created_at=acc.get("created_at"),
+            id=acc.user_id,
+            username=acc.username,
+            email=None,  # Not in StaffAccountDTO, would need extension
+            employee_id=acc.employee_id,
+            employee_name=acc.full_name,
+            job_title=None,  # Not in StaffAccountDTO
+            is_active=acc.is_active,
+            created_at=None,  # Not in StaffAccountDTO
         )
         for acc in accounts
     ]
@@ -192,24 +202,21 @@ def create_employee_account_endpoint(
     employee_id: int,
     body: CreateEmployeeAccountRequest,
     _user: User = Depends(require_admin),
+    service: StaffAccountService = Depends(get_staff_account_service),
 ):
     """
     Creates a Supabase user account for an existing employee.
     Only admin or system_admin roles are allowed.
     """
-    from app.modules.hr.hr_service import create_employee_account
-    from app.modules.hr.interfaces.dtos import CreateEmployeeAccountDTO
-    from app.shared.exceptions import NotFoundError, ConflictError, ValidationError
-
     try:
-        # Wrap API request into service DTO
+        # Map API request to internal DTO
         dto = CreateEmployeeAccountDTO(
             employee_id=employee_id,
             email=body.email,
             password=body.password,
             role=body.role,
         )
-        result = create_employee_account(dto)
+        result = service.create_account(dto)
         return ApiResponse(
             data=EmployeeAccountResponse(
                 employee_id=result.employee_id,
