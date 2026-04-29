@@ -8,7 +8,7 @@ Follows dashboard API patterns with lookup tables and 4-query strategy.
 from app.db.connection import get_session
 from app.modules.academics.models import CourseSession
 from app.modules.academics.models.course_models import Course
-from app.modules.hr.hr_models import Employee
+from app.modules.hr.models import Employee
 from app.modules.enrollments.models.enrollment_models import Enrollment
 from app.modules.academics.schemas.group_details_schemas import (
     LevelDeleteResultDTO,
@@ -598,7 +598,6 @@ class GroupDetailsService:
                         student_id=e["student_id"],
                         status=e["status"],
                         enrolled_at=e["enrolled_at"].isoformat() if e["enrolled_at"] else "",
-                        dropped_at=e["dropped_at"].isoformat() if e["dropped_at"] else None,
                         sessions_attended=e["sessions_attended"],
                         sessions_total=e["sessions_total"],
                         payment_status=e["payment_status"],

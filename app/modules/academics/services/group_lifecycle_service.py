@@ -213,7 +213,7 @@ class GroupLifecycleService:
             # Handle instructor override
             if data.instructor_id:
                 # Validate instructor exists (employees table)
-                from app.modules.hr.hr_models import Employee
+                from app.modules.hr.models import Employee
                 instructor = session.get(Employee, data.instructor_id)
                 if not instructor:
                     raise ValueError(f"Instructor {data.instructor_id} not found")

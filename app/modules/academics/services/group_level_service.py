@@ -11,7 +11,7 @@ from app.db.connection import get_session
 from app.modules.academics.models import Group, GroupLevel, Course
 from app.modules.academics import repositories as repo
 from app.modules.academics.schemas.group_level_schemas import GroupLevelReadDTO, GroupLevelDetailDTO
-from app.modules.hr.hr_models import Employee
+from app.modules.hr.models import Employee
 from app.shared.constants import DEFAULT_SESSIONS_PER_LEVEL
 
 

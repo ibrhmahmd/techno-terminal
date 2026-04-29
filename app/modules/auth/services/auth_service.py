@@ -6,7 +6,7 @@ import app.modules.auth.repositories.auth_repository as repo
 from app.modules.auth.models.auth_models import User
 from app.modules.auth.schemas.auth_schemas import UserCreate
 from app.modules.auth.constants import is_valid_role
-from app.modules.hr import hr_repository as hr_repo
+from app.modules.hr.repositories import EmployeeRepository  # New SOLID import
 from app.shared.constants import MIN_PASSWORD_LENGTH
 from app.shared.exceptions import ConflictError, NotFoundError, ValidationError
 
@@ -57,7 +57,8 @@ class AuthService:
             raise ValidationError(f"Invalid role: {role!r}.")
 
         with get_session() as session:
-            emp = hr_repo.get_employee_by_id(session, employee_id)
+            emp_repo = EmployeeRepository(session)
+            emp = emp_repo.get_by_id(employee_id)
             if not emp:
                 raise NotFoundError(f"Employee {employee_id} not found.")
             if repo.get_users_by_employee_id(session, employee_id):

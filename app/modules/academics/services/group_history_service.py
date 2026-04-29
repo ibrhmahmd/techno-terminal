@@ -135,7 +135,7 @@ class GroupHistoryService:
                 course = session.get(repo.Course, level.course_id)
                 instructor = None
                 if level.instructor_id:
-                    from app.modules.hr.hr_models import Employee
+                    from app.modules.hr.models import Employee
                     instructor = session.get(Employee, level.instructor_id)
                 
                 result.append({

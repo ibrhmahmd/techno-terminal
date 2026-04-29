@@ -25,7 +25,6 @@ class StudentPublic(BaseModel):
     gender: Optional[str] = None
     phone: Optional[str] = None
     status: str  # active, waiting, inactive
-    is_active: bool  # Deprecated: kept for backward compatibility
     notes: Optional[str] = None
 
     model_config = {"from_attributes": True}
@@ -49,7 +48,6 @@ class StudentListItem(BaseModel):
     full_name: str
     phone: Optional[str] = None
     status: str  # active, waiting, inactive
-    is_active: bool  # Deprecated: kept for backward compatibility
     notes: Optional[str] = None
     current_group_id: Optional[int] = None
     current_group_name: Optional[str] = None

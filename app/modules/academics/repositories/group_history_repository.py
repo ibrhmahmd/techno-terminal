@@ -13,7 +13,7 @@ from app.modules.academics.models.group_level_models import (
     EnrollmentLevelHistory,
 )
 from app.modules.academics.models import Group, Course
-from app.modules.hr.hr_models import Employee
+from app.modules.hr.models import Employee
 from app.modules.crm.models.student_models import Student
 
 

@@ -1,7 +1,7 @@
 from sqlmodel import Session, select
 from app.shared.datetime_utils import utc_now
 from app.modules.auth.models.auth_models import User
-from app.modules.hr.hr_models import Employee
+from app.modules.hr.models import Employee
 
 def get_user_by_username(session: Session, username: str) -> User | None:
     stmt = select(User).where(User.username == username)
