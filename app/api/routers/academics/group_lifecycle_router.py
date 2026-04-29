@@ -5,15 +5,12 @@ Router for group lifecycle and history endpoints.
 """
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 
-from app.api.schemas.common import ApiResponse, PaginatedResponse
-from app.api.dependencies import require_any, require_admin, get_group_service, get_group_history_service, get_group_level_service, get_group_analytics_service
+from app.api.schemas.common import ApiResponse
+from app.api.dependencies import require_any, require_admin, get_group_level_service, get_group_analytics_service
 from app.modules.auth import User
-from app.modules.academics.services.group_service import GroupService
-from app.modules.academics.services.group_history_service import GroupHistoryService
 from app.modules.academics.services.group_level_service import GroupLevelService
 from app.modules.academics.services.group_analytics_service import GroupAnalyticsService
 from app.api.schemas.academics.group_analytics import (
-    GroupLevelHistoryResponseDTO,
     GroupEnrollmentHistoryResponseDTO,
     GroupInstructorHistoryResponseDTO,
 )
@@ -21,67 +18,6 @@ from app.api.schemas.academics.group_lifecycle import CancelLevelInput
 from app.api.schemas.academics.group_level import GroupLevelPublic
 
 router = APIRouter(tags=["Academics — Group Lifecycle"])
-
-
-@router.get(
-    "/academics/groups/{group_id}/history",
-    response_model=ApiResponse[dict],
-    
-    summary="Get full lifecycle history for a group",
-)
-def get_group_lifecycle_history(
-    group_id: int,
-    _user: User = Depends(require_any),
-    svc: GroupHistoryService = Depends(get_group_history_service),
-):
-    """
-    Returns complete lifecycle data for a group including:
-    - Levels timeline (chronological)
-    - Course assignment history
-    - Enrollment transitions
-    """
-    history = svc.get_full_lifecycle(group_id)
-    if not history:
-        raise HTTPException(status_code=404, detail=f"Group {group_id} not found")
-    return ApiResponse(data=history)
-
-
-@router.get(
-    "/academics/groups/{group_id}/levels",
-    response_model=PaginatedResponse[GroupLevelPublic],
-    summary="List all level snapshots for a group",
-)
-def list_group_levels(
-    group_id: int,
-    status: str | None = None,
-    include_inactive: bool = False,
-    skip: int = Query(0, ge=0, description="Number of records to skip"),
-    limit: int = Query(50, ge=1, le=200, description="Maximum records to return"),
-    _user: User = Depends(require_any),
-    svc: GroupLevelService = Depends(get_group_level_service),
-):
-    """
-    Returns paginated level snapshots for a group.
-    Query params:
-    - status: Filter by status (active, completed, cancelled)
-    - include_inactive: Include inactive levels if True
-    - skip: Number of records to skip (pagination)
-    - limit: Maximum number of records to return
-    """
-    levels, total = svc.get_paginated_levels(
-        group_id=group_id,
-        status=status,
-        include_inactive=include_inactive,
-        skip=skip,
-        limit=limit
-    )
-    
-    return PaginatedResponse(
-        data=[GroupLevelPublic.model_validate(l) for l in levels],
-        total=total,
-        skip=skip,
-        limit=limit,
-    )
 
 
 @router.get(
@@ -166,64 +102,6 @@ def cancel_group_level_endpoint(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-
-@router.get(
-    "/academics/groups/{group_id}/courses/history",
-    response_model=ApiResponse[list[dict]],
-    summary="Get course assignment history",
-)
-def get_group_course_history(
-    group_id: int,
-    _user: User = Depends(require_any),
-    svc: GroupHistoryService = Depends(get_group_history_service),
-):
-    """Returns chronological course assignment history for a group."""
-    history = svc.get_course_assignments(group_id)
-    return ApiResponse(data=history)
-
-
-@router.get(
-    "/academics/groups/{group_id}/enrollments/history",
-    response_model=ApiResponse[list[dict]],
-    summary="Get enrollment level transitions",
-)
-def get_group_enrollment_history(
-    group_id: int,
-    student_id: int | None = None,
-    _user: User = Depends(require_any),
-    svc: GroupHistoryService = Depends(get_group_history_service),
-):
-    """
-    Returns enrollment level transitions for a group.
-    Optionally filter by specific student.
-    """
-    transitions = svc.get_enrollment_transitions(group_id, student_id)
-    return ApiResponse(data=transitions)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# NEW GROUP ANALYTICS ENDPOINTS
-# ═══════════════════════════════════════════════════════════════════════════════
-
-@router.get(
-    "/academics/groups/{group_id}/levels/analytics",
-    response_model=ApiResponse[GroupLevelHistoryResponseDTO],
-    summary="Get level progression history with student counts",
-)
-def get_group_levels_analytics(
-    group_id: int,
-    _user: User = Depends(require_any),
-    svc: GroupAnalyticsService = Depends(get_group_analytics_service),
-):
-    """
-    Returns detailed level progression history including:
-    - All level snapshots with course/instructor info
-    - Student enrollment counts per level
-    - Session completion tracking
-    """
-    history = svc.get_level_progression_history(group_id)
-    return ApiResponse(data=history)
 
 
 @router.get(
