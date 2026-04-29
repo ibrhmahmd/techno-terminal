@@ -1,6 +1,9 @@
-# Schema Design Review — Consolidated (v3.1)
+# Schema Design Review — Consolidated (v3.4)
 
-## Status: ✅ ALL ISSUES FROM BOTH REVIEWS RESOLVED
+**Last Updated:** 2026-04-28  
+**Migrations:** 44 total  
+
+## Status: ✅ ALL ISSUES FROM REVIEWS 1-3 RESOLVED
 
 ---
 
@@ -46,10 +49,33 @@
 | S6 | Single parent constraint fails real-world split families | ✅ Fixed | Added `student_parents` junction table (many-to-many). |
 | S7 | `users` vs `employees` role redundancy | ✅ Already fixed | (Addressed in v3.1 update, `employees` only has `job_title`). |
 
-## Remaining V2/V3 Deferrals
+## Phase 7 Review (Notifications & Soft-Delete)
 
-| Item | Reason |
-|---|---|
-| Audit log table | V2 feature |
-| Employee attendance | V2 with payroll |
-| Multiple active enrollments logic | Deferring index change until business rules are finalized during web app development |
+| # | Problem | Status | Resolution |
+|---|---|---|---|
+| N1 | No notification tracking | ✅ Fixed | Added `notification_logs` table (migration 034) |
+| N2 | No template system | ✅ Fixed | Added `notification_templates` table (migration 034) |
+| N3 | No bulk notification capability | ✅ Fixed | Added `notification_additional_recipients` table (migration 036) |
+| N4 | No soft-delete for recovery | ✅ Fixed | Added `deleted_at` to students (033), payments (migration pending) |
+| N5 | Admin notification preferences missing | ✅ Fixed | Added `admin_notification_settings` table (migration 036) |
+| N6 | Fragmented history tables | ✅ Fixed | Consolidated to `student_activity_log` (migration 038) |
+| N7 | `students.is_active` vs `status` conflict | ✅ Fixed | Removed `is_active` column (migration 045) |
+
+## Migration Evolution (44 Total)
+
+| Range | Count | Focus Area |
+|---|---|---|
+| 001-007 | 7 | Initial schema, Supabase auth, audit timestamps |
+| 008-015 | 8 | Core logic, views, balance calculations |
+| 016-025 | 10 | Payment allocations, receipt numbering, triggers |
+| 026-035 | 10 | View expansion, indexes, soft-delete pattern, notifications |
+| 036-044 | 9 | Admin settings, templates, competition redesign, cleanup |
+| 045+ | — | Ongoing: Schema alignment, DTO consistency |
+
+## Remaining V2/V3 Deferrals — Updated Status
+
+| Item | Original Reason | Current Status |
+|---|---|---|
+| Audit log table | V2 feature | ✅ **Resolved** — Implemented via `student_activity_log` (migration 038) |
+| Employee attendance | V2 with payroll | ⚠️ **Still stub** — HR router has placeholder endpoint only |
+| Multiple active enrollments logic | Defer until web app | ✅ **Resolved** — Partial unique index on active enrollments |

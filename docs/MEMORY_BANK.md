@@ -1,9 +1,9 @@
 # Techno Terminal — Memory Bank
 >
 > **Purpose:** Complete architectural and code-level reference for AI agent handoff.  
-> **Last updated:** 2026-04-12  
-> **Schema version:** v3.4 (30 tables, 12 views) — verified via Supabase  
-> **Framework:** Streamlit + FastAPI + SQLModel + PostgreSQL + Supabase Auth  
+> **Last updated:** 2026-04-28  
+> **Schema version:** v3.4 (21 tables, 20+ views, 44 migrations) — verified via codebase audit  
+> **Framework:** FastAPI + SQLModel + PostgreSQL + Supabase Auth (Backend API Only)  
 
 ---
 
@@ -20,16 +20,16 @@
 - Analytics and activity reporting dashboards
 - Staff (employee) directory and linked login accounts
 
-**Transports (dual path):**
+**Architecture (Backend API Only):**
 
-- **Streamlit** (`app/ui/`) is the primary internal UI. Pages call **`app/modules/*/service.py` directly** (same process, no HTTP to self for domain data).
-- **FastAPI (API) Snapshot** (`app/api/`):
-  - **Router Structure:** Split packages for `analytics/`, `academics/`, `crm/` domains (no monolithic routers)
+- **FastAPI** (`app/api/`): Primary interface — all domain access via REST API:
+  - **Router Structure:** 21 routers across 11 modules (split packages: `analytics/`, `academics/`, `crm/`, `notifications/`)
   - **DTOs:** All responses typed with Pydantic (no `list[dict]` or `Any`)
   - **DI Pattern:** All services available via `Depends()` factories in `dependencies.py`
   - **Error Handling:** Standardized `ErrorResponse` envelope via custom + HTTPException handlers
   - **Auth:** Supabase JWT verification with role-based access (admin, system_admin only)
   - **Phase 5.2–5.5:** CRM, academics, transactions, analytics routers fully implemented
+  - **Phase 7:** Notifications system (templates, logs, settings) fully implemented
 
 **April 2026 — Role System Simplification:**
 - **Simplified roles:** Reduced from 4 roles (admin, instructor, receptionist, manager) to 2 roles (admin, system_admin)
@@ -39,14 +39,15 @@
 - **Files changed:** `app/modules/auth/constants.py`, `app/api/dependencies.py`, `app/api/routers/attendance_router.py`
 - **Breaking change:** Users with instructor/receptionist/manager roles will need role updated to admin
 
-**Authentication:** End-user credentials are verified by **Supabase** (`sign_in_with_password` in Streamlit; JWT verification via Supabase SDK in FastAPI). Local Postgres `users` rows map identities with `supabase_uid`. After successful Streamlit login, **`update_last_login`** updates `users.last_login` (explicit `session.commit()` in service; `get_session()` also commits on exit).
+**Authentication:** End-user credentials are verified by **Supabase** (JWT verification via Supabase SDK in FastAPI). Local Postgres `users` rows map identities with `supabase_uid`. The `update_last_login` function updates `users.last_login` on successful authentication.
 
 **Current Status (April 2026):**
 
 - **API Finalization Complete (2026-04-02):** All auth, session, competition, and finance endpoints implemented. The backend is **100% ready for frontend consumption**.
-- **Testing Initiative Complete (2026-04-12):** 94% coverage (75/80 endpoint scenarios). All 10 phases complete.
-  - **Test Files:** 20 test modules with 161 tests (160 passing)
-  - **Coverage:** Auth (6/6), CRM (9/9), Enrollments (4/4), Finance (8/8), Attendance (2/2), Academics (14/14), Competitions (8/8), HR (7/7), Analytics (16/16)
+- **Phase 7 Complete (2026-04-28):** Notifications system with templates, logs, and admin settings.
+- **Testing Initiative Complete (2026-04-12):** 94% coverage. All 11 phases complete.
+  - **Test Files:** 26 test modules with 161+ tests (160 passing)
+  - **Coverage:** Auth (6/6), CRM (9/9), Enrollments (4/4), Finance (8/8), Attendance (2/2), Academics (14/14), Competitions (8/8), HR (7/7), Analytics (16/16), Notifications (4/4)
   - **Strategy:** Phased testing with transaction isolation, JWT mocking, and dependency-based test fixtures
 - **Auth Endpoints:** `POST /auth/login`, `POST /auth/logout`, `POST /auth/refresh`, `GET /auth/me`, `POST /auth/users`, `POST /auth/users/{id}/reset-password` — all using Supabase `sign_in_with_password`.
 - **Daily Schedule Endpoint:** `GET /academics/sessions/daily-schedule?day={dayName}` — single high-performance join across `CourseSession`, `Group`, `Course`, `Enrollment` for the Dashboard.
@@ -60,7 +61,7 @@
 - **Streamlit Stabilization Complete:** All UI crashes caused by the deep-SOLID architecture (Pydantic DTO strictness, Service facades) have been patched.
 - **Pivot:** API scaffolding (Day 2 of Delivery Plan) is temporarily paused. The project is currently entering a new structural sprint to decouple the Student-Parent relationship, shift financial tracking directly to the Student entity, handle automatic level progression, and handle session cancellations with cascading numbering.
 
-**Audit (D4):** `app/shared/audit_utils.py` stamps `created_at` / `updated_at` / optional `created_by` on CRM, enrollments, and academics mutating paths where applicable. **`db/migrations/005_audit_d4_timestamps.sql`** backfills NULLs, sets `DEFAULT CURRENT_TIMESTAMP`, normalizes legacy TEXT `sessions.created_at` / `session_date`, and adds `tf_set_updated_at` triggers (mirrored in greenfield `db/schema.sql`). Streamlit uses **`state.get_current_user_id()`** for `created_by` / `received_by`. See `docs/planning/sprint_roadmap_post_qa_2026.md` Sprint 3.
+**Audit (D4):** `app/shared/audit_utils.py` stamps `created_at` / `updated_at` / optional `created_by` on CRM, enrollments, and academics mutating paths where applicable. **`db/migrations/005_audit_d4_timestamps.sql`** backfills NULLs, sets `DEFAULT CURRENT_TIMESTAMP`, normalizes legacy TEXT `sessions.created_at` / `session_date`, and adds `tf_set_updated_at` triggers (mirrored in greenfield `db/schema.sql`). API dependencies provide `current_user` for `created_by` / `received_by`. See `docs/planning/sprint_roadmap_post_qa_2026.md` Sprint 3.
 
 ---
 
@@ -68,7 +69,6 @@
 
 ```
 project_root/
-├── run_ui.py                     # Entry point — seeds admin (Supabase), runs Streamlit on app/ui/main.py
 ├── run_api.py                    # Uvicorn bootloader for FastAPI (port 8000, reload)
 ├── .env                          # DATABASE_URL, SUPABASE_* (not committed)
 ├── .env.example                  # Template for required env vars
@@ -89,7 +89,13 @@ project_root/
 │       ├── 004_employees_sprint2_identity.sql      # national_id, education fields, uniqueness (Sprint 2)
 │       ├── 005_audit_d4_timestamps.sql             # D4: audit backfill, DEFAULTs, updated_at triggers
 │       ├── 006_receipts_paid_at_index.sql          # B9: idx_receipts_paid_at (Sprint 4)
-│       └── 007_p6_enrollment_balance.sql           # B8/P6: account balance sign convention
+│       ├── 007_p6_enrollment_balance.sql           # B8/P6: account balance sign convention
+│       └── 008-044/*.sql                           # 37 additional migrations covering:
+│                                                    #   - Payment allocations & triggers (008-025)
+│                                                    #   - Views, indexes, soft-delete (026-035)
+│                                                    #   - Notifications system (034-037)
+│                                                    #   - Competition redesign (040)
+│                                                    #   - Schema cleanup & DTO alignment (038-045)
 ├── docs/
 │   ├── MEMORY_BANK.md            # THIS FILE (handoff summary)
 │   ├── archive/                  # Legacy history, completed refactors, and old plans
@@ -132,12 +138,23 @@ project_root/
     │       ├── enrollments_router.py
     │       ├── finance_router.py
     │       ├── competitions_router.py
-    │       └── hr_router.py      # Employee CRUD + staff accounts + attendance stub
+    │       ├── hr_router.py      # Employee CRUD + staff accounts + attendance stub
+    │       ├── students_history_router.py  # Student activity timeline
+    │       ├── group_lifecycle_router.py   # Group progression management
+    │       ├── group_competitions_router.py # Group competition participation
+    │       ├── group_details_router.py    # Group detailed info
+    │       ├── teams_router.py           # Team management
+    │       ├── receipt_router.py         # Receipt operations
+    │       ├── reporting_router.py       # Financial reporting
+    │       └── notifications/            # Notification system (Phase 7)
+    │           ├── notifications_router.py
+    │           ├── templates_router.py
+    │           └── settings_router.py
     ├── db/
     │   ├── connection.py         # SQLModel engine + get_session() context manager
     │   ├── seed.py               # Supabase-linked admin seed (needs service role)
     │   └── init_db.py            # Optional: drop/create ORM tables + recreate views + seed
-    ├── modules/                  # Domain modules — layered (models → repo → service)
+    ├── modules/                  # Domain modules — layered (models → repo → service) — 11 total
     │   ├── auth/
     │   ├── hr/
     │   ├── crm/
@@ -146,7 +163,9 @@ project_root/
     │   ├── attendance/
     │   ├── finance/
     │   ├── competitions/
-    │   └── analytics/
+    │   ├── analytics/
+    │   ├── notifications/          # Phase 7: Templates, logs, settings
+    │   └── shared/               # Common utilities, base classes
     ├── shared/
     │   ├── base_repository.py    # RepositoryProtocol (structural typing)
     │   ├── constants.py          # MIN_PASSWORD_LENGTH, domain literals (e.g. EmploymentType)
@@ -175,7 +194,7 @@ get_session()     # @contextmanager — yields Session, auto-commit on exit, rol
 
 **Connection pool config:** `pool_size=5`, `max_overflow=5`, `pool_timeout=30`, `pool_recycle=1800`
 
-### 3.2 Schema Overview (30 tables — 16 core + 14 history/tracking)
+### 3.2 Schema Overview (21 tables — 16 core domain + 5 notification/support)
 
 | Table | Purpose | Key Constraints |
 |---|---|---|
@@ -194,30 +213,34 @@ get_session()     # @contextmanager — yields Session, auto-commit on exit, rol
 | `receipts` | Payment receipt header | `payment_method IN ('cash','card','transfer','online')`; 14 columns |
 | `sessions` | Individual class sessions | `session_date` DATE, `created_at` TIMESTAMPTZ; 14 columns |
 | `student_parents` | M:M student–parent with primary flag | `UNIQUE(student_id, parent_id)`; 5 columns |
-| `students` | Student profiles | `is_active` flag; `status` enum (active/waiting/inactive); 16 columns |
+| `students` | Student profiles | `status` enum (active/waiting/inactive); `deleted_at` soft-delete; 16 columns |
 | `team_members` | Students in teams | `UNIQUE(team_id, student_id)`; `fee_paid BOOLEAN`; 5 columns |
 | `teams` | Team per category | `enrollment_fee_per_student` can be NULL or float > 0; 11 columns |
 | `users` | Login accounts | roles: `admin`, `system_admin`; `supabase_uid` UNIQUE NOT NULL; 8 columns |
 
-**History & Tracking Tables (14):**
+**Support & Extension Tables (5):**
 | Table | Purpose | Columns |
 |---|---|---|
-| `enrollment_balance_history` | Historical balance changes per enrollment | 10 |
-| `enrollment_level_history` | Level progression tracking | 10 |
-| `generated_receipts` | Generated receipt records | 11 |
-| `group_competition_participation` | Group-competition linkage | 12 |
-| `group_course_history` | Course assignment history for groups | 9 |
 | `group_levels` | Group level progression management | 14 |
+| `group_course_history` | Course assignment history for groups | 9 |
+| `group_competition_participation` | Group-competition linkage | 12 |
 | `payment_allocations` | Payment distribution across enrollments | 10 |
-| `receipt_templates` | Configurable receipt templates | 13 |
-| `student_activity_log` | Audit trail of all student actions | 10 |
-| `student_balances` | Current balance snapshot per student | 7 |
-| `student_competition_history` | Competition participation records | 14 |
-| `student_credits` | Credit balance tracking | 10 |
-| `student_enrollment_history` | Enrollment lifecycle history | 15 |
-| `student_payment_history` | Payment transaction history per student | 20 |
+| `student_activity_log` | Unified audit trail (consolidated from 3 history tables) | 10 |
 
-### 3.3 Views (12)
+**Notification System Tables (5):**
+| Table | Purpose | Columns |
+|---|---|---|
+| `notification_templates` | Message templates per channel | 8 |
+| `notification_logs` | Sent notification history | 12 |
+| `notification_additional_recipients` | Extra non-admin recipients | 7 |
+| `admin_notification_settings` | Admin notification preferences | 7 |
+
+**Notes:**
+- History tables consolidated: `student_enrollment_history`, `student_status_history`, `student_competition_history` → `student_activity_log` (migration 043)
+- `student_balances`, `student_credits`, `student_payment_history` views replace tables (derived data only)
+- `enrollment_balance_history` and `enrollment_level_history` remain as tables (not views) for immutable audit trail
+
+### 3.3 Views (20+)
 
 | View | Columns | What it gives you |
 |---|---|---|
@@ -604,6 +627,7 @@ alembic stamp 001_baseline_v33
 | 9 | Sprint 3 (D4): `audit_utils`, migration `005` + schema audit defaults/triggers; CRM/enrollment/UI actor threading; `CourseSession` DATE/TIMESTAMPTZ ORM alignment; academics update DTOs + `apply_update_audit`; `state.get_current_user_id()` |
 | 10 | **API Code Review Fixes:** Router splitting (analytics/academics/crm), 14 new analytics endpoints, HR CRUD endpoints, DTO-ification, standardized DI patterns, HTTPException handler |
 | 11 | **API Finalization (2026-04-02):** Auth endpoints (login/logout/refresh/users), Sessions daily-schedule, Competition CRUD, Finance PDF export, role simplification to admin/system_admin. Backend 100% ready. |
+| 12 | **Notifications System (2026-04-28):** Templates, logs, admin settings, additional recipients. `notification_logs`, `notification_templates`, `admin_notification_settings` tables. Phase 7 complete. |
 
 **Completed plan write-ups:** `docs/archive/legacy_plans/` ([README](archive/legacy_plans/README.md)) — memory-bank refresh summary, auth/DB alignment task list.
 
@@ -630,10 +654,11 @@ When the repo and `docs/memory_bank/*` disagree, **treat this `MEMORY_BANK.md` a
 
 ---
 
-## 14. Frontend Development (Active — Next Session)
+## 14. Frontend Development (External/Planned)
 
-**Status:** Backend complete. Frontend not yet started.  
-**Plan document:** [`docs/planning/FRONTEND_PLAN.md`](planning/FRONTEND_PLAN.md)  
+**Status:** Backend API 100% complete. Frontend is a separate project consuming this API.  
+**This repo:** Backend API only (FastAPI + PostgreSQL).  
+**Frontend plan:** [`docs/planning/FRONTEND_PLAN.md`](planning/FRONTEND_PLAN.md) — for reference only, not implemented here.  
 **Product spec:** [`docs/product/frontend_handover.md`](product/frontend_handover.md)
 
 ### Agreed Stack
