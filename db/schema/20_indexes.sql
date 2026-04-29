@@ -24,8 +24,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_users_supabase_uid ON users(supabase_uid);
 -- =============================================================================
 
 -- Students
-CREATE INDEX IF NOT EXISTS idx_students_active ON students(id)
-    WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_students_active ON students(status)
+    WHERE status = 'active';
 CREATE INDEX IF NOT EXISTS idx_students_deleted ON students(deleted_at)
     WHERE deleted_at IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_students_name ON students(full_name);
@@ -49,10 +49,6 @@ CREATE INDEX IF NOT EXISTS idx_activity_log_metadata ON student_activity_log(met
 -- =============================================================================
 -- ACADEMICS TABLES INDEXES
 -- =============================================================================
-
--- Academic Categories
-CREATE INDEX IF NOT EXISTS idx_academic_categories_active ON academic_categories(is_active)
-    WHERE is_active = TRUE;
 
 -- Courses
 CREATE INDEX IF NOT EXISTS idx_courses_active ON courses(is_active)
@@ -113,16 +109,8 @@ CREATE INDEX IF NOT EXISTS idx_attendance_enrollment ON attendance(enrollment_id
 
 -- Receipts
 CREATE INDEX IF NOT EXISTS idx_receipts_paid_at ON receipts(paid_at DESC);
-CREATE INDEX IF NOT EXISTS idx_receipts_sent ON receipts(sent_to_parent)
-    WHERE sent_to_parent = FALSE;
-CREATE INDEX IF NOT EXISTS idx_receipts_auto_generated ON receipts(auto_generated)
-    WHERE auto_generated = TRUE;
 CREATE INDEX IF NOT EXISTS idx_receipts_template ON receipts(receipt_template)
     WHERE receipt_template IS NOT NULL;
-
--- Receipt Templates
-CREATE INDEX IF NOT EXISTS idx_receipt_templates_active ON receipt_templates(is_active, is_default)
-    WHERE is_active = TRUE;
 
 -- Payments
 CREATE INDEX IF NOT EXISTS idx_payments_student ON payments(student_id);

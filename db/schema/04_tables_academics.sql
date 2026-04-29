@@ -8,43 +8,7 @@ DROP TABLE IF EXISTS group_course_history CASCADE;
 DROP TABLE IF EXISTS group_levels CASCADE;
 DROP TABLE IF EXISTS sessions CASCADE;
 DROP TABLE IF EXISTS groups CASCADE;
-DROP TABLE IF EXISTS academic_years CASCADE;
-DROP TABLE IF EXISTS academic_categories CASCADE;
 DROP TABLE IF EXISTS courses CASCADE;
-
--- =============================================================================
--- ACADEMIC_CATEGORIES
--- Categories for organizing courses
--- =============================================================================
-CREATE TABLE academic_categories (
-    id SERIAL PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE,
-    description TEXT,
-    display_order INTEGER DEFAULT 0,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-
-COMMENT ON TABLE academic_categories IS 'Categories for organizing academic courses';
-
--- =============================================================================
--- ACADEMIC_YEARS
--- Academic year definitions for session organization
--- =============================================================================
-CREATE TABLE academic_years (
-    id SERIAL PRIMARY KEY,
-    name TEXT NOT NULL,
-    start_date DATE NOT NULL,
-    end_date DATE NOT NULL,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    
-    CONSTRAINT chk_academic_year_dates CHECK (start_date < end_date)
-);
-
-COMMENT ON TABLE academic_years IS 'Academic year definitions for organizing sessions';
-COMMENT ON COLUMN academic_years.name IS 'E.g., 2025-2026 Academic Year';
 
 -- =============================================================================
 -- COURSES

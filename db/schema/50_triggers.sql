@@ -112,27 +112,6 @@ CREATE TRIGGER trg_competition_categories_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION tf_set_updated_at();
 
--- Academic Categories
-DROP TRIGGER IF EXISTS trg_academic_categories_updated_at ON academic_categories;
-CREATE TRIGGER trg_academic_categories_updated_at
-    BEFORE UPDATE ON academic_categories
-    FOR EACH ROW
-    EXECUTE FUNCTION tf_set_updated_at();
-
--- Academic Years
-DROP TRIGGER IF EXISTS trg_academic_years_updated_at ON academic_years;
-CREATE TRIGGER trg_academic_years_updated_at
-    BEFORE UPDATE ON academic_years
-    FOR EACH ROW
-    EXECUTE FUNCTION tf_set_updated_at();
-
--- Receipt Templates
-DROP TRIGGER IF EXISTS trg_receipt_templates_updated_at ON receipt_templates;
-CREATE TRIGGER trg_receipt_templates_updated_at
-    BEFORE UPDATE ON receipt_templates
-    FOR EACH ROW
-    EXECUTE FUNCTION tf_set_updated_at();
-
 -- Group Course History
 DROP TRIGGER IF EXISTS trg_group_course_history_updated_at ON group_course_history;
 CREATE TRIGGER trg_group_course_history_updated_at
@@ -151,13 +130,6 @@ CREATE TRIGGER trg_group_competition_participation_updated_at
 DROP TRIGGER IF EXISTS trg_notification_templates_updated_at ON notification_templates;
 CREATE TRIGGER trg_notification_templates_updated_at
     BEFORE UPDATE ON notification_templates
-    FOR EACH ROW
-    EXECUTE FUNCTION tf_set_updated_at();
-
--- Notification Subscribers
-DROP TRIGGER IF EXISTS trg_notification_subscribers_updated_at ON notification_subscribers;
-CREATE TRIGGER trg_notification_subscribers_updated_at
-    BEFORE UPDATE ON notification_subscribers
     FOR EACH ROW
     EXECUTE FUNCTION tf_set_updated_at();
 
