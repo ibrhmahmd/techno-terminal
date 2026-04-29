@@ -23,9 +23,9 @@ class RegisterParentInput(BaseModel):
 
     @field_validator("phone_primary", mode="before")
     @classmethod
-    def clean_phone(cls, v: str) -> str:
+    def clean_phone(cls, value: str) -> str:
         """Strip non-digits and enforce ≥10 digit minimum."""
-        return validate_phone(v)
+        return validate_phone(value)
 
 
 class UpdateParentDTO(BaseModel):
