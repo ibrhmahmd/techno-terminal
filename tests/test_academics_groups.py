@@ -217,7 +217,7 @@ class TestGroupsWrite:
     def test_create_group_success(self, client, admin_headers, db_session):
         """Test creating a new group."""
         from tests.utils.db_helpers import create_test_course
-        from app.modules.hr.hr_models import Employee
+        from app.modules.hr.models import Employee
 
         course = create_test_course(db_session)
         instructor = Employee(full_name="Test Instructor", is_active=True)

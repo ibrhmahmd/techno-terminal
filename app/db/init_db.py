@@ -8,7 +8,7 @@ from sqlmodel import SQLModel, text
 from app.db.connection import get_engine, get_session
 
 # IMPORTANT: Import ALL SQLModels here so SQLModel.metadata recognizes them before create_all()
-import app.modules.hr.hr_models
+import app.modules.hr.models.employee_models
 from app.modules.auth import User
 import app.modules.crm.models.parent_models
 import app.modules.crm.models.student_models

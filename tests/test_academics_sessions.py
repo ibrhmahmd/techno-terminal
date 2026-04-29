@@ -346,7 +346,7 @@ class TestSessionsWrite:
     def test_substitute_instructor_success(self, client, admin_headers, db_session):
         """Test marking substitute instructor."""
         from tests.utils.db_helpers import create_test_course, create_test_group
-        from app.modules.hr.hr_models import Employee
+        from app.modules.hr.models import Employee
 
         course = create_test_course(db_session)
         group = create_test_group(db_session, course_id=course.id)

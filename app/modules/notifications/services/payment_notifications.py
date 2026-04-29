@@ -86,7 +86,7 @@ class PaymentNotificationService(BaseNotificationService):
                     if group:
                         group_name = group.name
                         if group.instructor_id:
-                            from app.modules.hr.hr_models import Employee
+                            from app.modules.hr.models import Employee
                             instructor = self._repo._session.get(Employee, group.instructor_id)
                             if instructor:
                                 instructor_name = instructor.full_name
