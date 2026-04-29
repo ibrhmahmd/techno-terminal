@@ -91,7 +91,6 @@ class EnrollmentService:
                 if student.status == StudentStatus.WAITING:
                     old_status = student.status
                     student.status = StudentStatus.ACTIVE
-                    student.is_active = True
                     # Use merge to handle cross-session object
                     merged_student = session.merge(student)
                     session.add(merged_student)

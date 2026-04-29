@@ -12,7 +12,6 @@ from .student_schemas import (
     StudentResponseDTO,
     StudentStatusSummaryDTO,
     StudentStatus,
-    StatusHistoryEntryDTO,
 )
 
 
@@ -29,4 +28,3 @@ __all__ = [
     "StudentStatus",
     "StatusHistoryEntryDTO",
 ]
-
