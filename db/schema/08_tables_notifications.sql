@@ -58,39 +58,35 @@ COMMENT ON COLUMN notification_logs.recipient_contact IS 'Contact info used (ema
 COMMENT ON COLUMN notification_logs.status IS 'Delivery status: pending, sent, failed, delivered';
 
 -- =============================================================================
--- NOTIFICATION_SUBSCRIBERS
--- Subscribers to notification topics
--- =============================================================================
-CREATE TABLE notification_subscribers (
-    id SERIAL PRIMARY KEY,
-    notification_type TEXT NOT NULL,
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(notification_type, user_id)
-);
-
-COMMENT ON TABLE notification_subscribers IS 'Users subscribed to specific notification types';
-COMMENT ON COLUMN notification_subscribers.notification_type IS 'Type of notification to subscribe to';
-
--- =============================================================================
 -- NOTIFICATION_ADDITIONAL_RECIPIENTS
--- Additional recipients for specific notification instances
+-- Additional email recipients (non-admins) who can receive notifications
 -- =============================================================================
 CREATE TABLE notification_additional_recipients (
     id SERIAL PRIMARY KEY,
-    notification_type TEXT NOT NULL,
-    reference_type TEXT NOT NULL,
-    reference_id INTEGER NOT NULL,
-    recipient_type TEXT NOT NULL CHECK (recipient_type IN ('email', 'phone')),
-    recipient_value TEXT NOT NULL,
+    admin_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+
+    -- Email of non-admin recipient
+    email VARCHAR(255) NOT NULL,
+
+    -- Which notification types this recipient gets
+    -- NULL = all notifications, otherwise specific types only
+    notification_types VARCHAR(50)[],
+
+    -- Optional label (e.g., "Manager", "Finance Team")
+    label VARCHAR(100),
+
     is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+
+    UNIQUE(admin_id, email)
 );
 
-COMMENT ON TABLE notification_additional_recipients IS 'Additional recipients for specific notification instances';
-COMMENT ON COLUMN notification_additional_recipients.reference_type IS 'Table name of referenced entity';
-COMMENT ON COLUMN notification_additional_recipients.reference_id IS 'ID of referenced entity';
+COMMENT ON TABLE notification_additional_recipients IS 'Additional email recipients (non-admins) who can receive notifications';
+COMMENT ON COLUMN notification_additional_recipients.admin_id IS 'Admin who added this recipient';
+COMMENT ON COLUMN notification_additional_recipients.email IS 'Email address of recipient';
+COMMENT ON COLUMN notification_additional_recipients.notification_types IS 'Array of notification types, NULL means all';
+COMMENT ON COLUMN notification_additional_recipients.label IS 'Optional label for this recipient';
 
 -- =============================================================================
 -- ADMIN_NOTIFICATION_SETTINGS
