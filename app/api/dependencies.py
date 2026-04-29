@@ -303,15 +303,25 @@ def get_team_service() -> TeamService:
 
 
 
-# HR service wrapper (flat module pattern)
-def get_hr_service():
-    """
-    HR is a flat module (free functions).
-    Returns the module so routers can call hr.list_all_employees().
-    Will be replaced with HRService class in SOLID refactor.
-    """
-    import app.modules.hr.hr_service as hr_service_module
-    return hr_service_module
+# HR SOLID services
+from sqlmodel import Session
+from app.modules.hr import EmployeeCrudService, StaffAccountService, HRUnitOfWork
+
+
+def get_employee_crud_service(
+    session: Session = Depends(get_session),
+) -> EmployeeCrudService:
+    """Returns EmployeeCrudService with fresh Unit of Work per request."""
+    uow = HRUnitOfWork(session)
+    return EmployeeCrudService(uow)
+
+
+def get_staff_account_service(
+    session: Session = Depends(get_session),
+) -> StaffAccountService:
+    """Returns StaffAccountService with fresh Unit of Work per request."""
+    uow = HRUnitOfWork(session)
+    return StaffAccountService(uow)
 
 
 # Analytics services
