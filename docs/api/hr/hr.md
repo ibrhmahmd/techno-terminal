@@ -2,6 +2,8 @@
 
 Base path: `/api/v1/hr`
 
+> **Note:** This module has been refactored to follow SOLID principles with a layered architecture (repositories, services, DTOs). See `docs/skills/module_refactoring_guide.md` for details.
+
 ---
 
 ## 🔐 Authentication
@@ -92,6 +94,26 @@ Authorization: Bearer <access_token>
 }
 ```
 
+### CreateEmployeeAccountRequest
+```json
+{
+  "email": "string (required)",
+  "password": "string (required, min 8 characters)",
+  "role": "string (required) - admin|system_admin"
+}
+```
+
+### EmployeeAccountResponse
+```json
+{
+  "employee_id": 1,
+  "user_id": 42,
+  "email": "ahmed@techno.com",
+  "role": "admin",
+  "created_at": "2026-04-29T10:00:00"
+}
+```
+
 ### ApiResponse (Envelope)
 ```json
 {
@@ -110,7 +132,15 @@ Authorization: Bearer <access_token>
 #### 1. List all employees
 **GET** `/api/v1/hr/employees`
 
+**Query Parameters:**
+- `page` - integer (default: 1, min: 1) - Page number
+- `page_size` - integer (default: 20, min: 1, max: 100) - Items per page
+
 **Response (200):** `ApiResponse<list<EmployeeListItem>>`
+
+**Notes:**
+- Paginated list of all employees
+- Response message includes total count
 
 ---
 
@@ -121,7 +151,9 @@ Authorization: Bearer <access_token>
 
 **Response (201):** `ApiResponse<EmployeePublic>`
 
-**Error Response (422):** `HTTPValidationError`
+**Error Responses:**
+- `422` - Validation error
+- `409` - Conflict (e.g., duplicate national_id)
 
 **Notes:**
 - Creates new employee record
@@ -138,7 +170,8 @@ Authorization: Bearer <access_token>
 
 **Response (200):** `ApiResponse<EmployeePublic>`
 
-**Error Response (422):** `HTTPValidationError`
+**Error Response:**
+- `404` - Employee not found
 
 ---
 
@@ -152,11 +185,14 @@ Authorization: Bearer <access_token>
 
 **Response (200):** `ApiResponse<EmployeePublic>`
 
-**Error Response (422):** `HTTPValidationError`
+**Error Responses:**
+- `404` - Employee not found
+- `422` - Validation error
+- `409` - Conflict (e.g., duplicate national_id)
 
 **Notes:**
-- Full update - all fields from EmployeeCreateInput required
-- Replaces entire employee record
+- Partial update - only provided fields are updated
+- Unset fields in request body are ignored
 
 ---
 
@@ -173,9 +209,31 @@ Authorization: Bearer <access_token>
 
 ---
 
+#### 6. Create user account for employee
+**POST** `/api/v1/hr/employees/{employee_id}/create-account`
+
+**Path Parameters:**
+- `employee_id` - integer (required) - Employee ID to link account to
+
+**Request Body:** `CreateEmployeeAccountRequest`
+
+**Response (201):** `ApiResponse<EmployeeAccountResponse>`
+
+**Error Responses:**
+- `404` - Employee not found
+- `409` - Account already exists for employee
+- `422` - Validation error
+
+**Notes:**
+- Creates a Supabase user account for an existing employee
+- Only admin or system_admin roles are allowed
+- Links the user account to the employee record
+
+---
+
 ### Attendance (Stub)
 
-#### 6. Log employee attendance
+#### 7. Log employee attendance
 **POST** `/api/v1/hr/attendance/log`
 
 **Request Body:** `AttendanceLogInput`

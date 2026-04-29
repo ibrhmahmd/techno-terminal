@@ -304,24 +304,21 @@ def get_team_service() -> TeamService:
 
 
 # HR SOLID services
-from sqlmodel import Session
 from app.modules.hr import EmployeeCrudService, StaffAccountService, HRUnitOfWork
 
 
-def get_employee_crud_service(
-    session: Session = Depends(get_session),
-) -> EmployeeCrudService:
+def get_employee_crud_service() -> EmployeeCrudService:
     """Returns EmployeeCrudService with fresh Unit of Work per request."""
-    uow = HRUnitOfWork(session)
-    return EmployeeCrudService(uow)
+    with get_session() as session:
+        uow = HRUnitOfWork(session)
+        return EmployeeCrudService(uow)
 
 
-def get_staff_account_service(
-    session: Session = Depends(get_session),
-) -> StaffAccountService:
+def get_staff_account_service() -> StaffAccountService:
     """Returns StaffAccountService with fresh Unit of Work per request."""
-    uow = HRUnitOfWork(session)
-    return StaffAccountService(uow)
+    with get_session() as session:
+        uow = HRUnitOfWork(session)
+        return StaffAccountService(uow)
 
 
 # Analytics services

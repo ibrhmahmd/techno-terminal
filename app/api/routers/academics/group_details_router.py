@@ -84,29 +84,34 @@ def delete_level(
 @router.get(
     "/academics/groups/{group_id}/levels/detailed",
     response_model=ApiResponse[GroupLevelsDetailedResponseDTO],
-    summary="Get all levels with sessions and stats",
+    summary="Get all levels (or specific level) with sessions and stats",
 )
 def get_levels_detailed(
     group_id: int = Path(..., ge=1, description="Group ID"),
+    level_number: int | None = Query(None, ge=1, description="Specific level number (omit for all levels)"),
     _user=Depends(require_any),
     svc: GroupDetailsService = Depends(get_group_details_service),
 ):
     """
-    Get detailed information about all group levels.
+    Get detailed information about group levels.
+    
+    Query Param:
+    - `level_number`: Optional. If provided, returns only that specific level.
+    - If omitted, returns all levels for the group.
     
     Returns:
     - Lookup tables for courses and instructors (deduplicated)
-    - All levels with their sessions
+    - Levels with their sessions (all or single based on query param)
     - Enrollment counts per level
     - Payment summaries per level
     
     Uses lookup table pattern to minimize data duplication.
     Response is cacheable (cache_ttl: 300 seconds).
     """
-    result = svc.get_levels_detailed(group_id)
+    result = svc.get_levels_detailed(group_id, level_number)
     return ApiResponse(
         data=result,
-        message="Group levels loaded successfully.",
+        message=f"Level{'s' if level_number is None else f' {level_number}'} loaded successfully.",
     )
 
 

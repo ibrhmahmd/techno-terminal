@@ -78,22 +78,40 @@ class GroupDetailsService:
     # ═══════════════════════════════════════════════════════════════════════════
 
     def get_levels_detailed(
-        self, group_id: int
+        self, group_id: int, level_number: int | None = None
     ) -> GroupLevelsDetailedResponseDTO:
         """
-        Get all levels with sessions, stats, and payment summaries.
+        Get levels with sessions, stats, and payment summaries.
+        
+        If level_number is provided, returns only that specific level.
+        Otherwise, returns all levels for the group.
         
         Uses 4-query pattern:
-        1. Get all levels for group
-        2. Get all sessions for all levels
+        1. Get levels for group (all or specific)
+        2. Get sessions for those levels
         3. Get enrollment stats per level
         4. Get payment aggregates per level
         """
         with get_session() as session:
-            # Query 1: Get all levels for group
-            levels = level_repo.list_group_levels(
-                session, group_id, include_inactive=True
-            )
+            # Query 1: Get levels for group
+            if level_number is not None:
+                # Get specific level
+                level = level_repo.get_group_level_by_number(session, group_id, level_number)
+                if not level:
+                    return GroupLevelsDetailedResponseDTO(
+                        group_id=group_id,
+                        generated_at=utc_now().isoformat(),
+                        cache_ttl=300,
+                        courses={},
+                        instructors={},
+                        levels=[],
+                    )
+                levels = [level]
+            else:
+                # Get all levels
+                levels = level_repo.list_group_levels(
+                    session, group_id, include_inactive=True
+                )
             
             if not levels:
                 # Return empty response

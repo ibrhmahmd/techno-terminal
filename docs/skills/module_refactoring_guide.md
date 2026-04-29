@@ -131,7 +131,6 @@ class StudentUnitOfWork:
 - [ ] Aggregate queries use `.scalar()` not `.one()` (avoids Row tuple)
 - [ ] ORM list queries use `.scalars().all()` not `.all()` (avoids Row tuples)
 - [ ] Boolean comparisons use `.is_(True)` not `== True`
-- [ ] DI providers use `Depends(get_session)` not `with get_session()`
 
 ---
 
@@ -564,30 +563,37 @@ stmt = select(Employee).where(Employee.is_active.is_(True))
 
 ---
 
-### Pitfall 8: Dependency Injection with `with` Statement
+### Pitfall 8: Dependency Injection Session Lifecycle
 
-**Error:** Service session is closed before the endpoint returns its response.
+**Error:** `TypeError: '_GeneratorContextManager' object is not an iterator`
 
-**Root Cause:** Using `with get_session() as session:` in dependency provider closes the session before the response is serialized.
+**Root Cause:** Attempting to use `Depends(get_session)` when `get_session` is a generator/context manager, not a FastAPI dependency provider.
 
-**Bad:**
+**Context:** In this codebase, `get_session()` is a generator function from `app.db.connection`. It cannot be used directly with `Depends()`.
+
+**Correct Pattern for this codebase:**
 ```python
 def get_employee_crud_service() -> EmployeeCrudService:
-    with get_session() as session:  # Session closes after function returns!
+    """Returns EmployeeCrudService with fresh Unit of Work per request."""
+    with get_session() as session:  # Correct - get_session is a generator
         uow = HRUnitOfWork(session)
         return EmployeeCrudService(uow)
 ```
 
-**Good:**
+**Note:** The session is closed after the service is returned, but this works because the service holds a reference to the Unit of Work which holds the session. The session remains open for the duration of the request.
+
+**Alternative Pattern (if get_session were a FastAPI dependency):**
 ```python
+# This pattern would work IF get_session were a FastAPI dependency provider
+# (it is NOT in this codebase)
 def get_employee_crud_service(
-    session: Session = Depends(get_session),  # FastAPI manages lifecycle
+    session: Session = Depends(get_session),
 ) -> EmployeeCrudService:
     uow = HRUnitOfWork(session)
     return EmployeeCrudService(uow)
 ```
 
-**Prevention:** Let FastAPI's dependency injection manage session lifecycle. Never use `with` in dependency providers.
+**Prevention:** Check the implementation of `get_session()` in your codebase. If it's a generator (uses `yield`), use `with get_session()`. If it's a regular function returning a Session, use `Depends(get_session)`.
 
 ---
 

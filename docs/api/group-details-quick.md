@@ -30,6 +30,7 @@ DELETE /academics/groups/{group_id}/levels/{level_number}
 
 ```
 GET /academics/groups/{group_id}/levels/detailed
+GET /academics/groups/{group_id}/levels/detailed?level_number=3  # specific level
 ```
 
 **Key Fields:**
@@ -39,7 +40,10 @@ GET /academics/groups/{group_id}/levels/detailed
 - `levels[].payment_summary` - Aggregated amounts
 - `cache_ttl: 300` - Cache hint in seconds
 
-**Response:**
+**Query Param:**
+- `level_number` - Optional. If provided, returns only that specific level.
+
+**Response (all levels):**
 ```json
 {
   "success": true,
@@ -48,25 +52,36 @@ GET /academics/groups/{group_id}/levels/detailed
     "cache_ttl": 300,
     "courses": { "1": { "course_id": 1, "course_name": "Robotics" } },
     "instructors": { "5": { "instructor_id": 5, "instructor_name": "Ahmed" } },
-    "levels": [{
-      "level_number": 1,
-      "course_id": 1,
-      "instructor_id": 5,
-      "status": "completed",
-      "sessions": [{
-        "session_id": 1001,
-        "date": "2026-01-15",
-        "time_start": "15:00",
-        "time_end": "16:30",
-        "status": "completed"
-      }],
-      "students_count": 12,
-      "payment_summary": {
-        "total_expected": 36000,
-        "total_collected": 35000,
-        "collection_rate": 0.972
+    "levels": [
+      { "level_number": 1, ... },
+      { "level_number": 2, ... },
+      { "level_number": 3, ... }
+    ]
+  }
+}
+```
+
+**Response (specific level only):**
+```json
+{
+  "success": true,
+  "data": {
+    "group_id": 101,
+    "cache_ttl": 300,
+    "courses": { "1": { "course_id": 1, "course_name": "Robotics" } },
+    "instructors": { "5": { "instructor_id": 5, "instructor_name": "Ahmed" } },
+    "levels": [
+      {
+        "level_number": 3,
+        "level_id": 12,
+        "course_id": 1,
+        "instructor_id": 5,
+        "status": "active",
+        "sessions": [...],
+        "students_count": 8,
+        "payment_summary": { ... }
       }
-    }]
+    ]
   }
 }
 ```
