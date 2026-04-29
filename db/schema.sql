@@ -1,437 +1,77 @@
--- Techno Terminal  — PostgreSQL Schema v3.3
--- 15 tables, 5 views, 23 indexes
--- v3.3: users — Supabase auth (supabase_uid), roles admin/instructor/system_admin; seed via app (see db/README.md)
--- CHANGES FROM v3.2:
---   [T1]  Changed `sessions.group_id` ON DELETE CASCADE to RESTRICT
---   [T2]  Changed `payments.receipt_id` ON DELETE CASCADE to RESTRICT
---   [T3]  Removed `total_amount` from receipts (derived from payments)
---   [T4]  Changed `CHECK (amount > 0)` to `!= 0` to allow refunds
---   [T5]  Added `transaction_type` to payments ('charge', 'payment', 'refund')
---   [T6]  Made `attendance.enrollment_id` NOT NULL
---   [T7]  Replaced `students.parent_id` with `student_parents` junction table
---
--- Tables ordered by dependency (referenced tables first).
 -- =============================================================================
--- Drop all (for re-runs)
-DROP TABLE IF EXISTS team_members CASCADE;
-DROP TABLE IF EXISTS teams CASCADE;
-DROP TABLE IF EXISTS competition_categories CASCADE;
-DROP TABLE IF EXISTS competitions CASCADE;
-DROP TABLE IF EXISTS attendance CASCADE;
-DROP TABLE IF EXISTS payments CASCADE;
-DROP TABLE IF EXISTS receipts CASCADE;
-DROP TABLE IF EXISTS enrollments CASCADE;
-DROP TABLE IF EXISTS sessions CASCADE;
-DROP TABLE IF EXISTS groups CASCADE;
-DROP TABLE IF EXISTS courses CASCADE;
-DROP TABLE IF EXISTS users CASCADE;
-DROP TABLE IF EXISTS employees CASCADE;
-DROP TABLE IF EXISTS student_parents CASCADE;
-DROP TABLE IF EXISTS students CASCADE;
-DROP TABLE IF EXISTS parents CASCADE;
-CREATE TABLE parents (
-    id SERIAL PRIMARY KEY,
-    full_name TEXT NOT NULL,
-    phone_primary TEXT,
-    phone_secondary TEXT,
-    email TEXT,
-    relation TEXT,
-    notes TEXT,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE employees (
-    id SERIAL PRIMARY KEY,
-    full_name TEXT NOT NULL,
-    phone TEXT NOT NULL,
-    email TEXT,
-    national_id TEXT NOT NULL,
-    university TEXT NOT NULL,
-    major TEXT NOT NULL,
-    is_graduate BOOLEAN NOT NULL DEFAULT FALSE,
-    job_title TEXT,
-    employment_type TEXT NOT NULL CHECK (
-        employment_type IN ('full_time', 'part_time', 'contract')
-    ),
-    monthly_salary DECIMAL(10, 2),
-    contract_percentage DECIMAL(5, 2),
-    is_active BOOLEAN DEFAULT TRUE,
-    hired_at DATE,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    metadata JSONB DEFAULT '{}',
-    CONSTRAINT employees_contract_pct_check CHECK (
-        (
-            employment_type != 'contract'
-            AND contract_percentage IS NULL
-        )
-        OR (employment_type = 'contract')
-    ),
-    CONSTRAINT uq_employees_national_id UNIQUE (national_id),
-    CONSTRAINT uq_employees_phone UNIQUE (phone),
-    CONSTRAINT uq_employees_email UNIQUE (email)
-);
-CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
-    username TEXT UNIQUE NOT NULL,
-    supabase_uid TEXT UNIQUE NOT NULL,
-    employee_id INTEGER REFERENCES employees(id) ON DELETE
-    SET NULL,
-        role TEXT NOT NULL CHECK (
-            role IN ('admin', 'instructor', 'system_admin')
-        ),
-        is_active BOOLEAN DEFAULT TRUE,
-        last_login TIMESTAMPTZ,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE students (
-    id SERIAL PRIMARY KEY,
-    full_name TEXT NOT NULL,
-    date_of_birth DATE,
-    gender TEXT CHECK (gender IN ('male', 'female')),
-    phone TEXT,
-    notes TEXT,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_by INTEGER REFERENCES users(id) ON DELETE
-    SET NULL,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        metadata JSONB DEFAULT '{}'
-);
-CREATE TABLE student_parents (
-    student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    parent_id INTEGER NOT NULL REFERENCES parents(id) ON DELETE CASCADE,
-    relationship TEXT,
-    -- 'father', 'mother', etc.
-    is_primary BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (student_id, parent_id)
-);
-CREATE TABLE courses (
-    id SERIAL PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE,
-    category TEXT CHECK (
-        category IN ('software', 'hardware', 'steam', 'other')
-    ),
-    price_per_level DECIMAL(10, 2) CHECK (price_per_level > 0),
-    sessions_per_level INTEGER DEFAULT 5 CHECK (sessions_per_level > 0),
-    description TEXT,
-    notes TEXT,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE groups (
-    id SERIAL PRIMARY KEY,
-    name TEXT,
-    course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE RESTRICT,
-    instructor_id INTEGER REFERENCES employees(id) ON DELETE
-    SET NULL,
-        level_number INTEGER DEFAULT 1 CHECK (level_number > 0),
-        default_day TEXT,
-        default_time_start TIME,
-        default_time_end TIME,
-        max_capacity INTEGER CHECK (max_capacity > 0),
-        status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'completed', 'archived')),
-        started_at DATE,
-        notes TEXT,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        metadata JSONB DEFAULT '{}',
-        CHECK (
-            default_time_start IS NULL
-            OR default_time_end IS NULL
-            OR default_time_start < default_time_end
-        )
-);
-CREATE TABLE sessions (
-    id SERIAL PRIMARY KEY,
-    group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE RESTRICT,
-    level_number INTEGER NOT NULL,
-    session_number INTEGER NOT NULL,
-    session_date DATE NOT NULL,
-    start_time TIME,
-    end_time TIME,
-    actual_instructor_id INTEGER REFERENCES employees(id) ON DELETE
-    SET NULL,
-        is_substitute BOOLEAN DEFAULT FALSE,
-        is_extra_session BOOLEAN DEFAULT FALSE,
-        notes TEXT,
-        status TEXT DEFAULT 'scheduled' CHECK (
-            status IN ('scheduled', 'completed', 'cancelled')
-        ),
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        CHECK (
-            start_time IS NULL
-            OR end_time IS NULL
-            OR start_time < end_time
-        )
-);
-CREATE TABLE enrollments (
-    id SERIAL PRIMARY KEY,
-    student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE RESTRICT,
-    group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE RESTRICT,
-    level_number INTEGER NOT NULL,
-    enrolled_at DATE,
-    amount_due DECIMAL(10, 2) CHECK (amount_due >= 0),
-    discount_applied DECIMAL(10, 2) DEFAULT 0 CHECK (discount_applied >= 0),
-    status TEXT DEFAULT 'active' CHECK (
-        status IN ('active', 'completed', 'transferred', 'dropped')
-    ),
-    transferred_from INTEGER REFERENCES enrollments(id) ON DELETE
-    SET NULL,
-        notes TEXT,
-        created_by INTEGER REFERENCES users(id) ON DELETE
-    SET NULL,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        metadata JSONB DEFAULT '{}'
-);
-CREATE UNIQUE INDEX idx_enrollments_active_unique ON enrollments(student_id, group_id)
-WHERE status = 'active';
-CREATE TABLE attendance (
-    id SERIAL PRIMARY KEY,
-    student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE RESTRICT,
-    session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE RESTRICT,
-    enrollment_id INTEGER NOT NULL REFERENCES enrollments(id) ON DELETE RESTRICT,
-    status TEXT NOT NULL CHECK (
-        status IN ('present', 'absent', 'cancelled')
-    ),
-    marked_by INTEGER REFERENCES users(id) ON DELETE
-    SET NULL,
-        marked_at TIMESTAMPTZ,
-        UNIQUE(student_id, session_id)
-);
-CREATE TABLE receipts (
-    id SERIAL PRIMARY KEY,
-    payer_name TEXT,
-    payment_method TEXT CHECK (
-        payment_method IN ('cash', 'card', 'transfer', 'online')
-    ),
-    received_by INTEGER REFERENCES users(id) ON DELETE
-    SET NULL,
-        receipt_number TEXT UNIQUE,
-        notes TEXT,
-        paid_at TIMESTAMPTZ,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE payments (
-    id SERIAL PRIMARY KEY,
-    receipt_id INTEGER NOT NULL REFERENCES receipts(id) ON DELETE RESTRICT,
-    student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE RESTRICT,
-    enrollment_id INTEGER REFERENCES enrollments(id) ON DELETE
-    SET NULL,
-        amount DECIMAL(10, 2) NOT NULL CHECK (amount != 0),
-        transaction_type TEXT NOT NULL CHECK (
-            transaction_type IN ('charge', 'payment', 'refund')
-        ),
-        payment_type TEXT CHECK (
-            payment_type IN ('course_level', 'competition', 'other')
-        ),
-        discount_amount DECIMAL(10, 2) DEFAULT 0 CHECK (discount_amount >= 0),
-        notes TEXT,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        metadata JSONB DEFAULT '{}'
-);
-CREATE TABLE competitions (
-    id SERIAL PRIMARY KEY,
-    name TEXT NOT NULL,
-    edition TEXT,
-    competition_date DATE,
-    location TEXT,
-    notes TEXT,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE competition_categories (
-    id SERIAL PRIMARY KEY,
-    competition_id INTEGER NOT NULL REFERENCES competitions(id) ON DELETE CASCADE,
-    category_name TEXT NOT NULL,
-    notes TEXT
-);
-CREATE TABLE teams (
-    id SERIAL PRIMARY KEY,
-    category_id INTEGER NOT NULL REFERENCES competition_categories(id) ON DELETE CASCADE,
-    group_id INTEGER REFERENCES groups(id) ON DELETE
-    SET NULL,
-        team_name TEXT NOT NULL,
-        coach_id INTEGER REFERENCES employees(id) ON DELETE
-    SET NULL,
-        enrollment_fee_per_student DECIMAL(10, 2) CHECK (enrollment_fee_per_student > 0),
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        metadata JSONB DEFAULT '{}'
-);
-CREATE TABLE team_members (
-    id SERIAL PRIMARY KEY,
-    team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
-    student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE RESTRICT,
-    fee_paid BOOLEAN DEFAULT FALSE,
-    payment_id INTEGER REFERENCES payments(id) ON DELETE
-    SET NULL,
-        UNIQUE(team_id, student_id)
-);
--- Indexes
-CREATE INDEX idx_parents_phone ON parents(phone_primary)
-WHERE phone_primary IS NOT NULL;
-CREATE INDEX idx_student_parents_student ON student_parents(student_id);
-CREATE INDEX idx_student_parents_parent ON student_parents(parent_id);
-CREATE INDEX idx_students_active ON students(is_active)
-WHERE is_active = TRUE;
-CREATE INDEX idx_students_name ON students(full_name);
-CREATE INDEX idx_groups_course ON groups(course_id);
-CREATE INDEX idx_groups_instructor ON groups(instructor_id);
-CREATE INDEX idx_groups_active ON groups(status)
-WHERE status = 'active';
-CREATE INDEX idx_sessions_group ON sessions(group_id);
-CREATE INDEX idx_sessions_group_level ON sessions(group_id, level_number);
-CREATE INDEX idx_sessions_date ON sessions(session_date);
-CREATE INDEX idx_enrollments_student ON enrollments(student_id);
-CREATE INDEX idx_enrollments_group ON enrollments(group_id);
-CREATE INDEX idx_enrollments_active ON enrollments(status)
-WHERE status = 'active';
-CREATE INDEX idx_attendance_student ON attendance(student_id);
-CREATE INDEX idx_attendance_session ON attendance(session_id);
-CREATE INDEX idx_attendance_enrollment ON attendance(enrollment_id);
-CREATE INDEX idx_payments_student ON payments(student_id);
-CREATE INDEX idx_payments_enrollment ON payments(enrollment_id);
-CREATE INDEX idx_payments_receipt ON payments(receipt_id);
-CREATE INDEX idx_receipts_paid_at ON receipts(paid_at DESC);
-CREATE INDEX idx_comp_categories_comp ON competition_categories(competition_id);
-CREATE INDEX idx_teams_category ON teams(category_id);
-CREATE INDEX idx_team_members_team ON team_members(team_id);
-CREATE INDEX idx_team_members_student ON team_members(student_id);
-CREATE UNIQUE INDEX idx_users_supabase_uid ON users(supabase_uid);
--- Audit (D4): bump updated_at on UPDATE (mirrors db/migrations/005_audit_d4_timestamps.sql)
-CREATE OR REPLACE FUNCTION tf_set_updated_at() RETURNS TRIGGER AS $$ BEGIN NEW.updated_at = CURRENT_TIMESTAMP;
-RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-CREATE TRIGGER trg_parents_updated_at BEFORE
-UPDATE ON parents FOR EACH ROW EXECUTE PROCEDURE tf_set_updated_at();
-CREATE TRIGGER trg_employees_updated_at BEFORE
-UPDATE ON employees FOR EACH ROW EXECUTE PROCEDURE tf_set_updated_at();
-CREATE TRIGGER trg_students_updated_at BEFORE
-UPDATE ON students FOR EACH ROW EXECUTE PROCEDURE tf_set_updated_at();
-CREATE TRIGGER trg_courses_updated_at BEFORE
-UPDATE ON courses FOR EACH ROW EXECUTE PROCEDURE tf_set_updated_at();
-CREATE TRIGGER trg_groups_updated_at BEFORE
-UPDATE ON groups FOR EACH ROW EXECUTE PROCEDURE tf_set_updated_at();
-CREATE TRIGGER trg_enrollments_updated_at BEFORE
-UPDATE ON enrollments FOR EACH ROW EXECUTE PROCEDURE tf_set_updated_at();
--- Views
-CREATE OR REPLACE VIEW v_students AS
-SELECT s.id,
-    s.full_name,
-    s.date_of_birth,
-    EXTRACT(
-        YEAR
-        FROM AGE(s.date_of_birth)
-    )::INTEGER AS age,
-    s.gender,
-    s.phone AS student_phone,
-    s.notes,
-    s.is_active,
-    s.created_at,
-    s.updated_at,
-    s.metadata,
-    g.full_name AS primary_parent_name,
-    g.phone_primary AS primary_parent_phone
-FROM students s
-    LEFT JOIN student_parents sg ON s.id = sg.student_id
-    AND sg.is_primary = TRUE
-    LEFT JOIN parents g ON sg.parent_id = g.id;
-CREATE OR REPLACE VIEW v_enrollment_balance AS
-SELECT e.id AS enrollment_id,
-    e.student_id,
-    e.group_id,
-    e.level_number,
-    e.amount_due,
-    e.discount_applied,
-    (e.amount_due - e.discount_applied) AS net_due,
-    COALESCE(
-        SUM(p.amount) FILTER (
-            WHERE p.transaction_type IN ('payment', 'charge')
-        ),
-        0
-    ) - COALESCE(
-        SUM(p.amount) FILTER (
-            WHERE p.transaction_type = 'refund'
-        ),
-        0
-    ) AS total_paid,
-    (
-        COALESCE(
-            SUM(p.amount) FILTER (
-                WHERE p.transaction_type IN ('payment', 'charge')
-            ),
-            0
-        ) - COALESCE(
-            SUM(p.amount) FILTER (
-                WHERE p.transaction_type = 'refund'
-            ),
-            0
-        )
-    ) - (e.amount_due - e.discount_applied) AS balance
-FROM enrollments e
-    LEFT JOIN payments p ON p.enrollment_id = e.id
-GROUP BY e.id;
-CREATE OR REPLACE VIEW v_enrollment_attendance AS
-SELECT a.enrollment_id,
-    COUNT(*) FILTER (
-        WHERE a.status IN ('present', 'late')
-    ) AS sessions_attended,
-    COUNT(*) FILTER (
-        WHERE a.status = 'absent'
-    ) AS sessions_missed
-FROM attendance a
-GROUP BY a.enrollment_id;
-CREATE OR REPLACE VIEW v_siblings AS
-SELECT sg1.student_id AS student_id,
-    s1.full_name AS student_name,
-    sg2.student_id AS sibling_id,
-    s2.full_name AS sibling_name,
-    sg1.parent_id
-FROM student_parents sg1
-    JOIN student_parents sg2 ON sg1.parent_id = sg2.parent_id
-    AND sg1.student_id < sg2.student_id
-    JOIN students s1 ON sg1.student_id = s1.id
-    JOIN students s2 ON sg2.student_id = s2.id
-WHERE s1.is_active = TRUE
-    AND s2.is_active = TRUE;
-CREATE OR REPLACE VIEW v_group_session_count AS
-SELECT group_id,
-    level_number,
-    COUNT(*) FILTER (
-        WHERE is_extra_session = FALSE
-    ) AS regular_sessions,
-    COUNT(*) FILTER (
-        WHERE is_extra_session = TRUE
-    ) AS extra_sessions,
-    COUNT(*) AS total_sessions
-FROM sessions
-GROUP BY group_id,
-    level_number;
--- Seed (optional local employee row). Login users are created in Supabase and mapped via app/db/seed.py.
-INSERT INTO employees (
-        full_name,
-        phone,
-        national_id,
-        university,
-        major,
-        is_graduate,
-        job_title,
-        employment_type,
-        contract_percentage,
-        created_at
-    )
-VALUES (
-        'Admin',
-        '0000000000',
-        '00000000000000',
-        'Unassigned',
-        'Unassigned',
-        FALSE,
-        'admin',
-        'part_time',
-        NULL,
-        NOW()
-    );
+-- Techno Terminal — PostgreSQL Schema v4.0
+-- Modular Schema Orchestrator
+-- 33 tables, 15 views, 94 indexes, 17 triggers, 6 functions
+-- Last Updated: 2026-04-28
+-- =============================================================================
+--
+-- This file serves as the orchestrator for the modular schema.
+-- It includes all schema files in the correct dependency order.
+--
+-- To apply the complete schema:
+--   psql "$DATABASE_URL" -f db/schema.sql
+--
+-- To apply individual modules:
+--   psql "$DATABASE_URL" -f db/schema/02_tables_core.sql
+--
+-- Schema Organization:
+--   00_extensions.sql      - PostgreSQL extensions
+--   01_enums.sql         - Custom ENUM types
+--   02_tables_core.sql    - parents, employees, users
+--   03_tables_crm.sql    - students, student_parents, activity_log
+--   04_tables_academics.sql - courses, groups, sessions, group_levels
+--   05_tables_enrollments.sql - enrollments, attendance, level_history
+--   06_tables_finance.sql - receipts, payments, templates
+--   07_tables_competitions.sql - competitions, teams, members
+--   08_tables_notifications.sql - notification system tables
+--   09_tables_history.sql - audit and history tables
+--   10_tables_supabase.sql - Supabase system tables
+--   20_indexes.sql        - All indexes
+--   30_views.sql          - All views
+--   40_functions.sql      - Custom functions
+--   50_triggers.sql       - All triggers
+--   60_constraints.sql    - Additional constraints
+--   90_seed_data.sql      - Initial seed data
+--
+-- =============================================================================
+-- Stop on any error
+\set ON_ERROR_STOP on
+
+-- =============================================================================
+-- INCLUDE ALL SCHEMA MODULES
+-- =============================================================================
+
+-- Core infrastructure
+\i schema/00_extensions.sql
+\i schema/01_enums.sql
+
+-- Tables (in dependency order)
+\i schema/02_tables_core.sql
+\i schema/03_tables_crm.sql
+\i schema/04_tables_academics.sql
+\i schema/05_tables_enrollments.sql
+\i schema/06_tables_finance.sql
+\i schema/07_tables_competitions.sql
+\i schema/08_tables_notifications.sql
+\i schema/09_tables_history.sql
+\i schema/10_tables_supabase.sql
+
+-- Database objects
+\i schema/20_indexes.sql
+\i schema/30_views.sql
+\i schema/40_functions.sql
+\i schema/50_triggers.sql
+\i schema/60_constraints.sql
+\i schema/90_seed_data.sql
+
+-- =============================================================================
+-- SCHEMA VERIFICATION
+-- =============================================================================
+
+COMMENT ON SCHEMA public IS 'Techno Terminal CRM Database Schema v4.0 — 33 tables, 15 views, 94 indexes, 17 triggers. Modular schema last updated 2026-04-28.';
+
+-- Verify schema version
+SELECT 'Techno Terminal Schema v4.0 applied successfully' AS status,
+       (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE') AS table_count,
+       (SELECT count(*) FROM pg_views WHERE schemaname = 'public') AS view_count,
+       (SELECT count(*) FROM pg_indexes WHERE schemaname = 'public') AS index_count;
