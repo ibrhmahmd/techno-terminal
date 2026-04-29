@@ -143,14 +143,14 @@ class EmployeeCrudService:
         self, dto: CreateEmployeeDTO
     ) -> CreateEmployeeDTO:
         """Normalize employment type and contract percentage.
-        
+
         Args:
             dto: DTO to normalize
-            
+
         Returns:
             Normalized DTO
         """
-        if dto.employment_type != EmploymentType.CONTRACT:
+        if dto.employment_type != "contract":
             dto.contract_percentage = None
         elif dto.contract_percentage is None:
             dto.contract_percentage = 25.0
@@ -160,15 +160,15 @@ class EmployeeCrudService:
         self, dto: UpdateEmployeeDTO
     ) -> UpdateEmployeeDTO:
         """Normalize update employment data.
-        
+
         Args:
             dto: DTO to normalize
-            
+
         Returns:
             Normalized DTO
         """
         if dto.employment_type is not None:
-            if dto.employment_type != EmploymentType.CONTRACT:
+            if dto.employment_type != "contract":
                 dto.contract_percentage = None
             elif dto.contract_percentage is None:
                 dto.contract_percentage = 25.0
