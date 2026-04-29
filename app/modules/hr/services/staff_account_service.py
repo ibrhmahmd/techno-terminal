@@ -1,0 +1,152 @@
+"""Staff Account Service
+
+Business logic for employee-user account linking.
+"""
+from datetime import datetime
+
+from app.modules.auth.constants import UserRole
+from app.modules.hr.repositories import HRUnitOfWork
+from app.modules.hr.schemas import (
+    CreateEmployeeAccountDTO,
+    EmployeeAccountResultDTO,
+    StaffAccountDTO,
+)
+from app.shared.constants import MIN_PASSWORD_LENGTH
+from app.shared.exceptions import ConflictError, NotFoundError, ValidationError
+
+
+class StaffAccountService:
+    """Service for staff account management."""
+
+    def __init__(self, uow: HRUnitOfWork, supabase_client=None):
+        self._uow = uow
+        self._supabase = supabase_client
+
+    def create_account(
+        self, dto: CreateEmployeeAccountDTO
+    ) -> EmployeeAccountResultDTO:
+        """Create user account for existing employee.
+        
+        Args:
+            dto: Account creation data
+            
+        Returns:
+            EmployeeAccountResultDTO with created account details
+            
+        Raises:
+            NotFoundError: If employee not found
+            ConflictError: If email exists or employee already has account
+            ValidationError: If password too short or invalid role
+        """
+        self._validate_account_creation(dto)
+
+        # Create Supabase user if client available
+        supabase_uid = None
+        if self._supabase:
+            try:
+                auth_response = self._supabase.auth.admin.create_user(
+                    {
+                        "email": dto.email,
+                        "password": dto.password,
+                        "email_confirm": True,
+                    }
+                )
+                supabase_uid = auth_response.user.id
+            except Exception as e:
+                raise ConflictError(f"Supabase error: {e}") from e
+
+        # Create local records
+        employee = self._uow.employees.get_by_id(dto.employee_id)
+        employee, user = self._uow.staff_accounts.create_linked_account(
+            employee, dto, supabase_uid or ""
+        )
+        self._uow.commit()
+
+        return EmployeeAccountResultDTO(
+            employee_id=employee.id,
+            user_id=user.id,
+            email=user.email,
+            role=user.role,
+            created_at=datetime.utcnow(),
+        )
+
+    def list_accounts(self) -> list[StaffAccountDTO]:
+        """List all staff accounts with employee info.
+        
+        Returns:
+            List of StaffAccountDTO
+        """
+        records = self._uow.staff_accounts.list_all_with_employees()
+        return [
+            StaffAccountDTO(
+                user_id=u.id,
+                employee_id=e.id,
+                username=u.username,
+                full_name=e.full_name,
+                role=u.role,
+                is_active=u.is_active,
+                phone=e.phone,
+            )
+            for u, e in records
+        ]
+
+    def update_account_status(
+        self, user_id: int, is_active: bool, role: UserRole
+    ) -> bool:
+        """Update staff account status.
+        
+        Args:
+            user_id: User ID to update
+            is_active: New active status
+            role: New role
+            
+        Returns:
+            True on success
+            
+        Raises:
+            NotFoundError: If user not found
+            ValidationError: If invalid role
+        """
+        if not isinstance(role, UserRole):
+            raise ValidationError(f"Invalid role: {role}")
+
+        self._uow.staff_accounts.update_account_status(user_id, is_active, role)
+        self._uow.commit()
+        return True
+
+    def _validate_account_creation(self, dto: CreateEmployeeAccountDTO) -> None:
+        """Validate account creation request.
+        
+        Args:
+            dto: Account creation DTO
+            
+        Raises:
+            NotFoundError: If employee not found
+            ConflictError: If conflicts found
+            ValidationError: If validation fails
+        """
+        # Validate password
+        if len(dto.password) < MIN_PASSWORD_LENGTH:
+            raise ValidationError(
+                f"Password must be at least {MIN_PASSWORD_LENGTH} characters"
+            )
+
+        # Validate role
+        if dto.role not in {UserRole.ADMIN, UserRole.SYSTEM_ADMIN}:
+            raise ValidationError(f"Invalid role: {dto.role.value}")
+
+        # Verify employee exists
+        emp = self._uow.employees.get_by_id(dto.employee_id)
+        if not emp:
+            raise NotFoundError(f"Employee {dto.employee_id} not found")
+
+        # Check if employee already has account
+        if emp.user_id is not None:
+            raise ConflictError(
+                f"Employee {dto.employee_id} already has an account"
+            )
+
+        # Check email uniqueness
+        existing = self._uow.staff_accounts.find_user_by_email(dto.email)
+        if existing:
+            raise ConflictError(f"Email {dto.email} already registered")
