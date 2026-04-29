@@ -15,7 +15,6 @@ class StudentSummaryDTO(BaseModel):
     phone: Optional[str] = None
     gender: Optional[str] = None
     status: str
-    is_active: bool
     current_group_id: Optional[int] = None
     current_group_name: Optional[str] = None
     date_of_birth: Optional[date] = None

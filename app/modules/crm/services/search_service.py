@@ -71,7 +71,6 @@ class SearchService:
                 s.phone,
                 s.gender,
                 s.status,
-                s.is_active,
                 s.date_of_birth,
                 g.id as current_group_id,
                 g.name as current_group_name
@@ -79,12 +78,12 @@ class SearchService:
             LEFT JOIN enrollments e ON e.student_id = s.id AND e.status = 'active'
             LEFT JOIN groups g ON g.id = e.group_id
             WHERE s.deleted_at IS NULL
-              AND (:include_inactive OR s.is_active = true)
+              AND (:include_inactive OR s.status = 'active')
             ORDER BY s.id, e.id DESC
         """)
-        
+
         result = session.exec(sql, params={"include_inactive": include_inactive})
-        
+
         students = []
         for row in result.mappings():
             status_val = row.status
@@ -93,15 +92,14 @@ class SearchService:
             elif hasattr(status_val, 'value'):
                 status_str = status_val.value
             else:
-                status_str = "active" if row.is_active else "inactive"
-            
+                status_str = "inactive"
+
             students.append(StudentSummaryDTO(
                 id=row.id,
                 full_name=row.full_name,
                 phone=row.phone,
                 gender=row.gender,
                 status=status_str,
-                is_active=row.is_active,
                 current_group_id=row.current_group_id,
                 current_group_name=row.current_group_name,
                 date_of_birth=row.date_of_birth.date() if hasattr(row.date_of_birth, 'date') else row.date_of_birth
@@ -111,13 +109,13 @@ class SearchService:
     def count(self, active_only: bool = True) -> int:
         """Count total students using raw SQL."""
         session = self._uow._session
-        
+
         sql = text("""
-            SELECT COUNT(*) FROM students 
-            WHERE deleted_at IS NULL 
-            AND (:active_only = false OR is_active = true)
+            SELECT COUNT(*) FROM students
+            WHERE deleted_at IS NULL
+            AND (:active_only = false OR status = 'active')
         """)
-        
+
         result = session.exec(sql, params={"active_only": active_only})
         return result.scalar()
     

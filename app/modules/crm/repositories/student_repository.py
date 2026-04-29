@@ -1,7 +1,6 @@
 from typing import Optional, Sequence, Tuple, List
 from sqlmodel import Session, select, delete, func
 from sqlalchemy import or_
-import json
 from datetime import datetime
 from decimal import Decimal
 
@@ -59,7 +58,7 @@ class StudentRepository(IStudentRepository, SoftDeleteMixin[Student]):
     def count(self, active_only: bool = True) -> int:
         stmt = select(func.count()).select_from(Student)
         if active_only:
-            stmt = stmt.where(Student.is_active.is_(True))
+            stmt = stmt.where(Student.status == StudentStatus.ACTIVE)
         return self._session.exec(stmt).one()
 
     def count_by_status(self, status: StudentStatus) -> int:
@@ -73,26 +72,7 @@ class StudentRepository(IStudentRepository, SoftDeleteMixin[Student]):
         if not student:
             return None
         
-        old_status = student.status
-        def _get_status_value(st):
-            if st is None:
-                return None
-            return st.value if hasattr(st, 'value') else str(st)
-            
-        audit_entry = {
-            "timestamp": datetime.utcnow().isoformat(),
-            "changed_by": user_id,
-            "old_status": _get_status_value(old_status),
-            "new_status": _get_status_value(new_status),
-            "notes": notes
-        }
-        history = student.status_history or []
-        if isinstance(history, str):
-            history = json.loads(history) if history else []
-        history.append(audit_entry)
-        student.status_history = history
         student.status = new_status
-        student.is_active = new_status in [StudentStatus.ACTIVE, StudentStatus.WAITING]
         if notes:
             student.waiting_notes = notes
         
@@ -197,8 +177,8 @@ class StudentRepository(IStudentRepository, SoftDeleteMixin[Student]):
             .outerjoin(Group, Enrollment.group_id == Group.id)
         )
         if not include_inactive:
-            stmt = stmt.where(Student.is_active.is_(True))
-            
+            stmt = stmt.where(Student.status == StudentStatus.ACTIVE)
+
         results = self._session.exec(stmt).all()
         # Ensure distinct by student ID
         student_map = {}
@@ -209,8 +189,7 @@ class StudentRepository(IStudentRepository, SoftDeleteMixin[Student]):
                     full_name=student.full_name,
                     phone=student.phone,
                     gender=student.gender,
-                    status=str(student.status) if student.status else ("active" if student.is_active else "inactive"),
-                    is_active=student.is_active,
+                    status=str(student.status) if student.status else "inactive",
                     current_group_id=group.id if group else None,
                     current_group_name=group.group_name if group else None,
                     date_of_birth=student.date_of_birth.date() if hasattr(student.date_of_birth, 'date') else student.date_of_birth

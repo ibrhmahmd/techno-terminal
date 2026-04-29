@@ -58,8 +58,7 @@ def create_test_student(
     
     student = Student(
         full_name=full_name,
-        birth_date=birth_date,
-        is_active=True
+        birth_date=birth_date
     )
     session.add(student)
     session.commit()

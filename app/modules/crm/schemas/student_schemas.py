@@ -4,7 +4,6 @@ app/modules/crm/schemas/student_schemas.py
 Pydantic DTOs scoped to Student operations.
 """
 from datetime import date, datetime
-from enum import Enum
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -37,19 +36,7 @@ class UpdateStudentDTO(BaseModel):
     gender: Optional[str] = None
     phone: Optional[str] = None
     notes: Optional[str] = None
-    is_active: Optional[bool] = None  # Deprecated but kept for compatibility
     status: Optional[StudentStatus] = None  # Strict enum validation
-
-
-class StatusHistoryEntryDTO(BaseModel):
-    """Typed audit entry in student status trail. Replaces list[dict]."""
-    timestamp: datetime
-    changed_by: Optional[int] = None
-    old_status: Optional[str] = None
-    new_status: str
-    notes: Optional[str] = None
-    action: Optional[str] = None       # e.g. "priority_change"
-    new_priority: Optional[int] = None
 
 
 # NEW DTO for status updates
@@ -77,12 +64,10 @@ class StudentResponseDTO(BaseModel):
     gender: Optional[str] = None
     phone: Optional[str] = None
     notes: Optional[str] = None
-    is_active: bool  # Deprecated but kept for backward compatibility
-    status: str  # NEW: Current status
+    status: str  # Current status
     waiting_since: Optional[datetime] = None  # NEW
     waiting_priority: Optional[int] = None  # NEW
     waiting_notes: Optional[str] = None  # NEW
-    status_history: list[StatusHistoryEntryDTO] = []  # NEW
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 

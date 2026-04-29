@@ -29,8 +29,6 @@ class StudentBase(SQLModel):
     gender: Optional[str] = None              # CHECK: 'male' | 'female'
     phone: Optional[str] = None
     notes: Optional[str] = None
-    # DEPRECATED: is_active - now replaced by status enum
-    is_active: bool = True  # Keep for backward compatibility
     # NEW FIELD: Use String type to match database enum
     # Default to WAITING - student becomes ACTIVE upon first enrollment
     status: StudentStatus = Field(
@@ -52,10 +50,6 @@ class Student(StudentBase, table=True):
         sa_column=Column("metadata", JSONB),
     )
     # NEW: Waiting list metadata fields
-    status_history: Optional[list[dict]] = Field(
-        default_factory=list,
-        sa_column=Column("status_history", JSONB, default="[]"),
-    )
     waiting_since: Optional[datetime] = None
     waiting_priority: Optional[int] = None
     waiting_notes: Optional[str] = None
@@ -79,12 +73,10 @@ class StudentCreate(StudentBase):
 class StudentRead(StudentBase):
     """Network-safe read representation."""
     id: int
-    is_active: bool
     status: str
     waiting_since: Optional[datetime] = None
     waiting_priority: Optional[int] = None
     waiting_notes: Optional[str] = None
-    status_history: list[dict] = []
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     # Soft delete fields

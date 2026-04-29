@@ -122,13 +122,7 @@ class StudentCrudService:
             return student
         
         student.status = new_status
-        
-        # Sync is_active flag with status
-        if new_status == StudentStatus.ACTIVE:
-            student.is_active = True
-        elif new_status == StudentStatus.INACTIVE:
-            student.is_active = False
-        
+
         apply_update_audit(student)
         
         # Log status change
@@ -162,13 +156,13 @@ class StudentCrudService:
 
         old_status = student.status
 
-        # Toggle is_active flag
-        student.is_active = not student.is_active
-
-        # Update status based on is_active
-        if not student.is_active and student.status == StudentStatus.ACTIVE:
+        # Toggle between active and inactive (skipping waiting)
+        if student.status == StudentStatus.ACTIVE:
             student.status = StudentStatus.INACTIVE
-        elif student.is_active and student.status == StudentStatus.INACTIVE:
+        elif student.status == StudentStatus.INACTIVE:
+            student.status = StudentStatus.ACTIVE
+        # If waiting, transition to active
+        elif student.status == StudentStatus.WAITING:
             student.status = StudentStatus.ACTIVE
 
         apply_update_audit(student)

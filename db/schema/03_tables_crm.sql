@@ -19,8 +19,7 @@ CREATE TABLE students (
     gender TEXT CHECK (gender IN ('male', 'female')),
     phone TEXT,
     notes TEXT,
-    is_active BOOLEAN DEFAULT TRUE,
-    status student_status DEFAULT 'active',
+    status student_status DEFAULT 'waiting',
     status_history JSONB DEFAULT '[]',
     waiting_since TIMESTAMP,
     waiting_priority INTEGER,
@@ -37,7 +36,6 @@ CREATE TABLE students (
 
 COMMENT ON TABLE students IS 'Student records with soft-delete and status tracking';
 COMMENT ON COLUMN students.status IS 'Current enrollment status: active, waiting, or inactive';
-COMMENT ON COLUMN students.status_history IS 'JSONB array tracking all status changes with timestamps';
 COMMENT ON COLUMN students.waiting_since IS 'Timestamp when student was added to waiting list';
 COMMENT ON COLUMN students.waiting_priority IS 'Priority level in waiting queue (lower = higher priority)';
 COMMENT ON COLUMN students.deleted_at IS 'Soft delete timestamp. NULL = active record';
