@@ -33,7 +33,7 @@ class AdminSettingsResponse(BaseModel):
 
 class UpdateAdminSettingsRequest(BaseModel):
     """Bulk update settings."""
-    settings: Dict[str, bool]  # notification_type -> is_enabled
+    settings: Dict[str, bool]  # notification_type -> is_enabled #TODO remove Dict and write a typed DTO class
 
 
 class ToggleNotificationRequest(BaseModel):

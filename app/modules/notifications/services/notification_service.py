@@ -287,7 +287,7 @@ class NotificationService:
             errors=errors,
         )
 
-    def _generate_placeholders(self, variables: list[str]) -> dict[str, str]:
+    def _generate_placeholders(self, variables: list[str]) -> dict[str, str]: 
         """Generate human-readable placeholder values for template variables."""
         placeholders = {}
         for var in variables:

@@ -28,7 +28,7 @@ class StudentCrudService:
     def register_student(
         self,
         command_dto: RegisterStudentCommandDTO,
-    ) -> Tuple[Student, List[dict]]:
+    ) -> Tuple[Student, List[dict]]: #TODO remove Dict and write a typed DTO class
         """
         Registers a student and links them to an existing parent as primary contact.
         Returns (student, siblings) so the UI can offer the sibling discount.

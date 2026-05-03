@@ -15,7 +15,7 @@ def get_users_by_employee_id(session: Session, employee_id: int) -> list[User]:
     stmt = select(User).where(User.employee_id == employee_id)
     return list(session.exec(stmt).all())
 
-def create_user(session: Session, user_data: dict) -> User:
+def create_user(session: Session, user_data: dict) -> User: #TODO remove Dict and write a typed DTO class
     user = User(**user_data)
     session.add(user)
     session.flush()
@@ -27,7 +27,7 @@ def update_last_login(session: Session, user_id: int) -> None:
         user.last_login = utc_now()
         session.add(user)
 
-def update_user(session: Session, user_id: int, user_data: dict) -> User | None:
+def update_user(session: Session, user_id: int, user_data: dict) -> User | None: #TODO remove Dict and write a typed DTO class
     user = session.get(User, user_id)
     if not user:
         return None

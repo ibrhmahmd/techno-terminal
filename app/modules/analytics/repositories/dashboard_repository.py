@@ -155,7 +155,7 @@ def get_group_metadata(
 
 def get_sessions_for_levels(
     db: Session, 
-    group_level_map: dict[int, int]  # group_id -> current_level
+    group_level_map: dict[int, int]  # group_id -> current_level #TODO remove Dict and write a typed DTO class
 ) -> list[SessionWithAttendanceDTO]:
     """
     Query 3: Get ALL sessions for the current levels of specified groups.

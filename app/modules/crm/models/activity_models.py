@@ -75,8 +75,8 @@ class ActivityTimelineFilter(SQLModel):
 class StudentActivitySummary(SQLModel):
     """Summary of student activities."""
     student_id: int
-    total_activities: int
-    activities_by_type: dict[str, int]
+    total_activities: int 
+    activities_by_type: dict[str, int]#TODO remove Dict and write a typed DTO class
     first_activity_date: Optional[datetime] = None
     last_activity_date: Optional[datetime] = None
 

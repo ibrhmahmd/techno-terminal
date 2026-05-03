@@ -367,7 +367,7 @@ class ActivityRepository(IActivityRepository):
             for row in result
         ]
 
-    def get_activity_summary(self, student_id: int) -> Dict[str, Any]:
+    def get_activity_summary(self, student_id: int) -> Dict[str, Any]: #TODO remove Dict and write a typed DTO class
         """Get activity summary statistics for a student using raw SQL."""
         # Total count
         count_sql = """

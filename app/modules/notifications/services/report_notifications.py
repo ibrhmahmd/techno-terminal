@@ -161,7 +161,7 @@ class ReportNotificationService(BaseNotificationService):
     
     # ── Private Helpers ──────────────────────────────────────────────────
     
-    def _fetch_daily_aggregates(self, target_date: date) -> dict:
+    def _fetch_daily_aggregates(self, target_date: date) -> dict: #TODO remove Dict and write a typed DTO class
         """Fetch daily metrics with enhanced data for rich reporting."""
         total_revenue = 0.0
         new_enrollments = 0
@@ -309,7 +309,7 @@ class ReportNotificationService(BaseNotificationService):
             "unpaid_count": unpaid_count,
         }
     
-    def _fetch_weekly_aggregates(self, week_start: date, week_end: date) -> dict:
+    def _fetch_weekly_aggregates(self, week_start: date, week_end: date) -> dict: #TODO remove Dict and write a typed DTO class
         """Fetch weekly metrics."""
         total_revenue = 0.0
         new_students = 0
@@ -353,7 +353,7 @@ class ReportNotificationService(BaseNotificationService):
             "attendance_rate": attendance_rate,
         }
     
-    def _fetch_monthly_aggregates(self, month_start: date, month_end: date) -> dict:
+    def _fetch_monthly_aggregates(self, month_start: date, month_end: date) -> dict: #TODO remove Dict and write a typed DTO class
         """Fetch monthly metrics."""
         total_revenue = 0.0
         new_enrollments = 0
@@ -394,7 +394,7 @@ class ReportNotificationService(BaseNotificationService):
     # ── Bulk Marketing (now sends to all admins via email) ──────────────
     
     def send_bulk(
-        self, parent_ids: list[int], template_name: str, extra_vars: dict,
+        self, parent_ids: list[int], template_name: str, extra_vars: dict, #TODO remove Dict and write a typed DTO class
         background_tasks
     ) -> int:
         """Queue email messages to all admins. Returns queued count."""

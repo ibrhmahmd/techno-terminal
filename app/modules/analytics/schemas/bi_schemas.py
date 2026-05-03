@@ -57,5 +57,5 @@ class RetentionCohortDTO(BaseModel):
     """Cohort-based retention analysis."""
     cohort_month: str
     initial_enrollments: int
-    retention_by_month: dict[str, int]
-    retention_rates: dict[str, float]
+    retention_by_month: dict[str, int] #TODO remove Dict and write a typed DTO classs
+    retention_rates: dict[str, float]#TODO remove Dict and write a typed DTO class
