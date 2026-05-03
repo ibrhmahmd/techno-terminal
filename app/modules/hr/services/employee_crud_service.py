@@ -138,6 +138,11 @@ class EmployeeCrudService:
             if existing:
                 raise ConflictError("Phone already exists")
 
+        if hasattr(dto, 'email') and dto.email:
+            existing = self._uow.employees.find_by_email(dto.email, exclude_id)
+            if existing:
+                raise ConflictError("Email already exists")
+
     def _normalize_employment_data(
         self, dto: CreateEmployeeDTO
     ) -> CreateEmployeeDTO:
