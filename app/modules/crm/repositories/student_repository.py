@@ -388,6 +388,7 @@ class StudentRepository(IStudentRepository, SoftDeleteMixin[Student]):
         from app.modules.academics.models.group_models import Group
         from app.modules.academics.models.course_models import Course
         from app.modules.auth.models.auth_models import User
+        from app.modules.hr.models.employee_models import Employee
 
         stmt = (
             select(
@@ -396,12 +397,13 @@ class StudentRepository(IStudentRepository, SoftDeleteMixin[Student]):
                 Group.id,
                 Course.name,
                 Course.id,
-                User.username.label("instructor_name"),
+                Employee.full_name.label("instructor_name"),
                 Enrollment.level_number,
             )
             .join(Group, Enrollment.group_id == Group.id)
             .join(Course, Group.course_id == Course.id)
             .outerjoin(User, Group.instructor_id == User.id)
+            .outerjoin(Employee, User.employee_id == Employee.id)
             .where(
                 Enrollment.student_id == student_id,
                 Enrollment.status == "active",
