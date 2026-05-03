@@ -21,7 +21,7 @@ class GroupedItem(BaseModel):
     key: str
     label: str
     count: int
-    groups: list[dict]  # EnrichedGroupPublic - will be imported as Any to avoid circular import
+    groups: list[dict]  # EnrichedGroupPublic - will be imported as Any to avoid circular import #TODO remove Dict and write a typed DTO class
 
 
 class GroupedGroupsResponse(BaseModel):

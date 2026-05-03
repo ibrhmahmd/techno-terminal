@@ -137,7 +137,7 @@ class GroupLevelResult(BaseModel):
 
 class SessionGenerationResult(BaseModel):
     """Output for session generation."""
-    sessions: List[dict]  # Serialized session data
+    sessions: List[dict]  # Serialized session data #TODO remove Dict and write a typed DTO class
     count: int
     group_id: int
     level_number: int
@@ -172,5 +172,5 @@ class GroupCreationResult(BaseModel):
     level_id: int
     level_number: int
     sessions_count: int
-    sessions: List[dict]
+    sessions: List[dict] #TODO remove Dict and write a typed DTO class
     message: str = "Group created successfully with Level 1 and sessions."

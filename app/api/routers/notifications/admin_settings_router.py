@@ -109,7 +109,7 @@ def get_my_settings(
 
 @router.put(
     "/settings/me",
-    response_model=ApiResponse[Dict[str, bool]],
+    response_model=ApiResponse[Dict[str, bool]], #TODO remove Dict and write a typed DTO class
     summary="Update my notification settings",
     description="Bulk update notification settings for current admin.",
 )
@@ -273,7 +273,7 @@ def update_recipient(
 
 @router.delete(
     "/settings/me/additional-recipients/{recipient_id}",
-    response_model=ApiResponse[Dict[str, str]],
+    response_model=ApiResponse[Dict[str, str]], #TODO remove Dict and write a typed DTO class
     summary="Remove recipient",
 )
 def delete_recipient(

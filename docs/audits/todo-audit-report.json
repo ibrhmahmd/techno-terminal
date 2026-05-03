@@ -1,0 +1,664 @@
+{
+  "audit_metadata": {
+    "date": "2026-05-02",
+    "scope": "Full codebase (app/, tests/)",
+    "patterns_searched": ["TODO", "FIXME", "HACK", "XXX", "BUG", "NOTE"],
+    "total_todos": 37,
+    "total_fixme_hack_xxx_bug": 0,
+    "affected_files": 20,
+    "affected_modules": ["academics", "analytics", "auth", "crm", "enrollments", "finance", "notifications", "api"]
+  },
+  "summary": {
+    "by_category": {
+      "refactoring_dict_to_dto": { "count": 30, "percentage": 81 },
+      "feature_implementation": { "count": 3, "percentage": 8 },
+      "refactoring_architectural": { "count": 1, "percentage": 3 },
+      "bug_fixes_loose_types": { "count": 1, "percentage": 3 },
+      "feature_passthrough": { "count": 1, "percentage": 3 },
+      "documentation_typo": { "count": 1, "percentage": 3 }
+    },
+    "by_module": {
+      "api_routers_schemas": { "count": 18, "percentage": 49 },
+      "academics": { "count": 10, "percentage": 27 },
+      "crm": { "count": 5, "percentage": 14 },
+      "notifications": { "count": 5, "percentage": 14 },
+      "analytics": { "count": 3, "percentage": 8 },
+      "auth": { "count": 2, "percentage": 5 },
+      "finance": { "count": 1, "percentage": 3 },
+      "enrollments": { "count": 2, "percentage": 5 }
+    }
+  },
+  "todos": [
+    {
+      "id": 1,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/modules/academics/services/group_details_service.py",
+      "line": 236,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "_get_enrollment_stats_for_levels() -> dict[int, dict]",
+      "module": "academics"
+    },
+    {
+      "id": 2,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/modules/academics/services/group_details_service.py",
+      "line": 268,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "_get_payment_stats_for_levels() -> dict[int, dict]",
+      "module": "academics"
+    },
+    {
+      "id": 3,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/modules/academics/services/group_details_service.py",
+      "line": 321,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "_build_courses_lookup() -> dict[int, CourseLookupDTO]",
+      "module": "academics"
+    },
+    {
+      "id": 4,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/modules/academics/services/group_details_service.py",
+      "line": 335,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "_build_instructors_lookup() -> dict[int, InstructorLookupDTO]",
+      "module": "academics"
+    },
+    {
+      "id": 5,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/modules/academics/services/group_lifecycle_service.py",
+      "line": 436,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "_serialize_session() -> dict",
+      "module": "academics"
+    },
+    {
+      "id": 6,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/modules/academics/services/group_competition_service.py",
+      "line": 122,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "get_group_competitions() -> list[dict]",
+      "module": "academics"
+    },
+    {
+      "id": 7,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/modules/academics/services/group_competition_service.py",
+      "line": 204,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "withdraw_from_competition() -> dict",
+      "module": "academics"
+    },
+    {
+      "id": 8,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/modules/academics/services/group_competition_service.py",
+      "line": 243,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "link_existing_team() -> dict",
+      "module": "academics"
+    },
+    {
+      "id": 9,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/modules/academics/schemas/scheduling_dtos.py",
+      "line": 140,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "SessionGenerationResult.sessions: List[dict]",
+      "module": "academics"
+    },
+    {
+      "id": 10,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/modules/academics/schemas/scheduling_dtos.py",
+      "line": 175,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "GroupCreationResult.sessions: List[dict]",
+      "module": "academics"
+    },
+    {
+      "id": 11,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/modules/academics/repositories/group_repository.py",
+      "line": 312,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "get_transfer_options() -> list[dict]",
+      "module": "academics"
+    },
+    {
+      "id": 12,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/modules/academics/repositories/group_history_repository.py",
+      "line": 134,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "get_level_student_counts() -> dict[int, int]",
+      "module": "academics"
+    },
+    {
+      "id": 13,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/modules/academics/repositories/group_history_repository.py",
+      "line": 180,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "get_group_enrollment_stats() -> dict",
+      "module": "academics"
+    },
+    {
+      "id": 14,
+      "category": "refactoring_dict_to_dto",
+      "severity": "low",
+      "file": "app/modules/analytics/schemas/bi_schemas.py",
+      "line": 60,
+      "text": "#TODO remove Dict and write a typed DTO classs",
+      "context": "retention_by_month: dict[str, int] (typo: classs)",
+      "module": "analytics"
+    },
+    {
+      "id": 15,
+      "category": "refactoring_dict_to_dto",
+      "severity": "low",
+      "file": "app/modules/analytics/schemas/bi_schemas.py",
+      "line": 61,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "retention_rates: dict[str, float]",
+      "module": "analytics"
+    },
+    {
+      "id": 16,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/modules/analytics/repositories/dashboard_repository.py",
+      "line": 158,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "get_sessions_for_levels(group_level_map: dict[int, int])",
+      "module": "analytics"
+    },
+    {
+      "id": 17,
+      "category": "refactoring_dict_to_dto",
+      "severity": "high",
+      "file": "app/modules/auth/repositories/auth_repository.py",
+      "line": 18,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "create_user(user_data: dict) -> User",
+      "module": "auth"
+    },
+    {
+      "id": 18,
+      "category": "refactoring_dict_to_dto",
+      "severity": "high",
+      "file": "app/modules/auth/repositories/auth_repository.py",
+      "line": 30,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "update_user(user_data: dict) -> User | None",
+      "module": "auth"
+    },
+    {
+      "id": 19,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/modules/crm/services/student_crud_service.py",
+      "line": 31,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "register_student() -> Tuple[Student, List[dict]]",
+      "module": "crm"
+    },
+    {
+      "id": 20,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/modules/crm/repositories/parent_repository.py",
+      "line": 53,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "update(parent_id, data: dict) -> Optional[Parent]",
+      "module": "crm"
+    },
+    {
+      "id": 21,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/modules/crm/repositories/activity_repository.py",
+      "line": 370,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "get_activity_summary() -> Dict[str, Any]",
+      "module": "crm"
+    },
+    {
+      "id": 22,
+      "category": "refactoring_dict_to_dto",
+      "severity": "low",
+      "file": "app/modules/crm/models/activity_models.py",
+      "line": 79,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "activities_by_type: dict[str, int]",
+      "module": "crm"
+    },
+    {
+      "id": 23,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/modules/crm/interfaces/__init__.py",
+      "line": 59,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "update(parent_id, data: dict) -> Optional[Parent] (interface)",
+      "module": "crm"
+    },
+    {
+      "id": 24,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/modules/crm/interfaces/iactivity_repository.py",
+      "line": 60,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "get_activity_summary() -> Dict[str, Any] (interface)",
+      "module": "crm"
+    },
+    {
+      "id": 25,
+      "category": "refactoring_dict_to_dto",
+      "severity": "low",
+      "file": "app/modules/crm/interfaces/dtos/activity_summary_dto.py",
+      "line": 16,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "activities_by_type: Dict[str, int]",
+      "module": "crm"
+    },
+    {
+      "id": 26,
+      "category": "refactoring_dict_to_dto",
+      "severity": "low",
+      "file": "app/modules/notifications/services/report_notifications.py",
+      "line": 164,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "_fetch_daily_aggregates() -> dict",
+      "module": "notifications"
+    },
+    {
+      "id": 27,
+      "category": "refactoring_dict_to_dto",
+      "severity": "low",
+      "file": "app/modules/notifications/services/report_notifications.py",
+      "line": 312,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "_fetch_weekly_aggregates() -> dict",
+      "module": "notifications"
+    },
+    {
+      "id": 28,
+      "category": "refactoring_dict_to_dto",
+      "severity": "low",
+      "file": "app/modules/notifications/services/report_notifications.py",
+      "line": 356,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "_fetch_monthly_aggregates() -> dict",
+      "module": "notifications"
+    },
+    {
+      "id": 29,
+      "category": "refactoring_dict_to_dto",
+      "severity": "low",
+      "file": "app/modules/notifications/services/report_notifications.py",
+      "line": 397,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "send_bulk(extra_vars: dict)",
+      "module": "notifications"
+    },
+    {
+      "id": 30,
+      "category": "refactoring_dict_to_dto",
+      "severity": "low",
+      "file": "app/modules/notifications/schemas/admin_settings_dto.py",
+      "line": 36,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "settings: Dict[str, bool]",
+      "module": "notifications"
+    },
+    {
+      "id": 31,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/api/schemas/students/activity.py",
+      "line": 114,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "StudentHistoryItemDTO.data: Dict[str, Any]",
+      "module": "api"
+    },
+    {
+      "id": 32,
+      "category": "refactoring_dict_to_dto",
+      "severity": "low",
+      "file": "app/api/schemas/analytics/bi.py",
+      "line": 82,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "feature_usage: dict[str, int]",
+      "module": "api"
+    },
+    {
+      "id": 33,
+      "category": "refactoring_dict_to_dto",
+      "severity": "low",
+      "file": "app/api/schemas/analytics/bi.py",
+      "line": 91,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "retention_by_month: dict[str, int]",
+      "module": "api"
+    },
+    {
+      "id": 34,
+      "category": "refactoring_dict_to_dto",
+      "severity": "low",
+      "file": "app/api/schemas/analytics/bi.py",
+      "line": 92,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "retention_rates: dict[str, float]",
+      "module": "api"
+    },
+    {
+      "id": 35,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/api/schemas/academics/group_level.py",
+      "line": 36,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "sessions: list[dict] in ScheduleLevelResponse",
+      "module": "api"
+    },
+    {
+      "id": 36,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/api/schemas/academics/group_level.py",
+      "line": 42,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "completed_level: dict in GroupLevelCompletionResponse",
+      "module": "api"
+    },
+    {
+      "id": 37,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/api/schemas/academics/group_level.py",
+      "line": 43,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "new_level: dict in GroupLevelCompletionResponse",
+      "module": "api"
+    },
+    {
+      "id": 38,
+      "category": "refactoring_dict_to_dto",
+      "severity": "low",
+      "file": "app/api/schemas/academics/grouped.py",
+      "line": 24,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "groups: list[dict] in GroupedGroupItem",
+      "module": "api"
+    },
+    {
+      "id": 39,
+      "category": "refactoring_dict_to_dto",
+      "severity": "low",
+      "file": "app/api/routers/notifications/bulk_router.py",
+      "line": 11,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "response_model=ApiResponse[dict]",
+      "module": "api"
+    },
+    {
+      "id": 40,
+      "category": "refactoring_dict_to_dto",
+      "severity": "low",
+      "file": "app/api/routers/notifications/admin_settings_router.py",
+      "line": 112,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "response_model=ApiResponse[Dict[str, bool]]",
+      "module": "api"
+    },
+    {
+      "id": 41,
+      "category": "refactoring_dict_to_dto",
+      "severity": "low",
+      "file": "app/api/routers/notifications/admin_settings_router.py",
+      "line": 276,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "response_model=ApiResponse[Dict[str, str]]",
+      "module": "api"
+    },
+    {
+      "id": 42,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/api/routers/crm/students_router.py",
+      "line": 399,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "response_model=ApiResponse[List[dict]] (status-history)",
+      "module": "api"
+    },
+    {
+      "id": 43,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/api/routers/crm/students_router.py",
+      "line": 495,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "response_model=ApiResponse[dict] (soft delete)",
+      "module": "api"
+    },
+    {
+      "id": 44,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/api/routers/crm/students_router.py",
+      "line": 523,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "response_model=ApiResponse[dict] (restore)",
+      "module": "api"
+    },
+    {
+      "id": 45,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/api/routers/crm/students_router.py",
+      "line": 548,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "response_model=ApiResponse[dict] (hard delete)",
+      "module": "api"
+    },
+    {
+      "id": 46,
+      "category": "refactoring_dict_to_dto",
+      "severity": "low",
+      "file": "app/api/routers/competitions/competitions_router.py",
+      "line": 50,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "categories: list[dict] in CompetitionSummaryResponse",
+      "module": "api"
+    },
+    {
+      "id": 47,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/api/routers/academics/group_lifecycle_router.py",
+      "line": 43,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "complete endpoint response",
+      "module": "api"
+    },
+    {
+      "id": 48,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/api/routers/academics/group_lifecycle_router.py",
+      "line": 79,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "cancel endpoint response",
+      "module": "api"
+    },
+    {
+      "id": 49,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/api/routers/academics/group_competitions_router.py",
+      "line": 22,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "list competitions response",
+      "module": "api"
+    },
+    {
+      "id": 50,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/api/routers/academics/group_competitions_router.py",
+      "line": 79,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "link team response",
+      "module": "api"
+    },
+    {
+      "id": 51,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/api/routers/academics/group_competitions_router.py",
+      "line": 104,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "register competition response",
+      "module": "api"
+    },
+    {
+      "id": 52,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/api/routers/academics/group_competitions_router.py",
+      "line": 146,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "complete participation response",
+      "module": "api"
+    },
+    {
+      "id": 53,
+      "category": "refactoring_dict_to_dto",
+      "severity": "medium",
+      "file": "app/api/routers/academics/group_competitions_router.py",
+      "line": 177,
+      "text": "#TODO remove Dict and write a typed DTO class",
+      "context": "withdraw competition response",
+      "module": "api"
+    },
+    {
+      "id": 54,
+      "category": "feature_implementation",
+      "severity": "medium",
+      "file": "app/modules/finance/services/receipt_service.py",
+      "line": 322,
+      "text": "# TODO: Implement when notification tracking is added",
+      "context": "mark_as_sent() — stub with pass",
+      "module": "finance"
+    },
+    {
+      "id": 55,
+      "category": "feature_implementation",
+      "severity": "medium",
+      "file": "app/modules/enrollments/services/enrollment_migration_service.py",
+      "line": 108,
+      "text": "# TODO: Trigger level progression notification",
+      "context": "After level progression, notification not wired",
+      "module": "enrollments"
+    },
+    {
+      "id": 56,
+      "category": "feature_implementation",
+      "severity": "medium",
+      "file": "app/modules/enrollments/services/enrollment_migration_service.py",
+      "line": 169,
+      "text": "# TODO: Trigger enrollment completed notification",
+      "context": "After enrollment completion, notification not wired",
+      "module": "enrollments"
+    },
+    {
+      "id": 57,
+      "category": "refactoring_architectural",
+      "severity": "low",
+      "file": "app/modules/notifications/services/notification_service.py",
+      "line": 145,
+      "text": "# TODO: Move to BulkNotificationService if needed",
+      "context": "send_bulk() delegated from NotificationService",
+      "module": "notifications"
+    },
+    {
+      "id": 58,
+      "category": "bug_fixes_loose_types",
+      "severity": "medium",
+      "file": "app/modules/academics/repositories/group_history_repository.py",
+      "line": 222,
+      "text": "#TODO remove loose return types and write a typed DTO class",
+      "context": "get_group_instructors_summary() returns Sequence[tuple[int, str, datetime, datetime, int, bool]]",
+      "module": "academics"
+    },
+    {
+      "id": 59,
+      "category": "feature_passthrough",
+      "severity": "low",
+      "file": "app/modules/academics/services/group_competition_service.py",
+      "line": 114,
+      "text": "performed_by=None, # TODO: Pass from caller",
+      "context": "Activity log missing audit trail for who performed action",
+      "module": "academics"
+    }
+  ],
+  "implementation_plan": {
+    "phase_1": {
+      "name": "Dict→DTO Conversion",
+      "target_items": 30,
+      "timeline": "2-3 weeks",
+      "impact": "high",
+      "effort": "medium",
+      "batches": [
+        { "module": "academics", "items": 10, "dtos_needed": ["EnrollmentStatsDTO", "PaymentStatsDTO", "SessionSummaryDTO", "CompetitionParticipationDTO", "CompetitionWithdrawalDTO", "TeamLinkDTO", "LevelStudentCountsDTO", "GroupEnrollmentStatsDTO", "SessionGenerationItemDTO", "GroupCreationSessionDTO"] },
+        { "module": "api_routers", "items": 8, "dtos_needed": ["GroupCompetitionListDTO", "StudentStatusHistoryDTO", "StudentDeleteResponseDTO", "StudentRestoreResponseDTO", "BulkNotificationResponseDTO", "LevelCompletionResponseDTO"] },
+        { "module": "crm", "items": 5, "dtos_needed": ["StudentSiblingDTO", "ParentUpdateDTO", "ActivitySummaryResultDTO"] },
+        { "module": "notifications", "items": 5, "dtos_needed": ["DailyAggregatesDTO", "WeeklyAggregatesDTO", "MonthlyAggregatesDTO", "BulkEmailVarsDTO", "NotificationSettingsMapDTO"] },
+        { "module": "analytics", "items": 3, "dtos_needed": ["RetentionByMonthDTO", "RetentionRatesDTO", "GroupLevelMapDTO"] },
+        { "module": "auth", "items": 2, "dtos_needed": ["CreateUserDTO", "UpdateUserDTO"] }
+      ]
+    },
+    "phase_2": {
+      "name": "Missing Functionality",
+      "target_items": 3,
+      "timeline": "1 week",
+      "impact": "medium",
+      "effort": "medium",
+      "items": [
+        "Wire mark_as_sent() in receipt_service to notification tracking",
+        "Wire level progression notification in enrollment_migration_service",
+        "Wire enrollment completed notification in enrollment_migration_service"
+      ]
+    },
+    "phase_3": {
+      "name": "Code Quality",
+      "target_items": 3,
+      "timeline": "2-3 days",
+      "impact": "low",
+      "effort": "low",
+      "items": [
+        "Move send_bulk() to BulkNotificationService",
+        "Create InstructorSummaryDTO for get_group_instructors_summary()",
+        "Pass performed_by from caller in competition service"
+      ]
+    }
+  }
+}

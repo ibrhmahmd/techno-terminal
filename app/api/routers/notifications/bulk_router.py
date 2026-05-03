@@ -8,7 +8,7 @@ from app.modules.notifications.schemas.send_request import SendBulkRequest
 
 router = APIRouter()
 
-@router.post("/bulk", response_model=ApiResponse[dict], summary="Bulk send to parent list")
+@router.post("/bulk", response_model=ApiResponse[dict], summary="Bulk send to parent list") #TODO remove Dict and write a typed DTO class
 def send_bulk(
     body: SendBulkRequest,
     background_tasks: BackgroundTasks,

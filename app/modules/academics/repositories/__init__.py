@@ -84,9 +84,6 @@ from .group_history_repository import (
     get_enrollment_payments,
     get_group_instructors_summary,
     get_group_competition_participations,
-    get_group_course_assignments,
-    get_enrollment_transitions,
-    get_full_group_lifecycle,
 )
 
 __all__ = [
@@ -159,8 +156,5 @@ __all__ = [
     "get_enrollment_payments",
     "get_group_instructors_summary",
     "get_group_competition_participations",
-    "get_group_course_assignments",
-    "get_enrollment_transitions",
-    "get_full_group_lifecycle",
 ]
 

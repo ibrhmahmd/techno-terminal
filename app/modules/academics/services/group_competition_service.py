@@ -119,7 +119,7 @@ class GroupCompetitionService:
 
     def get_group_competitions(
         self, group_id: int, is_active: bool | None = True
-    ) -> list[dict]:
+    ) -> list[dict]: #TODO remove Dict and write a typed DTO class
         """
         Get all competition participations for a group.
         
@@ -201,7 +201,7 @@ class GroupCompetitionService:
 
     def withdraw_from_competition(
         self, participation_id: int, reason: str | None = None
-    ) -> dict:
+    ) -> dict: #TODO remove Dict and write a typed DTO class
         """
         Withdraw from a competition.
         
@@ -240,7 +240,7 @@ class GroupCompetitionService:
                 "withdrawn_at": updated.left_at,
             }
 
-    def link_existing_team(self, group_id: int, team_id: int) -> dict:
+    def link_existing_team(self, group_id: int, team_id: int) -> dict: #TODO remove Dict and write a typed DTO class
         """
         Link an existing team to a group (if not already linked).
         

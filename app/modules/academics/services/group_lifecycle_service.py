@@ -433,7 +433,7 @@ class GroupLifecycleService:
         
         return created
 
-    def _serialize_session(self, session: CourseSession) -> dict:
+    def _serialize_session(self, session: CourseSession) -> dict: #TODO remove Dict and write a typed DTO class
         """Serialize a session for the result DTO."""
         return {
             "id": session.id,

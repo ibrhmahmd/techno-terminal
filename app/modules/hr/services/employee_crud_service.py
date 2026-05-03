@@ -11,7 +11,6 @@ from app.modules.hr.schemas import (
     EmployeeListResponseDTO,
     UpdateEmployeeDTO,
 )
-from app.shared.constants import EmploymentType
 from app.shared.exceptions import ConflictError, NotFoundError
 
 

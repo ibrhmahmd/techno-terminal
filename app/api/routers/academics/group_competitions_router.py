@@ -19,7 +19,7 @@ router = APIRouter(tags=["Academics — Group Competitions"])
 
 @router.get(
     "/academics/groups/{group_id}/competitions",
-    response_model=ApiResponse[list[dict]],
+    response_model=ApiResponse[list[dict]], #TODO remove Dict and write a typed DTO class
     summary="List competition participations for a group",
 )
 def list_group_competitions(
@@ -76,7 +76,7 @@ def list_group_teams(
 
 @router.post(
     "/academics/groups/{group_id}/teams/{team_id}/link",
-    response_model=ApiResponse[dict],
+    response_model=ApiResponse[dict], #TODO remove Dict and write a typed DTO class
     summary="Link an existing team to a group",
 )
 def link_team_to_group(
@@ -101,7 +101,7 @@ def link_team_to_group(
 
 @router.post(
     "/academics/groups/{group_id}/competitions/{competition_id}/register",
-    response_model=ApiResponse[dict],
+    response_model=ApiResponse[dict], #TODO remove Dict and write a typed DTO class
     summary="Register a team for a competition",
 )
 def register_team_for_competition(
@@ -143,7 +143,7 @@ def register_team_for_competition(
 
 @router.patch(
     "/academics/groups/{group_id}/competitions/{participation_id}/complete",
-    response_model=ApiResponse[dict],
+    response_model=ApiResponse[dict], #TODO remove Dict and write a typed DTO class
     summary="Mark competition participation as completed",
 )
 def complete_competition_participation(
@@ -174,7 +174,7 @@ def complete_competition_participation(
 
 @router.delete(
     "/academics/groups/{group_id}/competitions/{participation_id}",
-    response_model=ApiResponse[dict],
+    response_model=ApiResponse[dict], #TODO remove Dict and write a typed DTO class
     summary="Withdraw from competition",
 )
 def withdraw_from_competition(

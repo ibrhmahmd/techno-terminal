@@ -309,7 +309,7 @@ def delete_group_by_id(session: Session, group_id: int) -> Group | None:
 
 def get_transfer_options(
     session: Session, exclude_group_id: int | None = None
-) -> list[dict]:
+) -> list[dict]: #TODO remove Dict and write a typed DTO class
     """
     Get active groups with available slots for transfer dropdown.
     

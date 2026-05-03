@@ -47,4 +47,4 @@ def get_course_stats(session: Session, course_id: int) -> CourseStatsDTO | None:
     """)
     result = session.execute(stmt, {"course_id": course_id})
     row = result.first()
-    return CourseStatsDTO(**dict(row._mapping)) if row else None
+    return CourseStatsDTO(**dict(row._mapping)) if row else None 

@@ -111,7 +111,7 @@ class ManualActivityResponseDTO(BaseModel):
 class StudentHistoryItemDTO(BaseModel):
     """Individual student history item wrapper."""
     item_type: str = Field(..., description="Type of history item")
-    data: Dict[str, Any] = Field(..., description="History data payload")
+    data: Dict[str, Any] = Field(..., description="History data payload") #TODO remove Dict and write a typed DTO class
     
     model_config = {"from_attributes": True}
 

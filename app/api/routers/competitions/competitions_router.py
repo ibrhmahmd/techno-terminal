@@ -47,7 +47,7 @@ class UpdateCompetitionInput(BaseModel):
 class CompetitionSummaryResponse(BaseModel):
     """Full competition summary with nested data."""
     competition: CompetitionDTO
-    categories: list[dict]  # CategoryWithTeamsDTO serialized
+    categories: list[dict]  # CategoryWithTeamsDTO serialized #TODO remove Dict and write a typed DTO class
     total_teams: int
     total_participants: int
 

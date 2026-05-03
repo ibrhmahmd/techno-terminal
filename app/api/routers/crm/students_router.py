@@ -396,7 +396,7 @@ def set_waiting_priority(
 # Get student status history
 @router.get(
     "/students/{student_id}/status-history",
-    response_model=ApiResponse[List[dict]],
+    response_model=ApiResponse[List[dict]], #TODO remove Dict and write a typed DTO class
     summary="Get student status history",
     description="Retrieve audit log of status changes for a student."
 )
@@ -492,7 +492,7 @@ def get_student_siblings(
 
 @router.delete(
     "/students/{student_id}/soft",
-    response_model=ApiResponse[dict],
+    response_model=ApiResponse[dict], #TODO remove Dict and write a typed DTO class
     summary="Soft delete a student",
     description="Marks a student as deleted without removing from database. Student can be restored later."
 )
@@ -520,7 +520,7 @@ def soft_delete_student(
 
 @router.post(
     "/students/{student_id}/restore",
-    response_model=ApiResponse[dict],
+    response_model=ApiResponse[dict], #TODO remove Dict and write a typed DTO class
     summary="Restore a soft-deleted student",
     description="Restores a previously soft-deleted student and their payments."
 )
@@ -545,7 +545,7 @@ def restore_student(
 
 @router.delete(
     "/students/{student_id}/hard",
-    response_model=ApiResponse[dict],
+    response_model=ApiResponse[dict], #TODO remove Dict and write a typed DTO class
     summary="Permanently delete a student",
     description="Admin-only: Permanently removes a student and all related data. Cannot be undone."
 )

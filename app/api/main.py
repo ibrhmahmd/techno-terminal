@@ -1,6 +1,4 @@
-"""
-Techno Terminal - FastAPI Application Factory
-"""
+
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 import asyncio
@@ -12,6 +10,7 @@ from app.api.middleware.logging_middleware import logging_middleware
 from app.api.routers import auth_router
 from app.api.routers import attendance_router
 from app.api.routers import enrollments_router
+from app.api.routers.notifications import router as notifications_router
 from app.api.routers.competitions import competitions_router, teams_router
 from app.api.routers import hr_router
 from app.api.routers.crm import (
@@ -84,10 +83,10 @@ def create_app() -> FastAPI:
 
     # 4. Routers
     app.include_router(auth_router.router, prefix="/api/v1/auth", tags=["Authentication"])
-    # Phase 5.2 — CRM (split into Students and Parents)
+    # CRM (Students and Parents)
     app.include_router(students_router, prefix="/api/v1", tags=["CRM — Students"])
     app.include_router(parents_router,   prefix="/api/v1", tags=["CRM — Parents"])
-    # Phase 5.3 — Academics (split into Courses, Groups, Sessions) + Attendance
+    # Academics (Courses, Groups, Sessions) + Attendance
     app.include_router(courses_router,  prefix="/api/v1", tags=["Academics — Courses"])
     app.include_router(groups_router,    prefix="/api/v1", tags=["Academics — Groups"])
     app.include_router(sessions_router,  prefix="/api/v1", tags=["Academics — Sessions"])
@@ -95,34 +94,33 @@ def create_app() -> FastAPI:
     app.include_router(group_lifecycle_router, prefix="/api/v1", tags=["Academics — Group Lifecycle"])
     app.include_router(group_competitions_router, prefix="/api/v1", tags=["Academics — Group Competitions"])
     app.include_router(attendance_router.router, prefix="/api/v1", tags=["Attendance"])
-    # Phase 5.4 — Transactions
+    # Transactions
     app.include_router(enrollments_router.router, prefix="/api/v1", tags=["Enrollments"])
-    # Finance routers (balance and receipt are already APIRouter objects)
+    # Finance routers (Receipts, Finance, Finance — Reporting)
     app.include_router(receipt_router,     prefix="/api/v1", tags=["Receipts"])
     app.include_router(finance_router,     prefix="/api/v1", tags=["Finance"])
     app.include_router(reporting_router,   prefix="/api/v1", tags=["Finance — Reporting"])
     # Student History & Activity
     app.include_router(students_history_router,     prefix="/api/v1", tags=["Student History"])
-    # Phase 5.5 — Auxiliary
-    # Competitions (split into competitions and teams)
+    # Competitions (competitions and teams)
     app.include_router(competitions_router, prefix="/api/v1", tags=["Competitions"])
     app.include_router(teams_router,        prefix="/api/v1", tags=["Teams"])
+    # HR
     app.include_router(hr_router.router,    prefix="/api/v1", tags=["HR"])
-    # Analytics (split into 5 sub-domains)
+    # Analytics
     app.include_router(academic_router,     prefix="/api/v1", tags=["Analytics — Academic"])
     app.include_router(financial_router,    prefix="/api/v1", tags=["Analytics — Financial"])
     app.include_router(competition_router,  prefix="/api/v1", tags=["Analytics — Competition"])
     app.include_router(bi_router,           prefix="/api/v1", tags=["Analytics — BI"])
     app.include_router(dashboard_router,    prefix="/api/v1", tags=["Analytics — Dashboard"])
 
-    # Notifications router
-    from app.api.routers.notifications import router as notifications_router
+    # Notifications 
     app.include_router(notifications_router, prefix="/api/v1")
 
     # 5. Utility endpoints
     @app.get("/health", tags=["Health"])
     def health_check():
-        return {"status": "ok", "service": "Techno Terminal API", "version": "1.0.0"}
+        return {"status": "ok", "service": "Techno Terminal API"}
 
     # Leapcell platform health check endpoint
     @app.get("/kaithhealthcheck", tags=["Health"])

@@ -33,7 +33,6 @@ router = APIRouter(tags=["Attendance"])
 class MarkAttendanceRequest(BaseModel):
     """
     Body for POST /attendance/session/{session_id}/mark.
-    Replaces dict with strictly typed list of attendance entries.
     """
     entries: list[StudentAttendanceItem] = Field(
         ...,
