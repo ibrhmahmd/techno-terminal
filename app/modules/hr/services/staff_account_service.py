@@ -41,31 +41,32 @@ class StaffAccountService:
         self._validate_account_creation(dto)
 
         # Create Supabase user if client available
-        supabase_uid = None
-        if self._supabase:
-            try:
-                auth_response = self._supabase.auth.admin.create_user(
-                    {
-                        "email": dto.email,
-                        "password": dto.password,
-                        "email_confirm": True,
-                    }
-                )
-                supabase_uid = auth_response.user.id
-            except Exception as e:
-                raise ConflictError(f"Supabase error: {e}") from e
+        if not self._supabase:
+            raise ValidationError("Supabase client not configured")
 
-        # Create local records
+        try:
+            auth_response = self._supabase.auth.admin.create_user(
+                {
+                    "email": dto.email,
+                    "password": dto.password,
+                    "email_confirm": True,
+                }
+            )
+            supabase_uid = auth_response.user.id
+        except Exception as e:
+            raise ConflictError(f"Supabase error: {e}") from e
+
+        # Create local records only after Supabase success
         employee = self._uow.employees.get_by_id(dto.employee_id)
         employee, user = self._uow.staff_accounts.create_linked_account(
-            employee, dto, supabase_uid or ""
+            employee, dto, supabase_uid
         )
         self._uow.commit()
 
         return EmployeeAccountResultDTO(
             employee_id=employee.id,
             user_id=user.id,
-            email=user.email,
+            email=user.username,  # User model stores email in username field
             role=user.role,
             created_at=datetime.utcnow(),
         )
@@ -146,7 +147,4 @@ class StaffAccountService:
                 f"Employee {dto.employee_id} already has an account"
             )
 
-        # Check email uniqueness
-        existing = self._uow.staff_accounts.find_user_by_email(dto.email)
-        if existing:
-            raise ConflictError(f"Email {dto.email} already registered")
+        # Note: Email uniqueness is validated by Supabase during user creation

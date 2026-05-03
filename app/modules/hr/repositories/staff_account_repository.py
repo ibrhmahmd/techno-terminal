@@ -39,7 +39,6 @@ class StaffAccountRepository:
         
         user = User(
             username=dto.email,
-            email=dto.email,
             role=dto.role,
             supabase_uid=supabase_uid,
             is_active=True,
@@ -109,17 +108,4 @@ class StaffAccountRepository:
         """
         from app.modules.auth.models.auth_models import User
         stmt = select(User).where(User.username == username)
-        return self._session.exec(stmt).first()
-
-    def find_user_by_email(self, email: str) -> Optional["User"]:
-        """Find user by email.
-        
-        Args:
-            email: Email to search
-            
-        Returns:
-            User or None
-        """
-        from app.modules.auth.models.auth_models import User
-        stmt = select(User).where(User.email == email)
         return self._session.exec(stmt).first()

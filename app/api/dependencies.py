@@ -26,7 +26,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlmodel import Session
 
 from app.db.connection import get_session
-from app.core.supabase_clients import get_supabase_anon
+from app.core.supabase_clients import get_supabase_anon, get_supabase_admin
 from app.modules.auth import get_user_by_supabase_uid
 from app.modules.auth import User
 from app.modules.auth.constants import UserRole
@@ -117,13 +117,9 @@ require_admin = _require_roles(
 require_any = get_current_user
 
 
-# ── Service Factories (Pragmatic Bridge) ───────────────────────────────────────
-# Each factory instantiates a fresh, stateless service per request.
-# See BACKLOG.md §C1 for the deferred Session Injection refactor.
-
 from app.modules.auth.services.auth_service import AuthService
 
-# ── CRM Service Factories (SOLID Refactored) ────────────────────────────────────
+# ── CRM Service Factories ────────────────────────────────────
 from app.modules.crm.repositories.unit_of_work import StudentUnitOfWork
 from app.modules.crm.services import (
     StudentCrudService,
@@ -140,6 +136,7 @@ from app.modules.academics.services.group_level_service import GroupLevelService
 from app.modules.academics.services.group_competition_service import GroupCompetitionService
 from app.modules.academics.services.session_service import SessionService
 from app.modules.academics.services.group_analytics_service import GroupAnalyticsService
+
 from app.modules.enrollments.services.enrollment_service import EnrollmentService
 from app.modules.enrollments.services.enrollment_migration_service import EnrollmentMigrationService
 
@@ -314,11 +311,13 @@ def get_employee_crud_service() -> EmployeeCrudService:
         return EmployeeCrudService(uow)
 
 
-def get_staff_account_service() -> StaffAccountService:
+def get_staff_account_service(
+    supabase_client = Depends(get_supabase_admin),
+) -> StaffAccountService:
     """Returns StaffAccountService with fresh Unit of Work per request."""
     with get_session() as session:
         uow = HRUnitOfWork(session)
-        return StaffAccountService(uow)
+        return StaffAccountService(uow, supabase_client)
 
 
 # Analytics services
