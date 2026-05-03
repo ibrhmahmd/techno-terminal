@@ -37,6 +37,7 @@ class EmployeeCrudService:
 
         employee = self._uow.employees.create(dto)
         self._uow.flush()
+        self._uow.commit()
 
         return EmployeeReadDTO.model_validate(employee)
 
@@ -65,6 +66,7 @@ class EmployeeCrudService:
 
         updated = self._uow.employees.update(employee_id, dto)
         self._uow.flush()
+        self._uow.commit()
 
         return EmployeeReadDTO.model_validate(updated)
 
