@@ -5,6 +5,7 @@ Repository functions for Group History and Lifecycle tracking.
 """
 from typing import Sequence
 from sqlmodel import Session, select, func
+from sqlalchemy import case
 from datetime import datetime
 
 from app.modules.academics.models.group_level_models import (
@@ -12,33 +13,9 @@ from app.modules.academics.models.group_level_models import (
     GroupCourseHistory,
     EnrollmentLevelHistory,
 )
-from app.modules.academics.models import Group, Course
+from app.modules.academics.models import Course
 from app.modules.hr.models import Employee
 from app.modules.crm.models.student_models import Student
-
-
-def get_group_levels_timeline(
-    session: Session, group_id: int
-) -> Sequence[GroupLevel]:
-    """Get chronological timeline of all level snapshots for a group."""
-    stmt = (
-        select(GroupLevel)
-        .where(GroupLevel.group_id == group_id)
-        .order_by(GroupLevel.level_number.asc())
-    )
-    return session.exec(stmt).all()
-
-
-def get_group_course_assignments(
-    session: Session, group_id: int
-) -> Sequence[GroupCourseHistory]:
-    """Get chronological course assignment history for a group."""
-    stmt = (
-        select(GroupCourseHistory)
-        .where(GroupCourseHistory.group_id == group_id)
-        .order_by(GroupCourseHistory.assigned_at.asc())
-    )
-    return session.exec(stmt).all()
 
 
 def record_course_assignment(
@@ -79,21 +56,6 @@ def complete_course_assignment(
     return record
 
 
-def get_enrollment_transitions(
-    session: Session, group_id: int, student_id: int | None = None
-) -> Sequence[EnrollmentLevelHistory]:
-    """Get level transition history for enrollments in a group."""
-    stmt = select(EnrollmentLevelHistory).where(
-        EnrollmentLevelHistory.group_level_id.in_(
-            select(GroupLevel.id).where(GroupLevel.group_id == group_id)
-        )
-    )
-    if student_id:
-        stmt = stmt.where(EnrollmentLevelHistory.student_id == student_id)
-    stmt = stmt.order_by(EnrollmentLevelHistory.level_entered_at.asc())
-    return session.exec(stmt).all()
-
-
 def record_enrollment_level_transition(
     session: Session,
     enrollment_id: int,
@@ -132,31 +94,6 @@ def complete_enrollment_level(
     return record
 
 
-def get_full_group_lifecycle(session: Session, group_id: int) -> dict:
-    """Get complete lifecycle data for a group (levels + courses + stats)."""
-    group = session.get(Group, group_id)
-    if not group:
-        return {}
-    
-    levels = get_group_levels_timeline(session, group_id)
-    courses = get_group_course_assignments(session, group_id)
-    
-    # Calculate stats
-    total_levels = len(levels)
-    completed_levels = sum(1 for l in levels if l.status == "completed")
-    
-    return {
-        "group_id": group_id,
-        "group_name": group.name,
-        "created_at": group.created_at,
-        "current_level": group.level_number,
-        "total_levels": total_levels,
-        "completed_levels": completed_levels,
-        "levels_timeline": levels,
-        "course_assignments": courses,
-    }
-
-
 # ════════════════════════════════════════════════════════════
 # Group Analytics Repository Functions
 # ════════════════════════════════════════════════════════════
@@ -168,8 +105,6 @@ def get_group_levels_with_details(
     Get all group levels with course and instructor names.
     Returns tuples of (GroupLevel, course_name, instructor_name).
     """
-    from sqlalchemy.orm import joinedload
-    
     stmt = (
         select(GroupLevel)
         .where(GroupLevel.group_id == group_id)
@@ -196,7 +131,7 @@ def get_group_levels_with_details(
 
 def get_level_student_counts(
     session: Session, group_id: int
-) -> dict[int, int]:
+) -> dict[int, int]: #TODO remove Dict and write a typed DTO class
     """
     Get student count per level for a group.
     Returns dict mapping level_number -> student_count.
@@ -242,9 +177,7 @@ def get_group_enrollments_with_details(
     return session.exec(stmt).all()
 
 
-from sqlalchemy import case
-
-def get_group_enrollment_stats(session: Session, group_id: int) -> dict:
+def get_group_enrollment_stats(session: Session, group_id: int) -> dict: #TODO remove Dict and write a typed DTO class
     """
     Get enrollment statistics for a group.
     Returns: total, active, completed, dropped counts.
@@ -286,7 +219,7 @@ def get_enrollment_payments(session: Session, enrollment_id: int) -> float:
 
 def get_group_instructors_summary(
     session: Session, group_id: int
-) -> Sequence[tuple[int, str, datetime, datetime, int, bool]]:
+) -> Sequence[tuple[int, str, datetime, datetime, int, bool]]: #TODO remove loose return types and write a typed DTO class
     """
     Get unique instructors for a group with summary stats.
     Returns: (instructor_id, instructor_name, first_assigned, last_assigned, levels_count, is_current)

@@ -40,7 +40,7 @@ def get_group_level(
 
 @router.post(
     "/academics/groups/{group_id}/levels/{level_number}/complete",
-    response_model=ApiResponse[dict],
+    response_model=ApiResponse[dict], #TODO remove Dict and write a typed DTO class
     summary="Complete a level and progress to next",
 )
 def complete_group_level(
@@ -76,7 +76,7 @@ def complete_group_level(
 
 @router.post(
     "/academics/groups/{group_id}/levels/{level_number}/cancel",
-    response_model=ApiResponse[dict],
+    response_model=ApiResponse[dict], #TODO remove Dict and write a typed DTO class
     summary="Cancel a group level",
 )
 def cancel_group_level_endpoint(

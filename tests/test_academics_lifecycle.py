@@ -1,89 +1,27 @@
 """
 Test module for Group Lifecycle router.
 
-Tests all endpoints in group_lifecycle_router.py:
-- GET /academics/groups/{group_id}/history - Lifecycle history
-- GET /academics/groups/{group_id}/levels - List group levels
+Tests active endpoints in group_lifecycle_router.py:
 - GET /academics/groups/{group_id}/levels/{level_number} - Get level details
 - POST /academics/groups/{group_id}/levels/{level_number}/complete - Complete level
 - POST /academics/groups/{group_id}/levels/{level_number}/cancel - Cancel level
-- GET /academics/groups/{group_id}/courses/history - Course history
-- GET /academics/groups/{group_id}/enrollments/history - Enrollment history
-- GET /academics/groups/{group_id}/levels/analytics - Level analytics
 - GET /academics/groups/{group_id}/enrollments/analytics - Enrollment analytics
 - GET /academics/groups/{group_id}/instructors/analytics - Instructor analytics
 - GET /academics/groups/{group_id}/enrollment-history - Enrollment history alias
 - GET /academics/groups/{group_id}/instructor-history - Instructor history alias
+
+DEPRECATED (removed):
+- GET /academics/groups/{group_id}/history (replaced by /levels/detailed)
+- GET /academics/groups/{group_id}/levels (replaced by /levels/detailed)
+- GET /academics/groups/{group_id}/courses/history (replaced by lookup table)
+- GET /academics/groups/{group_id}/enrollments/history (replaced by /enrollments/all)
+- GET /academics/groups/{group_id}/levels/analytics (merged into /levels/detailed)
 """
-import pytest
-from datetime import date
-from app.modules.academics.models import Group, Course, GroupLevel
+from app.modules.academics.models import GroupLevel
 
 
 class TestGroupLifecycleRead:
     """GET endpoints - require_any auth"""
-
-    def test_get_group_lifecycle_history_success(self, client, admin_headers, db_session):
-        """Test getting full lifecycle history for a group."""
-        from tests.utils.db_helpers import create_test_course, create_test_group
-        course = create_test_course(db_session)
-        group = create_test_group(db_session, course_id=course.id)
-
-        response = client.get(
-            f"/api/v1/academics/groups/{group.id}/history",
-            headers=admin_headers
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["success"] is True
-
-    def test_get_group_lifecycle_history_not_found(self, client, admin_headers):
-        """Test getting history for non-existent group returns 404."""
-        response = client.get(
-            "/api/v1/academics/groups/99999/history",
-            headers=admin_headers
-        )
-        assert response.status_code == 404
-
-    def test_list_group_levels_success(self, client, admin_headers, db_session):
-        """Test listing all level snapshots for a group."""
-        from tests.utils.db_helpers import create_test_course, create_test_group
-        course = create_test_course(db_session)
-        group = create_test_group(db_session, course_id=course.id)
-
-        # Create a level
-        level = GroupLevel(
-            group_id=group.id,
-            level_number=1,
-            course_id=course.id,
-            status="active"
-        )
-        db_session.add(level)
-        db_session.commit()
-
-        response = client.get(
-            f"/api/v1/academics/groups/{group.id}/levels",
-            headers=admin_headers
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["success"] is True
-        assert isinstance(data["data"], list)
-
-    def test_list_group_levels_with_status_filter(self, client, admin_headers, db_session):
-        """Test filtering levels by status."""
-        from tests.utils.db_helpers import create_test_course, create_test_group
-        course = create_test_course(db_session)
-        group = create_test_group(db_session, course_id=course.id)
-
-        response = client.get(
-            f"/api/v1/academics/groups/{group.id}/levels?status=active",
-            headers=admin_headers
-        )
-
-        assert response.status_code == 200
 
     def test_get_group_level_details_success(self, client, admin_headers, db_session):
         """Test getting specific level details."""
@@ -121,49 +59,6 @@ class TestGroupLifecycleRead:
             headers=admin_headers
         )
         assert response.status_code == 404
-
-    def test_get_group_course_history_success(self, client, admin_headers, db_session):
-        """Test getting course assignment history."""
-        from tests.utils.db_helpers import create_test_course, create_test_group
-        course = create_test_course(db_session)
-        group = create_test_group(db_session, course_id=course.id)
-
-        response = client.get(
-            f"/api/v1/academics/groups/{group.id}/courses/history",
-            headers=admin_headers
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["success"] is True
-
-    def test_get_group_enrollment_history_success(self, client, admin_headers, db_session):
-        """Test getting enrollment history."""
-        from tests.utils.db_helpers import create_test_course, create_test_group
-        course = create_test_course(db_session)
-        group = create_test_group(db_session, course_id=course.id)
-
-        response = client.get(
-            f"/api/v1/academics/groups/{group.id}/enrollments/history",
-            headers=admin_headers
-        )
-
-        assert response.status_code == 200
-
-    def test_get_group_levels_analytics_success(self, client, admin_headers, db_session):
-        """Test getting level progression analytics."""
-        from tests.utils.db_helpers import create_test_course, create_test_group
-        course = create_test_course(db_session)
-        group = create_test_group(db_session, course_id=course.id)
-
-        response = client.get(
-            f"/api/v1/academics/groups/{group.id}/levels/analytics",
-            headers=admin_headers
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["success"] is True
 
     def test_get_group_enrollment_analytics_success(self, client, admin_headers, db_session):
         """Test getting enrollment analytics."""
@@ -390,17 +285,3 @@ class TestGroupLifecycleEdgeCases:
 
         # Should return 422 for invalid params
         assert response.status_code in [200, 422]
-
-    def test_get_enrollment_history_with_student_filter(self, client, admin_headers, db_session):
-        """Test enrollment history with student filter."""
-        from tests.utils.db_helpers import create_test_course, create_test_group, create_test_student
-        course = create_test_course(db_session)
-        group = create_test_group(db_session, course_id=course.id)
-        student = create_test_student(db_session, full_name="Test Student")
-
-        response = client.get(
-            f"/api/v1/academics/groups/{group.id}/enrollments/history?student_id={student.id}",
-            headers=admin_headers
-        )
-
-        assert response.status_code == 200

@@ -7,8 +7,6 @@ from datetime import datetime
 
 from app.db.connection import get_session
 from app.api.schemas.academics.group_analytics import (
-    GroupLevelHistoryItemDTO,
-    GroupLevelHistoryResponseDTO,
     EnrollmentHistoryItemDTO,
     GroupEnrollmentHistoryResponseDTO,
     CompetitionHistoryItemDTO,
@@ -17,8 +15,6 @@ from app.api.schemas.academics.group_analytics import (
     GroupInstructorHistoryResponseDTO,
 )
 from app.modules.academics.repositories import (
-    get_group_levels_with_details,
-    get_level_student_counts,
     get_group_enrollments_with_details,
     get_group_enrollment_stats,
     get_enrollment_payments,
@@ -30,68 +26,6 @@ from app.modules.academics.models import Group
 
 class GroupAnalyticsService:
     """Service for group analytics and history endpoints."""
-
-    def get_level_progression_history(self, group_id: int) -> GroupLevelHistoryResponseDTO:
-        """
-        Get complete level progression history for a group.
-        Includes student counts per level.
-        """
-        with get_session() as session:
-            # Get group info
-            group = session.get(Group, group_id)
-            if not group:
-                return GroupLevelHistoryResponseDTO(
-                    group_id=group_id,
-                    group_name="Unknown",
-                    total_levels=0,
-                    completed_levels=0,
-                    active_level=None,
-                    levels=[]
-                )
-
-            # Get all levels with course and instructor names
-            levels_with_details = get_group_levels_with_details(session, group_id)
-
-            # Get student counts per level
-            student_counts = get_level_student_counts(session, group_id)
-
-            # Build level DTOs
-            level_dtos = []
-            active_level = None
-            completed_count = 0
-
-            for level, course_name, instructor_name in levels_with_details:
-                if level.status == "completed":
-                    completed_count += 1
-                if level.status == "active":
-                    active_level = level.level_number
-
-                # Calculate sessions completed (placeholder - would need attendance data)
-                sessions_completed = 0  # TODO: Query from attendance/sessions
-
-                level_dtos.append(GroupLevelHistoryItemDTO(
-                    level_id=level.id,
-                    level_number=level.level_number,
-                    status=level.status,
-                    course_id=level.course_id,
-                    course_name=course_name,
-                    instructor_id=level.instructor_id,
-                    instructor_name=instructor_name,
-                    sessions_planned=level.sessions_planned,
-                    sessions_completed=sessions_completed,
-                    student_count=student_counts.get(level.level_number, 0),
-                    effective_from=level.effective_from,
-                    effective_to=level.effective_to,
-                ))
-
-            return GroupLevelHistoryResponseDTO(
-                group_id=group_id,
-                group_name=group.name,
-                total_levels=len(level_dtos),
-                completed_levels=completed_count,
-                active_level=active_level,
-                levels=level_dtos
-            )
 
     def get_enrollment_history(
         self,

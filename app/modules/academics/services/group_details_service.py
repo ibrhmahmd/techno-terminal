@@ -233,7 +233,7 @@ class GroupDetailsService:
 
     def _get_enrollment_stats_for_levels(
         self, session, group_id: int, level_numbers: list[int]
-    ) -> dict[int, dict]:
+    ) -> dict[int, dict]: #TODO remove Dict and write a typed DTO class
         """Get enrollment counts per level."""
         from sqlmodel import select, func
         
@@ -265,7 +265,7 @@ class GroupDetailsService:
 
     def _get_payment_stats_for_levels(
         self, session, group_id: int, level_numbers: list[int]
-    ) -> dict[int, dict]:
+    ) -> dict[int, dict]: #TODO remove Dict and write a typed DTO class
         """Get payment aggregates per level using enrollment data."""
         from sqlmodel import select, func
         from app.modules.finance.models.payment import Payment
@@ -318,7 +318,7 @@ class GroupDetailsService:
 
     def _build_courses_lookup(
         self, session, course_ids: list[int]
-    ) -> dict[int, CourseLookupDTO]:
+    ) -> dict[int, CourseLookupDTO]: #TODO remove Dict and write a typed DTO class
         """Build lookup table for courses."""
         lookup: dict[int, CourseLookupDTO] = {}
         for cid in course_ids:
@@ -332,7 +332,7 @@ class GroupDetailsService:
 
     def _build_instructors_lookup(
         self, session, instructor_ids: list[int]
-    ) -> dict[int, InstructorLookupDTO]:
+    ) -> dict[int, InstructorLookupDTO]: #TODO remove Dict and write a typed DTO class
         """Build lookup table for instructors."""
         lookup: dict[int, InstructorLookupDTO] = {}
         for iid in instructor_ids:
