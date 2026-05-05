@@ -173,7 +173,7 @@ Path params:
 - `team_id` (integer, required)
 
 Response:
-- `200 OK` -> `ApiResponse<dict>` with linked team info:
+- `200 OK` -> `ApiResponse<TeamLinkResponse>` with linked team info:
 ```json
 {
   "team_id": 1,
@@ -204,15 +204,17 @@ Query params:
 - `category_id` (integer, optional): Competition category
 
 Response:
-- `200 OK` -> `ApiResponse<dict>` with participation record:
+- `200 OK` -> `ApiResponse<CompetitionRegistrationResponse>` with participation record:
 ```json
 {
   "participation_id": 1,
   "group_id": 5,
   "team_id": 2,
   "competition_id": 3,
+  "category_id": null,
   "entered_at": "2026-03-01T09:00:00",
-  "is_active": true
+  "is_active": true,
+  "message": "Team registered for competition successfully"
 }
 ```
 
@@ -238,13 +240,14 @@ Query:
 - `final_placement` (integer, optional): Final ranking/placement
 
 Response:
-- `200 OK` -> `ApiResponse<dict>` with updated participation:
+- `200 OK` -> `ApiResponse<CompetitionCompletionResponse>` with updated participation:
 ```json
 {
   "participation_id": 1,
   "is_active": false,
   "left_at": "2026-05-15T18:00:00",
-  "final_placement": 3
+  "final_placement": 3,
+  "message": "Competition participation marked as completed"
 }
 ```
 
@@ -270,12 +273,13 @@ Query:
 - `reason` (optional): Reason for withdrawal
 
 Response:
-- `200 OK` -> `ApiResponse<dict>` with participation_id, status, withdrawn_at:
+- `200 OK` -> `ApiResponse<CompetitionWithdrawalResponse>` with participation_id, status, withdrawn_at:
 ```json
 {
   "participation_id": 1,
   "status": "withdrawn",
-  "withdrawn_at": "2026-04-01T10:30:00"
+  "withdrawn_at": "2026-04-01T10:30:00",
+  "message": "Successfully withdrew from competition."
 }
 ```
 

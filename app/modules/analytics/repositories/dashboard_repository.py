@@ -255,13 +255,14 @@ def get_attendance_for_sessions(
     for row in rows:
         mapping = row._mapping
         record = AttendanceRecordDTO(
+            session_id=mapping['session_id'],
             student_id=mapping['student_id'],
             student_name=mapping['student_name'],
             gender=mapping['gender'] or 'male',
             status=mapping['status'],
         )
         attendance.append(record)
-    
+
     return attendance
 
 

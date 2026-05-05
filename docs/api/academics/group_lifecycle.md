@@ -115,19 +115,22 @@ Path params:
 - `level_number` (integer, required)
 
 Response:
-- `200 OK` -> `ApiResponse<dict>` with completed and new level info:
+- `200 OK` -> `ApiResponse<GroupLevelCompletionResponse>` with completed and new level info:
 ```json
 {
   "completed_level": {
     "id": 1,
+    "group_id": 5,
     "level_number": 1,
     "status": "completed"
   },
   "new_level": {
     "id": 2,
+    "group_id": 5,
     "level_number": 2,
     "status": "active"
-  }
+  },
+  "message": "Group progressed from level 1 to level 2"
 }
 ```
 
@@ -153,7 +156,7 @@ Request body:
 - `CancelLevelInput` (optional reason)
 
 Response:
-- `200 OK` -> `ApiResponse<dict>` with level_id, level_number, status
+- `200 OK` -> `ApiResponse<CancelLevelResult>` with level_id, level_number, status, cancelled_at, reason
 
 Errors:
 - `401`, `403`, `404`, `400` (if level already completed)

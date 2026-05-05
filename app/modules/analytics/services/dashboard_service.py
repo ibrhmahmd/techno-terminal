@@ -108,31 +108,11 @@ class DashboardService:
             attendance_by_session: dict[int, list[AttendanceRecordDTO]] = {}
             if include_attendance and session_ids:
                 attendance_list = repo.get_attendance_for_sessions(db, session_ids)
-                # Group attendance by session_id - need to query session_id since DTO doesn't have it
-                # Re-query to get the mapping
-                if attendance_list:
-                    # Get session_id for each attendance record from the query result
-                    # The attendance records don't include session_id, so we need to fetch it
-                    stmt = text("""
-                        SELECT ar.id, ar.session_id, ar.student_id 
-                        FROM attendance ar 
-                        WHERE ar.session_id IN :session_ids
-                    """)
-                    ids_tuple = tuple(session_ids) if len(session_ids) > 1 else (session_ids[0],)
-                    att_result = db.execute(stmt, {"session_ids": ids_tuple}).all()
-                    
-                    # Map student_id -> session_id
-                    student_to_session: dict[int, int] = {}
-                    for row in att_result:
-                        student_to_session[row.student_id] = row.session_id
-                    
-                    # Build attendance_by_session
-                    for record in attendance_list:
-                        session_id = student_to_session.get(record.student_id)
-                        if session_id:
-                            if session_id not in attendance_by_session:
-                                attendance_by_session[session_id] = []
-                            attendance_by_session[session_id].append(record)
+                # Group attendance by session_id - each record now includes session_id
+                for record in attendance_list:
+                    if record.session_id not in attendance_by_session:
+                        attendance_by_session[record.session_id] = []
+                    attendance_by_session[record.session_id].append(record)
             
             # Group sessions by group_id
             sessions_by_group: dict[int, list[SessionWithAttendanceDTO]] = {}

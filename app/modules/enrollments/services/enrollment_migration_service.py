@@ -12,7 +12,7 @@ from sqlmodel import Session, select
 from app.db.connection import get_session
 from app.modules.academics.models import Course, Group
 from app.modules.enrollments.models.enrollment_models import Enrollment
-from app.modules.academics.schemas.scheduling_dtos import (
+from app.modules.academics.group.lifecycle.schemas import (
     MigrateEnrollmentsDTO,
     EnrollmentMigrationResult,
 )

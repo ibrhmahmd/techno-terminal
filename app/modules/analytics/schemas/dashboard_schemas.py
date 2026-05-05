@@ -65,6 +65,7 @@ class GroupInfoDTO(BaseModel):
 
 class AttendanceRecordDTO(BaseModel):
     """Single attendance record for a student in a session."""
+    session_id: int
     student_id: int
     student_name: str
     gender: str  # "male" | "female"
