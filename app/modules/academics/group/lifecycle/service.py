@@ -19,6 +19,7 @@ from app.modules.enrollments.services.enrollment_migration_service import (
 from app.modules.hr.models import Employee
 import app.modules.academics.group.level.repository as repo
 from app.shared.exceptions import BusinessRuleError
+from app.shared.audit_utils import apply_create_audit, apply_update_audit
 from app.modules.academics.group.lifecycle.schemas import (
     CreateGroupWithLevelDTO,
     CreateGroupLevelDTO,
@@ -93,7 +94,6 @@ class GroupLifecycleService:
                 notes=data.group_input.notes,
                 status="active",
             )
-            from app.shared.audit_utils import apply_create_audit
             apply_create_audit(group)
             session.add(group)
             session.flush()  # Get group.id without commit
@@ -296,7 +296,6 @@ class GroupLifecycleService:
             group.level_number = new_level_number
             if data.group_name:
                 group.name = data.group_name.strip()
-            from app.shared.audit_utils import apply_update_audit
             apply_update_audit(group)
             session.add(group)
 
@@ -365,7 +364,6 @@ class GroupLifecycleService:
                 price_override=price_override,
                 status=data.status,
             )
-            from app.shared.audit_utils import apply_create_audit
             apply_create_audit(level)
             session.add(level)
             session.flush()
@@ -384,7 +382,6 @@ class GroupLifecycleService:
 
             # Update group's level_number to match the new level
             group.level_number = data.level_number
-            from app.shared.audit_utils import apply_update_audit
             apply_update_audit(group)
             session.add(group)
 

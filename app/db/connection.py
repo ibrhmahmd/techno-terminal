@@ -19,6 +19,12 @@ def get_engine():
             pool_timeout=30,
             pool_pre_ping=True,
             pool_recycle=1800,
+            connect_args={
+                "keepalives": 1,
+                "keepalives_idle": 30,
+                "keepalives_interval": 10,
+                "keepalives_count": 5,
+            },
         )
     return _engine
 
