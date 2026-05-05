@@ -81,3 +81,18 @@ def delete_session(session: Session, session_id: int) -> bool:
         session.delete(cs)
         return True
     return False
+
+
+def get_sessions_for_levels(
+    session: Session, group_id: int, level_numbers: list[int]
+) -> Sequence[CourseSession]:
+    """Returns all sessions for multiple level numbers in a group."""
+    stmt = (
+        select(CourseSession)
+        .where(
+            CourseSession.group_id == group_id,
+            CourseSession.level_number.in_(level_numbers),
+        )
+        .order_by(CourseSession.session_number)
+    )
+    return session.exec(stmt).all()

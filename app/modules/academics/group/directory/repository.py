@@ -156,6 +156,17 @@ def search_groups(
     return results, total
 
 
+def get_transfer_options(
+    session: Session, exclude_group_id: int
+) -> Sequence[Group]:
+    """Returns active groups excluding the specified group (for transfer options)."""
+    stmt = select(Group).where(
+        Group.status == GROUP_STATUS_ACTIVE,
+        Group.id != exclude_group_id
+    )
+    return session.exec(stmt).all()
+
+
 def get_groups_by_type(
     session: Session,
     group_type: str,

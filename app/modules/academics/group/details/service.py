@@ -316,7 +316,7 @@ class GroupDetailsService:
             )
             
             # Query 2: Get sessions for this level
-            sessions = session_repo.get_sessions_for_level(
+            sessions = session_repo.list_sessions_by_level(
                 session, group_id, level_number
             )
             
@@ -579,15 +579,28 @@ class GroupDetailsService:
                 ))
             
             # Build transfer options DTOs
-            transfer_dtos = [
-                TransferOptionDTO(
-                    group_id=t["group_id"],
-                    group_name=t["group_name"],
-                    course_name=t["course_name"],
-                    available_slots=t["available_slots"],
+            transfer_dtos = []
+            for t in transfer_options_data:
+                course = session.get(Course, t.course_id) if t.course_id else None
+                course_name = course.name if course else "Unknown"
+                # Calculate available slots
+                from app.modules.enrollments.models.enrollment_models import Enrollment
+                from app.modules.academics.constants import ENROLLMENT_STATUS_ACTIVE
+                from sqlmodel import select, func
+                enrolled_count_stmt = select(func.count(Enrollment.id)).where(
+                    Enrollment.group_id == t.id,
+                    Enrollment.level_number == t.level_number,
+                    Enrollment.status == ENROLLMENT_STATUS_ACTIVE
                 )
-                for t in transfer_options_data
-            ]
+                enrolled_count = session.exec(enrolled_count_stmt).first() or 0
+                available_slots = (t.max_capacity or 15) - enrolled_count
+                
+                transfer_dtos.append(TransferOptionDTO(
+                    group_id=t.id,
+                    group_name=t.name,
+                    course_name=course_name,
+                    available_slots=max(0, available_slots),
+                ))
             
             return GroupEnrollmentsResponseDTO(
                 group_id=group_id,

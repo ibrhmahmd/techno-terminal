@@ -39,6 +39,13 @@ class SessionService:
         with get_session() as session:
             return list(repo.list_sessions_by_group(session, group_id, include_cancelled))
 
+    def list_group_sessions(self, group_id: int, level_number: int | None = None) -> list[CourseSession]:
+        """List sessions for a group, optionally filtered by level number."""
+        with get_session() as session:
+            if level_number is not None:
+                return list(repo.list_sessions_by_level(session, group_id, level_number))
+            return list(repo.list_sessions_by_group(session, group_id))
+
     def generate_level_sessions(
         self, data: GenerateLevelSessionsInput
     ) -> list[CourseSession]:

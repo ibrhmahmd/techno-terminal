@@ -8,7 +8,7 @@ from app.modules.crm.repositories.unit_of_work import StudentUnitOfWork
 from app.modules.crm.services.student_crud_service import StudentCrudService
 from app.modules.crm.services.activity_service import StudentActivityService
 from app.modules.crm.models.student_models import StudentStatus
-import app.modules.academics as acad_srv
+from app.modules.academics.group.core.service import GroupCoreService
 from app.modules.academics.models.group_models import Group
 from app.modules.enrollments.models.enrollment_models import Enrollment
 from app.modules.enrollments.schemas.enrollment_schemas import (
@@ -59,7 +59,7 @@ class EnrollmentService:
         if student.status == StudentStatus.INACTIVE:
             raise BusinessRuleError(f"Student '{student.full_name}' is inactive and cannot be enrolled.")
 
-        group = acad_srv.get_group_by_id(data.group_id)
+        group = GroupCoreService().get_group_by_id(data.group_id)
         if not group:
             raise NotFoundError(f"Group ID {data.group_id} not found.")
         if group.status != "active":
@@ -150,7 +150,7 @@ class EnrollmentService:
         data: TransferStudentInput,
         background_tasks: Optional[Any] = None,
     ) -> EnrollmentDTO:
-        target_group = acad_srv.get_group_by_id(data.to_group_id)
+        target_group = GroupCoreService().get_group_by_id(data.to_group_id)
         if not target_group:
             raise NotFoundError(f"Target group {data.to_group_id} not found.")
         if target_group.status != "active":

@@ -16,7 +16,6 @@ from app.modules.academics.session.service import SessionService
 from app.modules.enrollments.services.enrollment_migration_service import (
     EnrollmentMigrationService,
 )
-from app.modules.crm.services.activity_service import StudentActivityService
 from app.modules.hr.models import Employee
 import app.modules.academics.group.level.repository as repo
 from app.shared.exceptions import BusinessRuleError
@@ -49,12 +48,10 @@ class GroupLifecycleService:
         group_level_service: Optional[GroupLevelService] = None,
         session_service: Optional[SessionService] = None,
         enrollment_migration_service: Optional[EnrollmentMigrationService] = None,
-        activity_service: Optional[StudentActivityService] = None,
     ):
         self.level_svc = group_level_service or GroupLevelService()
         self.session_svc = session_service or SessionService()
         self.migration_svc = enrollment_migration_service or EnrollmentMigrationService()
-        self.activity_svc = activity_service or StudentActivityService()
 
     def create_group_with_first_level(
         self,
@@ -275,26 +272,24 @@ class GroupLifecycleService:
                 
                 # Trigger level progression notification via activity logging
                 from app.modules.enrollments.models.enrollment_models import Enrollment
-                from app.modules.crm.schemas.activity_schemas import CreateActivityDTO
+                from app.modules.crm.repositories.activity_repository import ActivityRepository
                 from sqlmodel import select
                 
                 if migration_result.new_enrollment_ids:
+                    activity_repo = ActivityRepository(session)
                     stmt_enr = select(Enrollment).where(Enrollment.id.in_(migration_result.new_enrollment_ids))
                     new_enrollments = session.exec(stmt_enr).all()
                     
                     for enrollment in new_enrollments:
-                        self.activity_svc.create_activity(
-                            session,
-                            CreateActivityDTO(
-                                student_id=enrollment.student_id,
-                                activity_type="academic",
-                                subtype="level_started",
-                                description=f"Progressed to Level {new_level_number} in Group {group.name}",
-                                related_entity_type="enrollment",
-                                related_entity_id=enrollment.id,
-                                notes=f"Automatic progression from Level {current_level_number} to {new_level_number}"
-                            ),
-                            user_id=None
+                        activity_repo.create_activity_log(
+                            student_id=enrollment.student_id,
+                            activity_type="academic",
+                            activity_subtype="level_started",
+                            reference_type="enrollment",
+                            reference_id=enrollment.id,
+                            description=f"Progressed to Level {new_level_number} in Group {group.name}",
+                            metadata={"notes": f"Automatic progression from Level {current_level_number} to {new_level_number}"},
+                            performed_by=None
                         )
 
             # Phase 8: Update group's level_number and optional name

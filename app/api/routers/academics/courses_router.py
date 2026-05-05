@@ -29,7 +29,7 @@ def list_courses(
     _user: User = Depends(require_any),
     svc: CourseService = Depends(get_course_service),
 ):
-    results = svc.get_active_courses()
+    results = svc.list_active_courses()
     page = results[skip : skip + limit]
     return PaginatedResponse(
         data=[CoursePublic.model_validate(c) for c in page],

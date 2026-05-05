@@ -92,10 +92,11 @@ def create_app() -> FastAPI:
     app.include_router(parents_router, prefix="/api/v1", tags=["CRM — Parents"])
     # Academics (Courses, Groups, Sessions) + Attendance
     app.include_router(courses_router, prefix="/api/v1", tags=["Academics — Courses"])
-    app.include_router(groups_router, prefix="/api/v1", tags=["Academics — Groups"])
+    # Group directory router MUST come before groups_router to prevent /{group_id} shadowing /enriched
     app.include_router(
         group_directory_router, prefix="/api/v1", tags=["Academics — Group Directory"]
     )
+    app.include_router(groups_router, prefix="/api/v1", tags=["Academics — Groups"])
     app.include_router(sessions_router, prefix="/api/v1", tags=["Academics — Sessions"])
     app.include_router(
         group_details_router, prefix="/api/v1", tags=["Academics — Group Details"]
