@@ -9,7 +9,7 @@ from typing import Any, Optional
 from sqlalchemy import Column as SAColumn
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import SQLModel, Field, Column, String
-from app.shared.constants import GroupStatus
+from app.modules.academics.constants import GroupStatus
 
 class GroupBase(SQLModel):
     name: Optional[str] = None

@@ -9,7 +9,8 @@ from decimal import Decimal
 from typing import Optional
 
 from sqlmodel import SQLModel, Field, Column, String
-from app.shared.constants import DEFAULT_SESSIONS_PER_LEVEL
+from app.modules.academics.constants import DEFAULT_SESSIONS_PER_LEVEL
+from app.shared.datetime_utils import utc_now
 
 
 class GroupLevel(SQLModel, table=True):
@@ -25,10 +26,10 @@ class GroupLevel(SQLModel, table=True):
     sessions_planned: int = Field(default=DEFAULT_SESSIONS_PER_LEVEL)
     price_override: Optional[Decimal] = Field(default=None, decimal_places=2, max_digits=10)
     status: str = Field(default="active", sa_column=Column(String, index=True))
-    effective_from: datetime = Field(default_factory=datetime.utcnow)
+    effective_from: datetime = Field(default_factory=utc_now)
     effective_to: Optional[datetime] = None
-    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
-    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    created_at: Optional[datetime] = Field(default_factory=utc_now)
+    updated_at: Optional[datetime] = Field(default_factory=utc_now)
 
 
 class GroupCourseHistory(SQLModel, table=True):
@@ -39,11 +40,11 @@ class GroupCourseHistory(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     group_id: int = Field(foreign_key="groups.id", index=True)
     course_id: int = Field(foreign_key="courses.id")
-    assigned_at: datetime = Field(default_factory=datetime.utcnow)
+    assigned_at: datetime = Field(default_factory=utc_now)
     removed_at: Optional[datetime] = None
     assigned_by_user_id: Optional[int] = Field(default=None, foreign_key="users.id")
     notes: Optional[str] = None
-    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    created_at: Optional[datetime] = Field(default_factory=utc_now)
 
 
 class GroupCompetitionParticipation(SQLModel, table=True):
@@ -55,13 +56,13 @@ class GroupCompetitionParticipation(SQLModel, table=True):
     group_id: int = Field(foreign_key="groups.id", index=True)
     team_id: int = Field(foreign_key="teams.id", index=True)
     competition_id: int = Field(foreign_key="competitions.id")
-    entered_at: datetime = Field(default_factory=datetime.utcnow)
+    entered_at: datetime = Field(default_factory=utc_now)
     left_at: Optional[datetime] = None
     is_active: bool = Field(default=True, index=True)
     final_placement: Optional[int] = None
     notes: Optional[str] = None
-    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
-    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    created_at: Optional[datetime] = Field(default_factory=utc_now)
+    updated_at: Optional[datetime] = Field(default_factory=utc_now)
 
 
 class EnrollmentLevelHistory(SQLModel, table=True):
@@ -73,11 +74,11 @@ class EnrollmentLevelHistory(SQLModel, table=True):
     enrollment_id: int = Field(foreign_key="enrollments.id", index=True)
     group_level_id: int = Field(foreign_key="group_levels.id", index=True)
     student_id: int = Field(foreign_key="students.id", index=True)
-    level_entered_at: datetime = Field(default_factory=datetime.utcnow)
+    level_entered_at: datetime = Field(default_factory=utc_now)
     level_completed_at: Optional[datetime] = None
     status: str = Field(default="active", sa_column=Column(String))
-    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
-    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    created_at: Optional[datetime] = Field(default_factory=utc_now)
+    updated_at: Optional[datetime] = Field(default_factory=utc_now)
 
 
 
@@ -90,9 +91,9 @@ class GroupLevelCourseAssignment(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     group_level_id: int = Field(foreign_key="group_levels.id", index=True)
     course_id: int = Field(foreign_key="courses.id", index=True)
-    assigned_at: datetime = Field(default_factory=datetime.utcnow)
+    assigned_at: datetime = Field(default_factory=utc_now)
     removed_at: Optional[datetime] = None
     assigned_by_user_id: Optional[int] = Field(default=None, foreign_key="users.id")
     notes: Optional[str] = None
-    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
-    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    created_at: Optional[datetime] = Field(default_factory=utc_now)
+    updated_at: Optional[datetime] = Field(default_factory=utc_now)

@@ -1,0 +1,26 @@
+"""
+app/modules/academics/group/core/interface.py
+────────────────────────────────────────
+Interfaces for the Group Core slice.
+"""
+from typing import Protocol, runtime_checkable
+from app.modules.academics.models.course_models import Group
+from app.modules.academics.group.core.schemas import ScheduleGroupInput, UpdateGroupDTO
+
+
+@runtime_checkable
+class GroupCoreServiceInterface(Protocol):
+    """Contract for Group Core business logic."""
+    def schedule_group(self, data: ScheduleGroupInput) -> Group: ...
+    def update_group(self, group_id: int, data: UpdateGroupDTO) -> Group: ...
+    def get_group_by_id(self, group_id: int) -> Group | None: ...
+    def update_group_status(self, group_id: int, status: str) -> Group: ...
+
+
+@runtime_checkable
+class GroupCoreRepositoryInterface(Protocol):
+    """Contract for Group Core database access."""
+    def create_group(self, session, group: Group) -> Group: ...
+    def get_group_by_id(self, session, group_id: int) -> Group | None: ...
+    def update_group_status(self, session, group_id: int, status: str) -> Group | None: ...
+    def increment_group_level(self, session, group_id: int) -> Group | None: ...

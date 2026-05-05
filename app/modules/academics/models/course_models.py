@@ -11,7 +11,7 @@ class CourseBase(SQLModel):
     name: str = Field(unique=True)
     category: Optional[str] = None  # schema CHECK: 'software','hardware','steam','other'
     price_per_level: float  # schema: price_per_level (not price_egp)
-    sessions_per_level: int = 5
+    sessions_per_level: int = 4
     description: Optional[str] = None
     notes: Optional[str] = None
     is_active: bool = True

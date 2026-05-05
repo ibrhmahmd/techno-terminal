@@ -8,18 +8,14 @@ No commits. Caller owns the transaction.
 from datetime import date, time, timedelta
 from sqlmodel import Session
 from app.shared.datetime_utils import utc_now
-from app.modules.academics.models import CourseSession
+from app.modules.academics.models import CourseSession, Group
 
 
 def create_sessions_in_session(
     session: Session,
-    group_id: int,
-    level_number: int,
+    group: Group,
+    sessions_count: int,
     start_date: date,
-    count: int,
-    start_time: time,
-    end_time: time,
-    instructor_id: int,
 ) -> list[CourseSession]:
     """
     Creates `count` weekly CourseSession records within an existing DB session.
@@ -28,15 +24,15 @@ def create_sessions_in_session(
     """
     created: list[CourseSession] = []
     d = start_date
-    for i in range(count):
+    for i in range(sessions_count):
         cs = CourseSession(
-            group_id=group_id,
-            level_number=level_number,
+            group_id=group.id,
+            level_number=group.level_number,
             session_number=i + 1,
             session_date=d,
-            start_time=start_time,
-            end_time=end_time,
-            actual_instructor_id=instructor_id,
+            start_time=group.default_time_start,
+            end_time=group.default_time_end,
+            actual_instructor_id=group.instructor_id,
             is_extra_session=False,
             created_at=utc_now(),
         )
