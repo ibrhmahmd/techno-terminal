@@ -6,7 +6,7 @@ Public-facing Employee DTOs (safe fields only).
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, Field
-from app.shared.constants import EmploymentType
+from app.modules.hr.constants import EmploymentType
 
 
 class EmployeePublic(BaseModel):

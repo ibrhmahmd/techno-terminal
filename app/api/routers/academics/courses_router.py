@@ -8,12 +8,12 @@ Endpoints for course management.
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.schemas.common import ApiResponse, PaginatedResponse
-from app.api.schemas.academics.course import CoursePublic
-from app.api.dependencies import require_admin, require_any, get_course_service, get_group_service
-from app.modules.academics.schemas import AddNewCourseInput, UpdateCourseDTO, CourseStatsDTO
+from app.api.schemas.academics import CoursePublic, GroupListItem
+from app.api.dependencies import require_admin, require_any, get_course_service, get_group_directory_service
+from app.modules.academics.course.schemas import AddNewCourseInput, UpdateCourseDTO, CourseStatsDTO
 from app.modules.auth import User
-from app.modules.academics.services.course_service import CourseService
-from app.modules.academics.services.group_service import GroupService
+from app.modules.academics.course.service import CourseService
+from app.modules.academics.group.directory.service import GroupDirectoryService
 
 router = APIRouter(tags=["Academics — Courses"])
 
@@ -78,7 +78,7 @@ def get_course_stats(
 # get groups for a course (must be before /{course_id})
 @router.get(
     "/academics/courses/{course_id}/groups",
-    response_model=PaginatedResponse[CoursePublic],
+    response_model=PaginatedResponse[GroupListItem],
     summary="Get groups for a course",
 )
 def get_course_groups(
@@ -88,7 +88,7 @@ def get_course_groups(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     _user: User = Depends(require_any),
-    group_svc: GroupService = Depends(get_group_service),
+    group_svc: GroupDirectoryService = Depends(get_group_directory_service),
 ):
     from app.api.schemas.academics.group import GroupListItem
     results, total = group_svc.get_groups_by_course(

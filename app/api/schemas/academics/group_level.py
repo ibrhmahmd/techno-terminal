@@ -33,14 +33,13 @@ class GroupLevelScheduleResponse(BaseModel):
     """Response for scheduling a new level."""
     level: GroupLevelPublic
     sessions_created: int
-    sessions: list[dict]  # SessionSummary #TODO remove Dict and write a typed DTO class
     message: str
 
 
 class GroupLevelCompletionResponse(BaseModel):
-    """Response for completing a level."""
-    completed_level: dict  # GroupLevelSummary #TODO remove Dict and write a typed DTO class
-    new_level: dict  # GroupLevelSummary #TODO remove Dict and write a typed DTO class
+    """Response for completing a level — returns the completed and the newly created level."""
+    completed_level: "GroupLevelSummary"
+    new_level: "GroupLevelSummary"
     message: str
 
 

@@ -26,7 +26,7 @@ class GroupPublic(BaseModel):
     default_day: Optional[str] = None
     default_time_start: Optional[str] = None
     default_time_end: Optional[str] = None
-    is_active: bool = True
+    status: str = "active"
 
     model_config = {"from_attributes": True}
 
@@ -47,7 +47,7 @@ class GroupListItem(BaseModel):
     level_number: int
     default_day: Optional[str] = None
     default_time_start: Optional[str] = None
-    is_active: bool = True
+    status: str = "active"
 
     model_config = {"from_attributes": True}
 
@@ -75,10 +75,10 @@ class EnrichedGroupPublic(BaseModel):
     max_capacity: Optional[int] = None
     notes: Optional[str] = None
     status: str
-    current_student_count : int
+    current_student_count: int
 
     model_config = {"from_attributes": True}
-    
+
     @field_validator("default_time_start", "default_time_end", mode="before")
     @classmethod
     def parse_time(cls, value):
@@ -100,3 +100,12 @@ class ProgressGroupLevelRequest(BaseModel):
     session_start_date: Optional[date] = None  # Override default session start date (YYYY-MM-DD)
     course_id: Optional[int] = None  # Override group's course
     group_name: Optional[str] = None  # Override group name
+
+
+class ProgressGroupLevelResult(BaseModel):
+    """Response for POST /academics/groups/{id}/progress-level."""
+    old_level_number: int
+    new_level_number: int
+    enrollments_migrated: int
+    sessions_created: int
+    message: str

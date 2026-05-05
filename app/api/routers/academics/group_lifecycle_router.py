@@ -1,24 +1,43 @@
 """
-app/api/routers/academics/group_lifecycle.py
-───────────────────────────────────────────
-Router for group lifecycle and history endpoints.
+app/api/routers/academics/group_lifecycle_router.py
+───────────────────────────────────────────────────
+Router for group level lifecycle and analytics endpoints.
+
+Covers:
+- Level detail retrieval
+- Level completion and cancellation
+- Enrollment analytics
+- Instructor assignment analytics
+
+Auth: GET = require_any, mutations = require_admin.
 """
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 
 from app.api.schemas.common import ApiResponse
-from app.api.dependencies import require_any, require_admin, get_group_level_service, get_group_analytics_service
+from app.api.dependencies import (
+    require_any,
+    require_admin,
+    get_group_level_service,
+    get_group_analytics_service,
+)
 from app.modules.auth import User
-from app.modules.academics.services.group_level_service import GroupLevelService
-from app.modules.academics.services.group_analytics_service import GroupAnalyticsService
-from app.api.schemas.academics.group_analytics import (
+from app.modules.academics.group.level.service import GroupLevelService
+from app.modules.academics.group.analytics.service import GroupAnalyticsService
+from app.modules.academics.group.analytics.schemas import (
     GroupEnrollmentHistoryResponseDTO,
     GroupInstructorHistoryResponseDTO,
 )
-from app.api.schemas.academics.group_lifecycle import CancelLevelInput
-from app.api.schemas.academics.group_level import GroupLevelPublic
+from app.api.schemas.academics.group_lifecycle import CancelLevelInput, CancelLevelResult
+from app.api.schemas.academics.group_level import (
+    GroupLevelPublic,
+    GroupLevelCompletionResponse,
+    GroupLevelSummary,
+)
 
 router = APIRouter(tags=["Academics — Group Lifecycle"])
 
+
+# ── GET /academics/groups/{group_id}/levels/{level_number} ───────────────────
 
 @router.get(
     "/academics/groups/{group_id}/levels/{level_number}",
@@ -31,16 +50,16 @@ def get_group_level(
     _user: User = Depends(require_any),
     svc: GroupLevelService = Depends(get_group_level_service),
 ):
-    """
-    Returns detailed level information including course and instructor names.
-    """
+    """Returns detailed level information including course and instructor names."""
     level = svc.get_level_by_number(group_id, level_number)
     return ApiResponse(data=GroupLevelPublic.model_validate(level))
 
 
+# ── POST /academics/groups/{group_id}/levels/{level_number}/complete ──────────
+
 @router.post(
     "/academics/groups/{group_id}/levels/{level_number}/complete",
-    response_model=ApiResponse[dict], #TODO remove Dict and write a typed DTO class
+    response_model=ApiResponse[GroupLevelCompletionResponse],
     summary="Complete a level and progress to next",
 )
 def complete_group_level(
@@ -50,33 +69,38 @@ def complete_group_level(
     svc: GroupLevelService = Depends(get_group_level_service),
 ):
     """
-    Mark a level as completed and create next level snapshot.
+    Mark a level as completed and create the next level snapshot.
     Requires admin privileges.
     """
     try:
         completed, new_level = svc.complete_current_level(group_id)
         return ApiResponse(
-            data={
-                "completed_level": {
-                    "id": completed.id,
-                    "level_number": completed.level_number,
-                    "status": completed.status,
-                },
-                "new_level": {
-                    "id": new_level.id,
-                    "level_number": new_level.level_number,
-                    "status": new_level.status,
-                },
-            },
+            data=GroupLevelCompletionResponse(
+                completed_level=GroupLevelSummary(
+                    id=completed.id,
+                    group_id=completed.group_id,
+                    level_number=completed.level_number,
+                    status=completed.status,
+                ),
+                new_level=GroupLevelSummary(
+                    id=new_level.id,
+                    group_id=new_level.group_id,
+                    level_number=new_level.level_number,
+                    status=new_level.status,
+                ),
+                message=f"Group progressed from level {completed.level_number} to level {new_level.level_number}",
+            ),
             message=f"Group progressed from level {completed.level_number} to level {new_level.level_number}",
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
+# ── POST /academics/groups/{group_id}/levels/{level_number}/cancel ────────────
+
 @router.post(
     "/academics/groups/{group_id}/levels/{level_number}/cancel",
-    response_model=ApiResponse[dict], #TODO remove Dict and write a typed DTO class
+    response_model=ApiResponse[CancelLevelResult],
     summary="Cancel a group level",
 )
 def cancel_group_level_endpoint(
@@ -92,17 +116,22 @@ def cancel_group_level_endpoint(
     """
     try:
         cancelled_level = svc.cancel_level(group_id, level_number, body.reason)
+        from app.shared.datetime_utils import utc_now
         return ApiResponse(
-            data={
-                "level_id": cancelled_level.id,
-                "level_number": cancelled_level.level_number,
-                "status": cancelled_level.status,
-            },
+            data=CancelLevelResult(
+                level_id=cancelled_level.id,
+                level_number=cancelled_level.level_number,
+                status=cancelled_level.status,
+                cancelled_at=cancelled_level.updated_at or utc_now(),
+                reason=body.reason,
+            ),
             message=f"Level {level_number} cancelled successfully.",
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+
+# ── GET /academics/groups/{group_id}/enrollments/analytics ───────────────────
 
 @router.get(
     "/academics/groups/{group_id}/enrollments/analytics",
@@ -118,15 +147,14 @@ def get_group_enrollment_analytics(
     svc: GroupAnalyticsService = Depends(get_group_analytics_service),
 ):
     """
-    Returns comprehensive enrollment history including:
-    - Student contact information
-    - Enrollment status and dates
-    - Payment calculations (amount due, discount, payments made, balance)
-    - Pagination support
+    Returns comprehensive enrollment history including student contact info,
+    enrollment status, and payment calculations (amount due, discount, balance).
     """
     history = svc.get_enrollment_history(group_id, status, skip, limit)
     return ApiResponse(data=history)
 
+
+# ── GET /academics/groups/{group_id}/instructors/analytics ───────────────────
 
 @router.get(
     "/academics/groups/{group_id}/instructors/analytics",
@@ -139,20 +167,14 @@ def get_group_instructors_analytics(
     svc: GroupAnalyticsService = Depends(get_group_analytics_service),
 ):
     """
-    Returns instructor assignment history including:
-    - Unique instructors who have taught the group
-    - Levels taught count per instructor
-    - Assignment date ranges
-    - Current instructor designation
+    Returns instructor assignment history including unique instructors,
+    levels taught count, assignment date ranges, and current instructor.
     """
     history = svc.get_instructor_history(group_id)
     return ApiResponse(data=history)
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# ALIAS ENDPOINTS (for frontend compatibility)
-# ═══════════════════════════════════════════════════════════════════════════════
-
+# ── Alias endpoints (frontend compatibility) ─────────────────────────────────
 
 @router.get(
     "/academics/groups/{group_id}/enrollment-history",
@@ -167,7 +189,7 @@ def get_group_enrollment_history_alias(
     _user: User = Depends(require_any),
     svc: GroupAnalyticsService = Depends(get_group_analytics_service),
 ):
-    """Alias for /enrollments/analytics - returns enrollment history."""
+    """Alias for /enrollments/analytics — returns enrollment history."""
     history = svc.get_enrollment_history(group_id, status, skip, limit)
     return ApiResponse(data=history)
 
@@ -182,6 +204,6 @@ def get_group_instructor_history_alias(
     _user: User = Depends(require_any),
     svc: GroupAnalyticsService = Depends(get_group_analytics_service),
 ):
-    """Alias for /instructors/analytics - returns instructor assignment history."""
+    """Alias for /instructors/analytics — returns instructor assignment history."""
     history = svc.get_instructor_history(group_id)
     return ApiResponse(data=history)

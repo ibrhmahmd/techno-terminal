@@ -130,8 +130,8 @@ from app.modules.crm.services import (
 )
 
 from app.modules.academics.course.service import CourseService
-from app.modules.academics.group.core.service import GroupService
-from app.modules.academics.group.analytics.service import GroupHistoryService
+from app.modules.academics.group.core.service import GroupCoreService
+from app.modules.academics.group.directory.service import GroupDirectoryService
 from app.modules.academics.group.level.service import GroupLevelService
 from app.modules.academics.group.competition.service import GroupCompetitionService
 from app.modules.academics.session.service import SessionService
@@ -176,16 +176,21 @@ def get_parent_crud_service() -> ParentCrudService:
 def get_course_service() -> CourseService:
     return CourseService()
 
-def get_group_service() -> GroupService:
-    return GroupService()
 
-def get_group_history_service() -> GroupHistoryService:
-    """Returns a fresh GroupHistoryService instance per request."""
-    return GroupHistoryService()
+def get_group_service() -> GroupCoreService:
+    """Returns a fresh GroupCoreService instance per request."""
+    return GroupCoreService()
+
+
+def get_group_directory_service() -> GroupDirectoryService:
+    """Returns a fresh GroupDirectoryService instance per request."""
+    return GroupDirectoryService()
+
 
 def get_group_level_service() -> GroupLevelService:
     """Returns a fresh GroupLevelService instance per request."""
     return GroupLevelService()
+
 
 def get_group_competition_service() -> GroupCompetitionService:
     """Returns a GroupCompetitionService with activity logging."""
@@ -193,8 +198,14 @@ def get_group_competition_service() -> GroupCompetitionService:
         activity_svc = StudentActivityService(uow)
         return GroupCompetitionService(activity_svc=activity_svc)
 
+
 def get_session_service() -> SessionService:
     return SessionService()
+
+
+def get_group_analytics_service() -> GroupAnalyticsService:
+    """Returns a fresh GroupAnalyticsService instance per request."""
+    return GroupAnalyticsService()
 
 
 def get_notification_service() -> Generator["NotificationService", None, None]:
@@ -354,20 +365,8 @@ def get_competition_analytics_service() -> CompetitionAnalyticsService:
     return CompetitionAnalyticsService()
 
 
+
 # Group Analytics service
-from app.modules.academics.group.analytics.service import GroupHistoryService
-from app.modules.academics.group.level.service import GroupLevelService
-
-def get_group_history_service() -> GroupHistoryService:
-    """Returns a fresh GroupHistoryService instance per request."""
-    return GroupHistoryService()
-
-
-def get_group_level_service() -> GroupLevelService:
-    """Returns a fresh GroupLevelService instance per request."""
-    return GroupLevelService()
-
-
 def get_group_analytics_service() -> GroupAnalyticsService:
     """Returns a fresh GroupAnalyticsService instance per request."""
     return GroupAnalyticsService()

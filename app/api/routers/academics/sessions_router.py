@@ -11,9 +11,9 @@ from pydantic import BaseModel
 from app.api.schemas.common import ApiResponse
 from app.api.schemas.academics.session import SessionPublic
 from app.api.dependencies import require_admin, require_any, get_session_service
-from app.modules.academics.schemas import AddExtraSessionInput, UpdateSessionDTO
+from app.modules.academics.session.schemas import AddExtraSessionInput, UpdateSessionDTO
 from app.modules.auth import User
-from app.modules.academics.services.session_service import SessionService
+from app.modules.academics.session.service import SessionService
 
 router = APIRouter(tags=["Academics — Sessions"])
 

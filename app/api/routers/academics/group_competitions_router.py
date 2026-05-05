@@ -1,25 +1,46 @@
 """
-app/api/routers/academics/group_competitions.py
-──────────────────────────────────────────────
+app/api/routers/academics/group_competitions_router.py
+──────────────────────────────────────────────────────
 Router for group-centric competition APIs.
+
+Covers:
+- Listing a group's competition participations
+- Listing and linking teams to a group
+- Registering for and completing competitions
+- Analytics
+
+Auth: GET = require_any, mutations = require_admin.
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.schemas.common import ApiResponse, PaginatedResponse
-from app.api.dependencies import require_any, require_admin, get_group_competition_service, get_team_service, get_group_analytics_service
+from app.api.dependencies import (
+    require_any,
+    require_admin,
+    get_group_competition_service,
+    get_group_analytics_service,
+)
 from app.modules.auth import User
-from app.modules.academics.services.group_competition_service import GroupCompetitionService
-from app.modules.academics.services.group_analytics_service import GroupAnalyticsService
-from app.modules.competitions.services.team_service import TeamService
-from app.api.schemas.academics.group_analytics import GroupCompetitionHistoryResponseDTO
+from app.modules.academics.group.competition.service import GroupCompetitionService
+from app.modules.academics.group.analytics.service import GroupAnalyticsService
+from app.modules.academics.group.analytics.schemas import GroupCompetitionHistoryResponseDTO
 from app.api.schemas.academics.team import TeamPublic
+from app.api.schemas.academics.competition import (
+    GroupCompetitionPublic,
+    TeamLinkResponse,
+    CompetitionRegistrationResponse,
+    CompetitionCompletionResponse,
+    CompetitionWithdrawalResponse,
+)
 
 router = APIRouter(tags=["Academics — Group Competitions"])
 
 
+# ── GET /academics/groups/{group_id}/competitions ─────────────────────────────
+
 @router.get(
     "/academics/groups/{group_id}/competitions",
-    response_model=ApiResponse[list[dict]], #TODO remove Dict and write a typed DTO class
+    response_model=ApiResponse[list[GroupCompetitionPublic]],
     summary="List competition participations for a group",
 )
 def list_group_competitions(
@@ -28,15 +49,14 @@ def list_group_competitions(
     _user: User = Depends(require_any),
     svc: GroupCompetitionService = Depends(get_group_competition_service),
 ):
-    """
-    Returns all competition participations for a group.
-    
-    Query params:
-    - is_active: Filter by active status (True/False/None for all)
-    """
+    """Returns all competition participations for a group."""
     participations = svc.get_group_competitions(group_id, is_active=is_active)
-    return ApiResponse(data=participations)
+    return ApiResponse(
+        data=[GroupCompetitionPublic(**p) for p in participations]
+    )
 
+
+# ── GET /academics/groups/{group_id}/teams ────────────────────────────────────
 
 @router.get(
     "/academics/groups/{group_id}/teams",
@@ -51,21 +71,13 @@ def list_group_teams(
     _user: User = Depends(require_any),
     svc: GroupCompetitionService = Depends(get_group_competition_service),
 ):
-    """
-    Returns paginated list of teams linked to a group.
-    
-    Query params:
-    - include_inactive: Include teams marked as deleted if True
-    - skip: Number of records to skip (pagination)
-    - limit: Maximum number of records to return
-    """
+    """Returns paginated list of teams linked to a group."""
     teams, total = svc.get_teams_by_group(
         group_id=group_id,
         include_inactive=include_inactive,
         skip=skip,
-        limit=limit
+        limit=limit,
     )
-    
     return PaginatedResponse(
         data=[TeamPublic.model_validate(t) for t in teams],
         total=total,
@@ -74,9 +86,11 @@ def list_group_teams(
     )
 
 
+# ── POST /academics/groups/{group_id}/teams/{team_id}/link ───────────────────
+
 @router.post(
     "/academics/groups/{group_id}/teams/{team_id}/link",
-    response_model=ApiResponse[dict], #TODO remove Dict and write a typed DTO class
+    response_model=ApiResponse[TeamLinkResponse],
     summary="Link an existing team to a group",
 )
 def link_team_to_group(
@@ -85,23 +99,22 @@ def link_team_to_group(
     _user: User = Depends(require_admin),
     svc: GroupCompetitionService = Depends(get_group_competition_service),
 ):
-    """
-    Link an existing team to a group.
-    Requires admin privileges.
-    """
+    """Link an existing team to a group. Requires admin privileges."""
     try:
         result = svc.link_existing_team(group_id, team_id)
         return ApiResponse(
-            data=result,
+            data=TeamLinkResponse(**result),
             message=f"Team {team_id} linked to group {group_id}",
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
+# ── POST /academics/groups/{group_id}/competitions/{competition_id}/register ──
+
 @router.post(
     "/academics/groups/{group_id}/competitions/{competition_id}/register",
-    response_model=ApiResponse[dict], #TODO remove Dict and write a typed DTO class
+    response_model=ApiResponse[CompetitionRegistrationResponse],
     summary="Register a team for a competition",
 )
 def register_team_for_competition(
@@ -111,13 +124,7 @@ def register_team_for_competition(
     _user: User = Depends(require_admin),
     svc: GroupCompetitionService = Depends(get_group_competition_service),
 ):
-    """
-    Register a team from this group for a competition.
-    Requires admin privileges.
-    
-    Args:
-        team_id: The team to register
-    """
+    """Register a team from this group for a competition. Requires admin privileges."""
     try:
         participation = svc.register_team(
             group_id=group_id,
@@ -125,25 +132,26 @@ def register_team_for_competition(
             competition_id=competition_id,
         )
         return ApiResponse(
-            data={
-                "participation_id": participation.id,
-                "group_id": participation.group_id,
-                "team_id": participation.team_id,
-                "competition_id": participation.competition_id,
-                "category": participation.team.category if participation.team else None,
-                "subcategory": participation.team.subcategory if participation.team else None,
-                "entered_at": participation.entered_at,
-                "is_active": participation.is_active,
-            },
+            data=CompetitionRegistrationResponse(
+                participation_id=participation.id,
+                group_id=participation.group_id,
+                team_id=participation.team_id,
+                competition_id=participation.competition_id,
+                entered_at=participation.entered_at,
+                is_active=participation.is_active,
+                message="Team registered for competition successfully",
+            ),
             message="Team registered for competition successfully",
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
+# ── PATCH /academics/groups/{group_id}/competitions/{participation_id}/complete
+
 @router.patch(
     "/academics/groups/{group_id}/competitions/{participation_id}/complete",
-    response_model=ApiResponse[dict], #TODO remove Dict and write a typed DTO class
+    response_model=ApiResponse[CompetitionCompletionResponse],
     summary="Mark competition participation as completed",
 )
 def complete_competition_participation(
@@ -153,28 +161,28 @@ def complete_competition_participation(
     _user: User = Depends(require_admin),
     svc: GroupCompetitionService = Depends(get_group_competition_service),
 ):
-    """
-    Mark a competition participation as completed.
-    Optionally record final placement/ranking.
-    """
+    """Mark a competition participation as completed. Optionally record final placement."""
     try:
         participation = svc.complete_participation(participation_id, final_placement)
         return ApiResponse(
-            data={
-                "participation_id": participation.id,
-                "is_active": participation.is_active,
-                "left_at": participation.left_at,
-                "final_placement": participation.final_placement,
-            },
+            data=CompetitionCompletionResponse(
+                participation_id=participation.id,
+                is_active=participation.is_active,
+                left_at=participation.left_at,
+                final_placement=participation.final_placement,
+                message="Competition participation marked as completed",
+            ),
             message="Competition participation marked as completed",
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
+# ── DELETE /academics/groups/{group_id}/competitions/{participation_id} ───────
+
 @router.delete(
     "/academics/groups/{group_id}/competitions/{participation_id}",
-    response_model=ApiResponse[dict], #TODO remove Dict and write a typed DTO class
+    response_model=ApiResponse[CompetitionWithdrawalResponse],
     summary="Withdraw from competition",
 )
 def withdraw_from_competition(
@@ -184,23 +192,23 @@ def withdraw_from_competition(
     _user: User = Depends(require_admin),
     svc: GroupCompetitionService = Depends(get_group_competition_service),
 ):
-    """
-    Withdraw from a competition.
-    Requires admin privileges.
-    """
+    """Withdraw from a competition. Requires admin privileges."""
     try:
         result = svc.withdraw_from_competition(participation_id, reason)
         return ApiResponse(
-            data={
-                "participation_id": result["id"],
-                "status": result["status"],
-                "withdrawn_at": result["withdrawn_at"],
-            },
+            data=CompetitionWithdrawalResponse(
+                participation_id=result["id"],
+                status=result["status"],
+                withdrawn_at=result["withdrawn_at"],
+                message="Successfully withdrew from competition.",
+            ),
             message="Successfully withdrew from competition.",
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+
+# ── GET /academics/groups/{group_id}/competitions/analytics ───────────────────
 
 @router.get(
     "/academics/groups/{group_id}/competitions/analytics",
@@ -213,11 +221,8 @@ def get_group_competitions_analytics(
     svc: GroupAnalyticsService = Depends(get_group_analytics_service),
 ):
     """
-    Returns full competition participation history including:
-    - All competition participations for the group
-    - Team and category details
-    - Entry/exit dates and placement results
-    - Active vs completed status
+    Returns full competition participation history including team/category details,
+    entry/exit dates, placement results, and active vs completed status.
     """
     history = svc.get_competition_history(group_id)
     return ApiResponse(data=history)

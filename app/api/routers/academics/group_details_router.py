@@ -16,8 +16,8 @@ from fastapi import APIRouter, Depends, Path, HTTPException, status, Query
 
 from app.api.schemas.common import ApiResponse
 from app.api.dependencies import require_any, require_admin
-from app.modules.academics.services.group_details_service import GroupDetailsService
-from app.modules.academics.schemas.group_details_schemas import (
+from app.modules.academics.group.details.service import GroupDetailsService
+from app.modules.academics.group.details.schemas import (
     LevelDeleteResultDTO,
     GroupLevelsDetailedResponseDTO,
     GroupAttendanceResponseDTO,
