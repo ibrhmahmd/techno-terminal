@@ -51,3 +51,16 @@ class EmployeeAccountResultDTO(BaseModel):
     email: str
     role: UserRole
     created_at: datetime
+
+
+class StaffAccountLinkDTO(BaseModel):
+    """User-Employee link DTO - replaces tuple[User, Employee]."""
+    model_config = ConfigDict(from_attributes=True)
+
+    user_id: int
+    username: str
+    employee_id: int
+    full_name: str
+    role: UserRole
+    is_active: bool
+    phone: str

@@ -5,8 +5,8 @@ Pure validation functions for employee data.
 from app.modules.hr.constants import (
     MIN_NATIONAL_ID_LENGTH,
     MIN_PHONE_LENGTH,
+    EMPLOYMENT_TYPES,
 )
-from app.shared.constants import EMPLOYMENT_TYPES
 from app.shared.exceptions import ValidationError
 
 

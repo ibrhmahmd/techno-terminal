@@ -2,16 +2,16 @@
 
 Business logic for employee-user account linking.
 """
-from datetime import datetime
-
 from app.modules.auth.constants import UserRole
 from app.modules.hr.repositories import HRUnitOfWork
 from app.modules.hr.schemas import (
     CreateEmployeeAccountDTO,
     EmployeeAccountResultDTO,
     StaffAccountDTO,
+    StaffAccountLinkDTO,
 )
 from app.shared.constants import MIN_PASSWORD_LENGTH
+from app.shared.datetime_utils import utc_now
 from app.shared.exceptions import ConflictError, NotFoundError, ValidationError
 
 
@@ -68,27 +68,29 @@ class StaffAccountService:
             user_id=user.id,
             email=user.username,  # User model stores email in username field
             role=user.role,
-            created_at=datetime.utcnow(),
+            created_at=utc_now(),
         )
 
     def list_accounts(self) -> list[StaffAccountDTO]:
         """List all staff accounts with employee info.
-        
+
         Returns:
             List of StaffAccountDTO
         """
-        records = self._uow.staff_accounts.list_all_with_employees()
+        links: list[StaffAccountLinkDTO] = (
+            self._uow.staff_accounts.list_all_with_employees()
+        )
         return [
             StaffAccountDTO(
-                user_id=u.id,
-                employee_id=e.id,
-                username=u.username,
-                full_name=e.full_name,
-                role=u.role,
-                is_active=u.is_active,
-                phone=e.phone,
+                user_id=link.user_id,
+                employee_id=link.employee_id,
+                username=link.username,
+                full_name=link.full_name,
+                role=link.role,
+                is_active=link.is_active,
+                phone=link.phone,
             )
-            for u, e in records
+            for link in links
         ]
 
     def update_account_status(

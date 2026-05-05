@@ -8,6 +8,9 @@ from app.modules.hr.constants import (
     EMPLOYEE_FIELD_KEYS,
     EMPLOYEE_PAGE_SIZE,
     MIN_NATIONAL_ID_LENGTH,
+    EmploymentType,
+    EMPLOYMENT_TYPES,
+    is_valid_employment_type,
 )
 
 # Models
@@ -22,6 +25,7 @@ from app.modules.hr.schemas import (
     EmployeeListResponseDTO,
     EmployeeReadDTO,
     StaffAccountDTO,
+    StaffAccountLinkDTO,
     UpdateEmployeeDTO,
 )
 
@@ -35,6 +39,16 @@ from app.modules.hr.repositories import (
 # Services
 from app.modules.hr.services import EmployeeCrudService, StaffAccountService
 
+# Interfaces
+from app.modules.hr.services.interface import (
+    EmployeeCrudServiceInterface,
+    StaffAccountServiceInterface,
+)
+from app.modules.hr.repositories.interface import (
+    EmployeeRepositoryInterface,
+    StaffAccountRepositoryInterface,
+)
+
 # Validators
 from app.modules.hr.validators import (
     validate_employment_type,
@@ -47,6 +61,9 @@ __all__ = [
     "EMPLOYEE_FIELD_KEYS",
     "EMPLOYEE_PAGE_SIZE",
     "MIN_NATIONAL_ID_LENGTH",
+    "EmploymentType",
+    "EMPLOYMENT_TYPES",
+    "is_valid_employment_type",
     # Models
     "Employee",
     "EmployeeBase",
@@ -61,6 +78,12 @@ __all__ = [
     "CreateStaffAccountResultDTO",
     "CreateEmployeeAccountDTO",
     "EmployeeAccountResultDTO",
+    "StaffAccountLinkDTO",
+    # Interfaces
+    "EmployeeCrudServiceInterface",
+    "StaffAccountServiceInterface",
+    "EmployeeRepositoryInterface",
+    "StaffAccountRepositoryInterface",
     # Repositories
     "EmployeeRepository",
     "StaffAccountRepository",

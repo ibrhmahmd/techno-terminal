@@ -2,7 +2,25 @@
 
 Domain constants and field definitions for the HR module.
 """
-from typing import Final, FrozenSet
+from typing import Final, FrozenSet, Literal, TypeAlias
+
+# Employment types
+EmploymentType: TypeAlias = Literal["full_time", "part_time", "contract"]
+EMPLOYMENT_TYPES: list[EmploymentType] = ["full_time", "part_time", "contract"]
+_EMPLOYMENT_TYPE_SET: Final[FrozenSet[str]] = frozenset(EMPLOYMENT_TYPES)
+
+
+def is_valid_employment_type(value: str | None) -> bool:
+    """Validate employment type value.
+
+    Args:
+        value: Employment type string to validate
+
+    Returns:
+        True if valid or None, False otherwise
+    """
+    return value is None or value in _EMPLOYMENT_TYPE_SET
+
 
 # Employee field whitelist for create/update operations
 EMPLOYEE_FIELD_KEYS: Final[FrozenSet[str]] = frozenset(

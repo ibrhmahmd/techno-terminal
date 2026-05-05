@@ -10,7 +10,7 @@ from sqlalchemy import Column, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import SQLModel, Field
 
-from app.shared.constants import EmploymentType
+from app.modules.hr.constants import EmploymentType
 
 
 class EmployeeBase(SQLModel):

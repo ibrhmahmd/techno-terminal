@@ -6,12 +6,16 @@ HR domain router using SOLID architecture.
 Prefix: /api/v1 (mounted in main.py)
 Tag:    HR
 """
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.schemas.common import ApiResponse
 from app.api.schemas.hr.employee import EmployeePublic, EmployeeListItem, EmployeeCreateInput, StaffAccountPublic
 from app.api.schemas.hr.employee_account import CreateEmployeeAccountRequest, EmployeeAccountResponse
-# New SOLID imports
+from app.api.schemas.hr.attendance import AttendanceLogInput, AttendanceLogOutput
+
+# HR SOLID services
 from app.modules.hr import (
     EmployeeCrudService,
     StaffAccountService,
@@ -27,8 +31,6 @@ from app.modules.auth import User
 
 router = APIRouter(tags=["HR"])
 
-
-from app.api.schemas.hr.attendance import AttendanceLogInput, AttendanceLogOutput
 
 
 # list all employees (paginated)
@@ -179,12 +181,11 @@ def log_attendance(
     Placeholder endpoint for HR Attendance Logging.
     In production, this would persist to attendance records.
     """
-    from datetime import datetime
     return ApiResponse(
         data=AttendanceLogOutput(
             employee_id=body.employee_id,
             status=body.status,
-            logged_at=datetime.utcnow(),
+            logged_at=datetime.now(timezone.utc),
             message="Attendance logged (stub mode - not persisted).",
         ),
         message="HR attendance logging stub completed."

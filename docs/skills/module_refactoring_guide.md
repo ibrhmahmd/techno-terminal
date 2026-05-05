@@ -1,634 +1,624 @@
 # SOLID Module Architecture Guide & Debugging Checklist
 
-A comprehensive migration guide and debugging checklist for refactoring modules to follow SOLID principles, based on the CRM module's proven architecture.
+A comprehensive guide for designing and refactoring backend modules following clean architecture principles. Incorporates lessons from the CRM, Finance, and Academics module refactoring projects.
 
 ---
 
-## Part 1: Target Architecture Overview
+## Part 0: Architecture Pattern Selection
 
-### Folder Structure (Per-Entity Organization)
+Before writing a single line, choose the structural pattern for your module. Wrong pattern choice is the most expensive mistake to fix later.
+
+### The Four Patterns
+
+| Pattern | Unit of Organization | Best For |
+|---------|---------------------|----------|
+| **A — Horizontal Layer (N-Tier)** | Technical layer (services/, repositories/, etc.) | Small modules, ≤3 entities, minimal complexity |
+| **B — Vertical Slice** | Single entity or workflow | Modules with distinct entities that rarely share logic |
+| **C — Bounded Context (DDD-Lite)** | Business capability (what the system does) | Large teams, stable domains, microservice candidates |
+| **D+ — Hybrid Vertical Slice** | Entity namespace with sub-slices | Growing modules with 1 core entity having multiple workflow concerns |
+
+### Pattern Selection Framework
+
+Answer these questions in order:
 
 ```
-app/
-├── api/schemas/                 # API Response Envelopes ONLY
-│   ├── common.py                # ApiResponse[T], PaginatedResponse[T]
-│   └── {module}/                # Module-specific API shapes (if needed)
-│       └── {entity}_responses.py
-│
-└── modules/{module_name}/
-    ├── __init__.py              # Facade exports only (no logic)
-    ├── models/                  # SQLModel entities
-    │   ├── __init__.py
-    │   └── {entity}_models.py   # One file per entity
-    ├── schemas/                 # Module DTOs (input, internal, output)
-    │   ├── __init__.py
-    │   ├── {entity}_schemas.py  # CRUD DTOs
-    │   └── {operation}_dtos.py # Complex internal DTOs
-    ├── interfaces/              # Protocols ONLY (no dtos/)
-    │   └── __init__.py          # IRepository, IService protocols
-    ├── repositories/
-    │   ├── __init__.py
-    │   ├── {entity}_repository.py
-    │   └── unit_of_work.py
-    ├── services/
-    │   ├── __init__.py
-    │   ├── {entity}_crud_service.py
-    │   └── {operation}_service.py
-    └── validators/
-        └── ...
+1. How many distinct entities does this module manage?
+   └─ ≤2 entities → Use Pattern A (Horizontal Layer)
+   └─ 3+ entities → Continue to Q2
+
+2. Do the entities share significant business logic or repositories?
+   └─ No → Use Pattern B (Vertical Slice, one dir per entity)
+   └─ Yes → Continue to Q3
+
+3. Is there a single "core entity" with 5+ distinct workflow concerns around it?
+   └─ Yes → Use Pattern D+ (Hybrid: entity namespace with sub-slices)
+   └─ No → Use Pattern C (Bounded Context: group by capability)
+
+4. Will separate teams own different parts of this module?
+   └─ Yes → Use Pattern C (team-per-context)
+   └─ No → D+ is preferred over C
 ```
 
-**DTO Rule**: Use `modules/{module}/schemas/` for ALL module DTOs. Only use `api/schemas/` for:
-1. Generic response envelopes (`ApiResponse[T]`, `PaginatedResponse[T]`)
-2. API-specific shapes that differ from service outputs (rare)
+### D+ Hybrid Vertical Slice — The Recommended Pattern for Complex Modules
+
+When a module has one dominant entity (e.g., `Group`) with many distinct concerns, nest sub-slices under an entity namespace:
+
+```
+module/
+├── models/                  ← Shared SQLModel entities (horizontal, cross-slice)
+├── helpers/                 ← Pure utilities (horizontal, cross-slice)
+├── constants.py
+├── other_entity/            ← Simple entities get a flat slice
+│   ├── interface.py
+│   ├── service.py
+│   ├── repository.py
+│   └── schemas.py
+└── core_entity/             ← Complex entity gets sub-slices
+    ├── __init__.py
+    ├── core/                ← CRUD + targeted writes on single record
+    ├── directory/           ← Collection reads (list, search, filter, group-by)
+    ├── lifecycle/           ← Atomic multi-entity orchestration
+    ├── details/             ← Read-heavy composite views
+    ├── analytics/           ← History and reporting reads
+    └── domain_concern/      ← Any additional bounded concern
+```
+
+**Why `models/` stays horizontal (not sliced):**  
+SQLModel entities are registered with the ORM at import time. If models live inside a slice, a foreign module importing the entity would need to know the slice path — creating coupling. Models are infrastructure, not domain logic.
 
 ---
 
-## Part 2: The 7-Phase Migration Playbook
+## Part 1: Vertical Slice Anatomy
 
-### Phase 1: Foundation & Constants
+Every slice (directory) contains exactly these files:
 
-**Actions:**
-1. Create `constants.py` with domain enums, status lists, magic numbers
-2. Move hard-coded strings to named constants
-3. Create `validators/` folder for pure validation functions
+```
+{slice_name}/
+├── __init__.py      ← slice-level exports (what's public from this slice)
+├── interface.py     ← Protocol definitions ONLY (no logic)
+├── service.py       ← Business logic class
+├── repository.py    ← Database access functions (if slice has DB operations)
+└── schemas.py       ← Input DTOs + Output DTOs for this slice
+```
 
-**Debugging Checklist:**
-- [ ] No string literals in business logic (use constants)
-- [ ] All domain values have single source of truth
+### File Responsibilities
 
----
+| File | Contains | Must NOT Contain |
+|------|----------|-----------------|
+| `interface.py` | `Protocol` class with method signatures only | Imports from `services/`, logic, `__init__` |
+| `service.py` | Business logic methods | SQL queries, `select()`, `session.exec()` |
+| `repository.py` | SQL queries, ORM calls | Business rules, validation, orchestration |
+| `schemas.py` | Pydantic `BaseModel` DTOs | ORM models, service logic |
+| `__init__.py` | `from .service import X` re-exports | Logic, class definitions |
 
-### Phase 2: Model Separation
+### The One Rule That Prevents All Circular Imports
 
-**Actions:**
-1. Create `models/` folder
-2. Split monolithic `*_models.py` into per-entity files
-3. Each model file: Base class → Create → Read/Update
+```
+interface.py  →  can import from: schemas.py, models/
+schemas.py    →  can import from: models/, shared.constants
+repository.py →  can import from: models/, constants.py, shared
+service.py    →  can import from: repository.py, schemas.py, interface.py, helpers/, constants.py
+                                  + other slices' schemas (NOT other slices' services)
+```
 
-**Debugging Checklist:**
-- [ ] SQLModel classes match database schema exactly
-- [ ] No `Field()` for columns that don't exist in DB
-- [ ] Soft-delete mixin applied where needed
-
----
-
-### Phase 3: Schema Layer Consolidation (2-Layer Architecture)
-
-**Rule: All module DTOs go in `schemas/`. Remove `interfaces/dtos/` entirely.**
-
-| Use Case | Location | Type |
-|----------|----------|------|
-| Service input validation | `schemas/{entity}_schemas.py` | Pydantic BaseModel |
-| Service internal contracts | `schemas/{operation}_dtos.py` | Pydantic BaseModel (frozen) |
-| Service output DTOs | `schemas/{entity}_schemas.py` | Pydantic BaseModel |
-| API response envelopes | `api/schemas/common.py` | Generic `ApiResponse[T]` |
-| API-specific shapes | `api/schemas/{module}/` | Only if different from service output |
-
-**Anti-Patterns to Avoid:**
-1. Don't create `interfaces/dtos/` - it duplicates schemas/
-2. Don't put DTOs in interfaces/__init__.py - that's for Protocols only
-3. Don't duplicate the same shape in api/schemas/ and module/schemas/
-
-**Debugging Checklist:**
-- [ ] No `dict` parameters in service methods
-- [ ] No `list[dict]` return types
-- [ ] All function signatures use concrete DTO classes
-- [ ] Pydantic DTOs validate at API boundary
+Services in the same module **never import each other's service classes directly**. Cross-slice service communication goes through the module's root `__init__.py`.
 
 ---
 
-### Phase 4: Repository Layer with Unit of Work
+## Part 2: Interface Design Standard
 
-**Actions:**
-1. Create `repositories/{entity}_repository.py` per entity
-2. Implement `unit_of_work.py` for transaction management
-3. Repository methods: NEVER call `commit()`, only `flush()`
+### File Structure
 
-**Unit of Work Pattern:**
 ```python
-class StudentUnitOfWork:
-    def __init__(self, session: Session):
-        self._session = session
-        self.students = StudentRepository(session)
-        self.parents = ParentRepository(session)
-    
-    def commit(self) -> None:
-        self._session.commit()
-    
-    def flush(self) -> None:
-        self._session.flush()
-    
-    def rollback(self) -> None:
-        self._session.rollback()
-```
+"""
+app/modules/{module}/{slice}/interface.py
+─────────────────────────────────────────
+Interfaces for the {SliceName} slice.
+"""
+from typing import Protocol, runtime_checkable
+from app.modules.{module}.{slice}.schemas import OutputDTO
 
-**Debugging Checklist:**
-- [ ] All queries live in repositories (not services, not routers)
-- [ ] Repositories receive Session via constructor (not created internally)
-- [ ] Complex joins are abstracted behind repository methods
-- [ ] Soft-delete queries use `deleted_at IS NULL`
-- [ ] Aggregate queries use `.scalar()` not `.one()` (avoids Row tuple)
-- [ ] ORM list queries use `.scalars().all()` not `.all()` (avoids Row tuples)
-- [ ] Boolean comparisons use `.is_(True)` not `== True`
 
----
-
-### Phase 5: Service Layer Split
-
-**Actions:**
-1. Create per-entity service classes (e.g., `StudentCrudService`)
-2. Services receive UoW or repositories via constructor
-3. Split complex functions into focused methods
-
-**SRP Violations to Fix:**
-- Function does > 1 thing → Split into 2+ methods
-- Function has > 50 lines → Extract helper methods
-- Function has nested loops + business logic → Separate query from processing
-
-**Debugging Checklist:**
-- [ ] Service methods under 30 lines (ideally)
-- [ ] One public method = one business operation
-- [ ] Private helpers for shared logic
-- [ ] Activity logging injected (not hardcoded)
-
----
-
-### Phase 6: Interface Protocols (Optional but Clean)
-
-**Actions:**
-1. Define Protocols in `interfaces/__init__.py`
-2. Repository classes implement Protocol
-3. Services depend on Protocols (DIP)
-
-**Example:**
-```python
 @runtime_checkable
-class IStudentRepository(Protocol):
-    def create(self, student: Student) -> Student: ...
-    def get_by_id(self, student_id: int) -> Optional[Student]: ...
+class {Concept}ServiceInterface(Protocol):
+    """Contract for {description of what this service does}."""
 
-class StudentRepository(IStudentRepository, SoftDeleteMixin):
-    # Implementation
+    def method_name(self, arg: InputDTO) -> OutputDTO: ...
+    def another_method(self, id: int) -> EntityType | None: ...
+
+
+@runtime_checkable  
+class {Concept}RepositoryInterface(Protocol):
+    """Contract for {description of what this repository does}."""
+
+    def get_by_id(self, id: int) -> EntityType | None: ...
+    def create(self, entity: EntityType) -> EntityType: ...
 ```
 
-**Debugging Checklist:**
-- [ ] Protocols define method signatures only
-- [ ] Implementations match Protocol exactly
-- [ ] Services use Protocol type hints
+### Interface Rules
+
+1. **`@runtime_checkable`** on every interface — enables `isinstance(service, Interface)` in tests.
+2. **Method bodies are `...`** — no default implementations.
+3. **Name suffix: `Interface`** — never `Protocol`, never `I` prefix (e.g., `GroupLifecycleServiceInterface` not `IGroupLifecycleService`).
+4. **Import only from same slice's `schemas.py` or `models/`** — never from other slices' service files.
+5. **Every public service method must appear in the interface** — the interface is the contract, not a subset.
 
 ---
 
-### Phase 7: Facade & API Integration
+## Part 3: The Dead Code Audit (Pre-Migration Mandatory Step)
 
-**Actions:**
-1. Root `__init__.py` exports public API only
-2. Update API routers to use new services
-3. Run full test suite
+Before any migration begins, audit for dead code. Every item found must be deleted with no migration path.
 
-**Root `__init__.py` Pattern:**
+### Audit Checklist
+
+```powershell
+# 1. Find all methods defined but never called
+grep -r "def method_name" ./app --include="*.py"     # Find callers
+
+# 2. Find dict return types (all are tech debt)
+grep -r "-> dict\|-> list\[dict\]" ./app/modules/{module} --include="*.py"
+
+# 3. Find raw tuple returns (all are tech debt)
+grep -r "-> tuple\b" ./app/modules/{module} --include="*.py"
+
+# 4. Find inverted imports (service importing from API layer)
+grep -r "from app.api.schemas" ./app/modules --include="*.py"
+
+# 5. Find TODO markers (each is a confirmed debt item)
+grep -r "#TODO\|# TODO" ./app/modules/{module} --include="*.py"
+
+# 6. Find duplicate definitions
+grep -r "class WeekDay\|WeekDay = Literal" ./app/modules/{module} --include="*.py"
+
+# 7. Find Protocol/legacy aliases (shims kept for backward compat)
+grep -r "get_by_id =\|create =\|list_all =" ./app/modules/{module} --include="*.py"
+```
+
+### Dead Code Taxonomy
+
+| Category | Example | Decision |
+|----------|---------|----------|
+| **Dead method** | Method A is a subset of Method B; router calls B | Delete A |
+| **Duplicate method** | Same name defined twice in same class | Delete older one |
+| **Architectural violation** | Session service handling group lifecycle | Delete, no migration |
+| **Legacy alias** | `get_by_id = get_course_by_id` | Delete |
+| **Untyped return** | `-> dict`, `-> list[dict]`, bare `tuple` | Replace with typed DTO |
+| **Inverted import** | Service importing from `app.api.schemas` | Move DTO to module layer |
+| **Facade anti-pattern** | `repositories/__init__.py` re-exporting all functions | Delete after direct imports established |
+
+### Zero Tolerance Rule
+
+> Dead code is not "safe" to keep. It accumulates confusion, hides real logic, and becomes a breeding ground for bugs when future developers accidentally call it. **Delete it. Always. Immediately.**
+
+---
+
+## Part 4: Schema Layer Ownership
+
+### Rule: Schemas Follow Their Slice
+
+Every DTO lives in the `schemas.py` of the slice that **creates or owns** it.
+
+```
+group/lifecycle/schemas.py   ← owns ProgressLevelDTO, GroupCreationResult
+group/directory/schemas.py   ← owns EnrichedGroupDTO, GroupedGroupsResult
+group/details/schemas.py     ← owns LevelDetailDTO, AttendanceGridDTO
+```
+
+### The Two-Layer Rule
+
+| Where | Contains | Never Contains |
+|-------|----------|---------------|
+| `modules/{module}/{slice}/schemas.py` | All module DTOs (input, output, internal) | Generic envelopes |
+| `app/api/schemas/common.py` | `ApiResponse[T]`, `PaginatedResponse[T]` | Module-specific shapes |
+| `app/api/schemas/{module}/` | API-specific shapes ONLY when they differ from service output | Module DTOs |
+
+**Anti-pattern:** Service imports from `app.api.schemas.*` — this inverts the dependency direction. The service layer must be independent of the API layer.
+
+### DTO Naming Convention
+
+| Purpose | Pattern | Example |
+|---------|---------|---------|
+| Service input | `{Operation}{Entity}Input` | `ScheduleGroupInput`, `CreateGroupWithLevelDTO` |
+| Service output / result | `{Entity}{Operation}Result` | `GroupCreationResult`, `LevelProgressionResult` |
+| Read model / view | `{Entity}{Qualifier}DTO` | `EnrichedGroupDTO`, `GroupLevelDetailDTO` |
+| Internal contract | `{Operation}DTO` | `ProgressLevelDTO`, `MigrateEnrollmentsDTO` |
+| API adapter wrapper | `{Entity}{Operation}Response` (in `api/schemas/`) | `ProgressGroupLevelResponse` |
+
+---
+
+## Part 5: The 9-Phase Migration Playbook
+
+### Phase 0 — Dead Code Deletion (MANDATORY FIRST)
+
+Never migrate dead code into a new structure. Delete first.
+
+1. Run the full dead code audit (Part 3).
+2. Confirm zero callers for each item via `grep`.
+3. Delete. No backward compatibility shims.
+4. Run: `python -c "from app.modules.{module} import *"` — must not raise `ImportError`.
+
+### Phase 1 — Directory Scaffolding
+
+Create all slice directories and empty `__init__.py` files. No logic moved yet.  
+The old layer folders (`services/`, `repositories/`, etc.) remain intact.
+
+### Phase 2–N — Slice-by-Slice Migration
+
+For each slice (bottom-up, from least-dependent to most-dependent):
+
+1. `schemas.py` first — no dependencies inside the slice
+2. `interface.py` second — depends only on `schemas.py`
+3. `repository.py` third — depends on `models/` and `schemas.py`
+4. `service.py` last — depends on `repository.py`, `schemas.py`, `interface.py`
+5. `__init__.py` — re-export what external callers need
+
+### Phase N+1 — Router Import Updates
+
+Update all routers to import through the module root `__init__.py`.  
+Never let routers import from internal slice paths (`from app.modules.academics.group.lifecycle.service import ...`).
+
+### Phase N+2 — Module `__init__.py` Rebuild
+
+Follow the finance module pattern: export everything from root.
+
 ```python
 # Models
-from app.modules.crm.models import Student, Parent
+from .models import EntityA, EntityB
 
-# DTOs (API-facing)
-from app.modules.crm.schemas import RegisterStudentDTO, UpdateStudentDTO
+# Services (all slices)
+from .slice_a.service import SliceAService
+from .slice_b.service import SliceBService
 
-# Services (for DI)
-from app.modules.crm.services import StudentCrudService, ParentCrudService
+# Schemas (all publicly-used DTOs)
+from .slice_a.schemas import InputDTO, OutputDTO
 
-__all__ = ["Student", "Parent", "RegisterStudentDTO", ...]
+# Interfaces (all)
+from .slice_a.interface import SliceAServiceInterface
+
+__all__ = [...]  # Explicit — no implicit star exports
 ```
 
-**Debugging Checklist:**
-- [ ] No internal imports leaked from root
-- [ ] API routers import from module root
-- [ ] All tests pass with new structure
-- [ ] Old monolithic files deleted (no `hr_service.py`, `hr_repository.py`, etc.)
-- [ ] No deprecated functions kept "for backward compatibility"
-- [ ] No `interfaces/dtos/` folder remaining (DTOs in `schemas/` only)
-- [ ] No inline imports in router endpoints
-- [ ] Run `ruff check --select F401 app/modules/{module}/` for unused imports
+### Phase N+3 — Old Layer Deletion
+
+Delete `services/`, `repositories/`, `schemas/`, `interfaces/` (the old horizontal layers).  
+Verify before deleting:
+
+```powershell
+# Must return zero results
+grep -r "from app.modules.{module}.services" ./app --include="*.py"
+grep -r "from app.modules.{module}.repositories" ./app --include="*.py"
+grep -r "from app.modules.{module}.schemas" ./app --include="*.py"
+```
+
+### Phase N+4 — Final Verification
+
+```powershell
+# Module imports cleanly
+python -c "from app.modules.{module} import *; print('OK')"
+
+# Server starts
+uvicorn app.api.main:app --reload
+
+# No inverted imports
+grep -r "from app.api.schemas" ./app/modules --include="*.py"
+
+# No dict/tuple returns
+grep -r "-> dict\|-> list\[dict\]" ./app/modules/{module} --include="*.py"
+
+# All tests pass
+pytest tests/ -v
+```
 
 ---
 
-## Part 3: Common Violations & Fixes
+## Part 6: Cross-Slice Dependency Rules
+
+### What Slices Can Import From Each Other
+
+```
+group/analytics/service.py  →  CAN import from: group/lifecycle/repository.py (reads history)
+group/lifecycle/service.py  →  CAN import from: group/level/repository.py, session/repository.py
+group/details/service.py    →  CAN import from: session/repository.py, group/level/repository.py
+```
+
+**Repositories can be imported across slices** — they are stateless query functions.  
+**Services cannot import other services in the same module** — that creates hidden orchestration and circular dependencies.
+
+### Shared Repository Placement Decision
+
+When a repository is used by multiple slices:
+- Identify which slice **owns the write path** (creates/updates the data).
+- Place the repository in that slice.
+- Other slices import from the owning slice's `repository.py`.
+
+```python
+# group/analytics/service.py — reads history written by lifecycle
+from app.modules.academics.group.lifecycle.repository import get_group_levels_with_details
+```
+
+This is an **explicit cross-slice import** — allowed at the repository level, visible, trackable.
+
+---
+
+## Part 7: Naming Conventions
+
+| Layer | Convention | Example |
+|-------|------------|---------|
+| Models | `{Entity}` | `Group`, `GroupLevel`, `CourseSession` |
+| Repository functions | `{verb}_{entity}_{qualifier}` | `get_group_by_id`, `list_all_active_groups`, `create_group` |
+| Service classes | `{Entity}{Concern}Service` | `GroupCoreService`, `GroupDirectoryService`, `GroupLifecycleService` |
+| Interface | `{Entity}{Concern}Interface` | `GroupLifecycleServiceInterface`, `GroupDirectoryInterface` |
+| Input DTOs | `{Operation}{Entity}Input` or `{Operation}{Entity}DTO` | `ScheduleGroupInput`, `CreateGroupWithLevelDTO` |
+| Output/Result DTOs | `{Entity}{Operation}Result` | `GroupCreationResult`, `LevelProgressionResult` |
+| Read models | `{Entity}{Qualifier}DTO` | `EnrichedGroupDTO`, `GroupLevelDetailDTO` |
+| Slice directory | `{entity_name}/` or `{entity}_{concern}/` | `group/`, `group/lifecycle/`, `group/directory/` |
+
+**Suffix rules:**
+- `Interface` — not `Protocol`, not `I`-prefix
+- `DTO` — for input/internal contracts
+- `Result` — for operation outcomes
+- `Input` — for validated API entry points
+
+---
+
+## Part 8: Common Violations & Fixes
 
 ### Violation 1: Loose Return Types
 
 **Bad:**
 ```python
-def get_student_summary(student_id: int) -> dict:
-def get_enrollments(student_id: int) -> list[dict]
-def register_student(data: dict) -> tuple[Student, list]
+def get_competitions(group_id: int) -> list[dict]:
+def get_enrollment_stats(group_id: int) -> dict:
+def get_instructors_summary(group_id: int) -> Sequence[tuple]:
 ```
 
 **Good:**
 ```python
-def get_student_summary(student_id: int) -> StudentSummaryDTO:
-def get_enrollments(student_id: int) -> list[EnrollmentDTO]:
-def register_student(data: RegisterStudentDTO) -> StudentRegistrationResult
+def get_competitions(group_id: int) -> list[CompetitionParticipationDTO]:
+def get_enrollment_stats(group_id: int) -> GroupEnrollmentStatsDTO:
+def get_instructors_summary(group_id: int) -> list[InstructorSummaryDTO]:
 ```
 
 ---
 
-### Violation 2: Queries Outside Repositories
+### Violation 2: Service Importing from API Layer
 
-**Bad (in Service):**
+**Bad (inverted import):**
 ```python
-class StudentService:
-    def get_with_details(self, student_id: int):
-        stmt = select(Student, Parent).join(...).where(Student.id == student_id)
-        return self._session.exec(stmt).first()  # Query in service!
+# group_analytics_service.py
+from app.api.schemas.academics.group_analytics import GroupAnalyticsDTO  # WRONG
 ```
 
 **Good:**
 ```python
-class StudentService:
-    def get_with_details(self, student_id: int):
-        return self._repo.get_with_parent(student_id)  # Repo handles query
-
-class StudentRepository:
-    def get_with_parent(self, student_id: int) -> Optional[tuple[Student, Parent]]:
-        stmt = select(Student, Parent).join(...).where(Student.id == student_id)
-        return self._session.exec(stmt).first()
+# group/analytics/service.py
+from app.modules.academics.group.analytics.schemas import GroupAnalyticsDTO  # CORRECT
 ```
 
 ---
 
-### Violation 3: Dict Parameters
+### Violation 3: Repositories/__init__.py Facade
+
+**Bad (flat facade — encourages monolithic imports):**
+```python
+# repositories/__init__.py
+from .group_repository import create_group, get_group_by_id, search_groups, ...
+from .session_repository import create_session, list_sessions, ...
+# 50+ functions from 8 files
+```
+
+**Good (direct slice imports):**
+```python
+# In service file
+from app.modules.academics.group.core.repository import get_group_by_id
+from app.modules.academics.session.repository import create_session
+```
+
+---
+
+### Violation 4: Dead Code Preservation
 
 **Bad:**
 ```python
-def update_student(student_id: int, data: dict) -> Student:
-    student.full_name = data.get("full_name", student.full_name)
-    student.status = data.get("status", student.status)
+def progress_group_level(self, ...):
+    """
+    DEPRECATED: Use GroupLifecycleService.progress_to_next_level() instead.
+    Kept for backward compatibility.
+    """
+    ...  # 120 lines of dead logic
 ```
 
-**Good:**
+**Good:** Delete. Zero lines.
+
+---
+
+### Violation 5: Subset Method Overlap
+
+**Symptom:** Method A does steps 1–3. Method B does steps 1–3 + 4 + 5. Both exist. Only B is called.
+
+**Bad:**
 ```python
-class UpdateStudentDTO(BaseModel):
-    full_name: Optional[str] = None
-    status: Optional[StudentStatus] = None
+class GroupLevelService:
+    def complete_current_level(self):  # steps 1-3 only
+        ...
 
-def update_student(student_id: int, data: UpdateStudentDTO) -> Student:
-    if data.full_name is not None:
-        student.full_name = data.full_name
-    if data.status is not None:
-        student.status = data.status
+class GroupLifecycleService:
+    def progress_to_next_level(self):  # steps 1-3-4-5 (superset)
+        ...
 ```
+
+**Good:** Delete `complete_current_level()`. It is dead — the router only calls `progress_to_next_level()`.
 
 ---
 
-### Violation 4: Function Too Complex
+### Violation 6: Duplicate DTO Definitions
 
-**Bad (1 function, 80+ lines):**
+**Symptom:** `WeekDay = Literal[...]` defined in two schema files.
+
+**Bad:**
 ```python
-def process_enrollment(student_id, group_id, payment_data, discount, ...):
-    # Validate student
-    # Validate group
-    # Check capacity
-    # Calculate balance
-    # Create enrollment
-    # Process payment
-    # Send notification
-    # Log activity
-    # Return result
+# scheduling_dtos.py
+WeekDay = Literal["Monday", "Tuesday", ...]
+
+# group_schemas.py
+WeekDay = Literal["Monday", "Tuesday", ...]  # DUPLICATE
 ```
 
-**Good (split into focused methods):**
+**Good:** Define once in the most foundational schema file (`group/core/schemas.py`). All other files import it:
 ```python
-class EnrollmentService:
-    def enroll_student(self, cmd: EnrollStudentCommand) -> Enrollment:
-        self._validate_eligibility(cmd.student_id, cmd.group_id)
-        enrollment = self._create_enrollment_record(cmd)
-        self._process_payment_if_provided(cmd.payment, enrollment)
-        self._log_enrollment_activity(enrollment)
-        return enrollment
-    
-    def _validate_eligibility(self, student_id: int, group_id: int) -> None:
-        # 10 lines
-    
-    def _create_enrollment_record(self, cmd: EnrollStudentCommand) -> Enrollment:
-        # 15 lines
-    
-    def _process_payment_if_provided(self, payment: Optional[PaymentDTO], enrollment: Enrollment) -> None:
-        # 10 lines
+from app.modules.academics.group.core.schemas import WeekDay
 ```
 
 ---
 
-## Part 4: Naming Conventions
-
-| Layer | Convention | Example |
-|-------|------------|---------|
-| Models | `{Entity}` | `Student`, `Parent` |
-| Repositories | `{Entity}Repository` | `StudentRepository` |
-| Services | `{Entity}{Operation}Service` | `StudentCrudService`, `SearchService` |
-| DTOs | `{Operation}{Entity}DTO` | `RegisterStudentDTO`, `UpdateStudentDTO` |
-| Protocols | `I{Entity}{Layer}` | `IStudentRepository`, `IStudentService` |
-| Unit of Work | `{Entity}UnitOfWork` | `StudentUnitOfWork` |
-
-**Input DTOs:** `RegisterStudentDTO`, `UpdateParentDTO`, `CreateReceiptDTO`
-**Output DTOs:** `StudentResponseDTO`, `StudentSummaryDTO`, `EnrollmentResultDTO`
-**Command DTOs:** `RegisterStudentCommandDTO` (when multiple inputs combined)
-
----
-
-## Part 5: Quick Reference Checklist
-
-### Before Refactoring
-- [ ] Identify all dict/list[dict] parameters and return types
-- [ ] Identify all functions > 50 lines
-- [ ] Identify queries outside repositories
-- [ ] Map circular import risks
-
-### During Refactoring
-- [ ] One entity = one model file
-- [ ] One entity = one repository file
-- [ ] One service class = one responsibility
-- [ ] DTOs before services (bottom-up)
-
-### After Refactoring
-- [ ] All tests pass
-- [ ] No mypy errors
-- [ ] No dict parameters in services
-- [ ] No queries in services
-- [ ] Import cycle check: `python -c "from app.modules.{module} import *"`
-
----
-
-## Part 6: Decision Matrix
-
-| Scenario | Approach |
-|----------|----------|
-| Simple CRUD module | schemas/ + repositories/ + services/ (no interfaces/) |
-| Complex business logic | schemas/ with separate `{operation}_dtos.py` files |
-| Module with 3+ entities | Per-entity organization mandatory |
-| Activity logging needed | Inject ActivityService into CRUD services |
-| Cross-module queries | Use repository composition, not direct model access |
-| Soft-delete needed | Extend SoftDeleteMixin in repository |
-| When to use api/schemas/{module}/ | Only when API shape differs from service output |
-
----
-
-## Part 7: Common Pitfalls & Solutions
-
-> **These pitfalls were discovered during actual module refactoring.** Each includes the exact error, root cause, and prevention strategy.
+## Part 9: Common Pitfalls
 
 ### Pitfall 1: SQLAlchemy 2.0 Aggregate Queries Return Row Tuples
 
-**Error:**
-```
-pydantic_core._pydantic_core.ValidationError: Input should be a valid integer
-[type=int_type, input_value=(5,), input_type=Row]
-```
+**Error:** `pydantic_core.ValidationError: Input should be a valid integer [input_value=(5,)]`
 
-**Root Cause:** `session.exec(select(func.count())).one()` returns a `Row` tuple `(5,)` not an `int`.
+**Root Cause:** `.one()` returns `Row` tuple `(5,)` not `int`.
 
 **Fix:**
 ```python
-# WRONG - returns Row tuple like (5,)
-total = session.exec(select(func.count()).select_from(Employee)).one()
+# WRONG
+total = session.exec(select(func.count())).one()
 
-# CORRECT - returns int
-total = session.exec(select(func.count()).select_from(Employee)).scalar() or 0
+# CORRECT
+total = session.exec(select(func.count())).scalar() or 0
 ```
 
-**Prevention:** Always use `.scalar()` for aggregate functions (`count`, `sum`, `avg`). Use `.one()` only when you need the full Row.
-
-**SQLAlchemy 2.0 Query Method Cheat Sheet:**
+**SQLAlchemy 2.0 Method Cheat Sheet:**
 
 | Method | Returns | Use Case |
 |--------|---------|----------|
-| `.scalar()` | Single value (int, str, etc.) | `func.count()`, `func.sum()` |
+| `.scalar()` | Single value | `func.count()`, `func.sum()` |
 | `.scalars().all()` | `list[Model]` | List of ORM objects |
-| `.scalars().first()` | `Model or None` | Optional single result |
-| `.one()` | `Row` tuple | When you need tuple columns |
-| `.first()` | `Row or None` | Optional Row result |
+| `.scalars().first()` | `Model or None` | Optional single ORM result |
+| `.one()` | `Row` tuple | Multi-column row |
+| `.first()` | `Row or None` | Optional multi-column row |
 
 ---
 
 ### Pitfall 2: Inline Imports in Router Endpoints
 
-**Error:**
-```
-Ruff: Module level import not at top of file
-```
+**Error:** Ruff: `Module level import not at top of file`
 
-**Root Cause:** Importing modules inside endpoint functions to "avoid circular imports" or "keep it local".
-
-**Bad:**
-```python
-@router.post("/hr/employees/{employee_id}/create-account")
-def create_employee_account_endpoint(employee_id: int, body: ...):
-    from app.modules.hr.hr_service import create_employee_account  # WRONG
-    from app.modules.hr.interfaces.dtos import CreateEmployeeAccountDTO  # WRONG
-    from app.shared.exceptions import NotFoundError  # WRONG
-    ...
-```
-
-**Good:**
-```python
-# All imports at top of file
-from app.modules.hr import CreateEmployeeAccountDTO
-from app.shared.exceptions import NotFoundError, ConflictError, ValidationError
-
-@router.post("/hr/employees/{employee_id}/create-account")
-def create_employee_account_endpoint(employee_id: int, body: ...):
-    ...
-```
-
-**Prevention:** If circular imports are a concern, use `TYPE_CHECKING`:
-```python
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from app.modules.hr.schemas import EmployeeReadDTO  # Type-only import
-```
+**Fix:** All imports at file top. Use `TYPE_CHECKING` for circular-import-only cases.
 
 ---
 
-### Pitfall 3: Unused Imports After Refactoring
+### Pitfall 3: DTOs Without `from_attributes` Config
 
-**Error:**
-```
-Ruff: `app.modules.hr.models.EmployeeCreate` imported but unused
-```
+**Error:** `ValidationError: Input should be a valid dictionary [input_value=<OrmObject>]`
 
-**Root Cause:** When replacing old module references with new DTOs, old imports are left behind.
-
-**Prevention Checklist:**
-- After each phase, run `ruff check --select F401 app/modules/{module}/` to find unused imports
-- Remove any import that was only used by the old monolithic code
-- If an import is needed only for type hints, move it under `TYPE_CHECKING`
-
----
-
-### Pitfall 4: Mixing Old and New Service Patterns
-
-**Error:** Router still calls `hr.list_all_employees()` (old flat module) alongside `service.list_paginated()` (new SOLID service).
-
-**Root Cause:** Leaving deprecated functions "for backward compatibility" creates confusion and dual code paths.
-
-**Bad:**
+**Fix:**
 ```python
-# dependencies.py - DON'T keep both
-def get_hr_service():  # OLD - deprecated
-    import app.modules.hr.hr_service as hr_service_module
-    return hr_service_module
-
-def get_employee_crud_service() -> EmployeeCrudService:  # NEW
-    ...
-```
-
-**Good:**
-```python
-# dependencies.py - ONLY the new service
-def get_employee_crud_service() -> EmployeeCrudService:
-    with get_session() as session:
-        uow = HRUnitOfWork(session)
-        return EmployeeCrudService(uow)
-```
-
-**Zero Tech Debt Rule:** Delete old code immediately. If tests break, fix the tests — don't keep the old code.
-
----
-
-### Pitfall 5: DTOs Without `from_attributes` Config
-
-**Error:**
-```
-ValidationError: Input should be a valid dictionary [type=dict_type, input_value=<Employee object>, input_type=Model]
-```
-
-**Root Cause:** `EmployeeReadDTO.model_validate(orm_object)` fails without `from_attributes=True`.
-
-**Bad:**
-```python
-class EmployeeReadDTO(BaseModel):
-    id: int
-    full_name: str
-    # Missing model_config!
-```
-
-**Good:**
-```python
-class EmployeeReadDTO(BaseModel):
+class GroupLevelDetailDTO(BaseModel):
     model_config = ConfigDict(from_attributes=True)  # Required for ORM → DTO
-
     id: int
-    full_name: str
+    ...
 ```
 
-**Prevention:** Every DTO that receives data from an ORM model must have `from_attributes=True`. Output DTOs always need it. Input DTOs never need it.
+**Rule:** Every DTO that receives data from an ORM model needs `from_attributes=True`.
 
 ---
 
-### Pitfall 6: Boolean Comparisons in SQLAlchemy Where Clauses
+### Pitfall 4: Boolean Comparisons in SQLAlchemy
 
-**Error:**
-```
-Ruff: Avoid equality comparisons to `True`; use `Employee.is_active:` for truth checks
+**Bad:** `stmt = select(Group).where(Group.is_active == True)`
+
+**Good:** `stmt = select(Group).where(Group.is_active.is_(True))`
+
+---
+
+### Pitfall 5: Service Constructor Importing Concrete Implementations
+
+**Bad (tight coupling):**
+```python
+class GroupLifecycleService:
+    def __init__(self):
+        self.level_svc = GroupLevelService()    # concrete import
+        self.session_svc = SessionService()     # concrete import
 ```
 
-**Root Cause:** SQLAlchemy columns use `== True` which is both a Python anti-pattern and can cause issues with some database drivers.
+**Good (injected, testable):**
+```python
+class GroupLifecycleService:
+    def __init__(
+        self,
+        level_svc: GroupLevelServiceInterface | None = None,
+        session_svc: SessionServiceInterface | None = None,
+    ):
+        self.level_svc = level_svc or GroupLevelService()    # injectable
+        self.session_svc = session_svc or SessionService()   # injectable
+```
+
+---
+
+### Pitfall 6: Migrating Dead Code Into New Structure
+
+**Symptom:** You copy `GroupLevelService.complete_current_level()` into `group/level/service.py` because "it might be needed later."
+
+**Prevention:** Run grep audit before every migration phase. If a method has zero callers, it does not move. It dies.
+
+---
+
+### Pitfall 7: Router Importing from Internal Slice Paths
 
 **Bad:**
 ```python
-stmt = select(Employee).where(Employee.is_active == True)
+# groups_router.py
+from app.modules.academics.group.lifecycle.service import GroupLifecycleService
 ```
 
 **Good:**
 ```python
-stmt = select(Employee).where(Employee.is_active.is_(True))
+# groups_router.py
+from app.modules.academics import GroupLifecycleService
 ```
 
-**Prevention:** Always use `.is_(True)` / `.is_(False)` for boolean column comparisons in SQLAlchemy queries.
+Routers import from the module root only. Internal slice paths are implementation details.
 
 ---
 
-### Pitfall 7: `interfaces/dtos/` Duplication with `schemas/`
+## Part 10: Decision Matrix
 
-**Error:** Same DTO defined in both `interfaces/dtos/` and `schemas/`, causing import confusion and redefinition warnings.
-
-**Root Cause:** The old 3-layer architecture (api/schemas + module/schemas + interfaces/dtos) created overlap.
-
-**2-Layer Rule:**
-- `schemas/` = ALL module DTOs (input, output, internal)
-- `api/schemas/` = Generic envelopes ONLY (`ApiResponse[T]`, `PaginatedResponse[T]`)
-- `interfaces/` = Protocols ONLY (no DTOs)
-
-**Prevention:** After creating `schemas/`, immediately delete `interfaces/dtos/`. Don't leave both.
-
----
-
-### Pitfall 8: Dependency Injection Session Lifecycle
-
-**Error:** `TypeError: '_GeneratorContextManager' object is not an iterator`
-
-**Root Cause:** Attempting to use `Depends(get_session)` when `get_session` is a generator/context manager, not a FastAPI dependency provider.
-
-**Context:** In this codebase, `get_session()` is a generator function from `app.db.connection`. It cannot be used directly with `Depends()`.
-
-**Correct Pattern for this codebase:**
-```python
-def get_employee_crud_service() -> EmployeeCrudService:
-    """Returns EmployeeCrudService with fresh Unit of Work per request."""
-    with get_session() as session:  # Correct - get_session is a generator
-        uow = HRUnitOfWork(session)
-        return EmployeeCrudService(uow)
-```
-
-**Note:** The session is closed after the service is returned, but this works because the service holds a reference to the Unit of Work which holds the session. The session remains open for the duration of the request.
-
-**Alternative Pattern (if get_session were a FastAPI dependency):**
-```python
-# This pattern would work IF get_session were a FastAPI dependency provider
-# (it is NOT in this codebase)
-def get_employee_crud_service(
-    session: Session = Depends(get_session),
-) -> EmployeeCrudService:
-    uow = HRUnitOfWork(session)
-    return EmployeeCrudService(uow)
-```
-
-**Prevention:** Check the implementation of `get_session()` in your codebase. If it's a generator (uses `yield`), use `with get_session()`. If it's a regular function returning a Session, use `Depends(get_session)`.
+| Scenario | Pattern | Rationale |
+|----------|---------|-----------|
+| Module with ≤2 entities | Horizontal Layer (A) | Overhead not justified |
+| Module with 3+ distinct entities | Vertical Slice (B) | Clear per-entity ownership |
+| Single entity with 5+ workflow concerns | Hybrid D+ | Sub-slices under entity namespace |
+| Large team, multiple owners | Bounded Context (C) | Team-per-context ownership |
+| Service has only read operations | `directory/` or `query/` sub-slice | Read-write separation |
+| Method exists but has zero callers | Delete | Zero tolerance for dead code |
+| Return type is `dict` | Create typed DTO | Every return type must be a named model |
+| Service imports from `app.api.schemas` | Move DTO to module layer | Inverted dependency — always fix |
+| Two methods doing 80% the same thing | Delete the subset method | Duplication hides dead code |
+| Repository used by two slices | Place in slice that owns write path | Other slices import explicitly |
 
 ---
 
-## Part 8: Debugging Quick Reference
+## Part 11: Quick Reference Checklist
 
-### SQLAlchemy Errors
+### Before Refactoring
+- [ ] Run dead code audit (grep for callers of every method)
+- [ ] Identify all `-> dict`, `-> list[dict]`, `-> tuple` returns
+- [ ] Find all `from app.api.schemas` in module services
+- [ ] Identify duplicate DTO definitions across schema files
+- [ ] Choose the right architecture pattern (Part 0 framework)
 
-| Error | Cause | Fix |
-|-------|-------|-----|
-| `Input should be a valid integer [type=int_type, input_value=(5,)]` | `.one()` returns Row tuple | Use `.scalar()` |
-| `Input should be a valid dictionary [type=dict_type]` | Missing `from_attributes=True` | Add `ConfigDict(from_attributes=True)` |
-| `AttributeError: 'Row' has no attribute 'id'` | Accessing Row instead of Model | Use `.scalars().all()` |
-| `DetachedInstanceError` | Session closed before access | Use FastAPI `Depends(get_session)` |
+### During Refactoring
+- [ ] Delete dead code before migrating anything
+- [ ] Migrate bottom-up: schemas → interface → repository → service
+- [ ] Never copy a method without confirming it has callers
+- [ ] Cross-slice service calls go through module `__init__.py`
+- [ ] Every new DTO has `from_attributes=True` if it receives ORM data
 
-### Pydantic Errors
-
-| Error | Cause | Fix |
-|-------|-------|-----|
-| `ValidationError: field required` | DTO missing field from ORM | Add Optional field or default |
-| `ValidationError: Input should be a valid integer` | Row tuple instead of scalar | Use `.scalar()` |
-| `model_validate()` fails on ORM | Missing `from_attributes` | Add `ConfigDict(from_attributes=True)` |
-
-### Import Errors
-
-| Error | Cause | Fix |
-|-------|-------|-----|
-| `Module level import not at top` | Inline import in function | Move to top of file |
-| `Imported but unused` | Stale import after refactor | Remove or use `TYPE_CHECKING` |
-| `Redefinition of unused X` | Same name imported twice | Remove duplicate import |
-| `Undefined name X` | Import removed but still used | Add import back at top |
-
-### Runtime Errors
-
-| Error | Cause | Fix |
-|-------|-------|-----|
-| `500 Internal Server Error` on list endpoint | Count returns Row not int | Use `.scalar() or 0` |
-| `DetachedInstanceError` | Session closed in DI provider | Use `Depends(get_session)` |
-| `TypeError: got unexpected keyword` | DTO field mismatch | Check DTO matches API input |
+### After Refactoring
+- [ ] `python -c "from app.modules.{module} import *"` passes
+- [ ] `grep -r "from app.api.schemas" ./app/modules` returns zero
+- [ ] `grep -r "-> dict" ./app/modules/{module}` returns zero
+- [ ] Old horizontal layer folders deleted
+- [ ] All tests pass
+- [ ] `uvicorn app.api.main:app --reload` starts without errors

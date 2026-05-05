@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlmodel import Session
 
 from app.modules.hr.models import Employee
-from app.modules.hr.schemas import CreateEmployeeAccountDTO
+from app.modules.hr.schemas import CreateEmployeeAccountDTO, StaffAccountLinkDTO
 from app.shared.exceptions import NotFoundError
 
 if TYPE_CHECKING:
@@ -52,11 +52,11 @@ class StaffAccountRepository:
 
         return employee, user
 
-    def list_all_with_employees(self) -> list[tuple["User", Employee]]:
+    def list_all_with_employees(self) -> list[StaffAccountLinkDTO]:
         """List all user-employee linked accounts.
         
         Returns:
-            List of (User, Employee) tuples
+            List of StaffAccountLinkDTO with user and employee data
         """
         # Import here to avoid circular dependency
         from app.modules.auth.models.auth_models import User
@@ -64,7 +64,20 @@ class StaffAccountRepository:
         stmt = select(User, Employee).join(
             Employee, User.employee_id == Employee.id
         )
-        return list(self._session.exec(stmt).all())
+        results = self._session.exec(stmt).all()
+        
+        return [
+            StaffAccountLinkDTO(
+                user_id=user.id,
+                username=user.username,
+                employee_id=employee.id,
+                full_name=employee.full_name,
+                role=user.role,
+                is_active=user.is_active,
+                phone=employee.phone,
+            )
+            for user, employee in results
+        ]
 
     def update_account_status(
         self, user_id: int, is_active: bool, role: str

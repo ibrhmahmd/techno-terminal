@@ -8,7 +8,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.shared.constants import EmploymentType
+from app.modules.hr.constants import EmploymentType
 
 
 class CreateEmployeeDTO(BaseModel):

@@ -129,13 +129,13 @@ from app.modules.crm.services import (
     StudentActivityService,
 )
 
-from app.modules.academics.services.course_service import CourseService
-from app.modules.academics.services.group_service import GroupService
-from app.modules.academics.services.group_history_service import GroupHistoryService
-from app.modules.academics.services.group_level_service import GroupLevelService
-from app.modules.academics.services.group_competition_service import GroupCompetitionService
-from app.modules.academics.services.session_service import SessionService
-from app.modules.academics.services.group_analytics_service import GroupAnalyticsService
+from app.modules.academics.course.service import CourseService
+from app.modules.academics.group.core.service import GroupService
+from app.modules.academics.group.analytics.service import GroupHistoryService
+from app.modules.academics.group.level.service import GroupLevelService
+from app.modules.academics.group.competition.service import GroupCompetitionService
+from app.modules.academics.session.service import SessionService
+from app.modules.academics.group.analytics.service import GroupAnalyticsService
 
 from app.modules.enrollments.services.enrollment_service import EnrollmentService
 from app.modules.enrollments.services.enrollment_migration_service import EnrollmentMigrationService
@@ -355,8 +355,8 @@ def get_competition_analytics_service() -> CompetitionAnalyticsService:
 
 
 # Group Analytics service
-from app.modules.academics.services.group_history_service import GroupHistoryService
-from app.modules.academics.services.group_level_service import GroupLevelService
+from app.modules.academics.group.analytics.service import GroupHistoryService
+from app.modules.academics.group.level.service import GroupLevelService
 
 def get_group_history_service() -> GroupHistoryService:
     """Returns a fresh GroupHistoryService instance per request."""
