@@ -110,7 +110,7 @@ def get_roster_for_group_level(
         ) p ON e.id = p.enrollment_id
         WHERE e.group_id = :group_id
             AND e.level_number = :level_number
-            AND e.status = 'active'
+            AND e.status IN ('active', 'completed')
         ORDER BY s.full_name
     """)
     

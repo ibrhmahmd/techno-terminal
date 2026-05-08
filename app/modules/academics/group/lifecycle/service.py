@@ -253,6 +253,7 @@ class GroupLifecycleService:
                 start_date=data.session_start_date or (
                     next_weekday(date.today(), group.default_day) if group.default_day else date.today()
                 ),
+                level_number=new_level_number,
             )
 
             # Phase 7: Migrate enrollments (if enabled)
@@ -378,6 +379,7 @@ class GroupLifecycleService:
                 start_date=data.start_date or (
                     next_weekday(date.today(), group.default_day) if group.default_day else date.today()
                 ),
+                level_number=data.level_number,
             )
 
             # Update group's level_number to match the new level
