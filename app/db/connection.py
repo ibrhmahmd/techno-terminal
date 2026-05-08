@@ -18,12 +18,13 @@ def get_engine():
             max_overflow=5,
             pool_timeout=30,
             pool_pre_ping=True,
-            pool_recycle=1800,
+            pool_recycle=600,
             connect_args={
                 "keepalives": 1,
                 "keepalives_idle": 30,
                 "keepalives_interval": 10,
                 "keepalives_count": 5,
+                "sslmode": "require",
             },
         )
     return _engine

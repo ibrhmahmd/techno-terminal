@@ -28,17 +28,8 @@ class EnrollmentService:
     """Service for managing student enrollments."""
 
     def __init__(self, activity_svc: Optional[StudentActivityService] = None, notification_svc: Optional["NotificationService"] = None) -> None:
-        self._student_crud_service: Optional[StudentCrudService] = None
         self._activity_svc = activity_svc
         self._notification_svc = notification_svc
-
-    def _get_student_service(self) -> StudentCrudService:
-        """Lazy initialization of StudentCrudService with fresh UnitOfWork."""
-        if self._student_crud_service is None:
-            uow = StudentUnitOfWork()
-            uow.__enter__()
-            self._student_crud_service = StudentCrudService(uow)
-        return self._student_crud_service
 
     def enroll_student(
         self,
@@ -50,8 +41,10 @@ class EnrollmentService:
         Returns (enrollment, capacity_exceeded: bool).
         Cross-module validation is done via service calls (each opens its own read session).
         """
-        student_svc = self._get_student_service()
-        student = student_svc.get_by_id(data.student_id)
+        # Use context manager to ensure session is properly closed
+        with StudentUnitOfWork() as uow:
+            student_svc = StudentCrudService(uow, self._activity_svc)
+            student = student_svc.get_by_id(data.student_id)
         if not student:
             raise NotFoundError(f"Student ID {data.student_id} not found.")
         # Allow enrollment for waiting students (they'll be activated)
