@@ -18,7 +18,7 @@ def get_engine():
             max_overflow=5,
             pool_timeout=30,
             pool_pre_ping=True,
-            pool_recycle=600,
+            pool_recycle=240,
             connect_args={
                 "keepalives": 1,
                 "keepalives_idle": 30,
