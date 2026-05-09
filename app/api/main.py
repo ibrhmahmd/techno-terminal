@@ -51,12 +51,17 @@ def create_app() -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        session = Session(get_engine(), expire_on_commit=False)
-        notification_service = NotificationService(repo=NotificationRepository(session))
-        task = asyncio.create_task(start_report_scheduler(notification_service))
+        def _make_notification_service() -> NotificationService:
+            session = Session(get_engine(), expire_on_commit=False)
+            return NotificationService(repo=NotificationRepository(session))
+
+        task = asyncio.create_task(start_report_scheduler(_make_notification_service))
         yield
         task.cancel()
-        session.close()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
 
     app = FastAPI(
         title="Techno Terminal API",

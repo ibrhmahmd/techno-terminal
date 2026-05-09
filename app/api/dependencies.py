@@ -42,6 +42,7 @@ def get_db() -> Generator[Session, None, None]:
     """Yields a database session that automatically closes when the request finishes."""
     with get_session() as session:
         yield session
+        session.commit()
 
 
 async def get_current_user(
@@ -144,33 +145,41 @@ def get_auth_service() -> AuthService:
     return AuthService()
 
 
-def get_student_crud_service() -> StudentCrudService:
+def get_student_crud_service(
+    session: Session = Depends(get_db),
+) -> StudentCrudService:
     """Returns a StudentCrudService with a fresh UnitOfWork and activity logging."""
-    with StudentUnitOfWork() as uow:
-        activity_svc = StudentActivityService(uow)
-        return StudentCrudService(uow, activity_svc=activity_svc)
+    uow = StudentUnitOfWork(session=session)
+    activity_svc = StudentActivityService(uow)
+    return StudentCrudService(uow, activity_svc=activity_svc)
 
-def get_student_search_service() -> SearchService:
+def get_student_search_service(
+    session: Session = Depends(get_db),
+) -> SearchService:
     """Returns a SearchService with a fresh UnitOfWork."""
-    with StudentUnitOfWork() as uow:
-        return SearchService(uow)
+    uow = StudentUnitOfWork(session=session)
+    return SearchService(uow)
 
-def get_student_profile_service() -> StudentProfileService:
+def get_student_profile_service(
+    session: Session = Depends(get_db),
+) -> StudentProfileService:
     """Returns a StudentProfileService with a fresh UnitOfWork."""
-    with StudentUnitOfWork() as uow:
-        return StudentProfileService(uow)
+    uow = StudentUnitOfWork(session=session)
+    return StudentProfileService(uow)
 
-
-def get_student_activity_service() -> StudentActivityService:
+def get_student_activity_service(
+    session: Session = Depends(get_db),
+) -> StudentActivityService:
     """Returns a StudentActivityService with a fresh UnitOfWork."""
-    with StudentUnitOfWork() as uow:
-        return StudentActivityService(uow)
+    uow = StudentUnitOfWork(session=session)
+    return StudentActivityService(uow)
 
-
-def get_parent_crud_service() -> ParentCrudService:
+def get_parent_crud_service(
+    session: Session = Depends(get_db),
+) -> ParentCrudService:
     """Returns a ParentCrudService with a fresh UnitOfWork."""
-    with StudentUnitOfWork() as uow:
-        return ParentCrudService(uow)
+    uow = StudentUnitOfWork(session=session)
+    return ParentCrudService(uow)
 
 
 def get_course_service() -> CourseService:
@@ -192,11 +201,13 @@ def get_group_level_service() -> GroupLevelService:
     return GroupLevelService()
 
 
-def get_group_competition_service() -> GroupCompetitionService:
+def get_group_competition_service(
+    session: Session = Depends(get_db),
+) -> GroupCompetitionService:
     """Returns a GroupCompetitionService with activity logging."""
-    with StudentUnitOfWork() as uow:
-        activity_svc = StudentActivityService(uow)
-        return GroupCompetitionService(activity_svc=activity_svc)
+    uow = StudentUnitOfWork(session=session)
+    activity_svc = StudentActivityService(uow)
+    return GroupCompetitionService(activity_svc=activity_svc)
 
 
 def get_session_service() -> SessionService:
@@ -209,25 +220,22 @@ def get_group_analytics_service() -> GroupAnalyticsService:
 
 
 def get_notification_service() -> Generator["NotificationService", None, None]:
-    from app.db.connection import get_engine
-    from sqlmodel import Session
     from app.modules.notifications.repositories.notification_repository import NotificationRepository
     from app.modules.notifications.services.notification_service import NotificationService
+    from app.db.connection import get_session
 
-    session = Session(get_engine(), expire_on_commit=False)
-    try:
+    with get_session() as session:
         yield NotificationService(NotificationRepository(session))
-    finally:
-        session.close()
 
 def get_enrollment_service(
+    session: Session = Depends(get_db),
     notification_svc: "NotificationService" = Depends(get_notification_service),
 ) -> EnrollmentService:
     """Returns an EnrollmentService with activity logging and notifications."""
-    with StudentUnitOfWork() as uow:
-        activity_svc = StudentActivityService(uow)
-        return EnrollmentService(
-            activity_svc=activity_svc,
+    uow = StudentUnitOfWork(session=session)
+    activity_svc = StudentActivityService(uow)
+    return EnrollmentService(
+        activity_svc=activity_svc,
             notification_svc=notification_svc
         )
 
@@ -249,42 +257,53 @@ from app.modules.finance.services.reporting_service import ReportingService
 
 
 def get_receipt_service(
+    session: Session = Depends(get_db),
     notification_svc: "NotificationService" = Depends(get_notification_service),
 ) -> ReceiptService:
     """Returns a ReceiptService with activity logging and notifications."""
-    with FinanceUnitOfWork() as finance_uow, StudentUnitOfWork() as crm_uow:
-        activity_svc = StudentActivityService(crm_uow)
-        return ReceiptService(
-            finance_uow, 
-            activity_svc=activity_svc,
-            notification_svc=notification_svc
-        )
+    finance_uow = FinanceUnitOfWork(session=session)
+    crm_uow = StudentUnitOfWork(session=session)
+    activity_svc = StudentActivityService(crm_uow)
+    return ReceiptService(
+        finance_uow, 
+        activity_svc=activity_svc,
+        notification_svc=notification_svc
+    )
 
 
-def get_refund_service() -> RefundService:
+def get_refund_service(
+    session: Session = Depends(get_db),
+) -> RefundService:
     """Returns a RefundService with activity logging."""
-    with FinanceUnitOfWork() as finance_uow, StudentUnitOfWork() as crm_uow:
-        activity_svc = StudentActivityService(crm_uow)
-        return RefundService(finance_uow, activity_svc=activity_svc)
+    finance_uow = FinanceUnitOfWork(session=session)
+    crm_uow = StudentUnitOfWork(session=session)
+    activity_svc = StudentActivityService(crm_uow)
+    return RefundService(finance_uow, activity_svc=activity_svc)
 
 
-def get_balance_service() -> BalanceService:
+def get_balance_service(
+    session: Session = Depends(get_db),
+) -> BalanceService:
     """Returns a BalanceService with a fresh UnitOfWork."""
-    with FinanceUnitOfWork() as uow:
-        return BalanceService(uow)
+    uow = FinanceUnitOfWork(session=session)
+    return BalanceService(uow)
 
 
-def get_reporting_service() -> ReportingService:
+def get_reporting_service(
+    session: Session = Depends(get_db),
+) -> ReportingService:
     """Returns a ReportingService with a fresh UnitOfWork."""
-    with FinanceUnitOfWork() as uow:
-        return ReportingService(uow)
+    uow = FinanceUnitOfWork(session=session)
+    return ReportingService(uow)
 
 
-def get_student_payment_service() -> "StudentPaymentService":
+def get_student_payment_service(
+    session: Session = Depends(get_db),
+) -> "StudentPaymentService":
     """Returns a StudentPaymentService with a fresh UnitOfWork."""
     from app.modules.finance.services.student_payment_service import StudentPaymentService
-    with FinanceUnitOfWork() as uow:
-        return StudentPaymentService(uow)
+    uow = FinanceUnitOfWork(session=session)
+    return StudentPaymentService(uow)
 
 
 # ── Additional Service Factories (Standardizing DI pattern) ─────────────────────
@@ -315,20 +334,21 @@ def get_team_service() -> TeamService:
 from app.modules.hr import EmployeeCrudService, StaffAccountService, HRUnitOfWork
 
 
-def get_employee_crud_service() -> EmployeeCrudService:
+def get_employee_crud_service(
+    session: Session = Depends(get_db),
+) -> EmployeeCrudService:
     """Returns EmployeeCrudService with fresh Unit of Work per request."""
-    with get_session() as session:
-        uow = HRUnitOfWork(session)
-        return EmployeeCrudService(uow)
+    uow = HRUnitOfWork(session)
+    return EmployeeCrudService(uow)
 
 
 def get_staff_account_service(
+    session: Session = Depends(get_db),
     supabase_client = Depends(get_supabase_admin),
 ) -> StaffAccountService:
     """Returns StaffAccountService with fresh Unit of Work per request."""
-    with get_session() as session:
-        uow = HRUnitOfWork(session)
-        return StaffAccountService(uow, supabase_client)
+    uow = HRUnitOfWork(session)
+    return StaffAccountService(uow, supabase_client)
 
 
 # Analytics services

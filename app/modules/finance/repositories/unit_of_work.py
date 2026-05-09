@@ -43,12 +43,11 @@ class FinanceUnitOfWork:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        if exc_type is not None:
-            self.rollback()
-        else:
-            self.commit()
-        
         if self._own_session:
+            if exc_type is not None:
+                self.rollback()
+            else:
+                self.commit()
             self._session_cm.__exit__(exc_type, exc_val, exc_tb)
 
     @property
@@ -80,3 +79,7 @@ class FinanceUnitOfWork:
     def flush(self) -> None:
         """Flush pending changes to database without committing."""
         self._session.flush()
+
+    def get_model_by_id(self, model_class, record_id):
+        """Public accessor for arbitrary models by ID."""
+        return self._session.get(model_class, record_id)

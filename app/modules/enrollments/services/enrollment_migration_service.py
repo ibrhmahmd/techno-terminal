@@ -178,7 +178,7 @@ class EnrollmentMigrationService:
             #         background_tasks=background_tasks,
             #     )
         
-        session.commit()
+        # session.commit() is managed by the caller
         return completed_ids
 
     def get_active_enrollments_for_level(

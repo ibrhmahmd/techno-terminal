@@ -49,6 +49,7 @@ class AttendanceService:
                 repo.upsert_attendance(session, record)
                 marked += 1
 
+            session.commit()
             return MarkAttendanceResponseDTO(marked=marked, skipped=skipped)
 
     def get_session_roster_with_attendance(self, session_id: int) -> list[SessionAttendanceRowDTO]:

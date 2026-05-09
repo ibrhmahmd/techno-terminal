@@ -33,11 +33,11 @@ class StudentUnitOfWork:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        if exc_type is not None:
-            self.rollback()
-        else:
-            self.commit()
         if self._own_session:
+            if exc_type is not None:
+                self.rollback()
+            else:
+                self.commit()
             self._session_cm.__exit__(exc_type, exc_val, exc_tb)
 
     @property

@@ -8,9 +8,8 @@ from app.modules.crm.interfaces import IStudentRepository, StudentSummaryDTO, St
 from app.api.schemas.crm.student_details import SiblingInfo
 from app.modules.crm.models import Student, StudentStatus, StudentParent, Parent
 from app.shared.audit_utils import apply_create_audit
-from app.db.soft_delete_mixin import SoftDeleteMixin
 
-class StudentRepository(IStudentRepository, SoftDeleteMixin[Student]):
+class StudentRepository(IStudentRepository):
     """
     Repository for student data access with soft-delete support.
     Session is injected via constructor — never acquired internally.
@@ -18,7 +17,6 @@ class StudentRepository(IStudentRepository, SoftDeleteMixin[Student]):
     """
     def __init__(self, session: Session) -> None:
         self._session = session
-        super().__init__(session)
 
     def create(self, student: Student) -> Student:
         self._session.add(student)

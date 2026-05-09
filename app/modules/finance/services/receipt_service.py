@@ -228,7 +228,7 @@ class ReceiptService(IReceiptService):
 
         for payment in payments:
             # Get student
-            student = self._uow._session.get(Student, payment.student_id)
+            student = self._uow.get_model_by_id(Student, payment.student_id)
             student_name = student.full_name if student else f"Student #{payment.student_id}"
             student_phone = getattr(student, 'phone', None)
 
@@ -237,11 +237,11 @@ class ReceiptService(IReceiptService):
             parent_name = None
             parent_phone = None
             if student:
-                parent_link = self._uow._session.query(StudentParent).filter(
-                    StudentParent.student_id == student.id
-                ).first()
+                from sqlmodel import select
+                stmt = select(StudentParent).where(StudentParent.student_id == student.id)
+                parent_link = self._uow._session.exec(stmt).first()
                 if parent_link:
-                    parent = self._uow._session.get(Parent, parent_link.parent_id)
+                    parent = self._uow.get_model_by_id(Parent, parent_link.parent_id)
                     if parent:
                         parent_id = parent.id
                         parent_name = parent.full_name
@@ -256,18 +256,18 @@ class ReceiptService(IReceiptService):
             course_name = None
 
             if enrollment_id:
-                enrollment = self._uow._session.get(Enrollment, enrollment_id)
+                enrollment = self._uow.get_model_by_id(Enrollment, enrollment_id)
                 if enrollment:
                     enrollment_status = enrollment.status
                     level_number = enrollment.level_number
                     group_id = enrollment.group_id
 
                     if group_id:
-                        group = self._uow._session.get(Group, group_id)
+                        group = self._uow.get_model_by_id(Group, group_id)
                         if group:
                             group_name = group.name
                             if group.course_id:
-                                course = self._uow._session.get(Course, group.course_id)
+                                course = self._uow.get_model_by_id(Course, group.course_id)
                                 if course:
                                     course_name = course.name
 
