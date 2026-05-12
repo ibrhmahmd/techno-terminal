@@ -13,7 +13,8 @@ Tests all endpoints in group_competitions_router.py:
 import pytest
 from datetime import date, datetime
 from app.modules.academics.models import Group, Course
-from app.modules.competitions.models import Competition, Team, GroupCompetitionParticipation
+from app.modules.competitions.models import Competition, Team
+from app.modules.academics.models import GroupCompetitionParticipation
 
 
 class TestGroupCompetitionsRead:

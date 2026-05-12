@@ -6,7 +6,6 @@ Teams router for 3-table schema.
 Handles: Team lifecycle, members, payments, placement
 """
 
-from decimal import Decimal
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -19,6 +18,7 @@ from app.modules.competitions.services.team_service import TeamService
 
 from app.modules.competitions.schemas.team_schemas import (
     RegisterTeamInput,
+    AddTeamMemberInput,
     TeamRegistrationResultDTO,
     TeamWithMembersDTO,
     TeamDTO,
@@ -41,7 +41,6 @@ class UpdateTeamInput(BaseModel):
     subcategory: Optional[str] = Field(None, max_length=100)
     group_id: Optional[int] = None
     coach_id: Optional[int] = None
-    fee: Optional[Decimal] = Field(None, ge=0, decimal_places=2)
     notes: Optional[str] = Field(None, max_length=1000)
 
 
@@ -49,11 +48,6 @@ class PlacementUpdateInput(BaseModel):
     """Input for updating team placement."""
     placement_rank: int = Field(..., ge=1, description="Placement rank (1=1st place)")
     placement_label: Optional[str] = Field(None, max_length=100, description="Label like 'Gold' or '3rd Place'")
-
-
-class AddTeamMemberInput(BaseModel):
-    """Input for adding a member to an existing team."""
-    student_id: int = Field(..., description="Student ID to add")
 
 
 class TeamMemberListResponse(BaseModel):
@@ -329,6 +323,7 @@ def add_team_member(
     result = svc.add_team_member_to_existing(
         team_id=team_id,
         student_id=body.student_id,
+        fee=body.fee,
         current_user_id=current_user.id,
     )
     return ApiResponse(data=result, message="Member added successfully.")

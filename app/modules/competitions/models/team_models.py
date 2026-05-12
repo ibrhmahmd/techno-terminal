@@ -1,7 +1,5 @@
 from datetime import datetime
 from typing import Optional
-from decimal import Decimal
-
 from sqlmodel import SQLModel, Field
 
 # Ensure related models are loaded so SQLAlchemy can resolve foreign keys
@@ -20,7 +18,6 @@ class TeamBase(SQLModel):
     # Category/subcategory stored as citext in DB (case-insensitive)
     category: str  # Required category name
     subcategory: Optional[str] = None  # Optional subcategory
-    fee: Optional[Decimal] = None  # Academy-set fee for this team
     placement_rank: Optional[int] = None  # 1=1st place, 2=2nd, etc.
     placement_label: Optional[str] = None  # "Gold", "3rd Place", etc.
     notes: Optional[str] = None  # Additional notes

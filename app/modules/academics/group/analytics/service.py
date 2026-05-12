@@ -101,24 +101,24 @@ class GroupAnalyticsService:
             active_count = 0
             completed_count = 0
 
-            for participation, competition_name, team_name, category_name in participations:
-                if participation.is_active:
+            for p in participations:
+                if p.is_active:
                     active_count += 1
                 else:
                     completed_count += 1
 
                 competition_dtos.append(CompetitionHistoryItemDTO(
-                    participation_id=participation.id,
-                    competition_id=participation.competition_id,
-                    competition_name=competition_name or "Unknown",
-                    team_id=participation.team_id,
-                    team_name=team_name or "Unknown",
-                    category_name=category_name,
-                    entered_at=participation.entered_at,
-                    left_at=participation.left_at,
-                    is_active=participation.is_active,
-                    final_placement=participation.final_placement,
-                    notes=participation.notes,
+                    participation_id=p.participation_id,
+                    competition_id=p.competition_id,
+                    competition_name=p.competition_name or "Unknown",
+                    team_id=p.team_id,
+                    team_name=p.team_name or "Unknown",
+                    category_name=p.category,
+                    entered_at=p.entered_at,
+                    left_at=p.left_at,
+                    is_active=p.is_active,
+                    final_placement=p.final_placement,
+                    notes=p.notes,
                 ))
 
             return GroupCompetitionHistoryResponseDTO(

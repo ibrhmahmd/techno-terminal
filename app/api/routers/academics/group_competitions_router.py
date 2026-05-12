@@ -52,7 +52,7 @@ def list_group_competitions(
     """Returns all competition participations for a group."""
     participations = svc.get_group_competitions(group_id, is_active=is_active)
     return ApiResponse(
-        data=[GroupCompetitionPublic(**p) for p in participations]
+        data=[GroupCompetitionPublic.model_validate(p) for p in participations]
     )
 
 
@@ -103,7 +103,7 @@ def link_team_to_group(
     try:
         result = svc.link_existing_team(group_id, team_id)
         return ApiResponse(
-            data=TeamLinkResponse(**result),
+            data=TeamLinkResponse.model_validate(result),
             message=f"Team {team_id} linked to group {group_id}",
         )
     except ValueError as e:
@@ -197,9 +197,9 @@ def withdraw_from_competition(
         result = svc.withdraw_from_competition(participation_id, reason)
         return ApiResponse(
             data=CompetitionWithdrawalResponse(
-                participation_id=result["id"],
-                status=result["status"],
-                withdrawn_at=result["withdrawn_at"],
+                participation_id=result.id,
+                status=result.status,
+                withdrawn_at=result.withdrawn_at,
                 message="Successfully withdrew from competition.",
             ),
             message="Successfully withdrew from competition.",

@@ -100,7 +100,7 @@ class TeamService:
                 s = db.get(Student, sid)
                 if not s:
                     raise NotFoundError(f"Student {sid} not found.")
-                if not s.is_active:
+                if s.status != "active":
                     raise BusinessRuleError(f"Student '{s.full_name}' is not active.")
 
                 # Business rule: One student per competition
@@ -113,9 +113,7 @@ class TeamService:
                         f"for this competition."
                     )
 
-            # Create team with custom fee or competition default
-            team_fee = cmd.fee if cmd.fee is not None else comp.fee_per_student
-
+            # Create team (no team-level fee — fees are per-student on TeamMember)
             team = team_repo.create_team(
                 db,
                 competition_id=cmd.competition_id,
@@ -124,20 +122,31 @@ class TeamService:
                 subcategory=cmd.subcategory,
                 coach_id=cmd.coach_id,
                 group_id=cmd.group_id,
-                fee=team_fee,
                 notes=cmd.notes,
             )
 
-            # Add members with equal share of team fee
+            # Add members with per-student fee from input (default 0 if not specified)
             members_added = 0
-            share_per_member = team_fee / len(cmd.student_ids) if cmd.student_ids and team_fee else 0.0
-
             for sid in cmd.student_ids:
+                member_share = cmd.student_fees.get(sid, 0.0) if cmd.student_fees else 0.0
                 # Skip duplicates gracefully
                 existing = team_repo.get_team_member(db, team.id, sid)
                 if not existing:
-                    team_repo.add_team_member(db, team.id, sid, member_share=share_per_member)
+                    team_repo.add_team_member(db, team.id, sid, member_share=member_share)
                     members_added += 1
+
+            # Auto-create group competition participation if team belongs to a group
+            if cmd.group_id is not None:
+                from app.shared.datetime_utils import utc_now
+                from app.modules.academics.models.group_level_models import GroupCompetitionParticipation
+                participation = GroupCompetitionParticipation(
+                    group_id=cmd.group_id,
+                    team_id=team.id,
+                    competition_id=cmd.competition_id,
+                    entered_at=utc_now(),
+                    is_active=True,
+                )
+                db.add(participation)
 
             # Log activity and notify for each student
             self._log_team_registration_activity(
@@ -355,6 +364,18 @@ class TeamService:
                 placement_label=placement_label
             )
 
+            # Sync placement to active group competition participation
+            from sqlalchemy import select
+            from app.modules.academics.models.group_level_models import GroupCompetitionParticipation
+            stmt = select(GroupCompetitionParticipation).where(
+                GroupCompetitionParticipation.team_id == team_id,
+                GroupCompetitionParticipation.is_active == True,
+            )
+            active_participation = db.exec(stmt).first()
+            if active_participation:
+                active_participation.final_placement = placement_rank
+                db.add(active_participation)
+
             # Log activity for each team member
             if team:
                 members = team_repo.list_team_members(db, team_id)
@@ -375,6 +396,7 @@ class TeamService:
         self,
         team_id: int,
         student_id: int,
+        fee: float = 0.0,
         current_user_id: Optional[int] = None,
     ) -> AddTeamMemberResultDTO:
         """Add a student to an existing team."""
@@ -402,10 +424,7 @@ class TeamService:
             if existing:
                 raise ConflictError("Student is already a member of this team.")
 
-            # Calculate share from team's fee
-            share = team.fee / 2 if team.fee else 0.0  # Simplified: assume splitting
-
-            m = team_repo.add_team_member(db, team_id, student_id, member_share=share)
+            m = team_repo.add_team_member(db, team_id, student_id, member_share=fee)
 
             # Log activity for student joining team
             comp = comp_repo.get_competition(db, team.competition_id)

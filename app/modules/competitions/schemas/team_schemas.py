@@ -22,7 +22,6 @@ class TeamDTO(BaseModel):
     group_id: Optional[int] = None
     team_name: str
     coach_id: Optional[int] = None
-    fee: Optional[float] = None  # Team fee
     placement_rank: Optional[int] = None  # Competition placement
     placement_label: Optional[str] = None  # Placement description
     notes: Optional[str] = None
@@ -48,9 +47,9 @@ class RegisterTeamInput(BaseModel):
     category: str  # Category name (citext in DB)
     subcategory: Optional[str] = None  # Optional subcategory
     student_ids: list[int]
+    student_fees: Optional[dict[int, float]] = None  # Per-student fees, missing defaults to 0
     coach_id: Optional[int] = None
     group_id: Optional[int] = None
-    fee: Optional[float] = None  # Custom fee (None = use competition default)
     notes: Optional[str] = None  # Additional notes
 
     @field_validator("student_ids")
@@ -69,6 +68,12 @@ class RegisterTeamInput(BaseModel):
     @classmethod
     def category_not_empty(cls, v: str) -> str:
         return validate_non_empty_string(v, field="category")
+
+
+class AddTeamMemberInput(BaseModel):
+    """Input for adding a member to an existing team."""
+    student_id: int
+    fee: float = 0.0  # Per-student fee for this member
 
 
 class PayCompetitionFeeInput(BaseModel):

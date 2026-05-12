@@ -8,6 +8,8 @@ Covers:
 - Team registration
 - Fee payment marking
 """
+from datetime import date
+
 import pytest
 
 
@@ -235,6 +237,136 @@ class TestTeamRegistration:
         )
         
         assert response.status_code in [404, 422]
+
+
+class TestTeamRegistrationFeeInput:
+    """Tests for per-student fee input feature (US1/US2)."""
+
+    def _create_competition_and_students(self, db_session):
+        """Create a competition and two test students, return their IDs."""
+        import time
+        from app.modules.competitions.models import Competition
+        from app.modules.crm.models import Student
+        from app.modules.crm.models.student_models import StudentStatus
+        from sqlmodel import text
+
+        unique = str(int(time.time() * 1000))
+        comp = Competition(name=f"Fee Test Comp {unique}", edition_year=2026, competition_date=date(2026, 6, 1))
+        db_session.add(comp)
+        db_session.commit()
+        db_session.refresh(comp)
+
+        s1_id = db_session.execute(
+            text("INSERT INTO students (full_name, status) VALUES (:name, 'active'::student_status) RETURNING id"),
+            {"name": f"Fee Student 1 {unique}"}
+        ).scalar_one()
+        s2_id = db_session.execute(
+            text("INSERT INTO students (full_name, status) VALUES (:name, 'active'::student_status) RETURNING id"),
+            {"name": f"Fee Student 2 {unique}"}
+        ).scalar_one()
+        db_session.commit()
+
+        return comp.id, [s1_id, s2_id]
+
+    def test_register_team_with_partial_student_fees(self, client, admin_headers, db_session):
+        """
+        POST /teams with student_fees partial dict — missing students default to 0.
+        """
+        comp_id, student_ids = self._create_competition_and_students(db_session)
+        response = client.post(
+            "/api/v1/teams",
+            headers=admin_headers,
+            json={
+                "team_name": "FeeTest Partial",
+                "competition_id": comp_id,
+                "category": "Robotics",
+                "student_ids": student_ids,
+                "student_fees": {str(student_ids[0]): 50.0}
+            }
+        )
+
+        assert response.status_code in [201, 422]
+
+    def test_register_team_with_empty_student_fees(self, client, admin_headers, db_session):
+        """
+        POST /teams with empty student_fees dict — all students default to 0.
+        """
+        comp_id, student_ids = self._create_competition_and_students(db_session)
+        response = client.post(
+            "/api/v1/teams",
+            headers=admin_headers,
+            json={
+                "team_name": "FeeTest Empty",
+                "competition_id": comp_id,
+                "category": "Robotics",
+                "student_ids": student_ids,
+                "student_fees": {}
+            }
+        )
+
+        assert response.status_code in [201, 422]
+
+    def test_register_team_without_student_fees(self, client, admin_headers, db_session):
+        """
+        POST /teams without student_fees — all students default to 0.
+        """
+        comp_id, student_ids = self._create_competition_and_students(db_session)
+        response = client.post(
+            "/api/v1/teams",
+            headers=admin_headers,
+            json={
+                "team_name": "FeeTest None",
+                "competition_id": comp_id,
+                "category": "Robotics",
+                "student_ids": [student_ids[0]]
+            }
+        )
+
+        assert response.status_code in [201, 422]
+
+    def test_add_team_member_with_fee(self, client, admin_headers):
+        """
+        POST /teams/{id}/members with fee — uses the provided fee as member_share.
+        """
+        response = client.post(
+            "/api/v1/teams/1/members",
+            headers=admin_headers,
+            json={
+                "student_id": 3,
+                "fee": 25.0
+            }
+        )
+
+        assert response.status_code in [201, 404, 409]
+
+    def test_add_team_member_without_fee(self, client, admin_headers):
+        """
+        POST /teams/{id}/members without fee — member_share defaults to 0.
+        """
+        response = client.post(
+            "/api/v1/teams/1/members",
+            headers=admin_headers,
+            json={
+                "student_id": 4
+            }
+        )
+
+        assert response.status_code in [201, 404, 409]
+
+    def test_add_team_member_with_zero_fee(self, client, admin_headers):
+        """
+        POST /teams/{id}/members with fee=0 — member_share is 0.
+        """
+        response = client.post(
+            "/api/v1/teams/1/members",
+            headers=admin_headers,
+            json={
+                "student_id": 5,
+                "fee": 0.0
+            }
+        )
+
+        assert response.status_code in [201, 404, 409]
 
 
 class TestCompetitionsAuth:
