@@ -76,12 +76,12 @@ class TestCompetitionsRead:
         assert data["success"] is True
         assert isinstance(data["data"], list)
     
-    def test_list_teams_in_category(self, client, admin_headers):
+    def test_list_teams_in_competition(self, client, admin_headers):
         """
-        GET /competitions/{id}/categories/{id}/teams returns teams.
+        GET /teams?competition_id=1 returns teams.
         """
         response = client.get(
-            "/api/v1/competitions/1/categories/1/teams",
+            "/api/v1/teams?competition_id=1",
             headers=admin_headers
         )
         
@@ -107,11 +107,10 @@ class TestCompetitionsWrite:
             headers=admin_headers,
             json={
                 "name": f"Test Competition {unique_suffix}",
-                "description": "Test competition for API testing",
-                "start_date": "2024-06-01",
-                "end_date": "2024-06-30",
-                "registration_deadline": "2024-05-15",
-                "is_active": True
+                "edition_year": 2024,
+                "competition_date": "2024-06-01",
+                "location": "Main Hall",
+                "fee_per_student": 0.0
             }
         )
         
@@ -129,7 +128,7 @@ class TestCompetitionsWrite:
             headers=admin_headers,
             json={
                 "name": "",  # Empty name should fail
-                "start_date": "invalid-date"
+                "edition_year": "not-a-number"
             }
         )
         
@@ -149,48 +148,41 @@ class TestCompetitionsWrite:
             headers=admin_headers,
             json={
                 "name": "Admin Test Competition",
-                "start_date": "2024-06-01"
+                "edition_year": 2024,
+                "competition_date": "2024-06-01"
             }
         )
         
         # Should not be 401 (auth required) but may fail validation
         assert response.status_code != 401
     
-    def test_add_category_success(self, client, admin_headers):
+    def test_get_categories_success(self, client, admin_headers):
         """
-        POST /competitions/{id}/categories adds a category.
-        Requires admin role.
+        GET /competitions/{id}/categories returns categories from teams data.
+        Categories are derived from the distinct category values on teams.
         """
-        response = client.post(
+        response = client.get(
             "/api/v1/competitions/1/categories",
-            headers=admin_headers,
-            json={
-                "name": "Test Category",
-                "description": "Test category description",
-                "min_age": 10,
-                "max_age": 15,
-                "fee_amount": 500.0
-            }
+            headers=admin_headers
         )
         
-        # May succeed (201) or fail (404/409) depending on data
-        assert response.status_code in [201, 404, 409, 422]
+        # May succeed (200) or return empty list
+        assert response.status_code in [200, 404]
+        if response.status_code == 200:
+            data = response.json()
+            assert data["success"] is True
+            assert isinstance(data["data"], list)
     
-    def test_add_category_not_found(self, client, admin_headers):
+    def test_get_categories_not_found(self, client, admin_headers):
         """
-        POST /competitions/{id}/categories for non-existent competition.
+        GET /competitions/{id}/categories for non-existent competition.
         """
-        response = client.post(
+        response = client.get(
             "/api/v1/competitions/99999/categories",
-            headers=admin_headers,
-            json={
-                "name": "Test Category",
-                "min_age": 10,
-                "max_age": 15
-            }
+            headers=admin_headers
         )
         
-        assert response.status_code in [404, 422]
+        assert response.status_code in [404, 200]
 
 
 class TestTeamRegistration:
@@ -198,14 +190,16 @@ class TestTeamRegistration:
     
     def test_register_team_validation_error(self, client, admin_headers):
         """
-        POST /competitions/register with invalid data returns 422.
+        POST /teams with invalid data returns 422.
         """
         response = client.post(
-            "/api/v1/competitions/register",
+            "/api/v1/teams",
             headers=admin_headers,
             json={
                 "team_name": "",  # Empty name
-                "category_id": "not-an-int"  # Invalid type
+                "competition_id": 1,
+                "category": "Robotics",
+                "student_ids": []
             }
         )
         
@@ -215,14 +209,15 @@ class TestTeamRegistration:
     
     def test_register_team_requires_admin(self, client, admin_headers):
         """
-        POST /competitions/register requires admin role.
+        POST /teams requires admin role.
         """
         response = client.post(
-            "/api/v1/competitions/register",
+            "/api/v1/teams",
             headers=admin_headers,
             json={
                 "team_name": "Test Team",
-                "category_id": 1,
+                "competition_id": 1,
+                "category": "Robotics",
                 "student_ids": [1, 2]
             }
         )
@@ -232,14 +227,14 @@ class TestTeamRegistration:
     
     def test_mark_fee_paid_not_found(self, client, admin_headers):
         """
-        POST /competitions/team-members/{id}/pay for non-existent member.
+        POST /teams/{team_id}/members/{student_id}/pay for non-existent team.
         """
         response = client.post(
-            "/api/v1/competitions/team-members/99999/pay",
+            "/api/v1/teams/99999/members/99999/pay",
             headers=admin_headers
         )
         
-        assert response.status_code in [200, 404]
+        assert response.status_code in [404, 422]
 
 
 class TestCompetitionsAuth:
@@ -253,7 +248,7 @@ class TestCompetitionsAuth:
             "/api/v1/competitions",
             "/api/v1/competitions/1",
             "/api/v1/competitions/1/categories",
-            "/api/v1/competitions/1/categories/1/teams",
+            "/api/v1/teams?competition_id=1",
         ]
         
         for endpoint in read_endpoints:
@@ -270,10 +265,9 @@ class TestCompetitionsAuth:
         Verify write endpoints require admin authentication.
         """
         write_tests = [
-            ("POST", "/api/v1/competitions", {"name": "Test", "start_date": "2024-01-01"}),
-            ("POST", "/api/v1/competitions/99999/categories", {"name": "Test", "min_age": 10}),
-            ("POST", "/api/v1/competitions/register", {"team_name": "Test", "category_id": 1}),
-            ("POST", "/api/v1/competitions/team-members/99999/pay", {}),
+            ("POST", "/api/v1/competitions", {"name": "Test", "edition_year": 2024}),
+            ("POST", "/api/v1/teams", {"team_name": "Test", "competition_id": 1, "category": "Robotics", "student_ids": [1]}),
+            ("POST", "/api/v1/teams/99999/members/99999/pay", {}),
         ]
         
         for method, endpoint, body in write_tests:

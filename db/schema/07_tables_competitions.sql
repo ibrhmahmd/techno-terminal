@@ -27,8 +27,7 @@ CREATE TABLE competitions (
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMPTZ,
-    deleted_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
-    is_active BOOLEAN DEFAULT TRUE
+    deleted_by INTEGER REFERENCES users(id) ON DELETE SET NULL
 );
 
 COMMENT ON TABLE competitions IS 'Competition definitions and details';
@@ -68,12 +67,10 @@ CREATE TABLE teams (
     category TEXT,
     subcategory TEXT,
     coach_id INTEGER REFERENCES employees(id) ON DELETE SET NULL,
-    enrollment_fee_per_student DECIMAL(10, 2) CHECK (enrollment_fee_per_student > 0),
     notes TEXT,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     metadata JSONB DEFAULT '{}',
-    is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at TIMESTAMPTZ,
     deleted_by INTEGER REFERENCES users(id) ON DELETE SET NULL
 );
@@ -81,8 +78,6 @@ CREATE TABLE teams (
 COMMENT ON TABLE teams IS 'Competition teams linked to categories and optionally to groups';
 COMMENT ON COLUMN teams.category IS 'Team category (normalized)';
 COMMENT ON COLUMN teams.subcategory IS 'Team subcategory (normalized)';
-COMMENT ON COLUMN teams.enrollment_fee_per_student IS 'Fee per student for team enrollment';
-COMMENT ON COLUMN teams.is_deleted IS 'Soft delete flag';
 COMMENT ON COLUMN teams.deleted_at IS 'Soft delete timestamp';
 
 -- =============================================================================

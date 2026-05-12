@@ -21,6 +21,7 @@ from app.modules.competitions import CompetitionService, CompetitionDTO
 from app.modules.competitions.schemas.competition_schemas import (
     CreateCompetitionInput,
 )
+from app.modules.competitions.schemas.team_schemas import CategoryWithTeamsDTO
 
 router = APIRouter(tags=["Competitions"])
 
@@ -47,7 +48,7 @@ class UpdateCompetitionInput(BaseModel):
 class CompetitionSummaryResponse(BaseModel):
     """Full competition summary with nested data."""
     competition: CompetitionDTO
-    categories: list[dict]  # CategoryWithTeamsDTO serialized #TODO remove Dict and write a typed DTO class
+    categories: list[CategoryWithTeamsDTO]
     total_teams: int
     total_participants: int
 

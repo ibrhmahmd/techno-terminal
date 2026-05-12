@@ -151,7 +151,7 @@ def get_team(
     svc: TeamService = Depends(get_team_service),
 ):
     """Get team by ID."""
-    team = svc.update_team(team_id)  # Using update_team as a get since no direct get exists
+    team = svc.get_team_by_id(team_id)
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
     return ApiResponse(data=team)
@@ -290,7 +290,7 @@ def list_team_members(
     team_name = "Unknown"
     if members and members[0]:
         # Try to get team info
-        team = svc.update_team(team_id)
+        team = svc.get_team_by_id(team_id)
         if team:
             team_name = team.team_name
     

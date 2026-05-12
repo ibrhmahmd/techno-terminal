@@ -261,6 +261,12 @@ class TeamService:
             # Don't fail if logging fails
             pass
 
+    def get_team_by_id(self, team_id: int) -> TeamDTO | None:
+        """Get a single team by ID."""
+        with get_session() as db:
+            team = team_repo.get_team(db, team_id)
+            return TeamDTO.model_validate(team) if team else None
+
     def list_teams(
         self,
         competition_id: int,
