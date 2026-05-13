@@ -110,6 +110,8 @@ class AddTeamMemberResultDTO(BaseModel):
 class TeamMemberRosterDTO(BaseModel):
     """Returned by list_team_members"""
     team_member_id: int
+    team_id: int
+    team_name: str
     student_id: int
     student_name: str
     member_share: float = 0.0

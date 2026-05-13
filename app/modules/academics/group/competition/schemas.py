@@ -26,3 +26,33 @@ class TeamListResult(BaseModel):
     """Result of paginated team list query."""
     teams: list[TeamReadDTO]
     total: int
+
+
+class GroupCompetitionDTO(BaseModel):
+    """DTO for group competition participation data."""
+    participation_id: int
+    competition_id: int
+    competition_name: str | None = None
+    category: str | None = None
+    subcategory: str | None = None
+    team_id: int
+    team_name: str | None = None
+    entered_at: datetime | None = None
+    left_at: datetime | None = None
+    is_active: bool
+    final_placement: int | None = None
+    notes: str | None = None
+
+
+class WithdrawalResultDTO(BaseModel):
+    """DTO for competition withdrawal result."""
+    id: int
+    status: str
+    withdrawn_at: datetime | None = None
+
+
+class TeamLinkResultDTO(BaseModel):
+    """DTO for team-to-group link result."""
+    team_id: int
+    team_name: str | None = None
+    group_id: int

@@ -201,13 +201,9 @@ def get_group_level_service() -> GroupLevelService:
     return GroupLevelService()
 
 
-def get_group_competition_service(
-    session: Session = Depends(get_db),
-) -> GroupCompetitionService:
-    """Returns a GroupCompetitionService with activity logging."""
-    uow = StudentUnitOfWork(session=session)
-    activity_svc = StudentActivityService(uow)
-    return GroupCompetitionService(activity_svc=activity_svc)
+def get_group_competition_service() -> GroupCompetitionService:
+    """Returns a fresh GroupCompetitionService instance per request (stateless)."""
+    return GroupCompetitionService()
 
 
 def get_session_service() -> SessionService:

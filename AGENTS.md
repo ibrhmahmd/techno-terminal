@@ -106,6 +106,9 @@ No GitHub Actions, no pre-commit, no ruff/flake8/black config. Review code manua
 
 Pipeline: `constitution → specify → clarify → plan → tasks → implement → analyze`. Commands: `/speckit.specify`, `/speckit.clarify`, `/speckit.plan`, `/speckit.tasks`, `/speckit.implement`, `/speckit.analyze`. All plans/tasks validate against `.specify/memory/constitution.md`.
 
+## Connection Pool Tests
+Standalone suite at `test_connection_exhaustion.py` — tests UoW pattern abuse, scheduler leaks, stale connections, slow queries. Run with `python test_connection_exhaustion.py --uow` (10s) or `--all-direct`.
+
 <!-- SPECKIT START -->
-**Current Plan**: `specs/008-return-employee-national-id/plan.md` — Return Employee National ID
+**Current Plan**: `specs/007-review-competition-routers/plan.md` — Review Competition Routers
 <!-- SPECKIT END -->

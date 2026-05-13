@@ -13,7 +13,8 @@ if TYPE_CHECKING:
 from app.db.connection import get_session
 from app.modules.academics.models.group_level_models import GroupCompetitionParticipation
 import app.modules.academics.group.competition.repository as repo
-from app.modules.academics.group.competition.schemas import TeamReadDTO
+from app.modules.academics.group.competition.schemas import TeamReadDTO, GroupCompetitionDTO, WithdrawalResultDTO, TeamLinkResultDTO
+from app.shared.exceptions import NotFoundError, ConflictError, BusinessRuleError
 
 
 class GroupCompetitionService:
@@ -73,7 +74,7 @@ class GroupCompetitionService:
                 session, group_id, team_id, competition_id
             )
             if existing:
-                raise ValueError(
+                raise ConflictError(
                     f"Team {team_id} already has active participation in competition {competition_id}"
                 )
             
@@ -122,7 +123,7 @@ class GroupCompetitionService:
 
     def get_group_competitions(
         self, group_id: int, is_active: bool | None = True
-    ) -> list[dict]: #TODO remove Dict and write a typed DTO class
+    ) -> list[GroupCompetitionDTO]:
         """
         Get all competition participations for a group.
         
@@ -143,21 +144,20 @@ class GroupCompetitionService:
                 competition = session.get(Competition, p.competition_id)
                 team = session.get(Team, p.team_id)
 
-                # this needs to be wrapped in a DTO
-                result.append({
-                    "participation_id": p.id,
-                    "competition_id": p.competition_id,
-                    "competition_name": competition.name if competition else None,
-                    "category": team.category if team else None,
-                    "subcategory": team.subcategory if team else None,
-                    "team_id": p.team_id,
-                    "team_name": team.team_name if team else None,
-                    "entered_at": p.entered_at,
-                    "left_at": p.left_at,
-                    "is_active": p.is_active,
-                    "final_placement": p.final_placement,
-                    "notes": p.notes,
-                })
+                result.append(GroupCompetitionDTO(
+                    participation_id=p.id,
+                    competition_id=p.competition_id,
+                    competition_name=competition.name if competition else None,
+                    category=team.category if team else None,
+                    subcategory=team.subcategory if team else None,
+                    team_id=p.team_id,
+                    team_name=team.team_name if team else None,
+                    entered_at=p.entered_at,
+                    left_at=p.left_at,
+                    is_active=p.is_active,
+                    final_placement=p.final_placement,
+                    notes=p.notes,
+                ))
             return result
 
     def complete_participation(
@@ -180,7 +180,7 @@ class GroupCompetitionService:
                 session, participation_id, final_placement
             )
             if not participation:
-                raise ValueError(f"Participation {participation_id} not found")
+                raise NotFoundError(f"Participation {participation_id} not found")
             session.commit()
             session.refresh(participation)
             return participation
@@ -192,7 +192,7 @@ class GroupCompetitionService:
         with get_session() as session:
             participation = repo.get_participation_by_id(session, participation_id)
             if not participation:
-                raise ValueError(f"Participation {participation_id} not found")
+                raise NotFoundError(f"Participation {participation_id} not found")
             
             participation.notes = notes
             participation.updated_at = utc_now()
@@ -204,7 +204,7 @@ class GroupCompetitionService:
 
     def withdraw_from_competition(
         self, participation_id: int, reason: str | None = None
-    ) -> dict: #TODO remove Dict and write a typed DTO class
+    ) -> WithdrawalResultDTO:
         """
         Withdraw from a competition.
         
@@ -213,7 +213,7 @@ class GroupCompetitionService:
             reason: Optional reason for withdrawal
             
         Returns:
-            Dict with withdrawal details
+            Withdrawal result DTO
             
         Raises:
             ValueError: If participation not found or cannot be withdrawn
@@ -223,11 +223,11 @@ class GroupCompetitionService:
         with get_session() as session:
             participation = repo.get_participation_by_id(session, participation_id)
             if not participation:
-                raise ValueError(f"Participation {participation_id} not found")
+                raise NotFoundError(f"Participation {participation_id} not found")
             
             # Check if already completed or withdrawn
             if participation.is_active == False:
-                raise ValueError("Already withdrawn or completed")
+                raise BusinessRuleError("Already withdrawn or completed")
             
             # Mark as inactive (withdrawn)
             participation.is_active = False
@@ -237,13 +237,13 @@ class GroupCompetitionService:
             updated = repo.update_participation(session, participation)
             session.commit()
             
-            return {
-                "id": updated.id,
-                "status": "withdrawn",
-                "withdrawn_at": updated.left_at,
-            }
+            return WithdrawalResultDTO(
+                id=updated.id,
+                status="withdrawn",
+                withdrawn_at=updated.left_at,
+            )
 
-    def link_existing_team(self, group_id: int, team_id: int) -> dict: #TODO remove Dict and write a typed DTO class
+    def link_existing_team(self, group_id: int, team_id: int) -> TeamLinkResultDTO:
         """
         Link an existing team to a group (if not already linked).
         
@@ -259,7 +259,7 @@ class GroupCompetitionService:
             
             team = session.get(Team, team_id)
             if not team:
-                raise ValueError(f"Team {team_id} not found")
+                raise NotFoundError(f"Team {team_id} not found")
             
             # Update team's group_id
             team.group_id = group_id
@@ -267,8 +267,8 @@ class GroupCompetitionService:
             session.commit()
             session.refresh(team)
             
-            return {
-                "team_id": team.id,
-                "team_name": team.team_name,
-                "group_id": team.group_id,
-            }
+            return TeamLinkResultDTO(
+                team_id=team.id,
+                team_name=team.team_name,
+                group_id=team.group_id,
+            )
