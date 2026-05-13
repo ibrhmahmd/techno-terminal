@@ -110,3 +110,7 @@ Pool: 5+5=10, `pool_pre_ping=True`, `pool_recycle=240s`, `sslmode=require`, `sta
 
 ## Connection Pool Tests
 Standalone suite at `test_connection_exhaustion.py` — tests UoW pattern abuse, scheduler leaks, stale connections, slow queries. Run with `python test_connection_exhaustion.py --uow` (10s) or `--all-direct`.
+
+<!-- SPECKIT START -->
+**Current Plan**: `specs/007-review-competition-routers/plan.md` — Review Competition Routers
+<!-- SPECKIT END -->

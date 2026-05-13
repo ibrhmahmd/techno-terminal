@@ -9,9 +9,15 @@ Handles: Team lifecycle, members, payments, placement
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
 
 from app.api.schemas.common import ApiResponse
+from app.api.schemas.competitions.team_schemas import (
+    UpdateTeamInput,
+    PlacementUpdateInput,
+    TeamMemberListResponse,
+    StudentCompetitionsResponse,
+    DeletedTeamListResponse,
+)
 from app.api.dependencies import require_any, require_admin, get_team_service
 from app.modules.auth import User
 from app.modules.competitions.services.team_service import TeamService
@@ -24,50 +30,11 @@ from app.modules.competitions.schemas.team_schemas import (
     TeamDTO,
     PayCompetitionFeeInput,
     PayCompetitionFeeResponseDTO,
-    StudentCompetitionDTO,
     AddTeamMemberResultDTO,
     TeamMemberRosterDTO,
 )
 
 router = APIRouter(tags=["Teams"])
-
-
-# ── Helper DTOs ───────────────────────────────────────────────────────────────
-
-class UpdateTeamInput(BaseModel):
-    """Input for updating a team (partial updates supported)."""
-    team_name: Optional[str] = Field(None, min_length=1, max_length=200)
-    category: Optional[str] = Field(None, max_length=100)
-    subcategory: Optional[str] = Field(None, max_length=100)
-    group_id: Optional[int] = None
-    coach_id: Optional[int] = None
-    notes: Optional[str] = Field(None, max_length=1000)
-
-
-class PlacementUpdateInput(BaseModel):
-    """Input for updating team placement."""
-    placement_rank: int = Field(..., ge=1, description="Placement rank (1=1st place)")
-    placement_label: Optional[str] = Field(None, max_length=100, description="Label like 'Gold' or '3rd Place'")
-
-
-class TeamMemberListResponse(BaseModel):
-    """Response for team member list."""
-    team_id: int
-    team_name: str
-    members: list[TeamMemberRosterDTO]
-
-
-class StudentCompetitionsResponse(BaseModel):
-    """Response for student's competition history."""
-    student_id: int
-    competitions: list[StudentCompetitionDTO]
-
-
-class DeletedTeamListResponse(BaseModel):
-    """Response for listing deleted teams."""
-    competition_id: Optional[int]
-    teams: list[TeamDTO]
-    total: int
 
 
 # ── Team Endpoints ───────────────────────────────────────────────────────────
@@ -279,15 +246,7 @@ def list_team_members(
 ):
     """List all members of a team."""
     members = svc.list_team_members(team_id)
-    
-    # Get team name from first member's team or fetch separately
-    team_name = "Unknown"
-    if members and members[0]:
-        # Try to get team info
-        team = svc.get_team_by_id(team_id)
-        if team:
-            team_name = team.team_name
-    
+    team_name = members[0].team_name if members else "Unknown"
     return ApiResponse(data=TeamMemberListResponse(
         team_id=team_id,
         team_name=team_name,

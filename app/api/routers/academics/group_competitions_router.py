@@ -100,14 +100,11 @@ def link_team_to_group(
     svc: GroupCompetitionService = Depends(get_group_competition_service),
 ):
     """Link an existing team to a group. Requires admin privileges."""
-    try:
-        result = svc.link_existing_team(group_id, team_id)
-        return ApiResponse(
-            data=TeamLinkResponse.model_validate(result),
-            message=f"Team {team_id} linked to group {group_id}",
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    result = svc.link_existing_team(group_id, team_id)
+    return ApiResponse(
+        data=TeamLinkResponse.model_validate(result),
+        message=f"Team {team_id} linked to group {group_id}",
+    )
 
 
 # ── POST /academics/groups/{group_id}/competitions/{competition_id}/register ──
@@ -125,26 +122,23 @@ def register_team_for_competition(
     svc: GroupCompetitionService = Depends(get_group_competition_service),
 ):
     """Register a team from this group for a competition. Requires admin privileges."""
-    try:
-        participation = svc.register_team(
-            group_id=group_id,
-            team_id=team_id,
-            competition_id=competition_id,
-        )
-        return ApiResponse(
-            data=CompetitionRegistrationResponse(
-                participation_id=participation.id,
-                group_id=participation.group_id,
-                team_id=participation.team_id,
-                competition_id=participation.competition_id,
-                entered_at=participation.entered_at,
-                is_active=participation.is_active,
-                message="Team registered for competition successfully",
-            ),
+    participation = svc.register_team(
+        group_id=group_id,
+        team_id=team_id,
+        competition_id=competition_id,
+    )
+    return ApiResponse(
+        data=CompetitionRegistrationResponse(
+            participation_id=participation.id,
+            group_id=participation.group_id,
+            team_id=participation.team_id,
+            competition_id=participation.competition_id,
+            entered_at=participation.entered_at,
+            is_active=participation.is_active,
             message="Team registered for competition successfully",
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        ),
+        message="Team registered for competition successfully",
+    )
 
 
 # ── PATCH /academics/groups/{group_id}/competitions/{participation_id}/complete
@@ -162,20 +156,17 @@ def complete_competition_participation(
     svc: GroupCompetitionService = Depends(get_group_competition_service),
 ):
     """Mark a competition participation as completed. Optionally record final placement."""
-    try:
-        participation = svc.complete_participation(participation_id, final_placement)
-        return ApiResponse(
-            data=CompetitionCompletionResponse(
-                participation_id=participation.id,
-                is_active=participation.is_active,
-                left_at=participation.left_at,
-                final_placement=participation.final_placement,
-                message="Competition participation marked as completed",
-            ),
+    participation = svc.complete_participation(participation_id, final_placement)
+    return ApiResponse(
+        data=CompetitionCompletionResponse(
+            participation_id=participation.id,
+            is_active=participation.is_active,
+            left_at=participation.left_at,
+            final_placement=participation.final_placement,
             message="Competition participation marked as completed",
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        ),
+        message="Competition participation marked as completed",
+    )
 
 
 # ── DELETE /academics/groups/{group_id}/competitions/{participation_id} ───────
@@ -193,19 +184,16 @@ def withdraw_from_competition(
     svc: GroupCompetitionService = Depends(get_group_competition_service),
 ):
     """Withdraw from a competition. Requires admin privileges."""
-    try:
-        result = svc.withdraw_from_competition(participation_id, reason)
-        return ApiResponse(
-            data=CompetitionWithdrawalResponse(
-                participation_id=result.id,
-                status=result.status,
-                withdrawn_at=result.withdrawn_at,
-                message="Successfully withdrew from competition.",
-            ),
+    result = svc.withdraw_from_competition(participation_id, reason)
+    return ApiResponse(
+        data=CompetitionWithdrawalResponse(
+            participation_id=result.id,
+            status=result.status,
+            withdrawn_at=result.withdrawn_at,
             message="Successfully withdrew from competition.",
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        ),
+        message="Successfully withdrew from competition.",
+    )
 
 
 # ── GET /academics/groups/{group_id}/competitions/analytics ───────────────────

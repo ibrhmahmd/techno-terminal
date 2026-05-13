@@ -35,6 +35,16 @@ def admin_token():
     
 
 @pytest.fixture
+def mock_admin_token():
+    """Generate valid admin mock JWT for testing (bypasses Supabase auth)."""
+    return generate_mock_supabase_token(
+        user_id="test-admin-001",
+        role="admin",
+        email="admin@test.com"
+    )
+
+
+@pytest.fixture
 def system_admin_token():
     """Generate valid system_admin JWT for testing."""
     return generate_mock_supabase_token(
@@ -51,9 +61,42 @@ def admin_headers(admin_token):
 
 
 @pytest.fixture
+def mock_admin_headers(mock_admin_token):
+    """Auth headers with mock admin token."""
+    return {"Authorization": f"Bearer {mock_admin_token}"}
+
+
+@pytest.fixture
 def system_admin_headers(system_admin_token):
     """Auth headers with system_admin token."""
     return {"Authorization": f"Bearer {system_admin_token}"}
+
+
+@pytest.fixture
+def override_auth(app):
+    """
+    Override the get_current_user dependency to bypass real Supabase JWT validation.
+    
+    Use this fixture in tests that don't need real Supabase auth.
+    Combine with mock_admin_headers or system_admin_headers for token-passing tests.
+    """
+    from app.api.dependencies import get_current_user
+    from app.modules.auth.models.auth_models import User
+
+    mock_user = User(
+        id=1,
+        username="test_admin",
+        role="admin",
+        supabase_uid="test-admin-001",
+        is_active=True,
+    )
+
+    async def _mock_get_current_user():
+        return mock_user
+
+    app.dependency_overrides[get_current_user] = _mock_get_current_user
+    yield
+    app.dependency_overrides.pop(get_current_user, None)
 
 
 @pytest.fixture

@@ -455,8 +455,12 @@ class TeamService:
     def list_team_members(self, team_id: int) -> list[TeamMemberRosterDTO]:
         """Returns team members enriched with student name and fee status."""
         from app.modules.crm.models.student_models import Student
+        from app.modules.competitions.models.team_models import Team
 
         with get_session() as db:
+            team = db.get(Team, team_id)
+            team_name = team.team_name if team else "Unknown"
+
             members = team_repo.list_team_members(db, team_id)
             result = []
             for m in members:
@@ -464,13 +468,14 @@ class TeamService:
                 result.append(
                     TeamMemberRosterDTO(
                         team_member_id=m.id,
+                        team_id=team_id,
+                        team_name=team_name,
                         student_id=m.student_id,
                         student_name=s.full_name if s else f"Student #{m.student_id}",
                         member_share=m.member_share,
                         fee_paid=m.fee_paid,
                         payment_id=m.payment_id,
                     )
-                    
                 )
             return result
 
