@@ -183,7 +183,7 @@ Response:
 ```
 
 Errors:
-- `401`, `403`, `404`
+- `401`, `403`, `404` (team not found)
 
 Notes:
 - Associates an existing team with a group.
@@ -219,7 +219,7 @@ Response:
 ```
 
 Errors:
-- `401`, `403`, `404`, `400` (if already registered)
+- `401`, `403`, `404`, `409` (team already has active participation in this competition)
 
 Notes:
 - Registers a group team for a competition.
@@ -252,7 +252,7 @@ Response:
 ```
 
 Errors:
-- `401`, `403`, `404`
+- `401`, `403`, `404` (participation not found)
 
 Notes:
 - Marks participation as completed.
@@ -284,7 +284,8 @@ Response:
 ```
 
 Errors:
-- `401`, `403`, `404`, `400`
+- `401`, `403`, `404` (participation not found)
+- `409` (already withdrawn or completed)
 
 Notes:
 - Withdraws a group from a competition.

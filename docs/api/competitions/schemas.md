@@ -77,11 +77,13 @@ All fields optional. Partial updates supported.
 ```
 
 ## TeamMemberRosterDTO
-Enriched with student name.
+Enriched with student name and team info.
 
 ```json
 {
   "team_member_id": 1,
+  "team_id": 1,
+  "team_name": "Team Alpha",
   "student_id": 1,
   "student_name": "Ahmed Ali",
   "member_share": 250.0,
@@ -89,6 +91,17 @@ Enriched with student name.
   "payment_id": 123
 }
 ```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| team_member_id | int | Membership record ID |
+| team_id | int | Team ID |
+| team_name | string | Team display name |
+| student_id | int | Student ID |
+| student_name | string | Student full name |
+| member_share | number | Per-student fee share |
+| fee_paid | bool | Payment status |
+| payment_id | int? | Payment ID if paid |
 
 ## RegisterTeamInput
 | Field | Type | Required | Notes |

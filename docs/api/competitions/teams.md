@@ -109,6 +109,8 @@ GET /teams/{id}/members
 
 **Response**: `TeamMemberListResponse`
 
+Each member entry includes `team_id` and `team_name` for display purposes. Team name is fetched efficiently in a single query (no extra round-trip).
+
 ---
 
 ## Add Team Member
