@@ -8,6 +8,8 @@ import logging
 
 from app.modules.notifications.services.base_notification_service import BaseNotificationService
 from app.modules.notifications.repositories.notification_repository import NotificationRepository
+from app.modules.enrollments.models.enrollment_models import Enrollment
+from app.modules.finance.models.receipt import Receipt
 
 
 logger = logging.getLogger(__name__)
@@ -49,13 +51,13 @@ class ReportNotificationService(BaseNotificationService):
             for payment in aggregates["payment_details"]:
                 payment_rows += f"<tr><td>{payment['student_name']}</td><td>{payment['group_name']}</td><td>{payment['amount']:.2f} EGP</td><td>{payment['payment_type']}</td></tr>"
             payment_details_html = f"""
-            <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+            <table style="width: 100%; border-collapse: collapse; margin-top: 10px; border: 1px solid #000;">
                 <thead>
-                    <tr style="background: #2c3e50; color: white;">
-                        <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Student</th>
-                        <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Group</th>
-                        <th style="padding: 10px; text-align: right; border: 1px solid #ddd;">Amount</th>
-                        <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Type</th>
+                    <tr style="background: #333333; color: white;">
+                        <th style="padding: 10px; text-align: left; border: 1px solid #000;">Student</th>
+                        <th style="padding: 10px; text-align: left; border: 1px solid #000;">Group</th>
+                        <th style="padding: 10px; text-align: right; border: 1px solid #000;">Amount</th>
+                        <th style="padding: 10px; text-align: left; border: 1px solid #000;">Type</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -64,7 +66,7 @@ class ReportNotificationService(BaseNotificationService):
             </table>
             """
         else:
-            payment_details_html = "<p style='color: #666; font-style: italic;'>No payments recorded today.</p>"
+            payment_details_html = "<p style='color: #000; font-style: italic;'>No payments recorded today.</p>"
         
         variables = {
             "date": today.strftime("%Y-%m-%d"),
@@ -234,10 +236,15 @@ class ReportNotificationService(BaseNotificationService):
                 )
                 new_enrollments = session.exec(stmt).one() or 0
                 
-                # Payment count and methods breakdown
-                payment_stmt = select(Payment).where(
-                    Payment.created_at >= target_date,
-                    Payment.created_at < target_date + timedelta(days=1)
+                # Payment count and methods breakdown (aligned with revenue: uses receipts.paid_at)
+                payment_stmt = (
+                    select(Payment)
+                    .join(Receipt, Payment.receipt_id == Receipt.id)
+                    .where(
+                        Receipt.paid_at >= target_date,
+                        Receipt.paid_at < target_date + timedelta(days=1),
+                        Payment.deleted_at.is_(None),
+                    )
                 )
                 payments = session.exec(payment_stmt).all()
                 payment_count = len(payments)
@@ -253,8 +260,11 @@ class ReportNotificationService(BaseNotificationService):
                         student = session.get(Student, payment.student_id)
                         student_name = student.full_name if student else "Unknown"
                         
-                        group = session.get(Group, payment.group_id) if payment.group_id else None
-                        group_name = group.name if group else "N/A"
+                        enrollment = session.get(Enrollment, payment.enrollment_id) if payment.enrollment_id else None
+                        group_name = "N/A"
+                        if enrollment and enrollment.group_id:
+                            group = session.get(Group, enrollment.group_id)
+                            group_name = group.name if group else "N/A"
                         
                         payment_details.append({
                             "student_name": student_name,
@@ -270,10 +280,10 @@ class ReportNotificationService(BaseNotificationService):
                 
                 # Instructors who had sessions today
                 instructor_stmt = text("""
-                    SELECT DISTINCT e.name
+                    SELECT DISTINCT e.full_name
                     FROM sessions s
-                    JOIN employees e ON s.instructor_id = e.id
-                    WHERE s.date = :target_date
+                    JOIN employees e ON s.actual_instructor_id = e.id
+                    WHERE s.session_date = :target_date
                 """)
                 result = session.exec(instructor_stmt, {"target_date": target_date})
                 instructors_list = [row[0] for row in result]

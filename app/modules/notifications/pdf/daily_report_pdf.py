@@ -49,7 +49,7 @@ def generate_daily_report_pdf(
         'CustomTitle',
         parent=styles['Heading1'],
         fontSize=24,
-        textColor=colors.HexColor('#667eea'),
+        textColor=colors.black,
         spaceAfter=30,
         alignment=1  # Center
     )
@@ -58,7 +58,7 @@ def generate_daily_report_pdf(
         'CustomSubtitle',
         parent=styles['Normal'],
         fontSize=14,
-        textColor=colors.HexColor('#666666'),
+        textColor=colors.black,
         spaceAfter=20,
         alignment=1  # Center
     )
@@ -67,7 +67,7 @@ def generate_daily_report_pdf(
         'CustomHeading',
         parent=styles['Heading2'],
         fontSize=16,
-        textColor=colors.HexColor('#333333'),
+        textColor=colors.black,
         spaceAfter=12
     )
     
@@ -87,23 +87,18 @@ def generate_daily_report_pdf(
     
     summary_table = Table(summary_data, colWidths=[7*cm, 7*cm])
     summary_table.setStyle(TableStyle([
-        # Header row styling
-        ('BACKGROUND', (0, 0), (0, 0), colors.HexColor('#4CAF50')),
-        ('BACKGROUND', (1, 0), (1, 0), colors.HexColor('#2196F3')),
-        ('BACKGROUND', (0, 3), (0, 3), colors.HexColor('#FF9800')),
-        ('BACKGROUND', (1, 3), (1, 3), colors.HexColor('#9C27B0')),
+        # Header row styling — B&W: white bg, black text, thin bottom border
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f5f5f5')),
+        ('BACKGROUND', (0, 3), (-1, 3), colors.HexColor('#f5f5f5')),
         
-        # Value row styling
-        ('BACKGROUND', (0, 1), (0, 1), colors.HexColor('#E8F5E9')),
-        ('BACKGROUND', (1, 1), (1, 1), colors.HexColor('#E3F2FD')),
-        ('BACKGROUND', (0, 4), (0, 4), colors.HexColor('#FFF3E0')),
-        ('BACKGROUND', (1, 4), (1, 4), colors.HexColor('#F3E5F5')),
+        # Value row styling — alternating light gray
+        ('BACKGROUND', (0, 1), (0, 1), colors.white),
+        ('BACKGROUND', (1, 1), (1, 1), colors.HexColor('#fafafa')),
+        ('BACKGROUND', (0, 4), (0, 4), colors.white),
+        ('BACKGROUND', (1, 4), (1, 4), colors.HexColor('#fafafa')),
         
-        # Text styling
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('TEXTCOLOR', (0, 3), (-1, 3), colors.whitesmoke),
-        ('TEXTCOLOR', (0, 1), (-1, 1), colors.HexColor('#333333')),
-        ('TEXTCOLOR', (0, 4), (-1, 4), colors.HexColor('#333333')),
+        # Text styling — all black
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
         
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
@@ -122,9 +117,9 @@ def generate_daily_report_pdf(
         ('BOTTOMPADDING', (0, 3), (-1, 3), 12),
         ('BOTTOMPADDING', (0, 4), (-1, 4), 20),
         
-        ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#e0e0e0')),
-        ('BOX', (0, 0), (-1, 1), 2, colors.HexColor('#4CAF50')),
-        ('BOX', (0, 3), (-1, 4), 2, colors.HexColor('#FF9800')),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+        ('BOX', (0, 0), (-1, 0), 1.5, colors.black),
+        ('BOX', (0, 3), (-1, 4), 1.5, colors.black),
     ]))
     
     elements.append(summary_table)
@@ -154,29 +149,26 @@ def generate_daily_report_pdf(
     
     metrics_table = Table(metrics_data, colWidths=[7*cm, 7*cm])
     metrics_table.setStyle(TableStyle([
-        # Header
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#667eea')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        # Header — B&W
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#333333')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, 0), 12),
         ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
         
-        # Body rows
-        ('BACKGROUND', (0, 1), (-1, -2), colors.HexColor('#f9f9f9')),
-        ('TEXTCOLOR', (0, 1), (-1, -1), colors.HexColor('#333333')),
+        # Body rows — alternating
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
         ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),
         ('FONTNAME', (1, 1), (1, -1), 'Helvetica'),
         ('FONTSIZE', (0, 1), (-1, -1), 10),
         ('ALIGN', (0, 1), (0, -1), 'LEFT'),
         ('ALIGN', (1, 1), (1, -1), 'RIGHT'),
+        ('ALIGN', (1, -1), (1, -1), 'RIGHT'),
         
-        # Unpaid row (highlight)
-        ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#fff3e0')),
-        ('TEXTCOLOR', (0, -1), (-1, -1), colors.HexColor('#E65100')),
-        
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
-        ('BOX', (0, 0), (-1, 0), 1.5, colors.HexColor('#667eea')),
-        ('BOX', (0, 0), (-1, -1), 1.5, colors.HexColor('#e0e0e0')),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cccccc')),
+        ('BOX', (0, 0), (-1, 0), 1.5, colors.black),
+        ('BOX', (0, 0), (-1, -1), 1.5, colors.black),
         
         ('TOPPADDING', (0, 0), (-1, -1), 10),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
@@ -205,24 +197,24 @@ def generate_daily_report_pdf(
         
         payment_table = Table(payment_data, colWidths=[5*cm, 4*cm, 3*cm, 2*cm])
         payment_table.setStyle(TableStyle([
-            # Header
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2c3e50')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            # Header — B&W
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#333333')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('FONTSIZE', (0, 0), (-1, 0), 10),
             ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
             
-            # Body rows - alternating colors
-            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#ffffff')),
-            ('TEXTCOLOR', (0, 1), (-1, -1), colors.HexColor('#333333')),
+            # Body rows — alternating
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
             ('FONTSIZE', (0, 1), (-1, -1), 9),
             ('ALIGN', (0, 1), (1, -1), 'LEFT'),
             ('ALIGN', (2, 1), (2, -1), 'RIGHT'),
             ('ALIGN', (3, 1), (3, -1), 'CENTER'),
             
-            # Grid
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
-            ('BOX', (0, 0), (-1, 0), 1.5, colors.HexColor('#2c3e50')),
+            # Grid — thin black
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+            ('BOX', (0, 0), (-1, 0), 1.5, colors.black),
             
             ('TOPPADDING', (0, 0), (-1, -1), 8),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
@@ -238,7 +230,7 @@ def generate_daily_report_pdf(
         'Footer',
         parent=styles['Normal'],
         fontSize=9,
-        textColor=colors.HexColor('#999999'),
+        textColor=colors.HexColor('#666666'),
         alignment=1  # Center
     )
     elements.append(Paragraph("Techno Terminal Automated Report", footer_style))
