@@ -1,81 +1,104 @@
-# Implementation Plan: Review Competition Routers
+# Implementation Plan: [FEATURE]
 
-**Branch**: `007-review-competition-routers` | **Date**: 2026-05-13 | **Spec**: [spec.md](spec.md)
-**Input**: Feature specification from `specs/007-review-competition-routers/spec.md`
+**Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
+**Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
+
+**Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/plan-template.md` for the execution workflow.
 
 ## Summary
 
-Conduct a comprehensive audit of all competition-related API routers against the competitions module to verify correct endpoint-to-service mapping, DTO alignment, auth guard usage, and architectural compliance. Key deliverables: endpoint inventory, orphan router disposition, compliance report, and remediation plan.
+[Extract from feature spec: primary requirement + technical approach from research]
 
 ## Technical Context
 
-**Language/Version**: Python 3.11  
-**Primary Dependencies**: FastAPI, SQLModel, Pydantic v2  
-**Storage**: PostgreSQL 15+  
-**Testing**: pytest (TestClient)  
-**Target Platform**: Linux server (Leapcell/Railway)  
-**Project Type**: Web service (REST API) — audit/review  
-**Performance Goals**: N/A — code review, no performance impact  
-**Constraints**: Zero tolerance for dead code (per constitution); must not break existing 42 tests  
-**Scale/Scope**: 5 router files (4 active + 1 orphan), 2 cross-module endpoints, ~30 endpoints total
+<!--
+  ACTION REQUIRED: Replace the content in this section with the technical details
+  for the project. The structure here is presented in advisory capacity to guide
+  the iteration process.
+-->
+
+**Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]  
+**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]  
+**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]  
+**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]  
+**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
+**Project Type**: [e.g., library/cli/web-service/mobile-app/compiler/desktop-app or NEEDS CLARIFICATION]  
+**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]  
+**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
+**Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-**Principle I (Layer Separation)**: ✅ Spec mandates verification that routers contain no business logic, services don't import from `app.api.*`. No violations — audit scope aligns with enforcement.
-
-**Principle III (Typed Contracts)**: ✅ Spec requires checking inline DTOs against module DTOs for duplication. No loose return types introduced.
-
-**Principle IV (Response Envelope)**: ✅ No response envelope changes. Verifying existing usage.
-
-**Principle V (Auth-Guarded Endpoints)**: ✅ Spec requires verifying that all competition endpoints use correct guards (`require_any`/`require_admin`).
-
-**Result**: PASS — no constitution violations anticipated. Audit findings will recommend fixes if violations are discovered.
+[Gates determined based on constitution file]
 
 ## Project Structure
 
 ### Documentation (this feature)
 
 ```text
-specs/007-review-competition-routers/
-├── plan.md              # This file
-├── research.md          # Phase 0 output — codebase analysis
-├── data-model.md        # Phase 1 output — audit entity definitions
-├── quickstart.md        # Phase 1 output — how to run the audit
-├── contracts/           # Phase 1 output — empty (no new interfaces)
-└── tasks.md             # Phase 2 output (created by /speckit.tasks)
+specs/[###-feature]/
+├── plan.md              # This file (/speckit.plan command output)
+├── research.md          # Phase 0 output (/speckit.plan command)
+├── data-model.md        # Phase 1 output (/speckit.plan command)
+├── quickstart.md        # Phase 1 output (/speckit.plan command)
+├── contracts/           # Phase 1 output (/speckit.plan command)
+└── tasks.md             # Phase 2 output (/speckit.tasks command - NOT created by /speckit.plan)
 ```
 
 ### Source Code (repository root)
+<!--
+  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
+  for this feature. Delete unused options and expand the chosen structure with
+  real paths (e.g., apps/admin, packages/something). The delivered plan must
+  not include Option labels.
+-->
 
 ```text
-# Single project — audit changes limited to router files
-app/
-├── api/
-│   ├── routers/
-│   │   ├── competitions/
-│   │   │   ├── competitions_router.py    # 🔧 Possibly migrated inline DTOs
-│   │   │   └── teams_router.py           # 🔧 Possibly migrated inline DTOs
-│   │   ├── academics/
-│   │   │   └── group_competitions_router.py  # 🔧 Possibly migrated response models
-│   │   ├── analytics/
-│   │   │   └── competition.py            # 🔧 Possibly migrated response models
-│   │   └── competitions_router.py        # 🗑️ Orphan — recommended for deletion
-│   └── schemas/
-│       └── competitions/                 # 🆕 If inline DTOs are extracted
-├── modules/
-│   └── competitions/
-│       ├── services/
-│       ├── repositories/
-│       └── schemas/
+# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
+src/
+├── models/
+├── services/
+├── cli/
+└── lib/
+
 tests/
-├── test_competitions.py                  # ✅ 22 existing — regression safety net
-└── test_academics_competitions.py         # ✅ 20 existing — regression safety net
+├── contract/
+├── integration/
+└── unit/
+
+# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
+backend/
+├── src/
+│   ├── models/
+│   ├── services/
+│   └── api/
+└── tests/
+
+frontend/
+├── src/
+│   ├── components/
+│   ├── pages/
+│   └── services/
+└── tests/
+
+# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
+api/
+└── [same as backend above]
+
+ios/ or android/
+└── [platform-specific structure: feature modules, UI flows, platform tests]
 ```
 
-**Structure Decision**: Single backend project. Changes limited to existing router files — no new source modules. All audit artifacts are documentation files under `specs/007-review-competition-routers/`.
+**Structure Decision**: [Document the selected structure and reference the real
+directories captured above]
 
 ## Complexity Tracking
 
-No constitution violations — section not applicable.
+> **Fill ONLY if Constitution Check has violations that must be justified**
+
+| Violation | Why Needed | Simpler Alternative Rejected Because |
+|-----------|------------|-------------------------------------|
+| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
+| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |
