@@ -1,6 +1,6 @@
 # AGENTS.md — Techno Terminal
 
-FastAPI + SQLModel + PostgreSQL backend for STEM education center management. Supabase Auth, 10 business modules, 56 migrations.
+FastAPI + SQLModel + PostgreSQL backend for STEM education center management. Supabase Auth, 10 business modules, 50+ migrations.
 
 ## Entry Points
 
@@ -18,30 +18,22 @@ FastAPI + SQLModel + PostgreSQL backend for STEM education center management. Su
 | Coverage | `pytest tests/ -v --cov=app --cov-report=term-missing` |
 | DB init | `psql -U postgres -d techno_kids -f db/schema.sql` |
 | Get test JWT | `python scripts/get_test_jwt.py` |
-
-## Speckit Feature Workflow
-
-Pipeline: `constitution → specify → clarify → plan → tasks → implement → analyze`. Commands: `/speckit.specify <desc>`, `/speckit.clarify`, `/speckit.plan`, `/speckit.tasks`, `/speckit.implement`, `/speckit.analyze`. Constitution at `.specify/memory/constitution.md` — all plans/tasks validate against it.
+| Pool exhaustion tests | `python test_connection_exhaustion.py --uow` |
 
 ## Required Env
 
 `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`, `GMAIL_SENDER_ADDRESS`, `GMAIL_APP_PASSWORD`.
 
-## Architecture
-
-### Layer Pattern: Router → Service → Repository
+## Architecture: Router → Service → Repository
 
 - **Routers** (`app/api/routers/`): FastAPI endpoints, Pydantic, `Depends()` injection
 - **Services** (`app/modules/*/services/`): Business logic, transaction boundaries (UnitOfWork)
 - **Repositories** (`app/modules/*/repositories/`): Pure SQL via SQLModel, no business logic
+- **Two-Layer Schema Rule**: `app/api/schemas/` only for API-specific DTO shapes. Services MUST NOT import from `app.api.schemas.*`. DTOs that model domain concepts live beside their service.
 
 ### 10 Modules
 
 `academics` | `analytics` | `attendance` | `auth` | `competitions` | `crm` | `enrollments` | `finance` | `hr` | `notifications`
-
-### Schema Order (`db/schema/`)
-
-`00_extensions` → `01_enums` → `02_core` → `03_crm` → `04_academics` → `05_enrollments` → `06_finance` → `07_competitions` → `08_notifications` → `09_history` → `10_supabase` → `20_indexes` → `30_views` → `40_functions` → `50_triggers` → `60_constraints` → `90_seed_data`
 
 ### Key Files
 
@@ -52,8 +44,7 @@ Pipeline: `constitution → specify → clarify → plan → tasks → implement
 | `app/db/connection.py` | Thread-safe singleton engine, pool 5+5=10, SSL require, 30s timeout |
 | `app/core/supabase_clients.py` | `get_supabase_anon()` (cached), `get_supabase_admin()` (not cached) |
 | `app/shared/exceptions.py` | Domain exception hierarchy → HTTP status mapping |
-| `db/schema.sql` | Orchestrator — includes 17 modular files |
-| `db/migrations/*.sql` | 56 numbered files (some duplicates from parallel branches) |
+| `.specify/memory/constitution.md` | Architecture constitution — all feature work validates against it |
 
 ## Auth
 
@@ -66,7 +57,7 @@ Pipeline: `constitution → specify → clarify → plan → tasks → implement
 ## Testing Fixtures (`tests/conftest.py`)
 
 - `app` (session-scoped), `client` (function-scoped `TestClient`)
-- `admin_token`/`admin_headers` (real Supabase JWT), `system_admin_token`/`system_admin_headers` (mock JWT)
+- `admin_headers` (real Supabase JWT), `system_admin_headers` (mock JWT)
 - `db_session` via `get_session()`, auto-rollback on exception
 - Test data helpers in `tests/utils/db_helpers.py`
 
@@ -98,15 +89,23 @@ Pool: 5+5=10, `pool_pre_ping=True`, `pool_recycle=240s`, `sslmode=require`, `sta
 `NotFoundError`→404, `ValidationError`→422, `BusinessRuleError`→409, `ConflictError`→409, `AuthError`→401
 
 ### Middleware Order (outer→inner)
-1. Logging → 2. CORS (`*` for dev) → 3. Exception handlers → 4. Routers
+Logging → CORS (`*` for dev) → Exception handlers → Routers
 
 ### Migrations
-56 files in `db/migrations/`. Duplicate numbers exist (`008`, `020`, `021`, `022`, `026`, `030`, `036`). Apply in chronological order, not strictly numeric. Cleanup migrations: `042`–`049`.
+56+ files in `db/migrations/`. Duplicate numbers exist (`008`, `020`, `021`, `022`, `026`, `030`, `036`). Apply in chronological order, not strictly numeric. Cleanup migrations: `042`–`049`.
+
+### No CI / Linter / Formatter
+No GitHub Actions, no pre-commit, no ruff/flake8/black config. Review code manually.
 
 ## Deployment
 - Platform: Leapcell (`railpack.json`)
 - Health checks at `/health` and `/kaithhealthcheck`
 - `gunicorn.conf.py` uses `/tmp` for runtime files (read-only filesystem fix)
 
-## Connection Pool Tests
-Standalone suite at `test_connection_exhaustion.py` — tests UoW pattern abuse, scheduler leaks, stale connections, slow queries. Run with `python test_connection_exhaustion.py --uow` (10s) or `--all-direct`.
+## Speckit Feature Workflow
+
+Pipeline: `constitution → specify → clarify → plan → tasks → implement → analyze`. Commands: `/speckit.specify`, `/speckit.clarify`, `/speckit.plan`, `/speckit.tasks`, `/speckit.implement`, `/speckit.analyze`. All plans/tasks validate against `.specify/memory/constitution.md`.
+
+<!-- SPECKIT START -->
+**Current Plan**: `specs/008-return-employee-national-id/plan.md` — Return Employee National ID
+<!-- SPECKIT END -->

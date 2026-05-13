@@ -29,6 +29,9 @@ class TestEmployeesRead:
         data = response.json()
         assert data["success"] is True
         assert isinstance(data["data"], list)
+        if data["data"]:
+            assert "phone" in data["data"][0]
+            assert "email" in data["data"][0]
 
     def test_list_employees_unauthorized(self, client):
         """GET /hr/employees without auth returns 401."""
@@ -58,6 +61,12 @@ class TestEmployeesRead:
             assert data["success"] is True
             assert "id" in data["data"]
             assert "full_name" in data["data"]
+            assert "university" in data["data"]
+            assert "major" in data["data"]
+            assert "is_graduate" in data["data"]
+            assert "monthly_salary" in data["data"]
+            assert "contract_percentage" in data["data"]
+            assert "national_id" in data["data"]
 
     def test_get_employee_not_found(self, client, admin_headers):
         """GET /hr/employees/{id} for non-existent ID returns 404."""

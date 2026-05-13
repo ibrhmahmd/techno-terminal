@@ -12,17 +12,22 @@ from app.modules.hr.constants import EmploymentType
 class EmployeePublic(BaseModel):
     """
     Safe employee view for API consumers.
-    Excludes: monthly_salary, contract_percentage, national_id (sensitive)
     """
     id: int
     full_name: str
     phone: str
     email: Optional[str] = None
+    national_id: str
     job_title: Optional[str] = None
     employment_type: str
     is_active: bool
     hired_at: Optional[datetime] = None
     has_account: bool = Field(default=False, description="Whether employee has a linked user account")
+    university: Optional[str] = None
+    major: Optional[str] = None
+    is_graduate: Optional[bool] = None
+    monthly_salary: Optional[float] = None
+    contract_percentage: Optional[float] = None
 
     model_config = {"from_attributes": True}
 
@@ -31,6 +36,8 @@ class EmployeeListItem(BaseModel):
     """Slim employee for list views."""
     id: int
     full_name: str
+    phone: Optional[str] = None
+    email: Optional[str] = None
     job_title: Optional[str] = None
     employment_type: str
     is_active: bool
