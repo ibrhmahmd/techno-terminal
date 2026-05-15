@@ -120,6 +120,8 @@ class EnrollmentService:
                         created.id, student.id, group.id, background_tasks
                     )
 
+                session.commit()
+                session.refresh(created)
                 return EnrollmentDTO.model_validate(created), capacity_exceeded
         except IntegrityError:
             raise ConflictError(f"'{student.full_name}' was just enrolled in this group by another request. Please refresh and try again.")
@@ -135,6 +137,8 @@ class EnrollmentService:
             if enrollment.status != "active":
                 raise BusinessRuleError("Can only apply discount to active enrollments.")
             updated = repo.update_discount(session, enrollment_id, discount_amount)
+            session.commit()
+            session.refresh(updated)
             return EnrollmentDTO.model_validate(updated)
 
 
@@ -197,6 +201,8 @@ class EnrollmentService:
                     background_tasks=background_tasks,
                 )
 
+            session.commit()
+            session.refresh(created)
             return EnrollmentDTO.model_validate(created)
 
 
@@ -240,6 +246,8 @@ class EnrollmentService:
                     background_tasks=background_tasks,
                 )
 
+            session.commit()
+            session.refresh(updated)
             return EnrollmentDTO.model_validate(updated)
 
 
@@ -279,10 +287,12 @@ class EnrollmentService:
                     enrollment_id=enrollment_id,
                     group_id=group_id,
                     level_number=level_number,
-                    completion_date=datetime.utcnow(),
+                    completion_date=utc_now(),
                     background_tasks=background_tasks,
                 )
 
+            session.commit()
+            session.refresh(updated)
             return EnrollmentDTO.model_validate(updated)
 
 

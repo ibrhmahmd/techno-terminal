@@ -15,7 +15,7 @@ def get_engine():
             if _engine is None:
                 _engine = create_engine(
                     settings.database_url,
-                    pool_size=5,
+                    pool_size=10,
                     max_overflow=5,
                     pool_timeout=30,
                     pool_pre_ping=True,

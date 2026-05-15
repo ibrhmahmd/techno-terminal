@@ -110,5 +110,5 @@ Pipeline: `constitution → specify → clarify → plan → tasks → implement
 Standalone suite at `test_connection_exhaustion.py` — tests UoW pattern abuse, scheduler leaks, stale connections, slow queries. Run with `python test_connection_exhaustion.py --uow` (10s) or `--all-direct`.
 
 <!-- SPECKIT START -->
-**Current Plan**: `specs/006-daily-report-fixes/plan.md` — Fix Course Creation Persistence & Data Integrity
+**Current Plan**: `specs/009-fix-missing-commits/plan.md` — Fix Missing Session Commits
 <!-- SPECKIT END -->

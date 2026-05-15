@@ -121,6 +121,7 @@ class PaymentRepository(IPaymentRepository):
             LEFT JOIN courses c ON c.id = g.course_id
             JOIN enrollments e ON e.id = vb.enrollment_id
             WHERE vb.student_id = :sid
+              AND e.status = 'active'
             ORDER BY vb.enrollment_id DESC
         """)
         rows = self._session.execute(stmt, {"sid": student_id}).all()

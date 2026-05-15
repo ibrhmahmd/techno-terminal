@@ -40,6 +40,8 @@ class CompetitionService:
                 fee_per_student=cmd.fee_per_student,
                 edition_year=cmd.competition_date.year if cmd.competition_date else None
             )
+            db.commit()
+            db.refresh(comp)
             return CompetitionDTO.model_validate(comp)
 
     def list_competitions(self, include_deleted: bool = False) -> list[CompetitionDTO]:
@@ -56,6 +58,9 @@ class CompetitionService:
     def update_competition(self, competition_id: int, **kwargs) -> CompetitionDTO | None:
         with get_session() as db:
             comp = comp_repo.update_competition(db, competition_id, **kwargs)
+            if comp:
+                db.commit()
+                db.refresh(comp)
             return CompetitionDTO.model_validate(comp) if comp else None
 
     def delete_competition(self, competition_id: int, deleted_by: Optional[int] = None) -> bool:
@@ -67,12 +72,16 @@ class CompetitionService:
                 raise BusinessRuleError(
                     "Cannot delete competition that has teams. Delete teams first."
                 )
-            return comp_repo.delete_competition(db, competition_id, deleted_by=deleted_by)
+            result = comp_repo.delete_competition(db, competition_id, deleted_by=deleted_by)
+            db.commit()
+            return result
 
     def restore_competition(self, competition_id: int) -> bool:
         """Restore a soft-deleted competition."""
         with get_session() as db:
-            return comp_repo.restore_competition(db, competition_id)
+            result = comp_repo.restore_competition(db, competition_id)
+            db.commit()
+            return result
 
     def list_deleted_competitions(self) -> list[CompetitionDTO]:
         """List all soft-deleted competitions."""

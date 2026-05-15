@@ -157,6 +157,9 @@ class TeamService:
                 current_user_id=current_user_id,
             )
 
+            db.commit()
+            db.refresh(team)
+
             return TeamRegistrationResultDTO(
                 team=TeamDTO.model_validate(team),
                 members_added=members_added
@@ -311,6 +314,9 @@ class TeamService:
         """Update team fields."""
         with get_session() as db:
             team = team_repo.update_team(db, team_id, **kwargs)
+            if team:
+                db.commit()
+                db.refresh(team)
             return TeamDTO.model_validate(team) if team else None
 
     def delete_team(self, team_id: int, deleted_by: Optional[int] = None) -> bool:
@@ -323,12 +329,16 @@ class TeamService:
                     raise BusinessRuleError(
                         "Cannot delete team with members who have paid fees."
                     )
-            return team_repo.delete_team(db, team_id, deleted_by=deleted_by)
+            result = team_repo.delete_team(db, team_id, deleted_by=deleted_by)
+            db.commit()
+            return result
 
     def restore_team(self, team_id: int) -> bool:
         """Restore a soft-deleted team."""
         with get_session() as db:
-            return team_repo.restore_team(db, team_id)
+            result = team_repo.restore_team(db, team_id)
+            db.commit()
+            return result
 
     def list_deleted_teams(self, competition_id: Optional[int] = None) -> list[TeamDTO]:
         """List soft-deleted teams."""
@@ -390,6 +400,9 @@ class TeamService:
                         current_user_id=current_user_id,
                     )
 
+            db.commit()
+            db.refresh(team)
+
             return TeamDTO.model_validate(team) if team else None
 
     def add_team_member_to_existing(
@@ -436,6 +449,9 @@ class TeamService:
                 current_user_id=current_user_id,
             )
 
+            db.commit()
+            db.refresh(m)
+
             return AddTeamMemberResultDTO(
                 team_member_id=m.id,
                 student_id=m.student_id,
@@ -450,7 +466,9 @@ class TeamService:
                 raise BusinessRuleError(
                     "Cannot remove a team member who has already paid the competition fee."
                 )
-            return team_repo.remove_team_member(db, team_id, student_id)
+            result = team_repo.remove_team_member(db, team_id, student_id)
+            db.commit()
+            return result
 
     def list_team_members(self, team_id: int) -> list[TeamMemberRosterDTO]:
         """Returns team members enriched with student name and fee status."""
@@ -545,6 +563,7 @@ class TeamService:
                     competition_name=comp.name if comp else "Unknown",
                     current_user_id=cmd.received_by_user_id,
                 )
+                db.commit()
         except Exception as e:
             # Rollback: refund the payment if fee marking fails
             with FinanceUnitOfWork() as uow:
