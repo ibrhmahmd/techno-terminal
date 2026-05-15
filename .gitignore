@@ -12,6 +12,8 @@ env/
 *.egg-info/
 dist/
 build/
+.vs/
+.vscode/
 
 # Streamlit
 .streamlit/secrets.toml
@@ -35,3 +37,6 @@ data/processed/
 .idea/techno_data_ Copy.iml
 .idea/vcs.xml
 archieve/
+.pytest_cache/
+.fastapicloud/
+.opencode/
