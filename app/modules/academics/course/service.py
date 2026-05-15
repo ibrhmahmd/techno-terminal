@@ -24,10 +24,14 @@ class CourseService:
                 name=data.name,
                 category=data.category,
                 description=data.description,
+                notes=data.notes,
                 price_per_level=data.price_per_level,
                 sessions_per_level=data.sessions_per_level,
             )
-            return repo.create_course(session, course)
+            course = repo.create_course(session, course)
+            session.commit()
+            session.refresh(course)
+            return course
 
     def update_course_price(self, course_id: int, new_price: float) -> Course:
         """Updates the price per level for an existing course."""
@@ -36,6 +40,8 @@ class CourseService:
             course = repo.update_course_price(session, course_id, new_price)
             if not course:
                 raise NotFoundError(f"Course {course_id} not found.")
+            session.commit()
+            session.refresh(course)
             return course
 
     def update_course(self, course_id: int, data: UpdateCourseDTO) -> Course:
