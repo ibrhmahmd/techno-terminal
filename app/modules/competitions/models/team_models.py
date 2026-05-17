@@ -18,6 +18,8 @@ class TeamBase(SQLModel):
     # Category/subcategory stored as citext in DB (case-insensitive)
     category: str  # Required category name
     subcategory: Optional[str] = None  # Optional subcategory
+    project_name: Optional[str] = None  # Project name for the team
+    project_description: Optional[str] = None  # Project description
     placement_rank: Optional[int] = None  # 1=1st place, 2=2nd, etc.
     placement_label: Optional[str] = None  # "Gold", "3rd Place", etc.
     notes: Optional[str] = None  # Additional notes
@@ -28,8 +30,6 @@ class Team(TeamBase, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     created_at: Optional[datetime] = None
-    deleted_at: Optional[datetime] = None  # Soft delete timestamp
-    deleted_by: Optional[int] = Field(default=None, foreign_key="users.id")  # Who soft deleted
 
     # Use explicit SQLAlchemy column for citext type
     # Note: The actual citext type is set at the database level via migration
@@ -40,9 +40,8 @@ class Team(TeamBase, table=True):
 class TeamMemberBase(SQLModel):
     team_id: int = Field(foreign_key="teams.id")
     student_id: int = Field(foreign_key="students.id")
-    member_share: float = Field(default=0.0)
-    fee_paid: bool = False
-    payment_id: Optional[int] = Field(default=None, foreign_key="payments.id")
+    amount_due: float = Field(default=0.0)
+    amount_paid: float = Field(default=0.0)
 
 class TeamMember(TeamMemberBase, table=True):
     __tablename__ = "team_members"

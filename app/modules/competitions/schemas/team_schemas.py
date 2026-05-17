@@ -22,6 +22,8 @@ class TeamDTO(BaseModel):
     group_id: Optional[int] = None
     team_name: str
     coach_id: Optional[int] = None
+    project_name: Optional[str] = None
+    project_description: Optional[str] = None
     placement_rank: Optional[int] = None  # Competition placement
     placement_label: Optional[str] = None  # Placement description
     notes: Optional[str] = None
@@ -33,9 +35,8 @@ class TeamMemberDTO(BaseModel):
     id: int
     team_id: int
     student_id: int
-    member_share: float = 0.0
-    fee_paid: bool = False
-    payment_id: Optional[int] = None
+    amount_due: float = 0.0
+    amount_paid: float = 0.0
 
 
 # ── Service Input Command DTOs ────────────────────────────────────────────
@@ -46,6 +47,8 @@ class RegisterTeamInput(BaseModel):
     team_name: str
     category: str  # Category name (citext in DB)
     subcategory: Optional[str] = None  # Optional subcategory
+    project_name: Optional[str] = None
+    project_description: Optional[str] = None
     student_ids: list[int]
     student_fees: Optional[dict[int, float]] = None  # Per-student fees, missing defaults to 0
     coach_id: Optional[int] = None
@@ -73,12 +76,13 @@ class RegisterTeamInput(BaseModel):
 class AddTeamMemberInput(BaseModel):
     """Input for adding a member to an existing team."""
     student_id: int
-    fee: float = 0.0  # Per-student fee for this member
+    amount_due: float = 0.0  # Fee amount due for this member
 
 
 class PayCompetitionFeeInput(BaseModel):
     team_id: int
     student_id: int
+    amount: float  # Payment amount (supports partial payments)
     parent_id: Optional[int] = None
     received_by_user_id: Optional[int] = None
 
@@ -114,9 +118,8 @@ class TeamMemberRosterDTO(BaseModel):
     team_name: str
     student_id: int
     student_name: str
-    member_share: float = 0.0
-    fee_paid: bool
-    payment_id: Optional[int] = None
+    amount_due: float = 0.0
+    amount_paid: float = 0.0
 
 
 class PayCompetitionFeeResponseDTO(BaseModel):
@@ -124,6 +127,8 @@ class PayCompetitionFeeResponseDTO(BaseModel):
     receipt_number: str
     payment_id: int
     amount: float
+    amount_paid: float  # New running total after this payment
+    amount_due: float  # For context
 
 
 # Nested DTOs for the massive get_competition_summary

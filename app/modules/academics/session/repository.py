@@ -7,6 +7,7 @@ from typing import Sequence
 from datetime import date
 from sqlmodel import Session, select, func
 from app.modules.academics.models import CourseSession
+from app.modules.academics.models.group_level_models import GroupLevel
 
 
 def get_session_by_id(session: Session, session_id: int) -> CourseSession | None:
@@ -81,6 +82,31 @@ def delete_session(session: Session, session_id: int) -> bool:
         session.delete(cs)
         return True
     return False
+
+
+def get_group_level_id(
+    session: Session, group_id: int, level_number: int
+) -> int | None:
+    """Look up a GroupLevel.id by (group_id, level_number)."""
+    stmt = (
+        select(GroupLevel.id)
+        .where(GroupLevel.group_id == group_id)
+        .where(GroupLevel.level_number == level_number)
+    )
+    result = session.exec(stmt).first()
+    return result
+
+
+def list_sessions_by_group_level(
+    session: Session, group_level_id: int
+) -> Sequence[CourseSession]:
+    """Return sessions filtered by exact group_level_id FK."""
+    stmt = (
+        select(CourseSession)
+        .where(CourseSession.group_level_id == group_level_id)
+        .order_by(CourseSession.session_date, CourseSession.start_time)
+    )
+    return session.exec(stmt).all()
 
 
 def get_sessions_for_levels(

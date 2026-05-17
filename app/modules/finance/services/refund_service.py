@@ -131,14 +131,16 @@ class RefundService(IRefundService):
         )
 
     def _unlink_competition_payment(self, original_payment_id: int) -> None:
-        """Internal: Unmark competition fees when refunding."""
+        """Internal: Decrement competition fee amount_paid when refunding."""
         from app.modules.competitions.models.team_models import TeamMember
+        from app.modules.finance.models.payment import Payment
         from sqlalchemy import select
 
-        stmt = select(TeamMember).where(TeamMember.payment_id == original_payment_id)
-        members = self._uow._session.exec(stmt).all()
+        stmt = select(Payment).where(Payment.id == original_payment_id)
+        payment = self._uow._session.exec(stmt).first()
 
-        for member in members:
-            member.fee_paid = False
-            member.payment_id = None
-            self._uow._session.add(member)
+        if payment and payment.team_member_id:
+            member = self._uow._session.get(TeamMember, payment.team_member_id)
+            if member:
+                member.amount_paid = max(0.0, float(member.amount_paid) - float(payment.amount))
+                self._uow._session.add(member)

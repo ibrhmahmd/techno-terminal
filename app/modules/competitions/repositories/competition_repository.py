@@ -1,7 +1,6 @@
 from datetime import date
 from typing import Optional
 from sqlmodel import Session, select
-from app.shared.datetime_utils import utc_now
 from app.modules.competitions.models.competition_models import Competition
 
 
@@ -17,7 +16,7 @@ def create_competition(
     fee_per_student: float = 0.0,
     edition_year: Optional[int] = None,
 ) -> Competition:
-    # Auto-calculate edition_year from competition_date if not provided
+    from app.shared.datetime_utils import utc_now
     if edition_year is None and competition_date:
         edition_year = competition_date.year
     elif edition_year is None:
@@ -38,11 +37,8 @@ def create_competition(
     return c
 
 
-def list_competitions(db: Session, include_deleted: bool = False) -> list[Competition]:
-    stmt = select(Competition)
-    if not include_deleted:
-        stmt = stmt.where(Competition.deleted_at.is_(None))
-    stmt = stmt.order_by(Competition.competition_date.desc())
+def list_competitions(db: Session) -> list[Competition]:
+    stmt = select(Competition).order_by(Competition.competition_date.desc())
     return list(db.exec(stmt).all())
 
 
@@ -62,31 +58,11 @@ def update_competition(
     return c
 
 
-def delete_competition(db: Session, competition_id: int, deleted_by: Optional[int] = None) -> bool:
-    """Soft delete a competition."""
+def delete_competition(db: Session, competition_id: int) -> bool:
+    """Hard delete a competition."""
     c = db.get(Competition, competition_id)
     if c:
-        c.deleted_at = utc_now()
-        c.deleted_by = deleted_by
-        db.add(c)
+        db.delete(c)
         db.flush()
         return True
     return False
-
-
-def restore_competition(db: Session, competition_id: int) -> bool:
-    """Restore a soft-deleted competition."""
-    c = db.get(Competition, competition_id)
-    if c:
-        c.deleted_at = None
-        c.deleted_by = None
-        db.add(c)
-        db.flush()
-        return True
-    return False
-
-
-def list_deleted_competitions(db: Session) -> list[Competition]:
-    """List all soft-deleted competitions."""
-    stmt = select(Competition).where(Competition.deleted_at.is_not(None))
-    return list(db.exec(stmt).all())

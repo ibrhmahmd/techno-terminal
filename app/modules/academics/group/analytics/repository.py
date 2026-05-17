@@ -288,33 +288,6 @@ def get_group_instructors_summary(
     return result
 
 
-def get_group_competition_participations(
-    session: Session, group_id: int
-) -> Sequence[tuple]:
-    """
-    Get competition participation history for a group.
-    Returns tuples with full participation details.
-    """
-    from app.modules.academics.models.group_level_models import GroupCompetitionParticipation
-    from app.modules.competitions.models.competition_models import Competition
-    from app.modules.competitions.models.team_models import Team
-    
-    stmt = (
-        select(
-            GroupCompetitionParticipation,
-            Competition.name.label("competition_name"),
-            Team.team_name,
-            Team.category.label("category"),
-            Team.subcategory.label("subcategory"),
-        )
-        .join(Competition, GroupCompetitionParticipation.competition_id == Competition.id)
-        .join(Team, GroupCompetitionParticipation.team_id == Team.id)
-        .where(GroupCompetitionParticipation.group_id == group_id)
-        .order_by(GroupCompetitionParticipation.entered_at.desc())
-    )
-    return session.exec(stmt).all()
-
-
 def get_enrollment_stats_by_levels(
     session: Session, group_id: int, level_numbers: list[int]
 ) -> dict[int, EnrollmentStatsDTO]:

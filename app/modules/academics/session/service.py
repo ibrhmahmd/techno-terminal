@@ -24,6 +24,7 @@ import app.modules.academics.session.repository as repo
 # the group core interface. Since session planning is tightly coupled with group
 # defaults, we temporarily import the group repository here as per the migration plan.
 import app.modules.academics.group.core.repository as group_repo
+import app.modules.academics.group.level.repository as level_repo
 
 
 class SessionService:
@@ -40,10 +41,16 @@ class SessionService:
             return list(repo.list_sessions_by_group(session, group_id, include_cancelled))
 
     def list_group_sessions(self, group_id: int, level_number: int | None = None) -> list[CourseSession]:
-        """List sessions for a group, optionally filtered by level number."""
+        """List sessions for a group, optionally filtered by level number.
+        
+        When level_number is None, defaults to the group's current active level.
+        """
         with get_session() as session:
             if level_number is not None:
                 return list(repo.list_sessions_by_level(session, group_id, level_number))
+            active_level = level_repo.get_current_group_level(session, group_id)
+            if active_level:
+                return list(repo.list_sessions_by_group_level(session, active_level.id))
             return list(repo.list_sessions_by_group(session, group_id))
 
     def generate_level_sessions(
@@ -68,6 +75,8 @@ class SessionService:
                     "Remove them first or add extra sessions instead."
                 )
 
+            gl_id = repo.get_group_level_id(session, data.group_id, data.level_number)
+
             snapped = (
                 next_weekday(data.start_date, group.default_day)
                 if group.default_day else data.start_date
@@ -77,6 +86,7 @@ class SessionService:
                 group=group,
                 sessions_count=course.sessions_per_level,
                 start_date=snapped,
+                group_level_id=gl_id,
             )
 
     def add_extra_session(
@@ -90,6 +100,8 @@ class SessionService:
 
             next_num = repo.get_next_session_number(session, data.group_id, data.level_number)
 
+            gl_id = repo.get_group_level_id(session, data.group_id, data.level_number)
+
             cs = CourseSession(
                 group_id=data.group_id,
                 level_number=data.level_number,
@@ -100,6 +112,7 @@ class SessionService:
                 actual_instructor_id=group.instructor_id,
                 is_extra_session=True,
                 notes=data.notes,
+                group_level_id=gl_id,
             )
             from app.shared.audit_utils import apply_create_audit
             apply_create_audit(cs)
@@ -186,6 +199,8 @@ class SessionService:
             
             max_num = repo.get_next_session_number(session, cs.group_id, cs.level_number) - 1
             
+            repl_gl_id = cs.group_level_id or repo.get_group_level_id(session, cs.group_id, cs.level_number)
+
             replacement = CourseSession(
                 group_id=cs.group_id,
                 level_number=cs.level_number,
@@ -194,7 +209,8 @@ class SessionService:
                 start_time=cs.start_time,
                 end_time=cs.end_time,
                 actual_instructor_id=cs.actual_instructor_id,
-                status=SESSION_STATUS_SCHEDULED
+                status=SESSION_STATUS_SCHEDULED,
+                group_level_id=repl_gl_id,
             )
             from app.shared.audit_utils import apply_create_audit, apply_update_audit
             apply_create_audit(replacement)

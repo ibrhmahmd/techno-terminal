@@ -128,6 +128,7 @@ class GroupLifecycleService:
                 group=group,
                 sessions_count=sessions_per_level,
                 start_date=start_date,
+                group_level_id=level.id,
             )
 
             session.commit()
@@ -254,6 +255,7 @@ class GroupLifecycleService:
                     next_weekday(date.today(), group.default_day) if group.default_day else date.today()
                 ),
                 level_number=new_level_number,
+                group_level_id=new_level.id,
             )
 
             # Phase 7: Migrate enrollments (if enabled)
@@ -380,6 +382,7 @@ class GroupLifecycleService:
                     next_weekday(date.today(), group.default_day) if group.default_day else date.today()
                 ),
                 level_number=data.level_number,
+                group_level_id=level.id,
             )
 
             # Update group's level_number to match the new level

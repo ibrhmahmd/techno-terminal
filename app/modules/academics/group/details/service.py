@@ -106,7 +106,7 @@ class GroupDetailsService:
         Get levels with sessions, stats, and payment summaries.
         
         If level_number is provided, returns only that specific level.
-        Otherwise, returns all levels for the group.
+        Otherwise, returns only the current active level.
         
         Uses 4-query pattern:
         1. Get levels for group (all or specific)
@@ -130,10 +130,9 @@ class GroupDetailsService:
                     )
                 levels = [level]
             else:
-                # Get all levels
-                levels = level_repo.list_group_levels(
-                    session, group_id, include_inactive=True
-                )
+                # Default to current active level
+                active_level = level_repo.get_current_group_level(session, group_id)
+                levels = [active_level] if active_level else []
             
             if not levels:
                 # Return empty response

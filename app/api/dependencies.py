@@ -134,7 +134,6 @@ from app.modules.academics.course.service import CourseService
 from app.modules.academics.group.core.service import GroupCoreService
 from app.modules.academics.group.directory.service import GroupDirectoryService
 from app.modules.academics.group.level.service import GroupLevelService
-from app.modules.academics.group.competition.service import GroupCompetitionService
 from app.modules.academics.session.service import SessionService
 from app.modules.academics.group.analytics.service import GroupAnalyticsService
 
@@ -199,11 +198,6 @@ def get_group_directory_service() -> GroupDirectoryService:
 def get_group_level_service() -> GroupLevelService:
     """Returns a fresh GroupLevelService instance per request."""
     return GroupLevelService()
-
-
-def get_group_competition_service() -> GroupCompetitionService:
-    """Returns a fresh GroupCompetitionService instance per request (stateless)."""
-    return GroupCompetitionService()
 
 
 def get_session_service() -> SessionService:
@@ -324,6 +318,24 @@ def get_team_service() -> TeamService:
     """Returns a fresh TeamService instance per request."""
     return TeamService()
 
+
+# ── Coach Read-Only Guard ─────────────────────────────────────────────────────
+
+from app.modules.competitions.models.team_models import Team
+
+
+async def require_coach_or_admin(
+    team_id: int,
+    current_user: User = Depends(require_any),
+) -> User:
+    """Allows admin or the coach of the specified team to access."""
+    if current_user.is_admin:
+        return current_user
+    with get_session() as db:
+        team = db.get(Team, team_id)
+        if team and current_user.employee_id and team.coach_id == current_user.employee_id:
+            return current_user
+    raise HTTPException(status_code=403, detail="Access denied. Admin or team coach required.")
 
 
 # HR SOLID services

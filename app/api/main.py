@@ -23,7 +23,6 @@ from app.api.routers.academics import (
     group_directory_router,
     sessions_router,
     group_lifecycle_router,
-    group_competitions_router,
     group_details_router,
 )
 from app.api.routers.analytics import (
@@ -108,11 +107,6 @@ def create_app() -> FastAPI:
     )
     app.include_router(
         group_lifecycle_router, prefix="/api/v1", tags=["Academics — Group Lifecycle"]
-    )
-    app.include_router(
-        group_competitions_router,
-        prefix="/api/v1",
-        tags=["Academics — Group Competitions"],
     )
     app.include_router(attendance_router.router, prefix="/api/v1", tags=["Attendance"])
     # Transactions

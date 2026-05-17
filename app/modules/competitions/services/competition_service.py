@@ -44,9 +44,9 @@ class CompetitionService:
             db.refresh(comp)
             return CompetitionDTO.model_validate(comp)
 
-    def list_competitions(self, include_deleted: bool = False) -> list[CompetitionDTO]:
+    def list_competitions(self) -> list[CompetitionDTO]:
         with get_session() as db:
-            comps = comp_repo.list_competitions(db, include_deleted=include_deleted)
+            comps = comp_repo.list_competitions(db)
             return [CompetitionDTO.model_validate(c) for c in comps]
 
     def get_competition_by_id(self, competition_id: int) -> CompetitionDTO | None:
@@ -63,31 +63,17 @@ class CompetitionService:
                 db.refresh(comp)
             return CompetitionDTO.model_validate(comp) if comp else None
 
-    def delete_competition(self, competition_id: int, deleted_by: Optional[int] = None) -> bool:
-        """Soft delete a competition."""
+    def delete_competition(self, competition_id: int) -> bool:
+        """Hard delete a competition."""
         with get_session() as db:
-            # Check if competition has teams
             teams = team_repo.list_teams(db, competition_id)
             if teams:
                 raise BusinessRuleError(
                     "Cannot delete competition that has teams. Delete teams first."
                 )
-            result = comp_repo.delete_competition(db, competition_id, deleted_by=deleted_by)
+            result = comp_repo.delete_competition(db, competition_id)
             db.commit()
             return result
-
-    def restore_competition(self, competition_id: int) -> bool:
-        """Restore a soft-deleted competition."""
-        with get_session() as db:
-            result = comp_repo.restore_competition(db, competition_id)
-            db.commit()
-            return result
-
-    def list_deleted_competitions(self) -> list[CompetitionDTO]:
-        """List all soft-deleted competitions."""
-        with get_session() as db:
-            comps = comp_repo.list_deleted_competitions(db)
-            return [CompetitionDTO.model_validate(c) for c in comps]
 
     def list_categories(self, competition_id: int) -> list[CategoryInfoDTO]:
         """
@@ -153,9 +139,8 @@ class CompetitionService:
                                 team_member_id=m.id,
                                 student_id=m.student_id,
                                 student_name=student.full_name if student else f"Student #{m.student_id}",
-                                member_share=m.member_share,
-                                fee_paid=m.fee_paid,
-                                payment_id=m.payment_id,
+                                amount_due=m.amount_due,
+                                amount_paid=m.amount_paid,
                             )
                         )
 

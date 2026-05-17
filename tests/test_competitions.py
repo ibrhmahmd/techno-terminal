@@ -326,14 +326,14 @@ class TestTeamRegistrationFeeInput:
 
     def test_add_team_member_with_fee(self, client, admin_headers):
         """
-        POST /teams/{id}/members with fee — uses the provided fee as member_share.
+        POST /teams/{id}/members with amount_due — uses the provided amount as amount_due.
         """
         response = client.post(
             "/api/v1/teams/1/members",
             headers=admin_headers,
             json={
                 "student_id": 3,
-                "fee": 25.0
+                "amount_due": 25.0
             }
         )
 
@@ -341,7 +341,7 @@ class TestTeamRegistrationFeeInput:
 
     def test_add_team_member_without_fee(self, client, admin_headers):
         """
-        POST /teams/{id}/members without fee — member_share defaults to 0.
+        POST /teams/{id}/members without amount_due — amount_due defaults to 0.
         """
         response = client.post(
             "/api/v1/teams/1/members",
@@ -355,14 +355,14 @@ class TestTeamRegistrationFeeInput:
 
     def test_add_team_member_with_zero_fee(self, client, admin_headers):
         """
-        POST /teams/{id}/members with fee=0 — member_share is 0.
+        POST /teams/{id}/members with amount_due=0 — amount_due is 0.
         """
         response = client.post(
             "/api/v1/teams/1/members",
             headers=admin_headers,
             json={
                 "student_id": 5,
-                "fee": 0.0
+                "amount_due": 0.0
             }
         )
 

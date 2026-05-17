@@ -19,6 +19,8 @@ class UpdateTeamInput(BaseModel):
     team_name: Optional[str] = Field(None, min_length=1, max_length=200)
     category: Optional[str] = Field(None, max_length=100)
     subcategory: Optional[str] = Field(None, max_length=100)
+    project_name: Optional[str] = Field(None, max_length=500)
+    project_description: Optional[str] = Field(None, max_length=5000)
     group_id: Optional[int] = None
     coach_id: Optional[int] = None
     notes: Optional[str] = Field(None, max_length=1000)
@@ -41,10 +43,3 @@ class StudentCompetitionsResponse(BaseModel):
     """Response for student's competition history."""
     student_id: int
     competitions: list[StudentCompetitionDTO]
-
-
-class DeletedTeamListResponse(BaseModel):
-    """Response for listing deleted teams."""
-    competition_id: Optional[int]
-    teams: list[TeamDTO]
-    total: int

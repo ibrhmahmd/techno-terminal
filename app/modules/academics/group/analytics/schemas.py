@@ -74,37 +74,6 @@ class GroupEnrollmentHistoryResponseDTO(BaseModel):
 
 
 # ════════════════════════════════════════════════════════════
-# Competition History DTOs
-# ════════════════════════════════════════════════════════════
-
-class CompetitionHistoryItemDTO(BaseModel):
-    """Individual competition participation record."""
-    participation_id: int
-    competition_id: int
-    competition_name: str
-    team_id: int
-    team_name: str
-    category_name: Optional[str] = None
-    entered_at: datetime
-    left_at: Optional[datetime] = None
-    is_active: bool
-    final_placement: Optional[int] = None
-    notes: Optional[str] = None
-
-    model_config = {"from_attributes": True}
-
-
-class GroupCompetitionHistoryResponseDTO(BaseModel):
-    """Complete competition participation history."""
-    group_id: int
-    group_name: str
-    total_participations: int
-    active_participations: int
-    completed_participations: int
-    competitions: list[CompetitionHistoryItemDTO]
-
-
-# ════════════════════════════════════════════════════════════
 # Instructor History DTOs
 # ════════════════════════════════════════════════════════════
 
