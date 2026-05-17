@@ -143,13 +143,14 @@ class TestCompetitionsWrite:
         POST /competitions without admin role should fail.
         Note: Testing with admin headers verifies the endpoint works.
         """
+        import time
         # This test verifies the endpoint exists and requires admin
         # The actual auth check is tested separately
         response = client.post(
             "/api/v1/competitions",
             headers=admin_headers,
             json={
-                "name": "Admin Test Competition",
+                "name": f"Admin Test Competition {int(time.time())}",
                 "edition_year": 2024,
                 "competition_date": "2024-06-01"
             }
@@ -396,8 +397,10 @@ class TestCompetitionsAuth:
         """
         Verify write endpoints require admin authentication.
         """
+        import time
+        unique_name = f"Test {int(time.time())}"
         write_tests = [
-            ("POST", "/api/v1/competitions", {"name": "Test", "edition_year": 2024}),
+            ("POST", "/api/v1/competitions", {"name": unique_name, "edition_year": 2024}),
             ("POST", "/api/v1/teams", {"team_name": "Test", "competition_id": 1, "category": "Robotics", "student_ids": [1]}),
             ("POST", "/api/v1/teams/99999/members/99999/pay", {}),
         ]

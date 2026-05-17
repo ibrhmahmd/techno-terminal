@@ -89,7 +89,6 @@ def get_distinct_categories(db: Session, competition_id: int) -> list[tuple[str,
     stmt = (
         select(Team.category, Team.subcategory)
         .where(Team.competition_id == competition_id)
-        .where(Team.deleted_at.is_(None))
         .distinct()
         .order_by(Team.category, Team.subcategory)
     )
