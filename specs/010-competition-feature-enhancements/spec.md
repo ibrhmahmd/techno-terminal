@@ -5,6 +5,16 @@
 **Status**: Draft
 **Input**: User request to align competition module with clarified business requirements covering group-team relationship, project tracking, enrollment-style fee management, hard delete, and subcategory search.
 
+## Clarifications
+
+### Session 2026-05-16
+
+- Q: What user roles can perform write operations on competitions/teams? → A: All write operations (create, edit, delete, payments, placements) require admin role. Coaches (employees linked as team coach) can view their own teams' data read-only but cannot modify.
+- Q: What is explicitly out of scope? → A: Certificate generation, bulk operations (CSV import/export), public student-facing portal, and competition event email notifications are all out of scope for this iteration.
+- Q: How should payment failures be handled when finance module is involved? → A: Atomic rollback — if receipt creation or fee status update fails, the entire operation reverts with no change and no orphan data.
+- Q: Is competition reporting/export needed? → A: No — existing list/filter endpoints are sufficient. CSV export and dashboard summaries are not needed.
+- Q: Should team lifecycle be modeled as a formal state machine? → A: No — derive state from existing data fields (amount_due vs amount_paid for payment status, placement_rank for results). No explicit status field needed.
+
 ## User Scenarios & Testing
 
 ### User Story 1 - Admin manages competition lifecycle with hard delete (Priority: P1)
@@ -106,6 +116,13 @@ After a competition date has passed, an admin can record the placement (rank and
 
 ---
 
+### Out of Scope (This Iteration)
+
+- Certificate generation (handled externally)
+- Bulk operations (CSV/Excel import and export of teams or members)
+- Public student-facing portal for competition registration or results viewing
+- Automated email notifications for competition events (registration confirmation, payment receipts, placement announcements)
+
 ### Edge Cases
 
 - What happens when a competition date is today? Placement should be allowed (competition day has arrived).
@@ -114,6 +131,8 @@ After a competition date has passed, an admin can record the placement (rank and
 - What if a team is created without any students? Blocked — at least one student is required.
 - What if a refund is processed against a competition fee? The `amount_paid` should decrease by the refunded amount.
 - What if a competition's fee_per_student is zero? Teams can still be created with member_share = 0; no payment needed.
+- What if the finance module fails mid-payment? The entire operation rolls back atomically — no orphan receipt, no phantom fee update.
+- What if a payment is partially processed (receipt created but fee not updated)? This should never occur due to atomic rollback; if it does due to an unexpected error, it is a critical system bug requiring manual inspection of the finance module.
 
 ## Requirements
 
@@ -122,7 +141,9 @@ After a competition date has passed, an admin can record the placement (rank and
 - **FR-001**: Admins MUST be able to create competitions with name, edition year, date, location, and fee per student
 - **FR-002**: Admins MUST be able to edit and view competition details
 - **FR-003**: Admins MUST be able to permanently delete competitions (hard delete) — only if no teams are associated
-- **FR-004**: Any user MUST be able to view a list of competitions
+- **FR-004**: Any authenticated user MUST be able to view a list of competitions
+- **FR-004a**: Only admins MAY create, edit, or delete competitions, teams, members, payments, and placements
+- **FR-004b**: Coaches (employees linked as team coach) MAY read their own teams' data but MUST NOT modify any data
 - **FR-005**: Admins MUST be able to create teams with team name, category, optional subcategory, project name, project description, and student members
 - **FR-006**: When creating a team, admins MAY optionally select a group to pre-fill the student roster (the group serves as a student source, not an ownership constraint)
 - **FR-007**: Admins MUST be able to edit team details (name, category, subcategory, project name, project description)
@@ -141,6 +162,7 @@ After a competition date has passed, an admin can record the placement (rank and
 - **FR-020**: Placements MUST be blocked for competitions whose date is in the future
 - **FR-021**: When a fee payment is refunded, the student's `amount_paid` MUST decrease by the refunded amount and the fee payment link must be updated
 - **FR-022**: The system MUST log competition registration, payment, and placement events to the student activity log
+- **FR-023**: Fee payment operations MUST be atomic — if receipt creation or fee status update fails, the entire operation MUST roll back with no orphan data
 
 ### Key Entities
 
