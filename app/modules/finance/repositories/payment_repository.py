@@ -7,7 +7,7 @@ from decimal import Decimal
 from typing import Optional, List
 
 from sqlalchemy import text
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.modules.finance import Payment
 from app.modules.finance.interfaces import (
@@ -33,6 +33,7 @@ class PaymentRepository(IPaymentRepository):
             receipt_id=dto.receipt_id,
             student_id=dto.student_id,
             enrollment_id=dto.enrollment_id,
+            team_member_id=dto.team_member_id,
             amount=float(dto.amount),
             transaction_type=dto.transaction_type,
             payment_type=dto.payment_type or "course_level",
@@ -48,6 +49,20 @@ class PaymentRepository(IPaymentRepository):
     def get_by_id(self, payment_id: int) -> Optional[Payment]:
         """Get payment by ID."""
         return self._session.get(Payment, payment_id)
+
+    def list_refundable_competition_payments(
+        self, team_member_id: int
+    ) -> List[Payment]:
+        """List competition payment rows for a team member, newest first."""
+        stmt = (
+            select(Payment)
+            .where(Payment.team_member_id == team_member_id)
+            .where(Payment.payment_type == "competition")
+            .where(Payment.transaction_type == "payment")
+            .where(Payment.deleted_at.is_(None))
+            .order_by(Payment.created_at.desc(), Payment.id.desc())
+        )
+        return list(self._session.exec(stmt).all())
 
     def get_total_refunded(self, original_payment_id: int) -> Decimal:
         """Get total amount refunded for a specific payment."""

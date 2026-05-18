@@ -1,5 +1,5 @@
 from datetime import date
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from app.db.connection import get_session
 import app.modules.competitions.repositories.team_repository as team_repo
 import app.modules.competitions.repositories.competition_repository as comp_repo
@@ -17,6 +17,9 @@ from app.modules.competitions.schemas.team_schemas import (
     TeamWithMembersDTO,
 )
 from app.modules.competitions.schemas.competition_schemas import CompetitionDTO
+
+if TYPE_CHECKING:
+    from app.modules.finance.interfaces import RefundResultDTO
 
 
 class TeamService:
@@ -55,7 +58,9 @@ class TeamService:
             )
             return result
 
-    def register_team(self, cmd: RegisterTeamInput, current_user_id: Optional[int] = None) -> TeamRegistrationResultDTO:
+    def register_team(
+        self, cmd: RegisterTeamInput, current_user_id: Optional[int] = None
+    ) -> tuple[TeamRegistrationResultDTO, Optional[str]]:
         """
         Creates a team and adds all listed students as members.
         3-table schema: uses competition_id, category, subcategory directly.
@@ -519,6 +524,7 @@ class TeamService:
         Process competition fee payment for a team member.
         Single atomic transaction: validation + receipt creation + fee recording.
         """
+        from app.modules.finance.interfaces import CreateReceiptServiceDTO
         from app.modules.finance.repositories.unit_of_work import FinanceUnitOfWork
         from app.modules.finance.services.receipt_service import ReceiptService
         from app.modules.finance import ReceiptLineInput
@@ -549,19 +555,22 @@ class TeamService:
             with FinanceUnitOfWork(session=db) as uow:
                 service = ReceiptService(uow)
                 result = service.create(
-                    lines=[
-                        ReceiptLineInput(
-                            student_id=cmd.student_id,
-                            enrollment_id=None,
-                            amount=amount,
-                            payment_type="competition",
-                        )
-                    ],
-                    payer_name=payer_name,
-                    payment_method="cash",
-                    received_by_user_id=cmd.received_by_user_id,
-                    allow_credit=False,
-                    notes=f"Competition fee — Team #{cmd.team_id}",
+                    CreateReceiptServiceDTO(
+                        lines=[
+                            ReceiptLineInput(
+                                student_id=cmd.student_id,
+                                enrollment_id=None,
+                                team_member_id=member.id,
+                                amount=amount,
+                                payment_type="competition",
+                            )
+                        ],
+                        payer_name=payer_name,
+                        payment_method="cash",
+                        received_by_user_id=cmd.received_by_user_id,
+                        allow_credit=False,
+                        notes=f"Competition fee — Team #{cmd.team_id}",
+                    )
                 )
                 payment_id = result.payment_ids[0]
 
@@ -593,11 +602,61 @@ class TeamService:
             amount_due=updated_member.amount_due if updated_member else 0.0,
         )
 
-    def refund_competition_fee(self, team_member_id: int, amount: float) -> None:
+    def _get_refundable_competition_payment_id(
+        self, finance_uow, team_member_id: int, amount: float
+    ) -> int:
+        """Find the newest competition payment with enough refundable balance."""
+        from decimal import Decimal
+
+        requested = Decimal(str(amount))
+        for payment in finance_uow.payments.list_refundable_competition_payments(
+            team_member_id
+        ):
+            available = Decimal(str(payment.amount)) - finance_uow.payments.get_total_refunded(
+                payment.id
+            )
+            if available >= requested:
+                return payment.id
+
+        raise BusinessRuleError(
+            "No competition payment with enough refundable balance was found for this refund amount."
+        )
+
+    def refund_competition_fee(
+        self,
+        team_member_id: int,
+        amount: float,
+        current_user_id: Optional[int] = None,
+    ) -> "RefundResultDTO":
         """
-        Decrement amount_paid for a team member when a competition payment is refunded.
-        Called by finance when a competition payment is refunded.
+        Refund a competition payment through the finance module.
         """
+        from decimal import Decimal
+
+        from app.modules.finance.interfaces import IssueRefundDTO
+        from app.modules.finance.repositories.unit_of_work import FinanceUnitOfWork
+        from app.modules.finance.services.refund_service import RefundService
+
         with get_session() as db:
-            team_repo.refund_payment(db, team_member_id, amount)
+            member = team_repo.get_team_member_by_id(db, team_member_id)
+            if not member:
+                raise NotFoundError(f"Team member {team_member_id} not found.")
+            if amount <= 0:
+                raise BusinessRuleError("Refund amount must be greater than 0.")
+
+            with FinanceUnitOfWork(session=db) as finance_uow:
+                original_payment_id = self._get_refundable_competition_payment_id(
+                    finance_uow, team_member_id, amount
+                )
+                refund_service = RefundService(finance_uow)
+                result = refund_service.issue(
+                    IssueRefundDTO(
+                        payment_id=original_payment_id,
+                        amount=Decimal(str(amount)),
+                        reason=f"Competition fee refund for team member {team_member_id}",
+                        received_by_user_id=current_user_id,
+                        method="cash",
+                    )
+                )
             db.commit()
+            return result

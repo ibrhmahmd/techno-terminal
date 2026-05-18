@@ -14,6 +14,7 @@ from app.api.schemas.common import ApiResponse
 from app.api.schemas.competitions.team_schemas import (
     UpdateTeamInput,
     PlacementUpdateInput,
+    PayCompetitionFeeBody,
     TeamMemberListResponse,
     StudentCompetitionsResponse,
     RefundCompetitionFeeBody,
@@ -28,6 +29,7 @@ from app.modules.competitions.schemas.team_schemas import (
     TeamRegistrationResultDTO,
     TeamWithMembersDTO,
     TeamDTO,
+    TeamMemberDTO,
     PayCompetitionFeeInput,
     PayCompetitionFeeResponseDTO,
     AddTeamMemberResultDTO,
@@ -315,7 +317,7 @@ def remove_team_member(
 def pay_competition_fee(
     team_id: int,
     student_id: int,
-    body: PayCompetitionFeeInput,
+    body: PayCompetitionFeeBody,
     current_user: User = Depends(require_admin),
     svc: TeamService = Depends(get_team_service),
 ):
@@ -367,8 +369,15 @@ def refund_competition_fee(
             status_code=400,
             detail=f"Refund amount ({body.amount}) exceeds amount paid ({member.amount_paid}).",
         )
-    svc.refund_competition_fee(team_member_id=member.id, amount=body.amount)
-    return ApiResponse(data=True, message=f"Refund of {body.amount} processed successfully.")
+    result = svc.refund_competition_fee(
+        team_member_id=member.id,
+        amount=body.amount,
+        current_user_id=current_user.id,
+    )
+    return ApiResponse(
+        data=True,
+        message=f"Refund of {body.amount} processed successfully with receipt {result.receipt_number}.",
+    )
 
 
 @router.patch(

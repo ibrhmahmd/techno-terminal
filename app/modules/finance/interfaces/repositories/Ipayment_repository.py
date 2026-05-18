@@ -23,6 +23,10 @@ class IPaymentRepository(Protocol):
 
     def get_by_id(self, payment_id: int) -> Optional["Payment"]: ...
 
+    def list_refundable_competition_payments(
+        self, team_member_id: int
+    ) -> List["Payment"]: ...
+
     def get_total_refunded(self, original_payment_id: int) -> Decimal: ...
 
     def get_enrollment_balance(

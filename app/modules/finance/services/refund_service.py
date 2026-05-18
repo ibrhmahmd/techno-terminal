@@ -85,20 +85,24 @@ class RefundService(IRefundService):
         self._uow.receipts.set_receipt_number(refund_receipt.id)
 
         # Add refund line
+        from app.modules.finance.interfaces import AddPaymentLineDTO
         refund_payment = self._uow.payments.add_line(
-            receipt_id=refund_receipt.id,
-            student_id=original.student_id,
-            enrollment_id=original.enrollment_id,
-            amount=dto.amount,
-            transaction_type="refund",
-            payment_type=original.payment_type,
-            notes=dto.reason,
-            original_payment_id=dto.payment_id,
+            AddPaymentLineDTO(
+                receipt_id=refund_receipt.id,
+                student_id=original.student_id,
+                enrollment_id=original.enrollment_id,
+                amount=dto.amount,
+                transaction_type="refund",
+                team_member_id=original.team_member_id,
+                payment_type=original.payment_type,
+                notes=dto.reason,
+                original_payment_id=dto.payment_id,
+            )
         )
 
         # Handle competition fee unmarking
         if original.payment_type == "competition":
-            self._unlink_competition_payment(dto.payment_id)
+            self._unlink_competition_payment(dto.payment_id, dto.amount)
 
         # Get updated balance if applicable
         new_balance: Optional[Decimal] = None
@@ -130,7 +134,9 @@ class RefundService(IRefundService):
             new_balance=new_balance,
         )
 
-    def _unlink_competition_payment(self, original_payment_id: int) -> None:
+    def _unlink_competition_payment(
+        self, original_payment_id: int, refunded_amount: Decimal
+    ) -> None:
         """Internal: Decrement competition fee amount_paid when refunding."""
         from app.modules.competitions.models.team_models import TeamMember
         from app.modules.finance.models.payment import Payment
@@ -142,5 +148,7 @@ class RefundService(IRefundService):
         if payment and payment.team_member_id:
             member = self._uow._session.get(TeamMember, payment.team_member_id)
             if member:
-                member.amount_paid = max(0.0, float(member.amount_paid) - float(payment.amount))
+                member.amount_paid = max(
+                    0.0, float(member.amount_paid) - float(refunded_amount)
+                )
                 self._uow._session.add(member)

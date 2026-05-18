@@ -32,6 +32,12 @@ class PlacementUpdateInput(BaseModel):
     placement_label: Optional[str] = Field(None, max_length=100, description="Label like 'Gold' or '3rd Place'")
 
 
+class PayCompetitionFeeBody(BaseModel):
+    """Input for paying a competition fee for a team member."""
+    amount: float = Field(..., gt=0, description="Payment amount")
+    parent_id: Optional[int] = None
+
+
 class TeamMemberListResponse(BaseModel):
     """Response for team member list."""
     team_id: int

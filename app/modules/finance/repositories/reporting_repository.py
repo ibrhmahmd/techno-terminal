@@ -65,21 +65,14 @@ class ReportingRepository(IReportingRepository):
                 t.id as team_id,
                 t.team_name,
                 c.name as competition_name,
-                cat.name as category_name,
-                COALESCE(tm.fee_share, 0) as member_share,
-                s.id as student_id
+                t.category as category_name,
+                GREATEST(COALESCE(tm.amount_due, 0) - COALESCE(tm.amount_paid, 0), 0) as member_share,
+                tm.student_id as student_id
             FROM team_members tm
             JOIN teams t ON tm.team_id = t.id
             JOIN competitions c ON t.competition_id = c.id
-            JOIN categories cat ON t.category_id = cat.id
-            JOIN students s ON tm.student_id = s.id
-            LEFT JOIN payments p ON p.student_id = s.id
-                AND p.payment_type = 'competition'
-                AND p.transaction_type = 'payment'
-                AND p.payment_metadata->>'team_member_id' = tm.id::text
             WHERE tm.student_id = :student_id
-            AND p.id IS NULL
-            AND COALESCE(tm.fee_share, 0) > 0
+            AND COALESCE(tm.amount_due, 0) > COALESCE(tm.amount_paid, 0)
             """
         )
         results = self._session.exec(stmt, params={"student_id": student_id}).all()

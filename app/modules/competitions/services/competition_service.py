@@ -14,7 +14,6 @@ from app.modules.competitions.schemas.team_schemas import (
     TeamWithMembersDTO,
     TeamDTO,
     TeamMemberDTO,
-    TeamMemberRosterDTO,
 )
 
 
@@ -109,7 +108,6 @@ class CompetitionService:
         from app.modules.competitions.repositories import competition_repository as comp_repo
         from app.modules.competitions.schemas.team_schemas import (
             TeamWithMembersDTO,
-            TeamMemberRosterDTO,
             TeamMemberDTO,
             CategoryWithTeamsDTO,
         )
@@ -131,17 +129,6 @@ class CompetitionService:
                 team_dtos = []
                 for team in team_list:
                     member_rows = members_by_team.get(team.id, [])
-                    member_dtos = [
-                        TeamMemberRosterDTO(
-                            team_member_id=m.id,
-                            student_id=m.student_id,
-                            student_name=sname,
-                            amount_due=m.amount_due,
-                            amount_paid=m.amount_paid,
-                        )
-                        for m, sname in member_rows
-                    ]
-
                     team_dtos.append(
                         TeamWithMembersDTO(
                             team=TeamDTO.model_validate(team),

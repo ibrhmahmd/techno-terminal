@@ -172,6 +172,8 @@ def get_competition_summary(
 ):
     """Get full competition summary with all nested data."""
     summary = svc.get_competition_summary(competition_id)
+    if not summary:
+        raise HTTPException(status_code=404, detail="Competition not found")
     
     # Calculate totals
     total_teams = sum(len(cat.teams) for cat in summary.categories)
