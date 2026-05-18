@@ -3,6 +3,11 @@ from typing import Optional
 from sqlmodel import Session, select
 from app.modules.competitions.models.competition_models import Competition
 
+ALLOWED_COMPETITION_UPDATES = {
+    "name", "edition", "edition_year", "competition_date",
+    "location", "notes", "fee_per_student",
+}
+
 
 # ── Competitions ──────────────────────────────────────────────────────────────
 
@@ -52,7 +57,8 @@ def update_competition(
     c = db.get(Competition, competition_id)
     if c:
         for k, v in kwargs.items():
-            setattr(c, k, v)
+            if k in ALLOWED_COMPETITION_UPDATES:
+                setattr(c, k, v)
         db.add(c)
         db.flush()
     return c

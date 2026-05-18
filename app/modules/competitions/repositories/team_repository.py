@@ -1,11 +1,16 @@
 from typing import Optional
-from decimal import Decimal
 from sqlmodel import Session, select
 from app.shared.datetime_utils import utc_now
 from app.modules.competitions.models.team_models import (
     Team,
     TeamMember,
 )
+
+ALLOWED_TEAM_UPDATES = {
+    "team_name", "category", "subcategory", "project_name",
+    "project_description", "group_id", "coach_id", "notes",
+    "placement_rank", "placement_label",
+}
 
 
 # ── Teams ─────────────────────────────────────────────────────────────────────
@@ -18,7 +23,6 @@ def create_team(
     subcategory: Optional[str] = None,
     coach_id: Optional[int] = None,
     group_id: Optional[int] = None,
-    fee: Optional[Decimal] = None,
     notes: Optional[str] = None,
     project_name: Optional[str] = None,
     project_description: Optional[str] = None,
@@ -32,7 +36,6 @@ def create_team(
         subcategory=subcategory,
         group_id=group_id,
         coach_id=coach_id,
-        fee=fee,
         notes=notes,
         project_name=project_name,
         project_description=project_description,
@@ -64,11 +67,11 @@ def get_team(db: Session, team_id: int) -> Team | None:
 
 
 def update_team(db: Session, team_id: int, **kwargs) -> Team | None:
-    """Update team fields."""
     t = db.get(Team, team_id)
     if t:
         for k, v in kwargs.items():
-            setattr(t, k, v)
+            if k in ALLOWED_TEAM_UPDATES:
+                setattr(t, k, v)
         db.add(t)
         db.flush()
     return t
@@ -115,16 +118,6 @@ def check_category_has_subcategories(db: Session, competition_id: int, category:
         .where(Team.subcategory.is_not(None))
     )
     return db.exec(stmt).first() is not None
-
-
-def get_teams_by_student(db: Session, student_id: int) -> list[Team]:
-    """Get all teams a student is a member of."""
-    stmt = (
-        select(Team)
-        .join(TeamMember)
-        .where(TeamMember.student_id == student_id)
-    )
-    return list(db.exec(stmt).all())
 
 
 # ── Team Members ──────────────────────────────────────────────────────────────

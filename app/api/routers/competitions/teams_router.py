@@ -18,7 +18,7 @@ from app.api.schemas.competitions.team_schemas import (
     StudentCompetitionsResponse,
     RefundCompetitionFeeBody,
 )
-from app.api.dependencies import require_any, require_admin, get_team_service, require_coach_or_admin
+from app.api.dependencies import require_any, require_admin, get_team_service
 from app.modules.auth import User
 from app.modules.competitions.services.team_service import TeamService
 
@@ -105,10 +105,10 @@ def register_team(
     svc: TeamService = Depends(get_team_service),
 ):
     """Register a team for a competition."""
-    result = svc.register_team(body, current_user_id=current_user.id)
+    result, warning = svc.register_team(body, current_user_id=current_user.id)
     return ApiResponse(
         data=result,
-        message="Team registered successfully."
+        message=warning or "Team registered successfully."
     )
 
 
@@ -123,11 +123,11 @@ def register_team(
 )
 def get_team(
     team_id: int,
-    current_user: User = Depends(require_coach_or_admin),
+    current_user: User = Depends(require_any),
     svc: TeamService = Depends(get_team_service),
 ):
-    """Get team by ID."""
-    team = svc.get_team_by_id(team_id)
+    """Get team by ID (admin or coach only)."""
+    team = svc.get_team_for_user(team_id, current_user)
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
     return ApiResponse(data=team)
@@ -217,10 +217,11 @@ def delete_team(
 )
 def list_team_members(
     team_id: int,
-    current_user: User = Depends(require_coach_or_admin),
+    current_user: User = Depends(require_any),
     svc: TeamService = Depends(get_team_service),
 ):
-    """List all members of a team."""
+    """List all members of a team (admin or coach only)."""
+    svc.get_team_for_user(team_id, current_user)  # Auth check
     members = svc.list_team_members(team_id)
     team_name = members[0].team_name if members else "Unknown"
     return ApiResponse(data=TeamMemberListResponse(
@@ -255,13 +256,16 @@ def add_team_member(
     svc: TeamService = Depends(get_team_service),
 ):
     """Add a member to an existing team."""
-    result = svc.add_team_member_to_existing(
+    result, warning = svc.add_team_member_to_existing(
         team_id=team_id,
         student_id=body.student_id,
         amount_due=body.amount_due,
         current_user_id=current_user.id,
     )
-    return ApiResponse(data=result, message="Member added successfully.")
+    return ApiResponse(
+        data=result,
+        message=warning or "Member added successfully."
+    )
 
 
 @router.delete(

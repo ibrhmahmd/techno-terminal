@@ -89,7 +89,8 @@ class TeamService:
                     f"A team named '{cmd.team_name}' already exists in this category."
                 )
 
-            # Validate all students are active and not already in this competition
+            # Validate all students are active and collect duplicate warnings
+            duplicate_warnings = []
             for sid in cmd.student_ids:
                 s = db.get(Student, sid)
                 if not s:
@@ -97,12 +98,12 @@ class TeamService:
                 if s.status != "active":
                     raise BusinessRuleError(f"Student '{s.full_name}' is not active.")
 
-                # Business rule: One student per competition
+                # Business rule: Warn if student already in another team for this competition
                 already_enrolled = team_repo.check_student_in_competition(
                     db, cmd.competition_id, sid
                 )
                 if already_enrolled:
-                    raise ConflictError(
+                    duplicate_warnings.append(
                         f"Student '{s.full_name}' is already enrolled in another team "
                         f"for this competition."
                     )
@@ -143,10 +144,11 @@ class TeamService:
             db.commit()
             db.refresh(team)
 
+            warning = "; ".join(duplicate_warnings) if duplicate_warnings else None
             return TeamRegistrationResultDTO(
                 team=TeamDTO.model_validate(team),
                 members_added=members_added
-            )
+            ), warning
 
     def _log_team_registration_activity(
         self,
@@ -262,6 +264,21 @@ class TeamService:
             team = team_repo.get_team(db, team_id)
             return TeamDTO.model_validate(team) if team else None
 
+    def get_team_for_user(
+        self, team_id: int, current_user
+    ) -> TeamDTO | None:
+        """Get a team, enforcing admin or coach access within the same session."""
+        with get_session() as db:
+            team = team_repo.get_team(db, team_id)
+            if not team:
+                return None
+            if current_user.is_admin:
+                return TeamDTO.model_validate(team)
+            if current_user.employee_id and team.coach_id == current_user.employee_id:
+                return TeamDTO.model_validate(team)
+            from fastapi import HTTPException
+            raise HTTPException(status_code=403, detail="Access denied. Admin or team coach required.")
+
     def list_teams(
         self,
         competition_id: int,
@@ -365,10 +382,16 @@ class TeamService:
                 raise NotFoundError(f"Team {team_id} not found.")
 
             comp = comp_repo.get_competition(db, team.competition_id)
-            if comp and comp.competition_date and comp.competition_date > date.today():
-                raise BusinessRuleError(
-                    "Cannot set placement before competition date"
-                )
+            if comp and comp.competition_date:
+                if comp.competition_date > date.today():
+                    raise BusinessRuleError(
+                        "Cannot set placement before competition date."
+                    )
+                if (date.today() - comp.competition_date).days > 30:
+                    raise BusinessRuleError(
+                        "Placement recording window closed. Placements must be "
+                        "recorded within 30 days of the competition date."
+                    )
 
             team = team_repo.update_team(
                 db, team_id,
@@ -401,8 +424,8 @@ class TeamService:
         student_id: int,
         amount_due: float = 0.0,
         current_user_id: Optional[int] = None,
-    ) -> AddTeamMemberResultDTO:
-        """Add a student to an existing team."""
+    ) -> tuple[AddTeamMemberResultDTO, Optional[str]]:
+        """Add a student to an existing team. Returns (result, warning_or_None)."""
         from app.modules.crm.models.student_models import Student
 
         with get_session() as db:
@@ -410,13 +433,16 @@ class TeamService:
             if not team:
                 raise NotFoundError(f"Team {team_id} not found.")
 
-            # Check if student already in this competition
+            warning = None
+            # Check if student already in this competition — warn but allow
             already_enrolled = team_repo.check_student_in_competition(
                 db, team.competition_id, student_id
             )
             if already_enrolled:
-                raise ConflictError(
-                    "Student is already enrolled in another team for this competition."
+                s_check = db.get(Student, student_id)
+                warning = (
+                    f"Student '{s_check.full_name if s_check else student_id}' "
+                    "is already enrolled in another team for this competition."
                 )
 
             s = db.get(Student, student_id)
@@ -446,7 +472,7 @@ class TeamService:
                 team_member_id=m.id,
                 student_id=m.student_id,
                 student_name=s.full_name,
-            )
+            ), warning
 
     def get_team_member(self, team_id: int, student_id: int):
         """Returns a single team member by team_id and student_id, or None."""

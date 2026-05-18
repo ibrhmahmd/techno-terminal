@@ -395,3 +395,42 @@ With multiple developers:
 - [x] T113 Run `pytest tests/test_competitions.py -v` — all existing tests pass (no behavioral regression)
 - [ ] T114 Run `pytest tests/ -v` — full suite passes
 - **CRITICAL**: Payment atomicity (T047) — if receipt creation or fee update fails, entire operation MUST roll back with no orphan data
+
+---
+
+## Phase 12: Bug Fixes
+
+**Purpose**: Fix 8 open bugs identified in audit report (`bug-report.md`). Ordered by severity: CRITICAL → HIGH → MEDIUM → LOW.
+
+### Phase 12a: Quick Fixes (B1, B4, B7, B8) — Parallel
+
+- [x] T115 [P] Fix B1: Replace `team_member.fee_paid = True` and `team_member.payment_id = payment_id` with no-op in `app/modules/finance/services/receipt_service.py:_link_competition_payment` (lines 367-368). Add comment explaining the link is via payments.team_member_id FK.
+- [x] T116 [P] Fix B4: Add 30-day upper bound check in `app/modules/competitions/services/team_service.py:update_placement` (line 368). Add `if (date.today() - comp.competition_date).days > 30: raise BusinessRuleError("Placement recording window closed...")`.
+- [x] T117 [P] Fix B7: Delete `get_teams_by_student()` function from `app/modules/competitions/repositories/team_repository.py` (lines 120-127). Dead code — replaced by `list_student_memberships_enriched()`.
+- [x] T118 [P] Fix B8: Remove `fee: Optional[Decimal] = None` parameter from `create_team()` in `app/modules/competitions/repositories/team_repository.py` (line 21, 35). No caller passes it; Team model has no `fee` field.
+
+### Phase 12b: Medium Fixes (B6, B5)
+
+- [x] T119 Fix B6: Add `ALLOWED_COMPETITION_UPDATES` whitelist to `app/modules/competitions/repositories/competition_repository.py:update_competition`. Filter kwargs before setattr. Allowed: `name`, `edition`, `edition_year`, `competition_date`, `location`, `notes`, `fee_per_student`.
+- [x] T120 Fix B6: Add `ALLOWED_TEAM_UPDATES` whitelist to `app/modules/competitions/repositories/team_repository.py:update_team`. Filter kwargs before setattr. Allowed: `team_name`, `category`, `subcategory`, `project_name`, `project_description`, `group_id`, `coach_id`, `notes`, `placement_rank`, `placement_label`.
+- [x] T121 Fix B5: Move coach authorization check into `TeamService.get_team_for_user()` in `app/modules/competitions/services/team_service.py`. Accept `current_user: User`, check `is_admin` OR `employee_id == team.coach_id` within same session. Update `GET /teams/{id}` and `GET /teams/{id}/members` routers to use this method instead of `require_coach_or_admin` dependency.
+
+### Phase 12c: High Fix (B3)
+
+- [x] T122 Fix B3: Change `register_team()` in `app/modules/competitions/services/team_service.py` to return `tuple[TeamRegistrationResultDTO, str | None]`. Collect duplicate student warnings instead of raising `ConflictError`. Return warning message if duplicates found.
+- [x] T123 Fix B3: Change `add_team_member_to_existing()` in `app/modules/competitions/services/team_service.py` to return `tuple[AddTeamMemberResultDTO, str | None]`. Same pattern as T122.
+- [x] T124 Fix B3: Update `POST /teams` endpoint in `app/api/routers/competitions/teams_router.py` to unpack `(result, warning)` from `register_team()`. Populate `message` field with warning if present.
+- [x] T125 Fix B3: Update `POST /teams/{id}/members` endpoint in `app/api/routers/competitions/teams_router.py` to unpack `(result, warning)` from `add_team_member_to_existing()`. Populate `message` field with warning if present.
+
+### Phase 12d: Critical Fix (B2)
+
+- [ ] T126 Fix B2: Refactor `pay_competition_fee()` in `app/modules/competitions/services/team_service.py` to use single transaction. Move FinanceUnitOfWork receipt creation inside the same `get_session()` block. If FinanceUnitOfWork doesn't support external session, implement saga pattern with idempotent compensation.
+
+### Verification
+
+- [ ] T127 Run `pytest tests/test_competitions.py -v` — all 22 tests pass
+- [ ] T128 Add test for B4: `test_placement_blocked_after_30_days` — verify 409 when competition date > 30 days past
+- [ ] T129 Add test for B3: `test_register_team_with_duplicate_student_returns_warning` — verify 200 with warning message
+- [ ] T130 Add test for B3: `test_add_team_member_with_duplicate_student_returns_warning` — verify 200 with warning message
+- [ ] T131 Run `py -c "import app.api.main"` — app imports cleanly
+- [ ] T132 Run `pytest tests/ -v` — full suite passes
