@@ -66,3 +66,45 @@ def delete_competition(db: Session, competition_id: int) -> bool:
         db.flush()
         return True
     return False
+
+
+# ── Batch Loading (N+1 Elimination) ──────────────────────────────────────────
+
+def get_competition_summary_data(
+    db: Session, competition_id: int
+) -> tuple:
+    """
+    Batch-load all data needed for competition summary in a single query.
+    Returns (Competition|None, list[Team], dict[int, list[tuple]]) where the dict
+    maps team_id -> list of (TeamMember, student_name) tuples.
+    """
+    from app.modules.competitions.models.team_models import Team, TeamMember
+    from app.modules.crm.models.student_models import Student
+
+    comp = get_competition(db, competition_id)
+    if not comp:
+        return None, [], {}
+
+    stmt = (
+        select(Team, TeamMember, Student.full_name)
+        .join(TeamMember, Team.id == TeamMember.team_id, isouter=True)
+        .join(Student, TeamMember.student_id == Student.id, isouter=True)
+        .where(Team.competition_id == competition_id)
+        .order_by(Team.category, Team.subcategory, Team.team_name)
+    )
+    rows = list(db.exec(stmt).all())
+
+    teams: list[Team] = []
+    members_by_team: dict[int, list[tuple]] = {}
+    seen_team_ids = set()
+
+    for team, member, student_name in rows:
+        if team.id not in seen_team_ids:
+            teams.append(team)
+            seen_team_ids.add(team.id)
+        if member:
+            members_by_team.setdefault(team.id, []).append(
+                (member, student_name or f"Student #{member.student_id}")
+            )
+
+    return comp, teams, members_by_team

@@ -189,3 +189,64 @@ def remove_team_member(db: Session, team_id: int, student_id: int) -> bool:
         db.flush()
         return True
     return False
+
+
+# ── Batch Loading (N+1 Elimination) ──────────────────────────────────────────
+
+def list_team_members_with_students(
+    db: Session, team_ids: list[int]
+) -> dict[int, list[tuple]]:
+    """
+    Batch-load team members with student names for multiple teams in a single query.
+    Returns dict mapping team_id -> list of (TeamMember, student_name) tuples.
+    """
+    from app.modules.crm.models.student_models import Student
+
+    if not team_ids:
+        return {}
+
+    stmt = (
+        select(TeamMember, Student.full_name)
+        .join(Student, TeamMember.student_id == Student.id, isouter=True)
+        .where(TeamMember.team_id.in_(team_ids))
+    )
+    rows = list(db.exec(stmt).all())
+
+    result: dict[int, list[tuple]] = {}
+    for member, student_name in rows:
+        result.setdefault(member.team_id, []).append((member, student_name or f"Student #{member.student_id}"))
+    return result
+
+
+def list_teams_with_members_batch(
+    db: Session, competition_id: int
+) -> tuple[list[Team], dict[int, list[tuple]]]:
+    """
+    Batch-load all teams for a competition with their members and student names.
+    Returns (list of Teams, dict mapping team_id -> list of (TeamMember, student_name) tuples).
+    """
+    teams = list_teams(db, competition_id)
+    if not teams:
+        return [], {}
+
+    team_ids = [t.id for t in teams]
+    members_by_team = list_team_members_with_students(db, team_ids)
+    return teams, members_by_team
+
+
+def list_student_memberships_enriched(
+    db: Session, student_id: int
+) -> list[tuple]:
+    """
+    Batch-load all memberships for a student with team and competition data.
+    Returns list of (TeamMember, Team, Competition|None) tuples.
+    """
+    from app.modules.competitions.models.competition_models import Competition
+
+    stmt = (
+        select(TeamMember, Team, Competition)
+        .join(Team, TeamMember.team_id == Team.id)
+        .join(Competition, Team.competition_id == Competition.id, isouter=True)
+        .where(TeamMember.student_id == student_id)
+    )
+    return list(db.exec(stmt).all())

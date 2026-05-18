@@ -15,6 +15,13 @@
 - Q: Is competition reporting/export needed? → A: No — existing list/filter endpoints are sufficient. CSV export and dashboard summaries are not needed.
 - Q: Should team lifecycle be modeled as a formal state machine? → A: No — derive state from existing data fields (amount_due vs amount_paid for payment status, placement_rank for results). No explicit status field needed.
 
+### Session 2026-05-17
+
+- Q: Who is authorized to process competition fee refunds? → A: Admin only — same authorization as payments (consistent with FR-004a)
+- Q: What happens when a student is already in a team for the same competition and admin tries to add them to another? → A: Warn but allow — show warning in response envelope's `message` field (Option A: no two-step flow, single request with warning)
+- Q: What happens when admin selects a group with zero active students for team pre-fill? → A: Show warning "Group has no active students" and allow manual student entry
+- Q: What is the maximum time window after a competition date during which placements can be recorded/modified? → A: 30 days — placements locked after 30 days post-competition
+
 ## User Scenarios & Testing
 
 ### User Story 1 - Admin manages competition lifecycle with hard delete (Priority: P1)
@@ -111,8 +118,9 @@ After a competition date has passed, an admin can record the placement (rank and
 
 **Acceptance Scenarios**:
 
-1. **Given** a competition whose date has passed, **When** an admin sets a placement (rank and label) for a team, **Then** the placement is saved and visible on the team detail page
+1. **Given** a competition whose date has passed and is within 30 days, **When** an admin sets a placement (rank and label) for a team, **Then** the placement is saved and visible on the team detail page
 2. **Given** a competition whose date is in the future, **When** an admin attempts to set a placement, **Then** the system blocks the action
+3. **Given** a competition whose date was more than 30 days ago, **When** an admin attempts to set or modify a placement, **Then** the system blocks the action with a message explaining the window has closed
 
 ---
 
@@ -126,9 +134,10 @@ After a competition date has passed, an admin can record the placement (rank and
 ### Edge Cases
 
 - What happens when a competition date is today? Placement should be allowed (competition day has arrived).
-- What if a student is moved from one team to another after partial payment? The payment is tied to the original team; the new team fee needs separate handling.
+- What if a competition date was more than 30 days ago? Placement recording is blocked — the window has closed.
+- What if a student is registered in a second team for the same competition? The system warns the admin but allows the registration after explicit confirmation. Each team's fee tracking remains independent.
 - What if a competition has no teams registered? The competition list and detail views should handle empty states gracefully.
-- What if a team is created without any students? Blocked — at least one student is required.
+- What if a team is created without any students? Blocked — at least one student is required. If a group is selected for pre-fill but has zero active students, the system shows a warning and allows manual student entry.
 - What if a refund is processed against a competition fee? The `amount_paid` should decrease by the refunded amount.
 - What if a competition's fee_per_student is zero? Teams can still be created with member_share = 0; no payment needed.
 - What if the finance module fails mid-payment? The entire operation rolls back atomically — no orphan receipt, no phantom fee update.
@@ -149,7 +158,7 @@ After a competition date has passed, an admin can record the placement (rank and
 - **FR-007**: Admins MUST be able to edit team details (name, category, subcategory, project name, project description)
 - **FR-008**: Admins MUST be able to add and remove students from a team (removal blocked if student has paid)
 - **FR-009**: Admins MUST be able to permanently delete teams (hard delete) — only if no members have paid fees
-- **FR-010**: The system MUST prevent a student from being registered in two different teams for the same competition
+- **FR-010**: The system MUST warn an admin when attempting to register a student in a second team for the same competition, but allow the registration after explicit confirmation
 - **FR-011**: Students added to a team MUST be verified as active students in the system
 - **FR-012**: The coach of a team MUST be an existing employee in the system
 - **FR-013**: Each team member MUST have a fee amount due (`amount_due`) and a running total paid (`amount_paid`)
@@ -158,8 +167,8 @@ After a competition date has passed, an admin can record the placement (rank and
 - **FR-016**: A team member's fee is considered paid when `amount_paid >= amount_due`
 - **FR-017**: Admins MUST be able to view team lists filtered by competition, category, and subcategory
 - **FR-018**: Admins MUST be able to group teams by subcategory within a category
-- **FR-019**: Admins MUST be able to record placement results (rank and label) for a team after the competition date
-- **FR-020**: Placements MUST be blocked for competitions whose date is in the future
+- **FR-019**: Admins MUST be able to record placement results (rank and label) for a team after the competition date, within 30 days of the competition date
+- **FR-020**: Placements MUST be blocked for competitions whose date is in the future OR more than 30 days past the competition date
 - **FR-021**: When a fee payment is refunded, the student's `amount_paid` MUST decrease by the refunded amount and the fee payment link must be updated
 - **FR-022**: The system MUST log competition registration, payment, and placement events to the student activity log
 - **FR-023**: Fee payment operations MUST be atomic — if receipt creation or fee status update fails, the entire operation MUST roll back with no orphan data

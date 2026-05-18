@@ -25,21 +25,15 @@ class TeamService:
     def get_student_competitions(self, student_id: int) -> list[StudentCompetitionDTO]:
         """
         Returns all teams a student is in, nested with category and competition info.
-        Uses 3-table schema: direct competition_id on teams.
+        Uses batch loading: single JOIN query instead of N+1.
         """
-        from app.modules.crm.models.student_models import Student
+        from datetime import date
 
         with get_session() as db:
-            memberships = team_repo.list_student_memberships(db, student_id)
+            rows = team_repo.list_student_memberships_enriched(db, student_id)
+
             result = []
-            for m in memberships:
-                team = team_repo.get_team(db, m.team_id)
-                if not team:
-                    continue
-
-                # Direct FK to competition (no category lookup needed)
-                comp = comp_repo.get_competition(db, team.competition_id)
-
+            for m, team, comp in rows:
                 result.append(
                     StudentCompetitionDTO(
                         membership=TeamMemberDTO.model_validate(m),
@@ -311,16 +305,23 @@ class TeamService:
         category: Optional[str] = None,
         subcategory: Optional[str] = None,
     ) -> list[TeamWithMembersDTO]:
-        """Returns all teams with their members."""
+        """Returns all teams with their members. Uses batch loading."""
         with get_session() as db:
-            teams = team_repo.list_teams(db, competition_id, category, subcategory)
+            teams, members_by_team = team_repo.list_teams_with_members_batch(db, competition_id)
+
+            # Apply category/subcategory filters in Python (already loaded)
+            if category:
+                teams = [t for t in teams if t.category == category]
+            if subcategory:
+                teams = [t for t in teams if t.subcategory == subcategory]
+
             result = []
             for team in teams:
-                members = team_repo.list_team_members(db, team.id)
+                member_rows = members_by_team.get(team.id, [])
                 result.append(
                     TeamWithMembersDTO(
                         team=TeamDTO.model_validate(team),
-                        members=[TeamMemberDTO.model_validate(m) for m in members]
+                        members=[TeamMemberDTO.model_validate(m) for m, _ in member_rows]
                     )
                 )
             return result
@@ -447,6 +448,11 @@ class TeamService:
                 student_name=s.full_name,
             )
 
+    def get_team_member(self, team_id: int, student_id: int):
+        """Returns a single team member by team_id and student_id, or None."""
+        with get_session() as db:
+            return team_repo.get_team_member(db, team_id, student_id)
+
     def remove_team_member(self, team_id: int, student_id: int) -> bool:
         with get_session() as db:
             member = team_repo.get_team_member(db, team_id, student_id)
@@ -459,30 +465,28 @@ class TeamService:
             return result
 
     def list_team_members(self, team_id: int) -> list[TeamMemberRosterDTO]:
-        """Returns team members enriched with student name and fee status."""
-        from app.modules.crm.models.student_models import Student
+        """Returns team members enriched with student name and fee status. Uses batch loading."""
         from app.modules.competitions.models.team_models import Team
 
         with get_session() as db:
             team = db.get(Team, team_id)
             team_name = team.team_name if team else "Unknown"
 
-            members = team_repo.list_team_members(db, team_id)
-            result = []
-            for m in members:
-                s = db.get(Student, m.student_id)
-                result.append(
-                    TeamMemberRosterDTO(
-                        team_member_id=m.id,
-                        team_id=team_id,
-                        team_name=team_name,
-                        student_id=m.student_id,
-                        student_name=s.full_name if s else f"Student #{m.student_id}",
-                        amount_due=m.amount_due,
-                        amount_paid=m.amount_paid,
-                    )
+            members_by_team = team_repo.list_team_members_with_students(db, [team_id])
+            member_rows = members_by_team.get(team_id, [])
+
+            return [
+                TeamMemberRosterDTO(
+                    team_member_id=m.id,
+                    team_id=team_id,
+                    team_name=team_name,
+                    student_id=m.student_id,
+                    student_name=sname,
+                    amount_due=m.amount_due,
+                    amount_paid=m.amount_paid,
                 )
-            return result
+                for m, sname in member_rows
+            ]
 
     def pay_competition_fee(self, cmd: PayCompetitionFeeInput) -> PayCompetitionFeeResponseDTO:
         from app.modules.finance.repositories.unit_of_work import FinanceUnitOfWork

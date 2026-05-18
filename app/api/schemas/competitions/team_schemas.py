@@ -43,3 +43,8 @@ class StudentCompetitionsResponse(BaseModel):
     """Response for student's competition history."""
     student_id: int
     competitions: list[StudentCompetitionDTO]
+
+
+class RefundCompetitionFeeBody(BaseModel):
+    """Input for refunding a competition fee payment."""
+    amount: float = Field(..., gt=0, description="Refund amount (must be <= current amount_paid)")

@@ -2,10 +2,17 @@
 
 **Branch**: `010-competition-feature-enhancements` | **Date**: 2026-05-17 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `/specs/010-competition-feature-enhancements/spec.md`
+**Clarifications**: 4 decisions recorded in spec.md (2026-05-17 session) — refund auth, duplicate student warning (Option A), 30-day placement window, empty group pre-fill warning.
 
 ## Summary
 
-Enhance the competition module with hard-delete lifecycle, enrollment-style fee tracking (amount_due/amount_paid + partial payments), team project tracking (project_name/project_description), group-as-student-source (drop GroupCompetitionParticipation), subcategory filtering, coach read-only access, and placement validation. All 6 user stories from P1-P3. No new module — modify existing competitions module files.
+Enhance the competition module with hard-delete lifecycle, enrollment-style fee tracking (amount_due/amount_paid + partial payments), team project tracking (project_name/project_description), group-as-student-source (drop GroupCompetitionParticipation), subcategory filtering, coach read-only access, and placement validation with 30-day window. All 6 user stories from P1-P3. No new module — modify existing competitions module files.
+
+**Clarification-driven additions**:
+- Refund endpoint (`POST /teams/{id}/members/{sid}/refund`) — admin-only, mirrors payment flow
+- Duplicate student registration returns warning in response envelope `message` field (Option A — no two-step flow)
+- Placement recording blocked if competition date > 30 days past
+- Empty group pre-fill shows warning but allows manual student entry
 
 ## Technical Context
 
@@ -27,9 +34,9 @@ Enhance the competition module with hard-delete lifecycle, enrollment-style fee 
 |------|--------|-------|
 | **§I Router → Service → Repository** | ✅ PASS | All three layers preserved. No layer skipping. No service import from `app.api.*`. |
 | **§II Module Organization** | ✅ PASS | Competitions has ≤2 entities (Competition, Team+TeamMember) — flat horizontal layer (Pattern A). No D+ Hybrid needed. |
-| **§III Typed Contracts** | ⚠️ PEDANTIC | Pre-existing `dict` return in `CategoryInfoDTO.__init__` (see AGENTS.md gotcha). NEW code must use proper DTOs. |
-| **§IV Response Envelope** | ✅ PASS | All endpoints already use `ApiResponse` envelope. |
-| **§V Auth-Guarded Endpoints** | ✅ PASS | All endpoints gated by `require_any` (read) or `require_admin` (write). Coach read-only needs new guard. |
+| **§III Typed Contracts** | ⚠️ PEDANTIC | Pre-existing `dict` return in `CategoryInfoDTO.__init__` (see AGENTS.md gotcha). NEW code must use proper DTOs. Duplicate student warning uses existing `message` field — no new DTO needed. |
+| **§IV Response Envelope** | ✅ PASS | All endpoints already use `ApiResponse` envelope. Warning pattern (Option A) populates `message` field alongside `data`. |
+| **§V Auth-Guarded Endpoints** | ✅ PASS | All endpoints gated by `require_any` (read) or `require_admin` (write). Refunds and placements are admin-only. Coach read-only needs new guard. |
 | **Session Lifecycle (Stateless)** | ✅ PASS | Competitions is stateless — services open own sessions via `get_session()`. No change. |
 | **Dead Code Discipline** | ✅ PASS | Must remove: `GroupCompetitionParticipation` model/slice, restore/list-deleted endpoints, soft-delete repos. |
 
@@ -61,10 +68,10 @@ app/modules/competitions/
 │   └── team_models.py           # Add project_name, project_description, amount_due, amount_paid; remove fee_paid, payment_id
 ├── repositories/
 │   ├── competition_repository.py  # Hard delete; remove soft delete, restore, list_deleted
-│   └── team_repository.py         # Hard delete; remove soft delete, restore, list_deleted; new payment methods
+│   └── team_repository.py         # Hard delete; remove soft delete, restore, list_deleted; new payment methods; duplicate student check
 ├── services/
 │   ├── competition_service.py     # Hard delete; remove restore, list_deleted
-│   └── team_service.py            # Multi-payment model; remove GroupCompetitionParticipation; project fields
+│   └── team_service.py            # Multi-payment model; remove GroupCompetitionParticipation; project fields; duplicate student warning; 30-day placement validation; refund flow
 └── schemas/
     ├── competition_schemas.py     # No change (CompetitionDTO already omits deleted_at/deleted_by)
     └── team_schemas.py            # New DTO fields for project_name, project_description, amount_due, amount_paid
@@ -77,7 +84,7 @@ app/api/
 │   └── team_schemas.py            # Update UpdateTeamInput with new fields
 ├── routers/competitions/
 │   ├── competitions_router.py     # Remove restore; hard delete
-│   └── teams_router.py            # Remove restore; hard delete; update payment; coach read-only
+│   └── teams_router.py            # Remove restore; hard delete; update payment; add refund endpoint; coach read-only; duplicate student warning in response
 ├── main.py                        # Remove group_competitions_router registration
 └── dependencies.py                # Add require_coach_or_admin (or inline)
 
@@ -87,7 +94,7 @@ app/modules/academics/
 └── group/analytics/repository.py  # Update query removing GroupCompetitionParticipation
 
 tests/
-├── test_competitions.py           # Update for hard delete, new payment model
+├── test_competitions.py           # Update for hard delete, new payment model, duplicate student warning, 30-day placement window, refund flow
 └── test_academics_competitions.py # Update/remove for GroupCompetitionParticipation removal
 
 db/migrations/
@@ -95,6 +102,35 @@ db/migrations/
 ```
 
 **Structure Decision**: Single project modification — no new directories or modules. All changes are in-place edits to existing files within the existing module structure.
+
+## Clarification-Driven Implementation Notes
+
+### 1. Duplicate Student Registration Warning (Option A)
+
+**Flow**: `POST /api/v1/teams/{team_id}/members` always succeeds if student is valid, but returns a warning in the `message` field if the student is already registered in another team for the same competition.
+
+**Service layer**: `add_team_member_to_existing()` returns `(result, warning_message_or_none)`. The router checks for the warning and populates the envelope.
+
+**No additional endpoints** — single request, no two-step confirmation flow.
+
+### 2. 30-Day Placement Window
+
+**Validation**: `validate_placement_window(competition_date)` returns `True` if `today <= competition_date + 30 days`. Two error conditions:
+- Future date → "Cannot record placement for a competition that has not yet occurred."
+- Window expired → "Placement recording window closed. Placements must be recorded within 30 days of the competition date."
+
+**Both return 409** with `BusinessRuleError`.
+
+### 3. Refund Endpoint (Admin-Only)
+
+**New endpoint**: `POST /api/v1/teams/{team_id}/members/{student_id}/refund`
+**Body**: `{ "amount": float }` — refund amount (must be <= current `amount_paid`)
+**Flow**: Create refund receipt via FinanceUnitOfWork → `refund_payment()` repo → update payment row with `original_payment_id` → log activity → commit. Atomic rollback on failure.
+**Auth**: `require_admin` — same as payments.
+
+### 4. Empty Group Pre-Fill Warning
+
+**Flow**: When `group_id` is provided in `RegisterTeamInput` but the group has zero active students, the service returns a warning in the `message` field. Team creation proceeds if at least one student is provided via `student_ids`.
 
 ## Complexity Tracking
 

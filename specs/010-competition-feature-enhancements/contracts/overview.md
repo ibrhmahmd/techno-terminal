@@ -148,6 +148,75 @@ Output: AddTeamMemberResultDTO
 | `hard_delete_team(db, team_id)` | `DELETE FROM teams WHERE id = :id` |
 | `hard_delete_competition(db, competition_id)` | `DELETE FROM competitions WHERE id = :id` |
 
+### Duplicate Student Registration Warning (Option A — Response Envelope)
+
+When a student is already registered in another team for the same competition, the system allows the registration but returns a warning in the standard response envelope's `message` field.
+
+#### `POST /api/v1/teams/{team_id}/members` — Duplicate Registration Response
+
+**Success with warning (200)**:
+```json
+{
+  "success": true,
+  "data": {
+    "id": 42,
+    "team_id": 5,
+    "student_id": 123,
+    "amount_due": 50.0,
+    "amount_paid": 0.0
+  },
+  "message": "Warning: Student is already registered in team #8 for this competition. Each team's fee tracking is independent."
+}
+```
+
+**Success without warning (200)**:
+```json
+{
+  "success": true,
+  "data": { ... },
+  "message": "Student added to team successfully."
+}
+```
+
+**Implementation note**: The service layer returns a tuple `(result, warning_message_or_none)`. The router checks for the warning and populates the envelope's `message` field accordingly. No additional API endpoint or two-step flow is required.
+
+#### `POST /api/v1/teams` — Duplicate Registration During Team Creation
+
+When registering a team with `student_ids` that include students already in other teams for the same competition, the response includes a `warnings` array listing each affected student:
+
+```json
+{
+  "success": true,
+  "data": {
+    "team": { ... },
+    "members_added": [ ... ]
+  },
+  "message": "Team created with 3 members. 2 warnings: Student #45 already in team #12; Student #78 already in team #15."
+}
+```
+
+### Placement Endpoint — Error Responses
+
+#### `PATCH /api/v1/teams/{team_id}/placement`
+
+**Blocked — future date (409)**:
+```json
+{
+  "success": false,
+  "error": "BusinessRuleError",
+  "message": "Cannot record placement for a competition that has not yet occurred."
+}
+```
+
+**Blocked — window expired (409)**:
+```json
+{
+  "success": false,
+  "error": "BusinessRuleError",
+  "message": "Placement recording window closed. Placements must be recorded within 30 days of the competition date."
+}
+```
+
 ### Coach Read-Only Guard (New Dependency)
 
 ```python
