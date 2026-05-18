@@ -515,12 +515,17 @@ class TeamService:
             ]
 
     def pay_competition_fee(self, cmd: PayCompetitionFeeInput) -> PayCompetitionFeeResponseDTO:
+        """
+        Process competition fee payment for a team member.
+        Single atomic transaction: validation + receipt creation + fee recording.
+        """
         from app.modules.finance.repositories.unit_of_work import FinanceUnitOfWork
         from app.modules.finance.services.receipt_service import ReceiptService
         from app.modules.finance import ReceiptLineInput
         from app.modules.crm.models.parent_models import Parent
 
         with get_session() as db:
+            # Validation
             team = team_repo.get_team(db, cmd.team_id)
             if not team:
                 raise NotFoundError(f"Team {cmd.team_id} not found.")
@@ -540,58 +545,44 @@ class TeamService:
                 if parent:
                     payer_name = parent.full_name
 
-        # Use new SOLID-compliant ReceiptService
-        with FinanceUnitOfWork() as uow:
-            service = ReceiptService(uow)
-            result = service.create(
-                lines=[
-                    ReceiptLineInput(
-                        student_id=cmd.student_id,
-                        enrollment_id=None,
-                        amount=amount,
-                        payment_type="competition",
-                    )
-                ],
-                payer_name=payer_name,
-                payment_method="cash",
-                received_by_user_id=cmd.received_by_user_id,
-                allow_credit=False,
-                notes=f"Competition fee — Team #{cmd.team_id}",
-            )
-            payment_id = result.payment_ids[0]
-
-        # Finalize fee status independently
-        try:
-            with get_session() as db:
-                team_repo.record_payment(db, member.id, amount)
-
-                # Log payment activity
-                team = team_repo.get_team(db, cmd.team_id)
-                comp = comp_repo.get_competition(db, team.competition_id) if team else None
-                self._log_payment_activity(
-                    db=db,
-                    student_id=cmd.student_id,
-                    payment_id=payment_id,
-                    amount=amount,
-                    competition_name=comp.name if comp else "Unknown",
-                    current_user_id=cmd.received_by_user_id,
+            # Create receipt using the SAME session (atomic with fee recording)
+            with FinanceUnitOfWork(session=db) as uow:
+                service = ReceiptService(uow)
+                result = service.create(
+                    lines=[
+                        ReceiptLineInput(
+                            student_id=cmd.student_id,
+                            enrollment_id=None,
+                            amount=amount,
+                            payment_type="competition",
+                        )
+                    ],
+                    payer_name=payer_name,
+                    payment_method="cash",
+                    received_by_user_id=cmd.received_by_user_id,
+                    allow_credit=False,
+                    notes=f"Competition fee — Team #{cmd.team_id}",
                 )
-                db.commit()
-        except Exception as e:
-            # Rollback: refund the payment if fee marking fails
-            with FinanceUnitOfWork() as uow:
-                refund_service = ReceiptService(uow)
-                refund_service.refund_payment(
-                    payment_id=payment_id,
-                    reason="Failed to record competition fee payment",
-                    processed_by_user_id=cmd.received_by_user_id,
-                )
-            raise BusinessRuleError(
-                f"Payment created but failed to record fee. Payment has been refunded. Error: {e}"
+                payment_id = result.payment_ids[0]
+
+            # Record payment in the SAME session
+            team_repo.record_payment(db, member.id, amount)
+
+            # Log payment activity
+            comp = comp_repo.get_competition(db, team.competition_id)
+            self._log_payment_activity(
+                db=db,
+                student_id=cmd.student_id,
+                payment_id=payment_id,
+                amount=amount,
+                competition_name=comp.name if comp else "Unknown",
+                current_user_id=cmd.received_by_user_id,
             )
 
-        # Get updated member for response
-        with get_session() as db:
+            # Single atomic commit — if anything fails, everything rolls back
+            db.commit()
+
+            # Get updated member for response (from same session)
             updated_member = team_repo.get_team_member(db, cmd.team_id, cmd.student_id)
 
         return PayCompetitionFeeResponseDTO(

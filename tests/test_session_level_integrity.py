@@ -330,9 +330,7 @@ class TestLifecycleService:
             group_input=ScheduleGroupInput(
                 course_id=course.id,
                 instructor_id=emp.id,
-                default_day="Sunday",
-                default_time_start="13:00",
-                default_time_end="14:00",
+                schedule={"day": "Sunday", "time_start": "13:00", "time_end": "14:00"},
             ),
             start_date=date.today(),
         )
@@ -348,16 +346,14 @@ class TestLifecycleService:
     def test_progress_level_sessions_have_new_group_level_id(self, db_session):
         """Progress level → new sessions have new group_level_id."""
         from tests.utils.db_helpers import create_test_course
-        course = create_test_course(db_session, name=_unique("T011-INT01b"))
+        course = create_test_course(db_session, name=_unique("T011-INT-01b"))
         emp = self._create_employee(db_session)
 
         inp = CreateGroupWithLevelDTO(
             group_input=ScheduleGroupInput(
                 course_id=course.id,
                 instructor_id=emp.id,
-                default_day="Sunday",
-                default_time_start="13:00",
-                default_time_end="14:00",
+                schedule={"day": "Sunday", "time_start": "13:00", "time_end": "14:00"},
             ),
             start_date=date.today(),
         )

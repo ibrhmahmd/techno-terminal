@@ -88,9 +88,9 @@ class GroupLifecycleService:
                 instructor_id=data.group_input.instructor_id,
                 level_number=1,
                 max_capacity=data.group_input.max_capacity,
-                default_day=data.group_input.default_day,
-                default_time_start=data.group_input.default_time_start,
-                default_time_end=data.group_input.default_time_end,
+                default_day=data.group_input.schedule.day,
+                default_time_start=data.group_input.schedule.time_start,
+                default_time_end=data.group_input.schedule.time_end,
                 notes=data.group_input.notes,
                 status="active",
             )
@@ -403,7 +403,7 @@ class GroupLifecycleService:
     def _generate_group_name(self, data: CreateGroupDTO, course_name: str) -> str:
         """Generate auto-name for a group."""
         from app.modules.academics.helpers.time_helpers import fmt_12h
-        return f"{course_name} - {data.default_day} {fmt_12h(data.default_time_start)}"
+        return f"{course_name} - {data.schedule.day} {fmt_12h(data.schedule.time_start)}"
 
 
     def _serialize_session(self, session: CourseSession) -> SessionSummaryDTO:

@@ -424,7 +424,7 @@ With multiple developers:
 
 ### Phase 12d: Critical Fix (B2)
 
-- [ ] T126 Fix B2: Refactor `pay_competition_fee()` in `app/modules/competitions/services/team_service.py` to use single transaction. Move FinanceUnitOfWork receipt creation inside the same `get_session()` block. If FinanceUnitOfWork doesn't support external session, implement saga pattern with idempotent compensation.
+- [x] T126 Fix B2: Refactor `pay_competition_fee()` in `app/modules/competitions/services/team_service.py` to use single transaction. Pass external session to `FinanceUnitOfWork(session=db)` so receipt creation and fee recording share the same session. Modified `FinanceUnitOfWork.commit()` to flush-only when using external session, letting the caller control the final commit.
 
 ### Verification
 
