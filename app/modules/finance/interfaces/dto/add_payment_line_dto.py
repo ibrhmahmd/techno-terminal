@@ -16,6 +16,7 @@ class AddPaymentLineDTO:
     enrollment_id: Optional[int]
     amount: Decimal
     transaction_type: str
+    team_member_id: Optional[int] = None
     payment_type: Optional[str] = None
     discount: Decimal = Decimal("0.00")
     notes: Optional[str] = None

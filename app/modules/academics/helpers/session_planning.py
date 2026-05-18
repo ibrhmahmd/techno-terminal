@@ -17,6 +17,7 @@ def create_sessions_in_session(
     sessions_count: int,
     start_date: date,
     level_number: int | None = None,
+    group_level_id: int | None = None,
 ) -> list[CourseSession]:
     """
     Creates `count` weekly CourseSession records within an existing DB session.
@@ -28,6 +29,8 @@ def create_sessions_in_session(
                       falls back to group.level_number. Should always be supplied
                       during level progression so that sessions are tagged with
                       the NEW level number before group.level_number is updated.
+        group_level_id: FK to group_levels.id. Populated when the caller has
+                        already created the GroupLevel record.
     """
     resolved_level = level_number if level_number is not None else group.level_number
     created: list[CourseSession] = []
@@ -43,6 +46,7 @@ def create_sessions_in_session(
             actual_instructor_id=group.instructor_id,
             is_extra_session=False,
             created_at=utc_now(),
+            group_level_id=group_level_id,
         )
         session.add(cs)
         session.flush()

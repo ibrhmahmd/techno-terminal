@@ -4,8 +4,6 @@ from .competition_repository import (
     get_competition,
     update_competition,
     delete_competition,
-    restore_competition,
-    list_deleted_competitions,
 )
 from .team_repository import (
     create_team,
@@ -15,11 +13,12 @@ from .team_repository import (
     delete_team,
     add_team_member,
     get_team_member,
+    get_team_member_by_id,
     list_team_members,
     list_student_memberships,
-    mark_fee_paid,
+    record_payment,
+    refund_payment,
     remove_team_member,
-    get_members_by_payment_id,
 )
 
 __all__ = [
@@ -28,8 +27,6 @@ __all__ = [
     "get_competition",
     "update_competition",
     "delete_competition",
-    "restore_competition",
-    "list_deleted_competitions",
     "create_team",
     "list_teams",
     "get_team",
@@ -37,9 +34,10 @@ __all__ = [
     "delete_team",
     "add_team_member",
     "get_team_member",
+    "get_team_member_by_id",
     "list_team_members",
     "list_student_memberships",
-    "mark_fee_paid",
+    "record_payment",
+    "refund_payment",
     "remove_team_member",
-    "get_members_by_payment_id",
 ]

@@ -88,6 +88,7 @@ class ReceiptService(IReceiptService):
                     receipt_id=receipt.id,
                     student_id=line.student_id,
                     enrollment_id=line.enrollment_id,
+                    team_member_id=line.team_member_id,
                     amount=Decimal(str(line.amount)),
                     transaction_type="payment",
                     payment_type=line.payment_type or "course_level",
@@ -359,11 +360,11 @@ class ReceiptService(IReceiptService):
     def _link_competition_payment(
         self, team_member_id: int, payment_id: int
     ) -> None:
-        """Internal: Link payment to team member for competition fees."""
-        from app.modules.competitions.models.team_models import TeamMember
+        """Internal: Link payment to team member for competition fees.
 
-        team_member = self._uow._session.get(TeamMember, team_member_id)
-        if team_member:
-            team_member.fee_paid = True
-            team_member.payment_id = payment_id
-            self._uow._session.add(team_member)
+        NOTE: The TeamMember model no longer has fee_paid/payment_id fields
+        (removed in migration 054). The link is now via payments.team_member_id FK.
+        The competition module manages amount_paid via its own record_payment().
+        This method is kept as a no-op for backward compatibility.
+        """
+        pass

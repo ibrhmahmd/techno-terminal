@@ -14,9 +14,10 @@ from app.api.schemas.common import ApiResponse
 from app.api.schemas.competitions.team_schemas import (
     UpdateTeamInput,
     PlacementUpdateInput,
+    PayCompetitionFeeBody,
     TeamMemberListResponse,
     StudentCompetitionsResponse,
-    DeletedTeamListResponse,
+    RefundCompetitionFeeBody,
 )
 from app.api.dependencies import require_any, require_admin, get_team_service
 from app.modules.auth import User
@@ -28,6 +29,7 @@ from app.modules.competitions.schemas.team_schemas import (
     TeamRegistrationResultDTO,
     TeamWithMembersDTO,
     TeamDTO,
+    TeamMemberDTO,
     PayCompetitionFeeInput,
     PayCompetitionFeeResponseDTO,
     AddTeamMemberResultDTO,
@@ -53,15 +55,30 @@ def list_teams(
     current_user: User = Depends(require_any),
     svc: TeamService = Depends(get_team_service),
 ):
-    """List teams with optional filters."""
+    """List teams with optional filters. Coaches see only their own teams."""
     if competition_id is None:
         raise HTTPException(status_code=400, detail="competition_id is required")
-    
+
+    if not current_user.is_admin and current_user.employee_id:
+        teams = svc.list_teams_for_coach(competition_id, current_user.employee_id, category, subcategory)
+        if include_members:
+            result = []
+            for team in teams:
+                members = svc.get_team_members_for_team(team.id)
+                result.append(
+                    TeamWithMembersDTO(
+                        team=TeamDTO.model_validate(team),
+                        members=[TeamMemberDTO.model_validate(m) for m in members]
+                    )
+                )
+            return ApiResponse(data=result)
+        return ApiResponse(data=[TeamDTO.model_validate(t) for t in teams])
+
     if include_members:
         teams = svc.get_teams_with_members(competition_id, category, subcategory)
     else:
         teams = svc.list_teams(competition_id, category, subcategory)
-    
+
     return ApiResponse(data=teams)
 
 
@@ -90,10 +107,10 @@ def register_team(
     svc: TeamService = Depends(get_team_service),
 ):
     """Register a team for a competition."""
-    result = svc.register_team(body, current_user_id=current_user.id)
+    result, warning = svc.register_team(body, current_user_id=current_user.id)
     return ApiResponse(
         data=result,
-        message="Team registered successfully."
+        message=warning or "Team registered successfully."
     )
 
 
@@ -111,8 +128,8 @@ def get_team(
     current_user: User = Depends(require_any),
     svc: TeamService = Depends(get_team_service),
 ):
-    """Get team by ID."""
-    team = svc.get_team_by_id(team_id)
+    """Get team by ID (admin or coach only)."""
+    team = svc.get_team_for_user(team_id, current_user)
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
     return ApiResponse(data=team)
@@ -167,9 +184,9 @@ def update_team_partial(
 @router.delete(
     "/teams/{team_id}",
     response_model=ApiResponse[bool],
-    summary="Delete team",
+    summary="Hard delete team",
     description="""
-    Soft delete a team. Cannot delete if members have paid fees.
+    Permanently delete a team. Cannot delete if members have paid fees.
     
     Business Rules:
     - Cannot delete team with paid members
@@ -184,48 +201,9 @@ def delete_team(
     current_user: User = Depends(require_admin),
     svc: TeamService = Depends(get_team_service),
 ):
-    """Soft delete a team."""
-    result = svc.delete_team(team_id, deleted_by=current_user.id)
+    """Hard delete a team."""
+    result = svc.delete_team(team_id)
     return ApiResponse(data=result, message="Team deleted successfully.")
-
-
-@router.post(
-    "/teams/{team_id}/restore",
-    response_model=ApiResponse[bool],
-    summary="Restore team",
-    description="Restore a soft-deleted team.",
-    responses={
-        404: {"description": "Team not found"},
-    },
-)
-def restore_team(
-    team_id: int,
-    current_user: User = Depends(require_admin),
-    svc: TeamService = Depends(get_team_service),
-):
-    """Restore a soft-deleted team."""
-    result = svc.restore_team(team_id)
-    return ApiResponse(data=result, message="Team restored successfully.")
-
-
-@router.get(
-    "/teams/deleted",
-    response_model=ApiResponse[DeletedTeamListResponse],
-    summary="List deleted teams",
-    description="List all soft-deleted teams, optionally filtered by competition.",
-)
-def list_deleted_teams(
-    competition_id: Optional[int] = Query(None, description="Filter by competition ID"),
-    current_user: User = Depends(require_admin),
-    svc: TeamService = Depends(get_team_service),
-):
-    """List soft-deleted teams."""
-    teams = svc.list_deleted_teams(competition_id)
-    return ApiResponse(data=DeletedTeamListResponse(
-        competition_id=competition_id,
-        teams=teams,
-        total=len(teams),
-    ))
 
 
 # ── Team Members Endpoints ────────────────────────────────────────────────────
@@ -244,7 +222,8 @@ def list_team_members(
     current_user: User = Depends(require_any),
     svc: TeamService = Depends(get_team_service),
 ):
-    """List all members of a team."""
+    """List all members of a team (admin or coach only)."""
+    svc.get_team_for_user(team_id, current_user)  # Auth check
     members = svc.list_team_members(team_id)
     team_name = members[0].team_name if members else "Unknown"
     return ApiResponse(data=TeamMemberListResponse(
@@ -279,13 +258,16 @@ def add_team_member(
     svc: TeamService = Depends(get_team_service),
 ):
     """Add a member to an existing team."""
-    result = svc.add_team_member_to_existing(
+    result, warning = svc.add_team_member_to_existing(
         team_id=team_id,
         student_id=body.student_id,
-        fee=body.fee,
+        amount_due=body.amount_due,
         current_user_id=current_user.id,
     )
-    return ApiResponse(data=result, message="Member added successfully.")
+    return ApiResponse(
+        data=result,
+        message=warning or "Member added successfully."
+    )
 
 
 @router.delete(
@@ -320,22 +302,22 @@ def remove_team_member(
     summary="Pay competition fee",
     description="""
     Process competition fee payment for a team member.
-    Creates a receipt and marks fee as paid.
+    Creates a receipt and records the payment. Supports partial payments.
     
     Business Rules:
-    - Cannot pay if fee already paid
-    - Payment is atomic (receipt + fee marking)
+    - Payment amount must be > 0
+    - Payment is atomic (receipt + fee recording)
     - On failure, payment is automatically refunded
     """,
     responses={
-        400: {"description": "Fee already paid or invalid input"},
+        400: {"description": "Invalid payment amount or business rule violation"},
         404: {"description": "Team or member not found"},
     },
 )
 def pay_competition_fee(
     team_id: int,
     student_id: int,
-    parent_id: Optional[int] = Query(None, description="Parent ID for payment attribution"),
+    body: PayCompetitionFeeBody,
     current_user: User = Depends(require_admin),
     svc: TeamService = Depends(get_team_service),
 ):
@@ -343,12 +325,59 @@ def pay_competition_fee(
     cmd = PayCompetitionFeeInput(
         team_id=team_id,
         student_id=student_id,
-        parent_id=parent_id,
+        amount=body.amount,
+        parent_id=body.parent_id,
         received_by_user_id=current_user.id,
     )
     
     result = svc.pay_competition_fee(cmd)
     return ApiResponse(data=result, message="Payment processed successfully.")
+
+
+@router.post(
+    "/teams/{team_id}/members/{student_id}/refund",
+    response_model=ApiResponse[bool],
+    summary="Refund competition fee",
+    description="""
+    Refund a competition fee payment for a team member.
+    Creates a refund receipt and decreases amount_paid.
+    
+    Business Rules:
+    - Refund amount must be > 0 and <= current amount_paid
+    - Refund is atomic (receipt + fee adjustment)
+    - On failure, entire operation rolls back
+    - Admin only
+    """,
+    responses={
+        400: {"description": "Invalid refund amount or business rule violation"},
+        404: {"description": "Team or member not found"},
+    },
+)
+def refund_competition_fee(
+    team_id: int,
+    student_id: int,
+    body: RefundCompetitionFeeBody,
+    current_user: User = Depends(require_admin),
+    svc: TeamService = Depends(get_team_service),
+):
+    """Refund a competition fee payment for a team member."""
+    member = svc.get_team_member(team_id, student_id)
+    if not member:
+        raise HTTPException(status_code=404, detail="Team member not found.")
+    if body.amount > member.amount_paid:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Refund amount ({body.amount}) exceeds amount paid ({member.amount_paid}).",
+        )
+    result = svc.refund_competition_fee(
+        team_member_id=member.id,
+        amount=body.amount,
+        current_user_id=current_user.id,
+    )
+    return ApiResponse(
+        data=True,
+        message=f"Refund of {body.amount} processed successfully with receipt {result.receipt_number}.",
+    )
 
 
 @router.patch(

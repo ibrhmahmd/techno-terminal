@@ -9,8 +9,6 @@ from app.db.connection import get_session
 from app.modules.academics.group.analytics.schemas import (
     EnrollmentHistoryItemDTO,
     GroupEnrollmentHistoryResponseDTO,
-    CompetitionHistoryItemDTO,
-    GroupCompetitionHistoryResponseDTO,
     InstructorHistoryItemDTO,
     GroupInstructorHistoryResponseDTO,
 )
@@ -19,7 +17,6 @@ from app.modules.academics.group.analytics.repository import (
     get_group_enrollment_stats,
     get_enrollment_payments,
     get_group_instructors_summary,
-    get_group_competition_participations,
 )
 from app.modules.academics.models import Group
 
@@ -82,52 +79,6 @@ class GroupAnalyticsService:
                 completed_enrollments=stats["completed"],
                 dropped_enrollments=stats["dropped"],
                 enrollments=enrollment_dtos
-            )
-
-    def get_competition_history(self, group_id: int) -> GroupCompetitionHistoryResponseDTO:
-        """
-        Get competition participation history for a group.
-        """
-        with get_session() as session:
-            # Get group info
-            group = session.get(Group, group_id)
-            group_name = group.name if group else "Unknown"
-
-            # Get competition participations
-            participations = get_group_competition_participations(session, group_id)
-
-            # Build competition DTOs
-            competition_dtos = []
-            active_count = 0
-            completed_count = 0
-
-            for p in participations:
-                if p.is_active:
-                    active_count += 1
-                else:
-                    completed_count += 1
-
-                competition_dtos.append(CompetitionHistoryItemDTO(
-                    participation_id=p.participation_id,
-                    competition_id=p.competition_id,
-                    competition_name=p.competition_name or "Unknown",
-                    team_id=p.team_id,
-                    team_name=p.team_name or "Unknown",
-                    category_name=p.category,
-                    entered_at=p.entered_at,
-                    left_at=p.left_at,
-                    is_active=p.is_active,
-                    final_placement=p.final_placement,
-                    notes=p.notes,
-                ))
-
-            return GroupCompetitionHistoryResponseDTO(
-                group_id=group_id,
-                group_name=group_name,
-                total_participations=len(competition_dtos),
-                active_participations=active_count,
-                completed_participations=completed_count,
-                competitions=competition_dtos
             )
 
     def get_instructor_history(self, group_id: int) -> GroupInstructorHistoryResponseDTO:

@@ -28,3 +28,7 @@ class User(UserBase, table=True):
     supabase_uid: str = Field(unique=True)
     last_login: Optional[datetime] = None
     created_at: Optional[datetime] = None
+
+    @property
+    def is_admin(self) -> bool:
+        return self.role in ("admin", "system_admin")

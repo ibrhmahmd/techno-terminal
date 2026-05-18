@@ -27,16 +27,16 @@ class GroupCoreService:
             if not instructor:
                 raise NotFoundError(f"Instructor {data.instructor_id} not found.")
 
-            auto_name = f"{course.name} - {data.default_day} {fmt_12h(data.default_time_start)}"
+            auto_name = f"{course.name} - {data.schedule.day} {fmt_12h(data.schedule.time_start)}"
 
             group = Group(
                 name=auto_name,
                 course_id=data.course_id,
                 instructor_id=data.instructor_id,
                 level_number=1,
-                default_day=data.default_day,
-                default_time_start=data.default_time_start,
-                default_time_end=data.default_time_end,
+                default_day=data.schedule.day,
+                default_time_start=data.schedule.time_start,
+                default_time_end=data.schedule.time_end,
                 max_capacity=data.max_capacity,
                 notes=data.notes,
             )

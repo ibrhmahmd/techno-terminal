@@ -9,6 +9,21 @@ from pydantic import BaseModel, field_validator
 from app.shared.validators import validate_positive_amount
 
 
+MAX_SESSIONS_PER_LEVEL = 100
+MAX_LEVELS = 100
+
+
+def _validate_max_levels(v: int | None) -> int | None:
+    if v is not None:
+        if v < 1:
+            from app.shared.exceptions import ValidationError
+            raise ValidationError("max_levels must be at least 1.")
+        if v > MAX_LEVELS:
+            from app.shared.exceptions import ValidationError
+            raise ValidationError(f"max_levels must not exceed {MAX_LEVELS}.")
+    return v
+
+
 # ── Input DTOs ────────────────────────────────────────────────────────────────
 
 
@@ -21,6 +36,12 @@ class AddNewCourseInput(BaseModel):
     notes: Optional[str] = None
     price_per_level: float
     sessions_per_level: int
+    max_levels: Optional[int] = None
+
+    @field_validator("max_levels")
+    @classmethod
+    def max_levels_valid(cls, v: Optional[int]) -> Optional[int]:
+        return _validate_max_levels(v)
 
     @field_validator("category")
     @classmethod
@@ -49,6 +70,12 @@ class AddNewCourseInput(BaseModel):
             from app.shared.exceptions import ValidationError
 
             raise ValidationError("Sessions per level must be at least 1.")
+        if v > MAX_SESSIONS_PER_LEVEL:
+            from app.shared.exceptions import ValidationError
+
+            raise ValidationError(
+                f"Sessions per level must not exceed {MAX_SESSIONS_PER_LEVEL}."
+            )
         return v
 
 
@@ -61,7 +88,13 @@ class UpdateCourseDTO(BaseModel):
     notes: Optional[str] = None
     price_per_level: Optional[float] = None
     sessions_per_level: Optional[int] = None
+    max_levels: Optional[int] = None
     is_active: Optional[bool] = None
+
+    @field_validator("max_levels")
+    @classmethod
+    def max_levels_valid(cls, v: Optional[int]) -> Optional[int]:
+        return _validate_max_levels(v)
 
     @field_validator("category")
     @classmethod
@@ -87,10 +120,17 @@ class UpdateCourseDTO(BaseModel):
     @field_validator("sessions_per_level")
     @classmethod
     def sessions_positive(cls, v: Optional[int]) -> Optional[int]:
-        if v is not None and v <= 0:
-            from app.shared.exceptions import ValidationError
+        if v is not None:
+            if v <= 0:
+                from app.shared.exceptions import ValidationError
 
-            raise ValidationError("Sessions per level must be at least 1.")
+                raise ValidationError("Sessions per level must be at least 1.")
+            if v > MAX_SESSIONS_PER_LEVEL:
+                from app.shared.exceptions import ValidationError
+
+                raise ValidationError(
+                    f"Sessions per level must not exceed {MAX_SESSIONS_PER_LEVEL}."
+                )
         return v
 
 

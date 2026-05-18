@@ -1,11 +1,16 @@
 from typing import Optional
-from decimal import Decimal
 from sqlmodel import Session, select
 from app.shared.datetime_utils import utc_now
 from app.modules.competitions.models.team_models import (
     Team,
     TeamMember,
 )
+
+ALLOWED_TEAM_UPDATES = {
+    "team_name", "category", "subcategory", "project_name",
+    "project_description", "group_id", "coach_id", "notes",
+    "placement_rank", "placement_label",
+}
 
 
 # ── Teams ─────────────────────────────────────────────────────────────────────
@@ -18,10 +23,12 @@ def create_team(
     subcategory: Optional[str] = None,
     coach_id: Optional[int] = None,
     group_id: Optional[int] = None,
-    fee: Optional[Decimal] = None,
     notes: Optional[str] = None,
+    project_name: Optional[str] = None,
+    project_description: Optional[str] = None,
 ) -> Team:
     """Create a team in the new 3-table schema."""
+    from app.shared.datetime_utils import utc_now
     t = Team(
         competition_id=competition_id,
         team_name=team_name,
@@ -29,8 +36,9 @@ def create_team(
         subcategory=subcategory,
         group_id=group_id,
         coach_id=coach_id,
-        fee=fee,
         notes=notes,
+        project_name=project_name,
+        project_description=project_description,
         created_at=utc_now(),
     )
     db.add(t)
@@ -43,70 +51,40 @@ def list_teams(
     competition_id: int,
     category: Optional[str] = None,
     subcategory: Optional[str] = None,
-    include_deleted: bool = False,
 ) -> list[Team]:
     """List teams for a competition with optional category/subcategory filters."""
     stmt = select(Team).where(Team.competition_id == competition_id)
-
-    if not include_deleted:
-        stmt = stmt.where(Team.deleted_at.is_(None))
     if category:
-        stmt = stmt.where(Team.category == category)  # citext: case-insensitive
+        stmt = stmt.where(Team.category == category)
     if subcategory:
         stmt = stmt.where(Team.subcategory == subcategory)
-
     return list(db.exec(stmt).all())
 
 
-def get_team(db: Session, team_id: int, include_deleted: bool = False) -> Team | None:
+def get_team(db: Session, team_id: int) -> Team | None:
     """Get a team by ID."""
-    team = db.get(Team, team_id)
-    if team and not include_deleted and team.deleted_at is not None:
-        return None
-    return team
+    return db.get(Team, team_id)
 
 
 def update_team(db: Session, team_id: int, **kwargs) -> Team | None:
-    """Update team fields."""
     t = db.get(Team, team_id)
     if t:
         for k, v in kwargs.items():
-            setattr(t, k, v)
+            if k in ALLOWED_TEAM_UPDATES:
+                setattr(t, k, v)
         db.add(t)
         db.flush()
     return t
 
 
-def delete_team(db: Session, team_id: int, deleted_by: Optional[int] = None) -> bool:
-    """Soft delete a team."""
+def delete_team(db: Session, team_id: int) -> bool:
+    """Hard delete a team."""
     t = db.get(Team, team_id)
     if t:
-        t.deleted_at = utc_now()
-        t.deleted_by = deleted_by
-        db.add(t)
+        db.delete(t)
         db.flush()
         return True
     return False
-
-
-def restore_team(db: Session, team_id: int) -> bool:
-    """Restore a soft-deleted team."""
-    t = db.get(Team, team_id)
-    if t:
-        t.deleted_at = None
-        t.deleted_by = None
-        db.add(t)
-        db.flush()
-        return True
-    return False
-
-
-def list_deleted_teams(db: Session, competition_id: Optional[int] = None) -> list[Team]:
-    """List all soft-deleted teams, optionally filtered by competition."""
-    stmt = select(Team).where(Team.deleted_at.is_not(None))
-    if competition_id:
-        stmt = stmt.where(Team.competition_id == competition_id)
-    return list(db.exec(stmt).all())
 
 
 def get_distinct_categories(db: Session, competition_id: int) -> list[tuple[str, Optional[str]]]:
@@ -114,7 +92,6 @@ def get_distinct_categories(db: Session, competition_id: int) -> list[tuple[str,
     stmt = (
         select(Team.category, Team.subcategory)
         .where(Team.competition_id == competition_id)
-        .where(Team.deleted_at.is_(None))
         .distinct()
         .order_by(Team.category, Team.subcategory)
     )
@@ -128,7 +105,6 @@ def check_student_in_competition(db: Session, competition_id: int, student_id: i
         .join(Team)
         .where(Team.competition_id == competition_id)
         .where(TeamMember.student_id == student_id)
-        .where(Team.deleted_at.is_(None))
     )
     return db.exec(stmt).first() is not None
 
@@ -140,26 +116,14 @@ def check_category_has_subcategories(db: Session, competition_id: int, category:
         .where(Team.competition_id == competition_id)
         .where(Team.category == category)
         .where(Team.subcategory.is_not(None))
-        .where(Team.deleted_at.is_(None))
     )
     return db.exec(stmt).first() is not None
 
 
-def get_teams_by_student(db: Session, student_id: int) -> list[Team]:
-    """Get all teams a student is a member of."""
-    stmt = (
-        select(Team)
-        .join(TeamMember)
-        .where(TeamMember.student_id == student_id)
-        .where(Team.deleted_at.is_(None))
-    )
-    return list(db.exec(stmt).all())
-
-
 # ── Team Members ──────────────────────────────────────────────────────────────
 
-def add_team_member(db: Session, team_id: int, student_id: int, member_share: float = 0.0) -> TeamMember:
-    m = TeamMember(team_id=team_id, student_id=student_id, member_share=member_share, fee_paid=False)
+def add_team_member(db: Session, team_id: int, student_id: int, amount_due: float = 0.0) -> TeamMember:
+    m = TeamMember(team_id=team_id, student_id=student_id, amount_due=amount_due, amount_paid=0.0)
     db.add(m)
     db.flush()
     return m
@@ -187,13 +151,25 @@ def list_student_memberships(db: Session, student_id: int) -> list[TeamMember]:
     return list(db.exec(stmt).all())
 
 
-def mark_fee_paid(
-    db: Session, team_id: int, student_id: int, payment_id: int | None
+def record_payment(
+    db: Session, team_member_id: int, amount: float
 ) -> TeamMember | None:
-    m = get_team_member(db, team_id, student_id)
+    """Increment amount_paid for a team member."""
+    m = db.get(TeamMember, team_member_id)
     if m:
-        m.fee_paid = payment_id is not None
-        m.payment_id = payment_id
+        m.amount_paid = float(m.amount_paid) + amount
+        db.add(m)
+        db.flush()
+    return m
+
+
+def refund_payment(
+    db: Session, team_member_id: int, amount: float
+) -> TeamMember | None:
+    """Decrement amount_paid for a team member (refund)."""
+    m = db.get(TeamMember, team_member_id)
+    if m:
+        m.amount_paid = max(0.0, float(m.amount_paid) - amount)
         db.add(m)
         db.flush()
     return m
@@ -208,7 +184,62 @@ def remove_team_member(db: Session, team_id: int, student_id: int) -> bool:
     return False
 
 
-def get_members_by_payment_id(db: Session, payment_id: int) -> list[TeamMember]:
-    """Returns all TeamMembers whose fee was linked to a given payment ID."""
-    stmt = select(TeamMember).where(TeamMember.payment_id == payment_id)
+# ── Batch Loading (N+1 Elimination) ──────────────────────────────────────────
+
+def list_team_members_with_students(
+    db: Session, team_ids: list[int]
+) -> dict[int, list[tuple]]:
+    """
+    Batch-load team members with student names for multiple teams in a single query.
+    Returns dict mapping team_id -> list of (TeamMember, student_name) tuples.
+    """
+    from app.modules.crm.models.student_models import Student
+
+    if not team_ids:
+        return {}
+
+    stmt = (
+        select(TeamMember, Student.full_name)
+        .join(Student, TeamMember.student_id == Student.id, isouter=True)
+        .where(TeamMember.team_id.in_(team_ids))
+    )
+    rows = list(db.exec(stmt).all())
+
+    result: dict[int, list[tuple]] = {}
+    for member, student_name in rows:
+        result.setdefault(member.team_id, []).append((member, student_name or f"Student #{member.student_id}"))
+    return result
+
+
+def list_teams_with_members_batch(
+    db: Session, competition_id: int
+) -> tuple[list[Team], dict[int, list[tuple]]]:
+    """
+    Batch-load all teams for a competition with their members and student names.
+    Returns (list of Teams, dict mapping team_id -> list of (TeamMember, student_name) tuples).
+    """
+    teams = list_teams(db, competition_id)
+    if not teams:
+        return [], {}
+
+    team_ids = [t.id for t in teams]
+    members_by_team = list_team_members_with_students(db, team_ids)
+    return teams, members_by_team
+
+
+def list_student_memberships_enriched(
+    db: Session, student_id: int
+) -> list[tuple]:
+    """
+    Batch-load all memberships for a student with team and competition data.
+    Returns list of (TeamMember, Team, Competition|None) tuples.
+    """
+    from app.modules.competitions.models.competition_models import Competition
+
+    stmt = (
+        select(TeamMember, Team, Competition)
+        .join(Team, TeamMember.team_id == Team.id)
+        .join(Competition, Team.competition_id == Competition.id, isouter=True)
+        .where(TeamMember.student_id == student_id)
+    )
     return list(db.exec(stmt).all())

@@ -1,5 +1,5 @@
 from datetime import date
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from app.db.connection import get_session
 import app.modules.competitions.repositories.team_repository as team_repo
 import app.modules.competitions.repositories.competition_repository as comp_repo
@@ -18,6 +18,9 @@ from app.modules.competitions.schemas.team_schemas import (
 )
 from app.modules.competitions.schemas.competition_schemas import CompetitionDTO
 
+if TYPE_CHECKING:
+    from app.modules.finance.interfaces import RefundResultDTO
+
 
 class TeamService:
     """Service layer for managing Teams with 3-table schema."""
@@ -25,21 +28,15 @@ class TeamService:
     def get_student_competitions(self, student_id: int) -> list[StudentCompetitionDTO]:
         """
         Returns all teams a student is in, nested with category and competition info.
-        Uses 3-table schema: direct competition_id on teams.
+        Uses batch loading: single JOIN query instead of N+1.
         """
-        from app.modules.crm.models.student_models import Student
+        from datetime import date
 
         with get_session() as db:
-            memberships = team_repo.list_student_memberships(db, student_id)
+            rows = team_repo.list_student_memberships_enriched(db, student_id)
+
             result = []
-            for m in memberships:
-                team = team_repo.get_team(db, m.team_id)
-                if not team:
-                    continue
-
-                # Direct FK to competition (no category lookup needed)
-                comp = comp_repo.get_competition(db, team.competition_id)
-
+            for m, team, comp in rows:
                 result.append(
                     StudentCompetitionDTO(
                         membership=TeamMemberDTO.model_validate(m),
@@ -61,7 +58,9 @@ class TeamService:
             )
             return result
 
-    def register_team(self, cmd: RegisterTeamInput, current_user_id: Optional[int] = None) -> TeamRegistrationResultDTO:
+    def register_team(
+        self, cmd: RegisterTeamInput, current_user_id: Optional[int] = None
+    ) -> tuple[TeamRegistrationResultDTO, Optional[str]]:
         """
         Creates a team and adds all listed students as members.
         3-table schema: uses competition_id, category, subcategory directly.
@@ -95,7 +94,8 @@ class TeamService:
                     f"A team named '{cmd.team_name}' already exists in this category."
                 )
 
-            # Validate all students are active and not already in this competition
+            # Validate all students are active and collect duplicate warnings
+            duplicate_warnings = []
             for sid in cmd.student_ids:
                 s = db.get(Student, sid)
                 if not s:
@@ -103,12 +103,12 @@ class TeamService:
                 if s.status != "active":
                     raise BusinessRuleError(f"Student '{s.full_name}' is not active.")
 
-                # Business rule: One student per competition
+                # Business rule: Warn if student already in another team for this competition
                 already_enrolled = team_repo.check_student_in_competition(
                     db, cmd.competition_id, sid
                 )
                 if already_enrolled:
-                    raise ConflictError(
+                    duplicate_warnings.append(
                         f"Student '{s.full_name}' is already enrolled in another team "
                         f"for this competition."
                     )
@@ -123,30 +123,19 @@ class TeamService:
                 coach_id=cmd.coach_id,
                 group_id=cmd.group_id,
                 notes=cmd.notes,
+                project_name=cmd.project_name,
+                project_description=cmd.project_description,
             )
 
             # Add members with per-student fee from input (default 0 if not specified)
             members_added = 0
             for sid in cmd.student_ids:
-                member_share = cmd.student_fees.get(sid, 0.0) if cmd.student_fees else 0.0
+                amount_due = cmd.student_fees.get(sid, 0.0) if cmd.student_fees else 0.0
                 # Skip duplicates gracefully
                 existing = team_repo.get_team_member(db, team.id, sid)
                 if not existing:
-                    team_repo.add_team_member(db, team.id, sid, member_share=member_share)
+                    team_repo.add_team_member(db, team.id, sid, amount_due=amount_due)
                     members_added += 1
-
-            # Auto-create group competition participation if team belongs to a group
-            if cmd.group_id is not None:
-                from app.shared.datetime_utils import utc_now
-                from app.modules.academics.models.group_level_models import GroupCompetitionParticipation
-                participation = GroupCompetitionParticipation(
-                    group_id=cmd.group_id,
-                    team_id=team.id,
-                    competition_id=cmd.competition_id,
-                    entered_at=utc_now(),
-                    is_active=True,
-                )
-                db.add(participation)
 
             # Log activity and notify for each student
             self._log_team_registration_activity(
@@ -160,10 +149,11 @@ class TeamService:
             db.commit()
             db.refresh(team)
 
+            warning = "; ".join(duplicate_warnings) if duplicate_warnings else None
             return TeamRegistrationResultDTO(
                 team=TeamDTO.model_validate(team),
                 members_added=members_added
-            )
+            ), warning
 
     def _log_team_registration_activity(
         self,
@@ -279,6 +269,21 @@ class TeamService:
             team = team_repo.get_team(db, team_id)
             return TeamDTO.model_validate(team) if team else None
 
+    def get_team_for_user(
+        self, team_id: int, current_user
+    ) -> TeamDTO | None:
+        """Get a team, enforcing admin or coach access within the same session."""
+        with get_session() as db:
+            team = team_repo.get_team(db, team_id)
+            if not team:
+                return None
+            if current_user.is_admin:
+                return TeamDTO.model_validate(team)
+            if current_user.employee_id and team.coach_id == current_user.employee_id:
+                return TeamDTO.model_validate(team)
+            from fastapi import HTTPException
+            raise HTTPException(status_code=403, detail="Access denied. Admin or team coach required.")
+
     def list_teams(
         self,
         competition_id: int,
@@ -290,22 +295,55 @@ class TeamService:
             teams = team_repo.list_teams(db, competition_id, category, subcategory)
             return [TeamDTO.model_validate(t) for t in teams]
 
+    def list_teams_for_coach(
+        self,
+        competition_id: int,
+        coach_id: int,
+        category: Optional[str] = None,
+        subcategory: Optional[str] = None,
+    ) -> list:
+        """List teams for a competition filtered by coach_id."""
+        from app.modules.competitions.models.team_models import Team
+        from sqlmodel import select
+        with get_session() as db:
+            stmt = select(Team).where(
+                Team.competition_id == competition_id,
+                Team.coach_id == coach_id,
+            )
+            if category:
+                stmt = stmt.where(Team.category == category)
+            if subcategory:
+                stmt = stmt.where(Team.subcategory == subcategory)
+            return list(db.exec(stmt).all())
+
+    def get_team_members_for_team(self, team_id: int) -> list:
+        """Get team members for a team."""
+        with get_session() as db:
+            return team_repo.list_team_members(db, team_id)
+
     def get_teams_with_members(
         self,
         competition_id: int,
         category: Optional[str] = None,
         subcategory: Optional[str] = None,
     ) -> list[TeamWithMembersDTO]:
-        """Returns all teams with their members."""
+        """Returns all teams with their members. Uses batch loading."""
         with get_session() as db:
-            teams = team_repo.list_teams(db, competition_id, category, subcategory)
+            teams, members_by_team = team_repo.list_teams_with_members_batch(db, competition_id)
+
+            # Apply category/subcategory filters in Python (already loaded)
+            if category:
+                teams = [t for t in teams if t.category == category]
+            if subcategory:
+                teams = [t for t in teams if t.subcategory == subcategory]
+
             result = []
             for team in teams:
-                members = team_repo.list_team_members(db, team.id)
+                member_rows = members_by_team.get(team.id, [])
                 result.append(
                     TeamWithMembersDTO(
                         team=TeamDTO.model_validate(team),
-                        members=[TeamMemberDTO.model_validate(m) for m in members]
+                        members=[TeamMemberDTO.model_validate(m) for m, _ in member_rows]
                     )
                 )
             return result
@@ -319,32 +357,18 @@ class TeamService:
                 db.refresh(team)
             return TeamDTO.model_validate(team) if team else None
 
-    def delete_team(self, team_id: int, deleted_by: Optional[int] = None) -> bool:
-        """Soft delete a team."""
+    def delete_team(self, team_id: int) -> bool:
+        """Hard delete a team."""
         with get_session() as db:
-            # Check if any member has paid fees
             members = team_repo.list_team_members(db, team_id)
             for m in members:
-                if m.fee_paid:
+                if m.amount_paid > 0:
                     raise BusinessRuleError(
                         "Cannot delete team with members who have paid fees."
                     )
-            result = team_repo.delete_team(db, team_id, deleted_by=deleted_by)
+            result = team_repo.delete_team(db, team_id)
             db.commit()
             return result
-
-    def restore_team(self, team_id: int) -> bool:
-        """Restore a soft-deleted team."""
-        with get_session() as db:
-            result = team_repo.restore_team(db, team_id)
-            db.commit()
-            return result
-
-    def list_deleted_teams(self, competition_id: Optional[int] = None) -> list[TeamDTO]:
-        """List soft-deleted teams."""
-        with get_session() as db:
-            teams = team_repo.list_deleted_teams(db, competition_id)
-            return [TeamDTO.model_validate(t) for t in teams]
 
     def update_placement(
         self,
@@ -363,28 +387,22 @@ class TeamService:
                 raise NotFoundError(f"Team {team_id} not found.")
 
             comp = comp_repo.get_competition(db, team.competition_id)
-            if comp and comp.competition_date and comp.competition_date > date.today():
-                raise BusinessRuleError(
-                    "Cannot set placement before competition date"
-                )
+            if comp and comp.competition_date:
+                if comp.competition_date > date.today():
+                    raise BusinessRuleError(
+                        "Cannot set placement before competition date."
+                    )
+                if (date.today() - comp.competition_date).days > 30:
+                    raise BusinessRuleError(
+                        "Placement recording window closed. Placements must be "
+                        "recorded within 30 days of the competition date."
+                    )
 
             team = team_repo.update_team(
                 db, team_id,
                 placement_rank=placement_rank,
                 placement_label=placement_label
             )
-
-            # Sync placement to active group competition participation
-            from sqlalchemy import select
-            from app.modules.academics.models.group_level_models import GroupCompetitionParticipation
-            stmt = select(GroupCompetitionParticipation).where(
-                GroupCompetitionParticipation.team_id == team_id,
-                GroupCompetitionParticipation.is_active == True,
-            )
-            active_participation = db.exec(stmt).first()
-            if active_participation:
-                active_participation.final_placement = placement_rank
-                db.add(active_participation)
 
             # Log activity for each team member
             if team:
@@ -409,10 +427,10 @@ class TeamService:
         self,
         team_id: int,
         student_id: int,
-        fee: float = 0.0,
+        amount_due: float = 0.0,
         current_user_id: Optional[int] = None,
-    ) -> AddTeamMemberResultDTO:
-        """Add a student to an existing team."""
+    ) -> tuple[AddTeamMemberResultDTO, Optional[str]]:
+        """Add a student to an existing team. Returns (result, warning_or_None)."""
         from app.modules.crm.models.student_models import Student
 
         with get_session() as db:
@@ -420,13 +438,16 @@ class TeamService:
             if not team:
                 raise NotFoundError(f"Team {team_id} not found.")
 
-            # Check if student already in this competition
+            warning = None
+            # Check if student already in this competition — warn but allow
             already_enrolled = team_repo.check_student_in_competition(
                 db, team.competition_id, student_id
             )
             if already_enrolled:
-                raise ConflictError(
-                    "Student is already enrolled in another team for this competition."
+                s_check = db.get(Student, student_id)
+                warning = (
+                    f"Student '{s_check.full_name if s_check else student_id}' "
+                    "is already enrolled in another team for this competition."
                 )
 
             s = db.get(Student, student_id)
@@ -437,7 +458,7 @@ class TeamService:
             if existing:
                 raise ConflictError("Student is already a member of this team.")
 
-            m = team_repo.add_team_member(db, team_id, student_id, member_share=fee)
+            m = team_repo.add_team_member(db, team_id, student_id, amount_due=amount_due)
 
             # Log activity for student joining team
             comp = comp_repo.get_competition(db, team.competition_id)
@@ -456,13 +477,17 @@ class TeamService:
                 team_member_id=m.id,
                 student_id=m.student_id,
                 student_name=s.full_name,
-            )
+            ), warning
+
+    def get_team_member(self, team_id: int, student_id: int):
+        """Returns a single team member by team_id and student_id, or None."""
+        with get_session() as db:
+            return team_repo.get_team_member(db, team_id, student_id)
 
     def remove_team_member(self, team_id: int, student_id: int) -> bool:
         with get_session() as db:
-            # Check if member has already paid - cannot remove paid members
             member = team_repo.get_team_member(db, team_id, student_id)
-            if member and member.fee_paid:
+            if member and member.amount_paid > 0:
                 raise BusinessRuleError(
                     "Cannot remove a team member who has already paid the competition fee."
                 )
@@ -471,39 +496,42 @@ class TeamService:
             return result
 
     def list_team_members(self, team_id: int) -> list[TeamMemberRosterDTO]:
-        """Returns team members enriched with student name and fee status."""
-        from app.modules.crm.models.student_models import Student
+        """Returns team members enriched with student name and fee status. Uses batch loading."""
         from app.modules.competitions.models.team_models import Team
 
         with get_session() as db:
             team = db.get(Team, team_id)
             team_name = team.team_name if team else "Unknown"
 
-            members = team_repo.list_team_members(db, team_id)
-            result = []
-            for m in members:
-                s = db.get(Student, m.student_id)
-                result.append(
-                    TeamMemberRosterDTO(
-                        team_member_id=m.id,
-                        team_id=team_id,
-                        team_name=team_name,
-                        student_id=m.student_id,
-                        student_name=s.full_name if s else f"Student #{m.student_id}",
-                        member_share=m.member_share,
-                        fee_paid=m.fee_paid,
-                        payment_id=m.payment_id,
-                    )
+            members_by_team = team_repo.list_team_members_with_students(db, [team_id])
+            member_rows = members_by_team.get(team_id, [])
+
+            return [
+                TeamMemberRosterDTO(
+                    team_member_id=m.id,
+                    team_id=team_id,
+                    team_name=team_name,
+                    student_id=m.student_id,
+                    student_name=sname,
+                    amount_due=m.amount_due,
+                    amount_paid=m.amount_paid,
                 )
-            return result
+                for m, sname in member_rows
+            ]
 
     def pay_competition_fee(self, cmd: PayCompetitionFeeInput) -> PayCompetitionFeeResponseDTO:
+        """
+        Process competition fee payment for a team member.
+        Single atomic transaction: validation + receipt creation + fee recording.
+        """
+        from app.modules.finance.interfaces import CreateReceiptServiceDTO
         from app.modules.finance.repositories.unit_of_work import FinanceUnitOfWork
         from app.modules.finance.services.receipt_service import ReceiptService
         from app.modules.finance import ReceiptLineInput
         from app.modules.crm.models.parent_models import Parent
 
         with get_session() as db:
+            # Validation
             team = team_repo.get_team(db, cmd.team_id)
             if not team:
                 raise NotFoundError(f"Team {cmd.team_id} not found.")
@@ -511,14 +539,10 @@ class TeamService:
             member = team_repo.get_team_member(db, cmd.team_id, cmd.student_id)
             if not member:
                 raise NotFoundError(f"Student {cmd.student_id} is not a member of team {cmd.team_id}.")
-            if member.fee_paid:
-                raise BusinessRuleError("Fee is already paid for this student.")
 
-            fee = member.member_share
-            if fee <= 0:
-                raise BusinessRuleError(
-                    "Student's member share fee is 0."
-                )
+            amount = cmd.amount
+            if amount <= 0:
+                raise BusinessRuleError("Payment amount must be greater than 0.")
 
             # Fetch parent name if parent_id provided
             payer_name = None
@@ -527,71 +551,112 @@ class TeamService:
                 if parent:
                     payer_name = parent.full_name
 
-        # Use new SOLID-compliant ReceiptService
-        with FinanceUnitOfWork() as uow:
-            service = ReceiptService(uow)
-            result = service.create(
-                lines=[
-                    ReceiptLineInput(
-                        student_id=cmd.student_id,
-                        enrollment_id=None,
-                        amount=fee,
-                        payment_type="competition",
+            # Create receipt using the SAME session (atomic with fee recording)
+            with FinanceUnitOfWork(session=db) as uow:
+                service = ReceiptService(uow)
+                result = service.create(
+                    CreateReceiptServiceDTO(
+                        lines=[
+                            ReceiptLineInput(
+                                student_id=cmd.student_id,
+                                enrollment_id=None,
+                                team_member_id=member.id,
+                                amount=amount,
+                                payment_type="competition",
+                            )
+                        ],
+                        payer_name=payer_name,
+                        payment_method="cash",
+                        received_by_user_id=cmd.received_by_user_id,
+                        allow_credit=False,
+                        notes=f"Competition fee — Team #{cmd.team_id}",
                     )
-                ],
-                payer_name=payer_name,
-                payment_method="cash",
-                received_by_user_id=cmd.received_by_user_id,
-                allow_credit=False,
-                notes=f"Competition fee — Team #{cmd.team_id}",
-            )
-            payment_id = result.payment_ids[0]
-
-        # Finalize fee status independently
-        try:
-            with get_session() as db:
-                team_repo.mark_fee_paid(db, cmd.team_id, cmd.student_id, payment_id)
-
-                # Log payment activity
-                team = team_repo.get_team(db, cmd.team_id)
-                comp = comp_repo.get_competition(db, team.competition_id) if team else None
-                self._log_payment_activity(
-                    db=db,
-                    student_id=cmd.student_id,
-                    payment_id=payment_id,
-                    amount=fee,
-                    competition_name=comp.name if comp else "Unknown",
-                    current_user_id=cmd.received_by_user_id,
                 )
-                db.commit()
-        except Exception as e:
-            # Rollback: refund the payment if fee marking fails
-            with FinanceUnitOfWork() as uow:
-                refund_service = ReceiptService(uow)
-                refund_service.refund_payment(
-                    payment_id=payment_id,
-                    reason="Failed to mark competition fee as paid",
-                    processed_by_user_id=cmd.received_by_user_id,
-                )
-            raise BusinessRuleError(
-                f"Payment created but failed to mark fee as paid. Payment has been refunded. Error: {e}"
+                payment_id = result.payment_ids[0]
+
+            # Record payment in the SAME session
+            team_repo.record_payment(db, member.id, amount)
+
+            # Log payment activity
+            comp = comp_repo.get_competition(db, team.competition_id)
+            self._log_payment_activity(
+                db=db,
+                student_id=cmd.student_id,
+                payment_id=payment_id,
+                amount=amount,
+                competition_name=comp.name if comp else "Unknown",
+                current_user_id=cmd.received_by_user_id,
             )
+
+            # Single atomic commit — if anything fails, everything rolls back
+            db.commit()
+
+            # Get updated member for response (from same session)
+            updated_member = team_repo.get_team_member(db, cmd.team_id, cmd.student_id)
 
         return PayCompetitionFeeResponseDTO(
             receipt_number=result.receipt_number,
             payment_id=payment_id,
-            amount=fee,
+            amount=amount,
+            amount_paid=updated_member.amount_paid if updated_member else amount,
+            amount_due=updated_member.amount_due if updated_member else 0.0,
         )
 
-    def unmark_team_fee_for_payment(self, payment_id: int) -> None:
+    def _get_refundable_competition_payment_id(
+        self, finance_uow, team_member_id: int, amount: float
+    ) -> int:
+        """Find the newest competition payment with enough refundable balance."""
+        from decimal import Decimal
+
+        requested = Decimal(str(amount))
+        for payment in finance_uow.payments.list_refundable_competition_payments(
+            team_member_id
+        ):
+            available = Decimal(str(payment.amount)) - finance_uow.payments.get_total_refunded(
+                payment.id
+            )
+            if available >= requested:
+                return payment.id
+
+        raise BusinessRuleError(
+            "No competition payment with enough refundable balance was found for this refund amount."
+        )
+
+    def refund_competition_fee(
+        self,
+        team_member_id: int,
+        amount: float,
+        current_user_id: Optional[int] = None,
+    ) -> "RefundResultDTO":
         """
-        Revert fee_paid status on all TeamMembers linked to a given payment.
-        Called by finance when a competition payment is refunded.
+        Refund a competition payment through the finance module.
         """
+        from decimal import Decimal
+
+        from app.modules.finance.interfaces import IssueRefundDTO
+        from app.modules.finance.repositories.unit_of_work import FinanceUnitOfWork
+        from app.modules.finance.services.refund_service import RefundService
+
         with get_session() as db:
-            members = team_repo.get_members_by_payment_id(db, payment_id)
-            for m in members:
-                m.fee_paid = False
-                m.payment_id = None
-                db.add(m)
+            member = team_repo.get_team_member_by_id(db, team_member_id)
+            if not member:
+                raise NotFoundError(f"Team member {team_member_id} not found.")
+            if amount <= 0:
+                raise BusinessRuleError("Refund amount must be greater than 0.")
+
+            with FinanceUnitOfWork(session=db) as finance_uow:
+                original_payment_id = self._get_refundable_competition_payment_id(
+                    finance_uow, team_member_id, amount
+                )
+                refund_service = RefundService(finance_uow)
+                result = refund_service.issue(
+                    IssueRefundDTO(
+                        payment_id=original_payment_id,
+                        amount=Decimal(str(amount)),
+                        reason=f"Competition fee refund for team member {team_member_id}",
+                        received_by_user_id=current_user_id,
+                        method="cash",
+                    )
+                )
             db.commit()
+            return result

@@ -22,6 +22,7 @@ class Payment(SQLModel, table=True):
     receipt_id: int = Field(foreign_key="receipts.id")
     student_id: int = Field(foreign_key="students.id")
     enrollment_id: Optional[int] = Field(default=None, foreign_key="enrollments.id")
+    team_member_id: Optional[int] = Field(default=None, foreign_key="team_members.id")
     amount: float
     transaction_type: TransactionType = Field(sa_column=Column(String))
     payment_type: Optional[PaymentType] = Field(default=None, sa_column=Column(String))

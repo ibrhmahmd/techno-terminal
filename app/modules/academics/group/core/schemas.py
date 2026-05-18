@@ -15,22 +15,26 @@ WeekDay = Literal[
 ]
 
 
+class ScheduleInput(BaseModel):
+    """Nested schedule object for group creation/updates."""
+    day: WeekDay
+    time_start: time
+    time_end: time
+
+    @model_validator(mode="after")
+    def validate_time_window(self) -> "ScheduleInput":
+        from app.modules.academics.helpers.time_helpers import validate_times
+        validate_times(self.time_start, self.time_end)
+        return self
+
+
 class ScheduleGroupInput(BaseModel):
     """Input for GroupService.schedule_group()."""
     course_id: int
     instructor_id: int
-    default_day: WeekDay
-    default_time_start: time
-    default_time_end: time
+    schedule: ScheduleInput
     notes: Optional[str] = None
     max_capacity: int = 15
-
-    @model_validator(mode="after")
-    def validate_time_window(self) -> "ScheduleGroupInput":
-        """Reuse the module time window check (11AM–9PM) from helpers — no import from service."""
-        from app.modules.academics.helpers.time_helpers import validate_times
-        validate_times(self.default_time_start, self.default_time_end)
-        return self
 
 
 class UpdateGroupDTO(BaseModel):

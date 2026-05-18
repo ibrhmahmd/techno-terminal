@@ -14,7 +14,6 @@ from app.modules.competitions.schemas.team_schemas import (
     TeamWithMembersDTO,
     TeamDTO,
     TeamMemberDTO,
-    TeamMemberRosterDTO,
 )
 
 
@@ -44,9 +43,9 @@ class CompetitionService:
             db.refresh(comp)
             return CompetitionDTO.model_validate(comp)
 
-    def list_competitions(self, include_deleted: bool = False) -> list[CompetitionDTO]:
+    def list_competitions(self) -> list[CompetitionDTO]:
         with get_session() as db:
-            comps = comp_repo.list_competitions(db, include_deleted=include_deleted)
+            comps = comp_repo.list_competitions(db)
             return [CompetitionDTO.model_validate(c) for c in comps]
 
     def get_competition_by_id(self, competition_id: int) -> CompetitionDTO | None:
@@ -63,31 +62,17 @@ class CompetitionService:
                 db.refresh(comp)
             return CompetitionDTO.model_validate(comp) if comp else None
 
-    def delete_competition(self, competition_id: int, deleted_by: Optional[int] = None) -> bool:
-        """Soft delete a competition."""
+    def delete_competition(self, competition_id: int) -> bool:
+        """Hard delete a competition."""
         with get_session() as db:
-            # Check if competition has teams
             teams = team_repo.list_teams(db, competition_id)
             if teams:
                 raise BusinessRuleError(
                     "Cannot delete competition that has teams. Delete teams first."
                 )
-            result = comp_repo.delete_competition(db, competition_id, deleted_by=deleted_by)
+            result = comp_repo.delete_competition(db, competition_id)
             db.commit()
             return result
-
-    def restore_competition(self, competition_id: int) -> bool:
-        """Restore a soft-deleted competition."""
-        with get_session() as db:
-            result = comp_repo.restore_competition(db, competition_id)
-            db.commit()
-            return result
-
-    def list_deleted_competitions(self) -> list[CompetitionDTO]:
-        """List all soft-deleted competitions."""
-        with get_session() as db:
-            comps = comp_repo.list_deleted_competitions(db)
-            return [CompetitionDTO.model_validate(c) for c in comps]
 
     def list_categories(self, competition_id: int) -> list[CategoryInfoDTO]:
         """
@@ -118,55 +103,39 @@ class CompetitionService:
     def get_competition_summary(self, competition_id: int) -> CompetitionSummaryDTO | None:
         """
         Returns competition + all categories + teams + member fee status.
-        Uses 3-table schema: categories are derived from teams.
+        Uses batch loading: single JOIN query instead of N+1.
         """
+        from app.modules.competitions.repositories import competition_repository as comp_repo
+        from app.modules.competitions.schemas.team_schemas import (
+            TeamWithMembersDTO,
+            TeamMemberDTO,
+            CategoryWithTeamsDTO,
+        )
+
         with get_session() as db:
-            comp = comp_repo.get_competition(db, competition_id)
+            comp, teams, members_by_team = comp_repo.get_competition_summary_data(db, competition_id)
             if not comp:
                 return None
 
-            # Get all teams for this competition
-            teams = team_repo.list_teams(db, competition_id)
-
             # Group teams by category/subcategory
-            category_map = {}
+            category_map: dict[tuple, list] = {}
             for team in teams:
                 key = (team.category, team.subcategory)
-                if key not in category_map:
-                    category_map[key] = []
-                category_map[key].append(team)
+                category_map.setdefault(key, []).append(team)
 
-            # Build category DTOs
+            # Build category DTOs from pre-fetched data
             cat_dtos = []
             for (category, subcategory), team_list in category_map.items():
                 team_dtos = []
                 for team in team_list:
-                    members = team_repo.list_team_members(db, team.id)
-                    # Enrich members with student names
-                    member_dtos = []
-                    for m in members:
-                        # Get student name
-                        from app.modules.crm.models.student_models import Student
-                        student = db.get(Student, m.student_id)
-                        member_dtos.append(
-                            TeamMemberRosterDTO(
-                                team_member_id=m.id,
-                                student_id=m.student_id,
-                                student_name=student.full_name if student else f"Student #{m.student_id}",
-                                member_share=m.member_share,
-                                fee_paid=m.fee_paid,
-                                payment_id=m.payment_id,
-                            )
-                        )
-
+                    member_rows = members_by_team.get(team.id, [])
                     team_dtos.append(
                         TeamWithMembersDTO(
                             team=TeamDTO.model_validate(team),
-                            members=[TeamMemberDTO.model_validate(m) for m in members]
+                            members=[TeamMemberDTO.model_validate(m) for m, _ in member_rows]
                         )
                     )
 
-                # Create category DTO using 3-table schema (category as string)
                 cat_dtos.append(
                     CategoryWithTeamsDTO(
                         category=category,

@@ -47,24 +47,6 @@ class GroupCourseHistory(SQLModel, table=True):
     created_at: Optional[datetime] = Field(default_factory=utc_now)
 
 
-class GroupCompetitionParticipation(SQLModel, table=True):
-    """Track group participation in competitions via teams."""
-    __tablename__ = "group_competition_participation"
-    __table_args__ = {"extend_existing": True}
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    group_id: int = Field(foreign_key="groups.id", index=True)
-    team_id: int = Field(foreign_key="teams.id", index=True)
-    competition_id: int = Field(foreign_key="competitions.id")
-    entered_at: datetime = Field(default_factory=utc_now)
-    left_at: Optional[datetime] = None
-    is_active: bool = Field(default=True, index=True)
-    final_placement: Optional[int] = None
-    notes: Optional[str] = None
-    created_at: Optional[datetime] = Field(default_factory=utc_now)
-    updated_at: Optional[datetime] = Field(default_factory=utc_now)
-
-
 class EnrollmentLevelHistory(SQLModel, table=True):
     """Track student enrollment transitions through group levels."""
     __tablename__ = "enrollment_level_history"

@@ -1,8 +1,12 @@
 from datetime import date
 from typing import Optional
 from sqlmodel import Session, select
-from app.shared.datetime_utils import utc_now
 from app.modules.competitions.models.competition_models import Competition
+
+ALLOWED_COMPETITION_UPDATES = {
+    "name", "edition", "edition_year", "competition_date",
+    "location", "notes", "fee_per_student",
+}
 
 
 # ── Competitions ──────────────────────────────────────────────────────────────
@@ -17,7 +21,7 @@ def create_competition(
     fee_per_student: float = 0.0,
     edition_year: Optional[int] = None,
 ) -> Competition:
-    # Auto-calculate edition_year from competition_date if not provided
+    from app.shared.datetime_utils import utc_now
     if edition_year is None and competition_date:
         edition_year = competition_date.year
     elif edition_year is None:
@@ -38,11 +42,8 @@ def create_competition(
     return c
 
 
-def list_competitions(db: Session, include_deleted: bool = False) -> list[Competition]:
-    stmt = select(Competition)
-    if not include_deleted:
-        stmt = stmt.where(Competition.deleted_at.is_(None))
-    stmt = stmt.order_by(Competition.competition_date.desc())
+def list_competitions(db: Session) -> list[Competition]:
+    stmt = select(Competition).order_by(Competition.competition_date.desc())
     return list(db.exec(stmt).all())
 
 
@@ -56,37 +57,60 @@ def update_competition(
     c = db.get(Competition, competition_id)
     if c:
         for k, v in kwargs.items():
-            setattr(c, k, v)
+            if k in ALLOWED_COMPETITION_UPDATES:
+                setattr(c, k, v)
         db.add(c)
         db.flush()
     return c
 
 
-def delete_competition(db: Session, competition_id: int, deleted_by: Optional[int] = None) -> bool:
-    """Soft delete a competition."""
+def delete_competition(db: Session, competition_id: int) -> bool:
+    """Hard delete a competition."""
     c = db.get(Competition, competition_id)
     if c:
-        c.deleted_at = utc_now()
-        c.deleted_by = deleted_by
-        db.add(c)
+        db.delete(c)
         db.flush()
         return True
     return False
 
 
-def restore_competition(db: Session, competition_id: int) -> bool:
-    """Restore a soft-deleted competition."""
-    c = db.get(Competition, competition_id)
-    if c:
-        c.deleted_at = None
-        c.deleted_by = None
-        db.add(c)
-        db.flush()
-        return True
-    return False
+# ── Batch Loading (N+1 Elimination) ──────────────────────────────────────────
 
+def get_competition_summary_data(
+    db: Session, competition_id: int
+) -> tuple:
+    """
+    Batch-load all data needed for competition summary in a single query.
+    Returns (Competition|None, list[Team], dict[int, list[tuple]]) where the dict
+    maps team_id -> list of (TeamMember, student_name) tuples.
+    """
+    from app.modules.competitions.models.team_models import Team, TeamMember
+    from app.modules.crm.models.student_models import Student
 
-def list_deleted_competitions(db: Session) -> list[Competition]:
-    """List all soft-deleted competitions."""
-    stmt = select(Competition).where(Competition.deleted_at.is_not(None))
-    return list(db.exec(stmt).all())
+    comp = get_competition(db, competition_id)
+    if not comp:
+        return None, [], {}
+
+    stmt = (
+        select(Team, TeamMember, Student.full_name)
+        .join(TeamMember, Team.id == TeamMember.team_id, isouter=True)
+        .join(Student, TeamMember.student_id == Student.id, isouter=True)
+        .where(Team.competition_id == competition_id)
+        .order_by(Team.category, Team.subcategory, Team.team_name)
+    )
+    rows = list(db.exec(stmt).all())
+
+    teams: list[Team] = []
+    members_by_team: dict[int, list[tuple]] = {}
+    seen_team_ids = set()
+
+    for team, member, student_name in rows:
+        if team.id not in seen_team_ids:
+            teams.append(team)
+            seen_team_ids.add(team.id)
+        if member:
+            members_by_team.setdefault(team.id, []).append(
+                (member, student_name or f"Student #{member.student_id}")
+            )
+
+    return comp, teams, members_by_team

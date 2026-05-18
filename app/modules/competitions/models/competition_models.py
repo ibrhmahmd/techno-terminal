@@ -28,5 +28,3 @@ class Competition(CompetitionBase, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     created_at: Optional[datetime] = None
-    deleted_at: Optional[datetime] = None  # Soft delete timestamp
-    deleted_by: Optional[int] = Field(default=None, foreign_key="users.id")  # Who soft deleted

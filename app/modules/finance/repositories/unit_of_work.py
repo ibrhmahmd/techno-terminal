@@ -69,8 +69,10 @@ class FinanceUnitOfWork:
         return self._reporting
 
     def commit(self) -> None:
-        """Commit the current transaction."""
-        self._session.commit()
+        """Commit the current transaction. Flushes always; commits only if we own the session."""
+        self._session.flush()
+        if self._own_session:
+            self._session.commit()
 
     def rollback(self) -> None:
         """Rollback the current transaction."""

@@ -19,6 +19,8 @@ class UpdateTeamInput(BaseModel):
     team_name: Optional[str] = Field(None, min_length=1, max_length=200)
     category: Optional[str] = Field(None, max_length=100)
     subcategory: Optional[str] = Field(None, max_length=100)
+    project_name: Optional[str] = Field(None, max_length=500)
+    project_description: Optional[str] = Field(None, max_length=5000)
     group_id: Optional[int] = None
     coach_id: Optional[int] = None
     notes: Optional[str] = Field(None, max_length=1000)
@@ -28,6 +30,12 @@ class PlacementUpdateInput(BaseModel):
     """Input for updating team placement."""
     placement_rank: int = Field(..., ge=1, description="Placement rank (1=1st place)")
     placement_label: Optional[str] = Field(None, max_length=100, description="Label like 'Gold' or '3rd Place'")
+
+
+class PayCompetitionFeeBody(BaseModel):
+    """Input for paying a competition fee for a team member."""
+    amount: float = Field(..., gt=0, description="Payment amount")
+    parent_id: Optional[int] = None
 
 
 class TeamMemberListResponse(BaseModel):
@@ -43,8 +51,6 @@ class StudentCompetitionsResponse(BaseModel):
     competitions: list[StudentCompetitionDTO]
 
 
-class DeletedTeamListResponse(BaseModel):
-    """Response for listing deleted teams."""
-    competition_id: Optional[int]
-    teams: list[TeamDTO]
-    total: int
+class RefundCompetitionFeeBody(BaseModel):
+    """Input for refunding a competition fee payment."""
+    amount: float = Field(..., gt=0, description="Refund amount (must be <= current amount_paid)")

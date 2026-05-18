@@ -31,19 +31,14 @@ router = APIRouter(tags=["Competitions"])
     "/competitions",
     response_model=ApiResponse[list[CompetitionDTO]],
     summary="List all competitions",
-    description="Returns all active competitions. Use /competitions/deleted for soft-deleted items.",
+    description="Returns all competitions.",
 )
 def list_competitions(
-    include_deleted: bool = Query(False, description="Include soft-deleted competitions (admin only)"),
     current_user: User = Depends(require_any),
     svc: CompetitionService = Depends(get_competition_service),
 ):
     """List all competitions."""
-    # Only admins can see deleted competitions
-    if include_deleted and current_user.is_admin:
-        comps = svc.list_competitions(include_deleted=True)
-    else:
-        comps = svc.list_competitions()
+    comps = svc.list_competitions()
     return ApiResponse(data=comps)
 
 
@@ -65,21 +60,6 @@ def create_competition(
         data=CompetitionDTO.model_validate(comp),
         message="Competition created successfully."
     )
-
-
-@router.get(
-    "/competitions/deleted",
-    response_model=ApiResponse[list[CompetitionDTO]],
-    summary="List deleted competitions",
-    description="List all soft-deleted competitions (admin only).",
-)
-def list_deleted_competitions(
-    current_user: User = Depends(require_admin),
-    svc: CompetitionService = Depends(get_competition_service),
-):
-    """List all soft-deleted competitions."""
-    result = svc.list_deleted_competitions()
-    return ApiResponse(data=result)
 
 
 @router.get(
@@ -159,8 +139,8 @@ def update_competition_partial(
 @router.delete(
     "/competitions/{competition_id}",
     response_model=ApiResponse[bool],
-    summary="Soft delete competition",
-    description="Soft delete a competition. Cannot delete if teams are registered.",
+    summary="Hard delete competition",
+    description="Permanently delete a competition. Cannot delete if teams are registered.",
     responses={
         404: {"description": "Competition not found"},
         409: {"description": "Cannot delete: competition has teams"},
@@ -171,28 +151,9 @@ def delete_competition(
     current_user: User = Depends(require_admin),
     svc: CompetitionService = Depends(get_competition_service),
 ):
-    """Soft delete a competition."""
-    result = svc.delete_competition(competition_id, deleted_by=current_user.id)
+    """Hard delete a competition."""
+    result = svc.delete_competition(competition_id)
     return ApiResponse(data=result, message="Competition deleted successfully.")
-
-
-@router.post(
-    "/competitions/{competition_id}/restore",
-    response_model=ApiResponse[bool],
-    summary="Restore competition",
-    description="Restore a soft-deleted competition.",
-    responses={
-        404: {"description": "Competition not found"},
-    },
-)
-def restore_competition(
-    competition_id: int,
-    current_user: User = Depends(require_admin),
-    svc: CompetitionService = Depends(get_competition_service),
-):
-    """Restore a soft-deleted competition."""
-    result = svc.restore_competition(competition_id)
-    return ApiResponse(data=result, message="Competition restored successfully.")
 
 
 @router.get(
@@ -211,6 +172,8 @@ def get_competition_summary(
 ):
     """Get full competition summary with all nested data."""
     summary = svc.get_competition_summary(competition_id)
+    if not summary:
+        raise HTTPException(status_code=404, detail="Competition not found")
     
     # Calculate totals
     total_teams = sum(len(cat.teams) for cat in summary.categories)
