@@ -8,8 +8,8 @@ import logging
 
 from app.modules.notifications.services.base_notification_service import BaseNotificationService
 from app.modules.notifications.repositories.notification_repository import NotificationRepository
-from app.modules.enrollments.models.enrollment_models import Enrollment
-from app.modules.finance.models.receipt import Receipt
+from app.modules.notifications.repositories.reports_repository import ReportsRepository
+from app.modules.notifications.schemas.report_dto import DailyReportAggregateDTO
 
 
 logger = logging.getLogger(__name__)
@@ -38,18 +38,18 @@ class ReportNotificationService(BaseNotificationService):
         
         # Format payment methods for display
         payment_methods_str = ", ".join(
-            [f"{method}: {count}" for method, count in aggregates["payment_methods"].items()]
-        ) if aggregates["payment_methods"] else "N/A"
+            [f"{method}: {count}" for method, count in aggregates.payment_methods.items()]
+        ) if aggregates.payment_methods else "N/A"
         
         # Format instructors list
-        instructors_str = ", ".join(aggregates["instructors_list"]) if aggregates["instructors_list"] else "N/A"
+        instructors_str = ", ".join(aggregates.instructors_list) if aggregates.instructors_list else "N/A"
         
         # Format payment details for template
         payment_details_html = ""
-        if aggregates["payment_details"]:
+        if aggregates.payment_details:
             payment_rows = ""
-            for payment in aggregates["payment_details"]:
-                payment_rows += f"<tr><td>{payment['student_name']}</td><td>{payment['group_name']}</td><td>{payment['amount']:.2f} EGP</td><td>{payment['payment_type']}</td></tr>"
+            for payment in aggregates.payment_details:
+                payment_rows += f"<tr><td>{payment.student_name}</td><td>{payment.group_name}</td><td>{payment.amount:.2f} EGP</td><td>{payment.payment_type}</td></tr>"
             payment_details_html = f"""
             <table style="width: 100%; border-collapse: collapse; margin-top: 10px; border: 1px solid #000;">
                 <thead>
@@ -70,16 +70,16 @@ class ReportNotificationService(BaseNotificationService):
         
         variables = {
             "date": today.strftime("%Y-%m-%d"),
-            "total_revenue": f"{aggregates['total_revenue']:.2f}",
-            "new_enrollments": aggregates["new_enrollments"],
-            "sessions_held": aggregates["sessions_held"],
-            "absent_count": aggregates["absent_count"],
-            "payment_count": aggregates["payment_count"],
+            "total_revenue": f"{aggregates.total_revenue:.2f}",
+            "new_enrollments": aggregates.new_enrollments,
+            "sessions_held": aggregates.sessions_held,
+            "absent_count": aggregates.absent_count,
+            "payment_count": aggregates.payment_count,
             "payment_methods": payment_methods_str,
             "payment_details": payment_details_html,
             "instructors_list": instructors_str,
-            "attendance_rate": f"{aggregates['attendance_rate']:.1%}",
-            "unpaid_count": aggregates["unpaid_count"],
+            "attendance_rate": f"{aggregates.attendance_rate:.1%}",
+            "unpaid_count": aggregates.unpaid_count,
         }
         
         # Generate PDF attachment
@@ -88,7 +88,7 @@ class ReportNotificationService(BaseNotificationService):
             from app.modules.notifications.pdf.daily_report_pdf import generate_daily_report_pdf
             pdf_bytes = generate_daily_report_pdf(
                 date_str=today.strftime("%Y-%m-%d"),
-                aggregates=aggregates
+                aggregates=aggregates.model_dump()
             )
             logger.info(f"Generated daily report PDF for {today}")
         except Exception as e:
@@ -163,161 +163,12 @@ class ReportNotificationService(BaseNotificationService):
     
     # ── Private Helpers ──────────────────────────────────────────────────
     
-    def _fetch_daily_aggregates(self, target_date: date) -> dict: #TODO remove Dict and write a typed DTO class
+    def _fetch_daily_aggregates(self, target_date: date) -> DailyReportAggregateDTO:
         """Fetch daily metrics with enhanced data for rich reporting."""
-        total_revenue = 0.0
-        new_enrollments = 0
-        sessions_held = 0
-        absent_count = 0
-        payment_count = 0
-        payment_methods = {}
-        instructors_list = []
-        attendance_rate = 0.0
-        unpaid_count = 0
-        payment_details = []  # List of {student_name, group_name, amount}
-        
-        try:
-            from app.modules.analytics.services.financial_service import FinancialAnalyticsService
-            fin_svc = FinancialAnalyticsService()
-            revenue_data = fin_svc.get_revenue_by_date(target_date, target_date)
-            total_revenue = sum(r.net_revenue for r in revenue_data)
-        except Exception as e:
-            logger.warning(f"Could not fetch daily revenue: {e}")
-        
-        try:
-            from app.db.connection import get_session
-            from sqlmodel import select, func
-            from app.modules.academics.models import CourseSession
-            from app.modules.attendance.models.attendance_models import Attendance
-            
-            with get_session() as session:
-                # Count sessions held today
-                sessions_stmt = select(func.count()).select_from(CourseSession).where(
-                    CourseSession.session_date == target_date,
-                    CourseSession.status == "completed"
-                )
-                sessions_held = session.exec(sessions_stmt).one() or 0
-                
-                # Get attendance stats for today's sessions
-                att_stmt = select(
-                    func.count().filter(Attendance.status == "absent").label("absent"),
-                    func.count().filter(Attendance.status.in_(["present", "late"])).label("present"),
-                    func.count().filter(Attendance.status == "excused").label("excused")
-                ).where(
-                    Attendance.session_id.in_(
-                        select(CourseSession.id).where(CourseSession.session_date == target_date)
-                    )
-                )
-                att_result = session.exec(att_stmt).one()
-                absent_count = att_result.absent or 0
-                present_count = att_result.present or 0
-                excused_count = att_result.excused or 0
-                
-                # Calculate attendance rate
-                total_students = absent_count + present_count + excused_count
-                if total_students > 0:
-                    attendance_rate = present_count / total_students
-        except Exception as e:
-            logger.warning(f"Could not fetch daily academic summary: {e}")
-        
-        try:
-            from app.db.connection import get_session
-            from sqlmodel import select, func, text
-            from app.modules.enrollments.models.enrollment_models import Enrollment
-            from app.modules.finance.models.payment import Payment
-            from app.modules.crm.models.student_models import Student
-            from app.modules.groups.models.group_models import Group
-            
-            with get_session() as session:
-                # New enrollments count
-                stmt = select(func.count()).select_from(Enrollment).where(
-                    Enrollment.enrolled_at >= target_date,
-                    Enrollment.enrolled_at < target_date + timedelta(days=1),
-                )
-                new_enrollments = session.exec(stmt).one() or 0
-                
-                # Payment count and methods breakdown (aligned with revenue: uses receipts.paid_at)
-                payment_stmt = (
-                    select(Payment)
-                    .join(Receipt, Payment.receipt_id == Receipt.id)
-                    .where(
-                        Receipt.paid_at >= target_date,
-                        Receipt.paid_at < target_date + timedelta(days=1),
-                        Payment.deleted_at.is_(None),
-                    )
-                )
-                payments = session.exec(payment_stmt).all()
-                payment_count = len(payments)
-                
-                # Payment methods breakdown and details
-                for payment in payments:
-                    # Use payment_type instead of payment_method
-                    method = str(payment.payment_type) if payment.payment_type else "unknown"
-                    payment_methods[method] = payment_methods.get(method, 0) + 1
-                    
-                    # Get student and group details for each payment
-                    try:
-                        student = session.get(Student, payment.student_id)
-                        student_name = student.full_name if student else "Unknown"
-                        
-                        enrollment = session.get(Enrollment, payment.enrollment_id) if payment.enrollment_id else None
-                        group_name = "N/A"
-                        if enrollment and enrollment.group_id:
-                            group = session.get(Group, enrollment.group_id)
-                            group_name = group.name if group else "N/A"
-                        
-                        payment_details.append({
-                            "student_name": student_name,
-                            "group_name": group_name,
-                            "amount": float(payment.amount),
-                            "payment_type": method
-                        })
-                    except Exception as e:
-                        logger.warning(f"Could not fetch payment details for payment {payment.id}: {e}")
-                
-                # Sort payment details by amount descending
-                payment_details.sort(key=lambda x: x["amount"], reverse=True)
-                
-                # Instructors who had sessions today
-                instructor_stmt = text("""
-                    SELECT DISTINCT e.full_name
-                    FROM sessions s
-                    JOIN employees e ON s.actual_instructor_id = e.id
-                    WHERE s.session_date = :target_date
-                """)
-                result = session.exec(instructor_stmt, {"target_date": target_date})
-                instructors_list = [row[0] for row in result]
-                
-                # Unpaid enrollments count (students with balance > 0)
-                unpaid_stmt = text("""
-                    SELECT COUNT(DISTINCT e.id)
-                    FROM enrollments e
-                    LEFT JOIN (
-                        SELECT enrollment_id, COALESCE(SUM(amount), 0) as total_paid
-                        FROM payments
-                        WHERE deleted_at IS NULL
-                        GROUP BY enrollment_id
-                    ) p ON e.id = p.enrollment_id
-                    WHERE e.status = 'active'
-                    AND (e.amount_due - COALESCE(e.discount_applied, 0) - COALESCE(p.total_paid, 0)) > 0
-                """)
-                unpaid_count = session.exec(unpaid_stmt).one() or 0
-                
-        except Exception as e:
-            logger.warning(f"Could not fetch enhanced daily metrics: {e}")
-        
-        return {
-            "total_revenue": total_revenue,
-            "new_enrollments": new_enrollments,
-            "sessions_held": sessions_held,
-            "absent_count": absent_count,
-            "payment_count": payment_count,
-            "payment_methods": payment_methods,
-            "payment_details": payment_details,
-            "instructors_list": instructors_list,
-            "attendance_rate": attendance_rate,
-            "unpaid_count": unpaid_count,
-        }
+        from app.db.connection import get_session
+        with get_session() as session:
+            repo = ReportsRepository(session)
+            return repo.get_daily_aggregates(target_date)
     
     def _fetch_weekly_aggregates(self, week_start: date, week_end: date) -> dict: #TODO remove Dict and write a typed DTO class
         """Fetch weekly metrics."""
@@ -426,18 +277,5 @@ class ReportNotificationService(BaseNotificationService):
             )
             count += 1
         
-        # PARENT CODE PRESERVED (disabled):
-        # from app.modules.crm.models.parent_models import Parent
-        # for pid in parent_ids:
-        #     parent = self._repo._session.get(Parent, pid)
-        #     if not parent or not parent.phone_primary:
-        #         continue
-        #     variables = extra_vars.copy()
-        #     variables.setdefault("parent_name", parent.full_name)
-        #     background_tasks.add_task(
-        #         self._dispatch, template, "WHATSAPP", "PARENT",
-        #         pid, parent.phone_primary, variables
-        #     )
-        #     count += 1
-        
+
         return count

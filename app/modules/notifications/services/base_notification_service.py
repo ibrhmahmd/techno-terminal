@@ -106,13 +106,13 @@ class BaseNotificationService:
 
         # Get all active additional recipients for this notification type (global - no admin_id filter)
         try:
-            stmt = text(f"""
+            stmt = text("""
                 SELECT id, email
                 FROM notification_additional_recipients
                 WHERE is_active = true
-                AND (notification_types IS NULL OR '{notification_type}' = ANY(notification_types))
+                AND (notification_types IS NULL OR :notification_type = ANY(notification_types))
             """)
-            result = self._repo._session.exec(stmt).all()
+            result = self._repo._session.exec(stmt, {"notification_type": notification_type}).all()
             for recipient_id, email in result:
                 if email and self._is_valid_email(email):
                     recipients.append((email, recipient_id, "ADDITIONAL"))

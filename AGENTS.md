@@ -294,3 +294,7 @@ Before any refactoring or migration, grep for callers of every method. Delete de
 immediately — never migrate it into a new structure. Zero tolerance for commented-out code,
 deprecated methods kept for "backward compatibility," or subset methods superseded by broader
 equivalents.
+
+<!-- SPECKIT START -->
+Active plan: `specs/013-reports-feature-audit/plan.md`
+<!-- SPECKIT END -->
