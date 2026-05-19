@@ -169,11 +169,11 @@ def list_groups_by_course(
     svc: GroupDirectoryService = Depends(get_group_directory_service),
 ):
     """Get all groups associated with a specific course."""
-    results, total = svc.get_groups_by_course(
+    results, total = svc.get_enriched_groups_by_course(
         course_id, include_inactive, level_number, skip, limit
     )
     return PaginatedResponse(
-        data=[EnrichedGroupPublic.model_validate(g) for g in results],
+        data=[EnrichedGroupPublic.model_validate(g.model_dump(mode="json")) for g in results],
         total=total,
         skip=skip,
         limit=limit,
@@ -184,7 +184,7 @@ def list_groups_by_course(
 
 @router.get(
     "/academics/groups/by-type/{group_type}",
-    response_model=PaginatedResponse[GroupListItem],
+    response_model=PaginatedResponse[EnrichedGroupPublic],
     summary="List groups by type",
 )
 def list_groups_by_type(
@@ -196,9 +196,9 @@ def list_groups_by_type(
     svc: GroupDirectoryService = Depends(get_group_directory_service),
 ):
     """Get groups filtered by type."""
-    results, total = svc.get_groups_by_type(group_type, status, skip, limit)
+    results, total = svc.get_enriched_groups_by_type(group_type, status, skip, limit)
     return PaginatedResponse(
-        data=[GroupListItem.model_validate(g) for g in results],
+        data=[EnrichedGroupPublic.model_validate(g.model_dump(mode="json")) for g in results],
         total=total,
         skip=skip,
         limit=limit,

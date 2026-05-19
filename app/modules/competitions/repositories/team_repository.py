@@ -1,4 +1,12 @@
 from typing import Optional
+from app.modules.competitions.schemas.team_schemas import (
+    CategorySubcategoryDTO,
+    TeamMemberWithNameDTO,
+    StudentMembershipEnrichedDTO,
+    TeamDTO,
+    TeamMemberDTO,
+)
+from app.modules.competitions.schemas.competition_schemas import CompetitionDTO
 from sqlmodel import Session, select
 from app.shared.datetime_utils import utc_now
 from app.modules.competitions.models.team_models import (
@@ -87,7 +95,7 @@ def delete_team(db: Session, team_id: int) -> bool:
     return False
 
 
-def get_distinct_categories(db: Session, competition_id: int) -> list[tuple[str, Optional[str]]]:
+def get_distinct_categories(db: Session, competition_id: int) -> list[CategorySubcategoryDTO]:
     """Returns list of (category, subcategory) tuples for autocomplete."""
     stmt = (
         select(Team.category, Team.subcategory)
@@ -95,7 +103,8 @@ def get_distinct_categories(db: Session, competition_id: int) -> list[tuple[str,
         .distinct()
         .order_by(Team.category, Team.subcategory)
     )
-    return list(db.exec(stmt).all())
+    rows = list(db.exec(stmt).all())
+    return [CategorySubcategoryDTO(category=r.category, subcategory=r.subcategory) for r in rows]
 
 
 def check_student_in_competition(db: Session, competition_id: int, student_id: int) -> bool:
@@ -146,11 +155,6 @@ def list_team_members(db: Session, team_id: int) -> list[TeamMember]:
     return list(db.exec(stmt).all())
 
 
-def list_student_memberships(db: Session, student_id: int) -> list[TeamMember]:
-    stmt = select(TeamMember).where(TeamMember.student_id == student_id)
-    return list(db.exec(stmt).all())
-
-
 def record_payment(
     db: Session, team_member_id: int, amount: float
 ) -> TeamMember | None:
@@ -158,18 +162,6 @@ def record_payment(
     m = db.get(TeamMember, team_member_id)
     if m:
         m.amount_paid = float(m.amount_paid) + amount
-        db.add(m)
-        db.flush()
-    return m
-
-
-def refund_payment(
-    db: Session, team_member_id: int, amount: float
-) -> TeamMember | None:
-    """Decrement amount_paid for a team member (refund)."""
-    m = db.get(TeamMember, team_member_id)
-    if m:
-        m.amount_paid = max(0.0, float(m.amount_paid) - amount)
         db.add(m)
         db.flush()
     return m
@@ -188,10 +180,10 @@ def remove_team_member(db: Session, team_id: int, student_id: int) -> bool:
 
 def list_team_members_with_students(
     db: Session, team_ids: list[int]
-) -> dict[int, list[tuple]]:
+) -> dict[int, list[TeamMemberWithNameDTO]]:
     """
     Batch-load team members with student names for multiple teams in a single query.
-    Returns dict mapping team_id -> list of (TeamMember, student_name) tuples.
+    Returns dict mapping team_id -> list of TeamMemberWithNameDTO.
     """
     from app.modules.crm.models.student_models import Student
 
@@ -205,18 +197,23 @@ def list_team_members_with_students(
     )
     rows = list(db.exec(stmt).all())
 
-    result: dict[int, list[tuple]] = {}
+    result: dict[int, list[TeamMemberWithNameDTO]] = {}
     for member, student_name in rows:
-        result.setdefault(member.team_id, []).append((member, student_name or f"Student #{member.student_id}"))
+        result.setdefault(member.team_id, []).append(
+            TeamMemberWithNameDTO(
+                member=TeamMemberDTO.model_validate(member),
+                student_name=student_name or f"Student #{member.student_id}"
+            )
+        )
     return result
 
 
 def list_teams_with_members_batch(
     db: Session, competition_id: int
-) -> tuple[list[Team], dict[int, list[tuple]]]:
+) -> tuple[list[Team], dict[int, list[TeamMemberWithNameDTO]]]:
     """
     Batch-load all teams for a competition with their members and student names.
-    Returns (list of Teams, dict mapping team_id -> list of (TeamMember, student_name) tuples).
+    Returns (list of Teams, dict mapping team_id -> list of TeamMemberWithNameDTO).
     """
     teams = list_teams(db, competition_id)
     if not teams:
@@ -229,17 +226,25 @@ def list_teams_with_members_batch(
 
 def list_student_memberships_enriched(
     db: Session, student_id: int
-) -> list[tuple]:
+) -> list[StudentMembershipEnrichedDTO]:
     """
     Batch-load all memberships for a student with team and competition data.
-    Returns list of (TeamMember, Team, Competition|None) tuples.
+    Returns list of StudentMembershipEnrichedDTO.
     """
     from app.modules.competitions.models.competition_models import Competition
 
     stmt = (
         select(TeamMember, Team, Competition)
         .join(Team, TeamMember.team_id == Team.id)
-        .join(Competition, Team.competition_id == Competition.id, isouter=True)
+        .join(Competition, TeamMember.team_id == Competition.id, isouter=True)
         .where(TeamMember.student_id == student_id)
     )
-    return list(db.exec(stmt).all())
+    rows = list(db.exec(stmt).all())
+    return [
+        StudentMembershipEnrichedDTO(
+            membership=TeamMemberDTO.model_validate(m),
+            team=TeamDTO.model_validate(t),
+            competition=CompetitionDTO.model_validate(c) if c else None,
+        )
+        for m, t, c in rows
+    ]

@@ -1,5 +1,8 @@
 from datetime import date
+from decimal import Decimal
 from typing import Optional, TYPE_CHECKING
+from sqlmodel import select
+from fastapi import HTTPException
 from app.db.connection import get_session
 import app.modules.competitions.repositories.team_repository as team_repo
 import app.modules.competitions.repositories.competition_repository as comp_repo
@@ -10,16 +13,27 @@ from app.modules.competitions.schemas.team_schemas import (
     TeamDTO,
     StudentCompetitionDTO,
     TeamRegistrationResultDTO,
+    TeamRegistrationResultWithWarningDTO,
     AddTeamMemberResultDTO,
+    AddTeamMemberResultWithWarningDTO,
     TeamMemberRosterDTO,
     PayCompetitionFeeResponseDTO,
     TeamMemberDTO,
     TeamWithMembersDTO,
 )
 from app.modules.competitions.schemas.competition_schemas import CompetitionDTO
-
-if TYPE_CHECKING:
-    from app.modules.finance.interfaces import RefundResultDTO
+from app.modules.competitions.models.team_models import Team
+from app.modules.crm.models.student_models import Student
+from app.modules.crm.models.parent_models import Parent
+from app.modules.crm.repositories.unit_of_work import StudentUnitOfWork
+from app.modules.crm.services.activity_service import StudentActivityService
+from app.modules.crm.interfaces.dtos.log_competition_registration_dto import LogCompetitionRegistrationDTO
+from app.modules.crm.interfaces.dtos.log_payment_dto import LogPaymentDTO
+from app.modules.finance.interfaces import CreateReceiptServiceDTO, IssueRefundDTO, RefundResultDTO
+from app.modules.finance.repositories.unit_of_work import FinanceUnitOfWork
+from app.modules.finance.services.receipt_service import ReceiptService
+from app.modules.finance.services.refund_service import RefundService
+from app.modules.finance import ReceiptLineInput
 
 
 class TeamService:
@@ -30,20 +44,18 @@ class TeamService:
         Returns all teams a student is in, nested with category and competition info.
         Uses batch loading: single JOIN query instead of N+1.
         """
-        from datetime import date
-
         with get_session() as db:
             rows = team_repo.list_student_memberships_enriched(db, student_id)
 
             result = []
-            for m, team, comp in rows:
+            for row in rows:
                 result.append(
                     StudentCompetitionDTO(
-                        membership=TeamMemberDTO.model_validate(m),
-                        team=TeamDTO.model_validate(team),
-                        category=team.category,
-                        subcategory=team.subcategory,
-                        competition=CompetitionDTO.model_validate(comp) if comp else None
+                        membership=row.membership,
+                        team=row.team,
+                        category=row.team.category,
+                        subcategory=row.team.subcategory,
+                        competition=row.competition
                     )
                 )
 
@@ -60,7 +72,7 @@ class TeamService:
 
     def register_team(
         self, cmd: RegisterTeamInput, current_user_id: Optional[int] = None
-    ) -> tuple[TeamRegistrationResultDTO, Optional[str]]:
+    ) -> TeamRegistrationResultWithWarningDTO:
         """
         Creates a team and adds all listed students as members.
         3-table schema: uses competition_id, category, subcategory directly.
@@ -68,8 +80,6 @@ class TeamService:
         - One student can only be in one team per competition
         - If category has subcategories, must specify subcategory
         """
-        from app.modules.crm.models.student_models import Student
-
         with get_session() as db:
             # Validate competition exists
             comp = comp_repo.get_competition(db, cmd.competition_id)
@@ -150,10 +160,13 @@ class TeamService:
             db.refresh(team)
 
             warning = "; ".join(duplicate_warnings) if duplicate_warnings else None
-            return TeamRegistrationResultDTO(
-                team=TeamDTO.model_validate(team),
-                members_added=members_added
-            ), warning
+            return TeamRegistrationResultWithWarningDTO(
+                result=TeamRegistrationResultDTO(
+                    team=TeamDTO.model_validate(team),
+                    members_added=members_added
+                ),
+                warning=warning,
+            )
 
     def _log_team_registration_activity(
         self,
@@ -164,10 +177,6 @@ class TeamService:
         current_user_id: Optional[int],
     ) -> None:
         """Log competition registration activity for each team member."""
-        from app.modules.crm.repositories.unit_of_work import StudentUnitOfWork
-        from app.modules.crm.services.activity_service import StudentActivityService
-        from app.modules.crm.interfaces.dtos.log_competition_registration_dto import LogCompetitionRegistrationDTO
-
         # Create UoW and activity service
         # Note: This is a simplified integration - in production you'd want to
         # share the same transaction/session
@@ -200,11 +209,6 @@ class TeamService:
         current_user_id: Optional[int],
     ) -> None:
         """Log payment activity for competition fee."""
-        from app.modules.crm.repositories.unit_of_work import StudentUnitOfWork
-        from app.modules.crm.services.activity_service import StudentActivityService
-        from app.modules.crm.interfaces.dtos.log_payment_dto import LogPaymentDTO
-        from decimal import Decimal
-
         try:
             uow = StudentUnitOfWork(db)
             activity_svc = StudentActivityService(uow)
@@ -234,9 +238,6 @@ class TeamService:
         current_user_id: Optional[int],
     ) -> None:
         """Log placement activity for competition result."""
-        from app.modules.crm.repositories.unit_of_work import StudentUnitOfWork
-        from app.modules.crm.services.activity_service import StudentActivityService
-
         try:
             uow = StudentUnitOfWork(db)
             activity_svc = StudentActivityService(uow)
@@ -281,7 +282,6 @@ class TeamService:
                 return TeamDTO.model_validate(team)
             if current_user.employee_id and team.coach_id == current_user.employee_id:
                 return TeamDTO.model_validate(team)
-            from fastapi import HTTPException
             raise HTTPException(status_code=403, detail="Access denied. Admin or team coach required.")
 
     def list_teams(
@@ -301,10 +301,8 @@ class TeamService:
         coach_id: int,
         category: Optional[str] = None,
         subcategory: Optional[str] = None,
-    ) -> list:
+    ) -> list[TeamDTO]:
         """List teams for a competition filtered by coach_id."""
-        from app.modules.competitions.models.team_models import Team
-        from sqlmodel import select
         with get_session() as db:
             stmt = select(Team).where(
                 Team.competition_id == competition_id,
@@ -314,12 +312,46 @@ class TeamService:
                 stmt = stmt.where(Team.category == category)
             if subcategory:
                 stmt = stmt.where(Team.subcategory == subcategory)
-            return list(db.exec(stmt).all())
+            teams = list(db.exec(stmt).all())
+            return [TeamDTO.model_validate(t) for t in teams]
 
-    def get_team_members_for_team(self, team_id: int) -> list:
+    def list_teams_for_user(
+        self,
+        competition_id: int,
+        current_user,
+        category: Optional[str] = None,
+        subcategory: Optional[str] = None,
+    ) -> list[TeamDTO]:
+        """List teams scoped to user role. Coaches see only their own teams."""
+        if not current_user.is_admin and current_user.employee_id:
+            return self.list_teams_for_coach(competition_id, current_user.employee_id, category, subcategory)
+        return self.list_teams(competition_id, category, subcategory)
+
+    def get_teams_with_members_for_user(
+        self,
+        competition_id: int,
+        current_user,
+        category: Optional[str] = None,
+        subcategory: Optional[str] = None,
+    ) -> list[TeamWithMembersDTO]:
+        """List teams with members, scoped to user role."""
+        teams = self.list_teams_for_user(competition_id, current_user, category, subcategory)
+        result = []
+        for team_dto in teams:
+            members = self.get_team_members_for_team(team_dto.id)
+            result.append(
+                TeamWithMembersDTO(
+                    team=team_dto,
+                    members=members,
+                )
+            )
+        return result
+
+    def get_team_members_for_team(self, team_id: int) -> list[TeamMemberDTO]:
         """Get team members for a team."""
         with get_session() as db:
-            return team_repo.list_team_members(db, team_id)
+            members = team_repo.list_team_members(db, team_id)
+            return [TeamMemberDTO.model_validate(m) for m in members]
 
     def get_teams_with_members(
         self,
@@ -331,7 +363,6 @@ class TeamService:
         with get_session() as db:
             teams, members_by_team = team_repo.list_teams_with_members_batch(db, competition_id)
 
-            # Apply category/subcategory filters in Python (already loaded)
             if category:
                 teams = [t for t in teams if t.category == category]
             if subcategory:
@@ -343,7 +374,7 @@ class TeamService:
                 result.append(
                     TeamWithMembersDTO(
                         team=TeamDTO.model_validate(team),
-                        members=[TeamMemberDTO.model_validate(m) for m, _ in member_rows]
+                        members=[mwr.member for mwr in member_rows]
                     )
                 )
             return result
@@ -429,10 +460,8 @@ class TeamService:
         student_id: int,
         amount_due: float = 0.0,
         current_user_id: Optional[int] = None,
-    ) -> tuple[AddTeamMemberResultDTO, Optional[str]]:
+    ) -> AddTeamMemberResultWithWarningDTO:
         """Add a student to an existing team. Returns (result, warning_or_None)."""
-        from app.modules.crm.models.student_models import Student
-
         with get_session() as db:
             team = team_repo.get_team(db, team_id)
             if not team:
@@ -473,16 +502,20 @@ class TeamService:
             db.commit()
             db.refresh(m)
 
-            return AddTeamMemberResultDTO(
-                team_member_id=m.id,
-                student_id=m.student_id,
-                student_name=s.full_name,
-            ), warning
+            return AddTeamMemberResultWithWarningDTO(
+                result=AddTeamMemberResultDTO(
+                    team_member_id=m.id,
+                    student_id=m.student_id,
+                    student_name=s.full_name,
+                ),
+                warning=warning,
+            )
 
-    def get_team_member(self, team_id: int, student_id: int):
+    def get_team_member(self, team_id: int, student_id: int) -> TeamMemberDTO | None:
         """Returns a single team member by team_id and student_id, or None."""
         with get_session() as db:
-            return team_repo.get_team_member(db, team_id, student_id)
+            member = team_repo.get_team_member(db, team_id, student_id)
+            return TeamMemberDTO.model_validate(member) if member else None
 
     def remove_team_member(self, team_id: int, student_id: int) -> bool:
         with get_session() as db:
@@ -497,8 +530,6 @@ class TeamService:
 
     def list_team_members(self, team_id: int) -> list[TeamMemberRosterDTO]:
         """Returns team members enriched with student name and fee status. Uses batch loading."""
-        from app.modules.competitions.models.team_models import Team
-
         with get_session() as db:
             team = db.get(Team, team_id)
             team_name = team.team_name if team else "Unknown"
@@ -508,15 +539,15 @@ class TeamService:
 
             return [
                 TeamMemberRosterDTO(
-                    team_member_id=m.id,
+                    team_member_id=mwr.member.id,
                     team_id=team_id,
                     team_name=team_name,
-                    student_id=m.student_id,
-                    student_name=sname,
-                    amount_due=m.amount_due,
-                    amount_paid=m.amount_paid,
+                    student_id=mwr.member.student_id,
+                    student_name=mwr.student_name,
+                    amount_due=mwr.member.amount_due,
+                    amount_paid=mwr.member.amount_paid,
                 )
-                for m, sname in member_rows
+                for mwr in member_rows
             ]
 
     def pay_competition_fee(self, cmd: PayCompetitionFeeInput) -> PayCompetitionFeeResponseDTO:
@@ -524,12 +555,6 @@ class TeamService:
         Process competition fee payment for a team member.
         Single atomic transaction: validation + receipt creation + fee recording.
         """
-        from app.modules.finance.interfaces import CreateReceiptServiceDTO
-        from app.modules.finance.repositories.unit_of_work import FinanceUnitOfWork
-        from app.modules.finance.services.receipt_service import ReceiptService
-        from app.modules.finance import ReceiptLineInput
-        from app.modules.crm.models.parent_models import Parent
-
         with get_session() as db:
             # Validation
             team = team_repo.get_team(db, cmd.team_id)
@@ -606,8 +631,6 @@ class TeamService:
         self, finance_uow, team_member_id: int, amount: float
     ) -> int:
         """Find the newest competition payment with enough refundable balance."""
-        from decimal import Decimal
-
         requested = Decimal(str(amount))
         for payment in finance_uow.payments.list_refundable_competition_payments(
             team_member_id
@@ -631,12 +654,6 @@ class TeamService:
         """
         Refund a competition payment through the finance module.
         """
-        from decimal import Decimal
-
-        from app.modules.finance.interfaces import IssueRefundDTO
-        from app.modules.finance.repositories.unit_of_work import FinanceUnitOfWork
-        from app.modules.finance.services.refund_service import RefundService
-
         with get_session() as db:
             member = team_repo.get_team_member_by_id(db, team_member_id)
             if not member:

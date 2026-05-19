@@ -16,11 +16,7 @@ from app.api.schemas.competitions.competition_schemas import (
 )
 from app.api.dependencies import require_any, require_admin, get_competition_service
 from app.modules.auth import User
-from app.modules.competitions import CompetitionService, CompetitionDTO
-
-from app.modules.competitions.schemas.competition_schemas import (
-    CreateCompetitionInput,
-)
+from app.modules.competitions import CompetitionService, CompetitionDTO, CreateCompetitionInput
 
 router = APIRouter(tags=["Competitions"])
 
@@ -57,7 +53,7 @@ def create_competition(
     """Create a new competition."""
     comp = svc.create_competition(body)
     return ApiResponse(
-        data=CompetitionDTO.model_validate(comp),
+        data=comp,
         message="Competition created successfully."
     )
 
@@ -80,7 +76,7 @@ def get_competition(
     comp = svc.get_competition_by_id(competition_id)
     if not comp:
         raise HTTPException(status_code=404, detail="Competition not found")
-    return ApiResponse(data=CompetitionDTO.model_validate(comp))
+    return ApiResponse(data=comp)
 
 
 @router.put(
@@ -111,7 +107,7 @@ def update_competition_full(
     
     comp = svc.update_competition(competition_id, **update_data)
     return ApiResponse(
-        data=CompetitionDTO.model_validate(comp),
+        data=comp,
         message="Competition updated successfully."
     )
 

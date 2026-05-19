@@ -2,6 +2,13 @@ from datetime import date
 from typing import Optional
 from sqlmodel import Session, select
 from app.modules.competitions.models.competition_models import Competition
+from app.modules.competitions.schemas.team_schemas import (
+    CompetitionSummaryDataDTO,
+    TeamMemberWithNameDTO,
+    TeamDTO,
+    TeamMemberDTO,
+)
+from app.modules.competitions.schemas.competition_schemas import CompetitionDTO
 
 ALLOWED_COMPETITION_UPDATES = {
     "name", "edition", "edition_year", "competition_date",
@@ -78,18 +85,17 @@ def delete_competition(db: Session, competition_id: int) -> bool:
 
 def get_competition_summary_data(
     db: Session, competition_id: int
-) -> tuple:
+) -> CompetitionSummaryDataDTO:
     """
     Batch-load all data needed for competition summary in a single query.
-    Returns (Competition|None, list[Team], dict[int, list[tuple]]) where the dict
-    maps team_id -> list of (TeamMember, student_name) tuples.
+    Returns CompetitionSummaryDataDTO.
     """
     from app.modules.competitions.models.team_models import Team, TeamMember
     from app.modules.crm.models.student_models import Student
 
     comp = get_competition(db, competition_id)
     if not comp:
-        return None, [], {}
+        return CompetitionSummaryDataDTO(competition=None, teams=[], members_by_team={})
 
     stmt = (
         select(Team, TeamMember, Student.full_name)
@@ -101,7 +107,7 @@ def get_competition_summary_data(
     rows = list(db.exec(stmt).all())
 
     teams: list[Team] = []
-    members_by_team: dict[int, list[tuple]] = {}
+    members_by_team: dict[int, list[TeamMemberWithNameDTO]] = {}
     seen_team_ids = set()
 
     for team, member, student_name in rows:
@@ -110,7 +116,14 @@ def get_competition_summary_data(
             seen_team_ids.add(team.id)
         if member:
             members_by_team.setdefault(team.id, []).append(
-                (member, student_name or f"Student #{member.student_id}")
+                TeamMemberWithNameDTO(
+                    member=TeamMemberDTO.model_validate(member),
+                    student_name=student_name or f"Student #{member.student_id}",
+                )
             )
 
-    return comp, teams, members_by_team
+    return CompetitionSummaryDataDTO(
+        competition=CompetitionDTO.model_validate(comp),
+        teams=[TeamDTO.model_validate(t) for t in teams],
+        members_by_team=members_by_team,
+    )

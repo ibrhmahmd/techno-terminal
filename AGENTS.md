@@ -1,7 +1,7 @@
 # AGENTS.md — Techno Terminal
 
 FastAPI + SQLModel + PostgreSQL backend for STEM education center management.
-Supabase Auth, 10 business modules, ~63 migrations. Python 3.10+.
+Supabase Auth, 11 business modules, 62 migrations. Python 3.10+.
 
 ## Entry Points
 
@@ -27,6 +27,10 @@ Optional PDF settings (defaults in `app/core/config.py`): `pdf_logo_path`, `pdf_
 - **D+ Hybrid Pattern**: dominant-entity modules split into sub-slices (`core/`, `directory/`, `lifecycle/`,
   `analytics/`). `models/` is always horizontal per module, never per-slice. Each slice contains exactly:
   `__init__.py`, `interface.py`, `service.py`, `repository.py`, `schemas.py`.
+- **Interface Design**: `@runtime_checkable` Protocol classes named `{Entity}{Concern}Interface` (never `I`-prefix, never `Protocol` suffix). Every public service method must appear in the interface.
+- **Import Dependency Chain** (prevents circular imports): `interface.py` → imports from `schemas.py`, `models/` — `schemas.py` → imports from `models/`, shared constants — `repository.py` → imports from `models/`, constants, shared — `service.py` → imports from `repository.py`, `schemas.py`, `interface.py`, helpers. Services MUST NOT import other services within the same module.
+- **Cross-Slice Rule**: Repositories CAN be imported across slices (stateless query functions). Services MUST NOT import other services — cross-slice orchestration goes through module root `__init__.py`.
+- **DTO Naming**: Input: `{Operation}{Entity}Input` — Output: `{Entity}{Operation}Result` — Read models: `{Entity}{Qualifier}DTO`.
 - **Typed Contracts**: No `-> dict`, `-> list[dict]`, or `-> tuple` in services/repositories.
   Returns must be named Pydantic DTOs or ORM models with `model_config = ConfigDict(from_attributes=True)`.
 
@@ -37,18 +41,132 @@ Optional PDF settings (defaults in `app/core/config.py`): `pdf_logo_path`, `pdf_
 | UoW-based | CRM, Finance, HR, Enrollments | session via `get_db()` → UoW wraps session |
 | Stateless | Academics, Attendance, Competitions, Analytics | service creates own `get_session()` internally |
 
-Key factories: `get_student_crud_service`, `get_parent_crud_service`, `get_course_service`,
-`get_group_service`, `get_session_service`, `get_enrollment_service`,
-`get_receipt_service`, `get_refund_service`, `get_balance_service`,
+Key factories: `get_student_crud_service`, `get_student_search_service`, `get_student_profile_service`,
+`get_student_activity_service`, `get_parent_crud_service`, `get_course_service`,
+`get_group_service`, `get_group_directory_service`, `get_group_level_service`,
+`get_group_analytics_service`, `get_session_service`, `get_enrollment_service`,
+`get_enrollment_migration_service`,
+`get_receipt_service`, `get_refund_service`, `get_balance_service`, `get_reporting_service`,
+`get_student_payment_service`,
 `get_attendance_service`, `get_competition_service`, `get_team_service`,
-`get_employee_crud_service`, `get_academic_analytics_service`,
-`get_financial_analytics_service`, `get_bi_analytics_service`,
-`get_dashboard_service`, `get_notification_service` (owns its own session).
+`get_employee_crud_service`, `get_staff_account_service`,
+`get_academic_analytics_service`, `get_financial_analytics_service`, `get_bi_analytics_service`,
+`get_competition_analytics_service`,
+`get_dashboard_service`, `get_notification_service` (owns its own session),
+`get_auth_service`.
 
-## 10 Modules
+## 11 Modules
 
 `academics` `analytics` `attendance` `auth` `competitions` `crm`
-`enrollments` `finance` `hr` `notifications`
+`enrollments` `finance` `hr` `notifications` `shared`
+
+## Notifications Module (`app/modules/notifications/`)
+
+### Architecture (Facade + Specialized Services)
+
+A `NotificationService` facade delegates to three specialized `BaseNotificationService` subclasses:
+```
+NotificationService
+  ├── .enrollment → EnrollmentNotificationService
+  ├── .payment    → PaymentNotificationService
+  └── .report     → ReportNotificationService
+```
+
+New callers SHOULD use `svc.enrollment.notify_*()` / `svc.payment.notify_*()` / `svc.report.*()` directly. Legacy methods on `NotificationService` are deprecated delegation shims.
+
+### File Layout
+```
+notifications/
+├── models/
+│   ├── notification_template.py   # Template with {{variable}} placeholders, is_standard flag
+│   └── notification_log.py        # Audit log per dispatch (PENDING→SENT/FAILED)
+├── dispatchers/
+│   ├── i_dispatcher.py            # IMessageDispatcher Protocol (runtime_checkable)
+│   ├── email_dispatcher.py        # Gmail SMTP (smtplib, GMAIL_APP_PASSWORD)
+│   └── whatsapp_dispatcher.py     # Twilio (disabled in _dispatch — logs as success)
+├── interfaces/
+│   └── i_notification_repository.py  # INotificationRepository Protocol
+├── repositories/
+│   ├── notification_repository.py     # Template + log CRUD
+│   └── admin_settings_repository.py   # Per-admin toggles + additional recipients
+├── schemas/
+│   ├── notification_dto.py, template_dto.py, admin_settings_dto.py
+│   ├── send_request.py, fallback_dto.py
+├── services/
+│   ├── base_notification_service.py    # Shared: _resolve_contact, _dispatch, _resolve_notification_recipients
+│   ├── notification_service.py         # Facade with deprecated backward compat methods
+│   ├── enrollment_notifications.py     # Enrollment lifecycle notifications (email-only)
+│   ├── payment_notifications.py        # Payment + receipt with PDF attachment
+│   ├── competition_notifications.py    # Team registration, fee payment, placement
+│   ├── report_notifications.py         # Daily/weekly/monthly aggregates + dispatch
+│   └── report_scheduler.py            # asyncio polling loop (60s), started at lifespan
+├── pdf/
+│   └── daily_report_pdf.py            # ReportLab A4 PDF for daily reports
+```
+
+### Notification Dispatch Flow
+
+1. `notify_*()` → enqueues via `BackgroundTasks.add_task()` (non-blocking)
+2. Background runs `_process_*()` async method
+3. `_resolve_notification_recipients()` → reads `notification_additional_recipients` table by notification_type
+4. Falls back to `FALLBACK_EMAIL` env var if no valid recipients
+5. `_dispatch()` → renders `{{variable}}` placeholders, creates `NotificationLog` (PENDING), sends via `GmailEmailDispatcher`, updates log to SENT/FAILED
+6. WhatsApp is **always disabled** — `_dispatch` logs AS success without calling Twilio
+
+### Recipient Resolution (Important)
+
+- All notifications go through `notification_additional_recipients` table
+- `AdminSettingsRepository.get_enabled_admins_for_notification()` returns `[]` — intentionally unused
+- Fallback: `FALLBACK_EMAIL` env var (default `ibrahim.ahmd.net@gmail.com`)
+- Fallback alert: sends an alert email + creates a `FALLBACK_ALERT` notification log entry
+- `_resolve_notification_recipients()` also checks email validity via regex
+
+### Reports Features (Daily / Weekly / Monthly)
+
+**`ReportNotificationService`** (`report_notifications.py`):
+- `send_daily_report()` / `send_weekly_report()` / `send_monthly_report()`
+- Each fetches aggregates, resolves recipients, renders template, dispatches via EMAIL
+- Daily report generates a **PDF attachment** via `daily_report_pdf.py` (ReportLab, A4, B&W theme)
+- Aggregates fetched via `FinancialAnalyticsService.get_revenue_by_date()` + raw SQL queries for sessions, attendance, payments, enrollment stats
+- **TODO**: `_fetch_*_aggregates()` methods return bare `dict` — should be typed DTOs
+
+**`ReportScheduler`** (`report_scheduler.py`):
+- Async polling loop started in `create_app()` lifespan
+- Checks every 60s if a report window is open (configurable via `DAILY_REPORT_HOUR`/`DAILY_REPORT_MINUTE` env vars, default 20:00)
+- Daily: sends when within 5-min window of configured time
+- Weekly: also sends on Monday (same window)
+- Monthly: also sends on day 1 of month (same window)
+- `last_sent` guards prevent double-sends, but **in-memory only** — restart resets them
+- Creates its own `NotificationService` (separate session) via factory closure
+- **No `SCHEDULER_ENABLED` kill-switch exists yet** — see `012-scheduled-report-audit` spec
+
+**Known Issues (from spec `012-scheduled-report-audit`)**:
+- Monthly report covers month-to-date, not preceding full month (needs business clarification)
+- Weekly report week-boundary policy unspecified (Sunday vs Monday start)
+- No HTTP trigger for manual report dispatch
+- In-memory `last_sent` guards are lost on restart (no persistence)
+- `_fetch_*_aggregates()` returns `dict` instead of typed DTOs
+
+### Admin Settings API
+
+- Base path: `/api/v1/notifications/admin/settings/me`
+- 13 notification types managed via `admin_notification_settings` table
+- Additional recipients CRUD at `/settings/me/additional-recipients/`
+- Global (shared) settings — `SYSTEM_ADMIN_ID = 1`, not per-admin
+- Template CRUD + test at `/api/v1/templates/{id}/test` (actually sends test email)
+
+### Notification Templates (13 standard templates)
+
+| Template Name | Channel | Purpose |
+|--------------|---------|---------|
+| `daily_report` | EMAIL | Daily business summary + PDF |
+| `weekly_report` | EMAIL | Weekly revenue + new students |
+| `monthly_report` | EMAIL | Monthly revenue + enrollments |
+| `enrollment_*` (5) | EMAIL | Created, completed, dropped, transferred, level progression |
+| `payment_*` (2) | EMAIL | Receipt + reminder |
+| `competition_*` (3) | EMAIL | Team registration, fee payment, placement |
+
+Standard templates (`is_standard=True`) cannot be deleted; name/channel/variables protected from update.
 
 ## Key Files
 
@@ -134,12 +252,10 @@ TCP keepalives: idle=30s, interval=10s, count=5
 ```
 
 ### Migrations
-~63 files in `db/migrations/`. Duplicate prefix numbers exist (`008`, `020`, `021`, `022`,
+62 files in `db/migrations/`. Duplicate prefix numbers exist (`008`, `020`, `021`, `022`,
 `026`, `030`, `036`, `051`) — apply in **chronological order**, not numeric.
 Cleanup migrations: `042`–`049`.
-
-### Response Envelope
-All endpoints use the standard envelope. Field names are `success`, `data`, `message`, `error`.
+Schema: 17 modular files in `db/schema/` applied in dependency order via `db/schema.sql`.
 
 ## Testing
 
@@ -157,9 +273,8 @@ script testing connection pool abuse (run `python test_connection_exhaustion.py 
 Pipeline: `constitution → specify → clarify → plan → tasks → implement → analyze`.  
 Commands registered in `.opencode/command/`. All feature work validates against `.specify/memory/constitution.md`.
 
-**Current active plan**: `specs/010-competition-feature-enhancements/plan.md` — Competition Module Bug Fixes
-(8 bugs: B1 payment atomicity, B2 non-existent fields, B3 duplicate student warning,
-B4 30-day placement window, B5 TOCTOU race, B6 kwargs whitelist, B7/B8 dead code removal).
+**Recent specs**: `011-session-level-integrity` (session-group level FK integrity),
+`012-scheduled-report-audit` (scheduled report generation audit).
 
 ## Deployment
 
@@ -172,3 +287,10 @@ B4 30-day placement window, B5 TOCTOU race, B6 kwargs whitelist, B7/B8 dead code
 
 No GitHub Actions, no pre-commit, no ruff/flake8/black. Review code / lint manually before
 submitting. No opinionated formatter is enforced.
+
+## Dead Code Discipline
+
+Before any refactoring or migration, grep for callers of every method. Delete dead code
+immediately — never migrate it into a new structure. Zero tolerance for commented-out code,
+deprecated methods kept for "backward compatibility," or subset methods superseded by broader
+equivalents.
