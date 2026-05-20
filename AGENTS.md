@@ -296,7 +296,7 @@ deprecated methods kept for "backward compatibility," or subset methods supersed
 equivalents.
 
 <!-- SPECKIT START -->
-Active plan: `specs/013-reports-feature-audit/plan.md`
+Active plan: `specs/015-self-service-auth/plan.md`
 
-Phase 1 (bug fixes) implementation complete. Phase 2 (rich tables) pending — 3 new DTOs, 3 new repository query methods, 3 new HTML table builders in service, 3 new PDF table sections, 1 migration update.
+Phase 0–1 complete (research, data model, contracts). Adding 3 self-service auth endpoints: change password (verify current + set new via Supabase), forgot password (trigger Supabase reset email), and profile update (PATCH username). No new models or migrations.
 <!-- SPECKIT END -->

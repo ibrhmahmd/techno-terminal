@@ -9,7 +9,12 @@ import logging
 from app.modules.notifications.services.base_notification_service import BaseNotificationService
 from app.modules.notifications.repositories.notification_repository import NotificationRepository
 from app.modules.notifications.repositories.reports_repository import ReportsRepository
-from app.modules.notifications.schemas.report_dto import DailyReportAggregateDTO
+from app.modules.notifications.schemas.report_dto import (
+    DailyReportAggregateDTO,
+    PaymentTypeGroup,
+    SessionDetailItem,
+    InstructorSummaryItem,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -68,6 +73,93 @@ class ReportNotificationService(BaseNotificationService):
         else:
             payment_details_html = "<p style='color: #000; font-style: italic;'>No payments recorded today.</p>"
         
+        # Build session details HTML table
+        session_details_html = ""
+        if aggregates.session_details:
+            session_rows = ""
+            for session_item in aggregates.session_details:
+                session_rows += (
+                    f"<tr>"
+                    f"<td>{session_item.instructor_name}</td>"
+                    f"<td>{session_item.session_time}</td>"
+                    f"<td>{session_item.present_count}</td>"
+                    f"<td>{session_item.absent_count}</td>"
+                    f"<td>{session_item.cancelled_count}</td>"
+                    f"<td>{session_item.student_names_present}</td>"
+                    f"<td>{session_item.student_names_absent}</td>"
+                    f"</tr>"
+                )
+            session_details_html = f"""
+            <h3 style="color: #000; margin-top: 20px;">Session Attendance Details</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 10px; border: 1px solid #000;">
+                <thead>
+                    <tr style="background: #333333; color: white;">
+                        <th style="padding: 8px; text-align: left; border: 1px solid #000;">Instructor</th>
+                        <th style="padding: 8px; text-align: left; border: 1px solid #000;">Time</th>
+                        <th style="padding: 8px; text-align: center; border: 1px solid #000;">Present</th>
+                        <th style="padding: 8px; text-align: center; border: 1px solid #000;">Absent</th>
+                        <th style="padding: 8px; text-align: center; border: 1px solid #000;">Cancelled</th>
+                        <th style="padding: 8px; text-align: left; border: 1px solid #000;">Students Present</th>
+                        <th style="padding: 8px; text-align: left; border: 1px solid #000;">Students Absent</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {session_rows}
+                </tbody>
+            </table>
+            """
+        else:
+            session_details_html = "<p style='color: #000; font-style: italic;'>No completed sessions today.</p>"
+
+        # Build instructor summary HTML table
+        instructor_summary_html = ""
+        if aggregates.instructor_summary:
+            instructor_rows = ""
+            for item in aggregates.instructor_summary:
+                instructor_rows += f"<tr><td>{item.instructor_name}</td><td>{item.session_count}</td></tr>"
+            instructor_summary_html = f"""
+            <h3 style="color: #000; margin-top: 20px;">Instructor Summary</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 10px; border: 1px solid #000;">
+                <thead>
+                    <tr style="background: #333333; color: white;">
+                        <th style="padding: 8px; text-align: left; border: 1px solid #000;">Instructor</th>
+                        <th style="padding: 8px; text-align: center; border: 1px solid #000;">Sessions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {instructor_rows}
+                </tbody>
+            </table>
+            """
+        else:
+            instructor_summary_html = "<p style='color: #000; font-style: italic;'>No instructor summary available.</p>"
+
+        # Build payments by type HTML sub-tables
+        payments_by_type_html = ""
+        if aggregates.payments_by_type:
+            payments_by_type_html = "<h3 style='color: #000; margin-top: 20px;'>Payments by Type</h3>"
+            for ptype_group in aggregates.payments_by_type:
+                sub_rows = ""
+                for payment in ptype_group.items:
+                    sub_rows += f"<tr><td>{payment.student_name}</td><td>{payment.group_name}</td><td style='text-align: right;'>{payment.amount:.2f} EGP</td></tr>"
+                payments_by_type_html += f"""
+                <h4 style="color: #000; margin: 10px 0 5px 0;">{ptype_group.payment_type} (Subtotal: {ptype_group.subtotal:.2f} EGP — {ptype_group.count} payments)</h4>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; border: 1px solid #000;">
+                    <thead>
+                        <tr style="background: #555555; color: white;">
+                            <th style="padding: 6px; text-align: left; border: 1px solid #000;">Student</th>
+                            <th style="padding: 6px; text-align: left; border: 1px solid #000;">Group</th>
+                            <th style="padding: 6px; text-align: right; border: 1px solid #000;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {sub_rows}
+                    </tbody>
+                </table>
+                """
+        else:
+            payments_by_type_html = ""
+
         variables = {
             "date": today.strftime("%Y-%m-%d"),
             "total_revenue": f"{aggregates.total_revenue:.2f}",
@@ -80,6 +172,9 @@ class ReportNotificationService(BaseNotificationService):
             "instructors_list": instructors_str,
             "attendance_rate": f"{aggregates.attendance_rate:.1%}",
             "unpaid_count": aggregates.unpaid_count,
+            "session_details": session_details_html,
+            "instructor_summary": instructor_summary_html,
+            "payments_by_type": payments_by_type_html,
         }
         
         # Generate PDF attachment

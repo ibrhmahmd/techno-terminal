@@ -7,7 +7,10 @@ from sqlmodel import Session, select, func
 
 from app.modules.notifications.schemas.report_dto import (
     DailyReportAggregateDTO,
+    InstructorSummaryItem,
     PaymentDetailItem,
+    PaymentTypeGroup,
+    SessionDetailItem,
 )
 from app.modules.academics.models.session_models import CourseSession
 from app.modules.attendance.models.attendance_models import Attendance
@@ -30,9 +33,11 @@ class ReportsRepository:
         sessions_held = self._fetch_sessions_held(target_date)
         present_count, absent_count, cancelled_count = self._fetch_attendance(target_date)
         new_enrollments = self._fetch_new_enrollments(target_date)
-        payments, payment_count, payment_methods, payment_details = self._fetch_payments(target_date)
+        payments, payment_count, payment_methods, payment_details, payments_by_type = self._fetch_payments(target_date)
         instructors_list = self._fetch_instructors(target_date)
         unpaid_count = self._fetch_unpaid_count()
+        session_details = self._fetch_session_details(target_date)
+        instructor_summary = self._fetch_instructor_summary(target_date)
 
         total = present_count + absent_count + cancelled_count
         attendance_rate = present_count / total if total > 0 else 0.0
@@ -50,6 +55,9 @@ class ReportsRepository:
             payment_details=payment_details,
             instructors_list=instructors_list,
             unpaid_count=unpaid_count,
+            session_details=session_details,
+            payments_by_type=payments_by_type,
+            instructor_summary=instructor_summary,
         )
 
     def _fetch_revenue(self, target_date: date) -> float:
@@ -106,7 +114,7 @@ class ReportsRepository:
         return self._session.exec(stmt).one() or 0
 
     def _fetch_payments(self, target_date: date) -> tuple[
-        List[Payment], int, dict[str, int], List[PaymentDetailItem]
+        List[Payment], int, dict[str, int], List[PaymentDetailItem], List[PaymentTypeGroup]
     ]:
         payment_stmt = (
             select(Payment)
@@ -147,7 +155,20 @@ class ReportsRepository:
                 logger.warning(f"Could not fetch payment details for payment {payment.id}: {e}")
 
         payment_details.sort(key=lambda x: x.amount, reverse=True)
-        return payments, payment_count, payment_methods, payment_details
+
+        from itertools import groupby
+        payments_by_type: list[PaymentTypeGroup] = []
+        payment_details_by_type = sorted(payment_details, key=lambda x: x.payment_type)
+        for ptype, group in groupby(payment_details_by_type, key=lambda x: x.payment_type):
+            items = list(group)
+            payments_by_type.append(PaymentTypeGroup(
+                payment_type=ptype,
+                subtotal=sum(item.amount for item in items),
+                count=len(items),
+                items=items,
+            ))
+
+        return payments, payment_count, payment_methods, payment_details, payments_by_type
 
     def _fetch_instructors(self, target_date: date) -> list[str]:
         try:
@@ -161,6 +182,77 @@ class ReportsRepository:
             return [row[0] for row in result]
         except Exception as e:
             logger.warning(f"Could not fetch instructors: {e}")
+            return []
+
+    def _fetch_session_details(self, target_date: date) -> list[SessionDetailItem]:
+        try:
+            sessions = self._session.exec(
+                select(CourseSession).where(
+                    CourseSession.session_date == target_date,
+                    CourseSession.status == "completed",
+                )
+            ).all()
+
+            details = []
+            for session_obj in sessions:
+                instructor_name = ""
+                if session_obj.actual_instructor_id:
+                    from app.modules.hr.models.employee_models import Employee
+                    emp = self._session.get(Employee, session_obj.actual_instructor_id)
+                    instructor_name = emp.full_name if emp else "Unknown"
+
+                session_time = f"{session_obj.start_time.strftime('%H:%M')} - {session_obj.end_time.strftime('%H:%M')}"
+
+                attendance_records = self._session.exec(
+                    select(Attendance).where(Attendance.session_id == session_obj.id)
+                ).all()
+
+                present_count = sum(1 for a in attendance_records if a.status == "present")
+                absent_count = sum(1 for a in attendance_records if a.status == "absent")
+                cancelled_count = sum(1 for a in attendance_records if a.status == "cancelled")
+
+                present_names = []
+                absent_names = []
+                for a in attendance_records:
+                    student = self._session.get(Student, a.student_id)
+                    name = student.full_name if student else "Unknown"
+                    if a.status == "present":
+                        present_names.append(name)
+                    elif a.status == "absent":
+                        absent_names.append(name)
+
+                details.append(SessionDetailItem(
+                    instructor_name=instructor_name,
+                    session_time=session_time,
+                    present_count=present_count,
+                    absent_count=absent_count,
+                    cancelled_count=cancelled_count,
+                    student_names_present=", ".join(present_names),
+                    student_names_absent=", ".join(absent_names),
+                ))
+
+            return details
+        except Exception as e:
+            logger.warning(f"Could not fetch session details: {e}")
+            return []
+
+    def _fetch_instructor_summary(self, target_date: date) -> list[InstructorSummaryItem]:
+        try:
+            stmt = text("""
+                SELECT e.full_name, COUNT(s.id) AS session_count
+                FROM sessions s
+                JOIN employees e ON s.actual_instructor_id = e.id
+                WHERE s.session_date = :target_date
+                GROUP BY e.full_name
+                ORDER BY session_count DESC
+            """)
+            result = self._session.execute(stmt, {"target_date": target_date})
+            return [
+                InstructorSummaryItem(instructor_name=row[0], session_count=row[1])
+                for row in result
+            ]
+        except Exception as e:
+            logger.warning(f"Could not fetch instructor summary: {e}")
             return []
 
     def _fetch_unpaid_count(self) -> int:
@@ -177,7 +269,8 @@ class ReportsRepository:
                 WHERE e.status = 'active'
                 AND (e.amount_due - COALESCE(e.discount_applied, 0) - COALESCE(p.total_paid, 0)) > 0
             """)
-            return self._session.exec(unpaid_stmt).one() or 0
+            result = self._session.exec(unpaid_stmt).one()
+            return int(result[0]) if result else 0
         except Exception as e:
             logger.warning(f"Could not fetch unpaid count: {e}")
             return 0

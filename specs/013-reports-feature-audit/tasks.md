@@ -37,12 +37,12 @@ description: "Task list for Phase 2: rich detail tables — Reports Feature Audi
 ### Implementation for User Story 1
 
 - [ ] T002 [P] [US1] Add `_fetch_session_details(target_date)` to `ReportsRepository` in `app/modules/notifications/repositories/reports_repository.py` — query each completed session with its attendance, join to students for names, return `list[SessionDetailItem]`
-- [ ] T003 [P] [US1] Add `_fetch_instructor_summary(target_date)` to `ReportsRepository` in `app/modules/notifications/repositories/reports_repository.py` — query session count per instructor for today, return `list[InstructorSummaryItem]`
-- [ ] T004 [US1] Wire `session_details` and `instructor_summary` into `get_daily_aggregates()` in `app/modules/notifications/repositories/reports_repository.py` — populate the new DTO fields
-- [ ] T005 [US1] Build per-session attendance HTML table in `send_daily_report()` in `app/modules/notifications/services/report_notifications.py` — render session time, instructor, counts, student names
-- [ ] T006 [US1] Build instructor summary HTML table in `send_daily_report()` in `app/modules/notifications/services/report_notifications.py` — render instructor name + session count
-- [ ] T007 [US1] Add per-session attendance table section to PDF in `app/modules/notifications/pdf/daily_report_pdf.py` — ReportLab table with same columns
-- [ ] T008 [US1] Add instructor summary table section to PDF in `app/modules/notifications/pdf/daily_report_pdf.py` — ReportLab table with instructor name + session count
+- [x] T003 [P] [US1] Add `_fetch_instructor_summary(target_date)` to `ReportsRepository` in `app/modules/notifications/repositories/reports_repository.py` — query session count per instructor for today, return `list[InstructorSummaryItem]`
+- [x] T004 [US1] Wire `session_details` and `instructor_summary` into `get_daily_aggregates()` in `app/modules/notifications/repositories/reports_repository.py` — populate the new DTO fields
+- [x] T005 [US1] Build per-session attendance HTML table in `send_daily_report()` in `app/modules/notifications/services/report_notifications.py` — render session time, instructor, counts, student names
+- [x] T006 [US1] Build instructor summary HTML table in `send_daily_report()` in `app/modules/notifications/services/report_notifications.py` — render instructor name + session count
+- [x] T007 [US1] Add per-session attendance table section to PDF in `app/modules/notifications/pdf/daily_report_pdf.py` — ReportLab table with same columns
+- [x] T008 [US1] Add instructor summary table section to PDF in `app/modules/notifications/pdf/daily_report_pdf.py` — ReportLab table with instructor name + session count
 
 **Checkpoint**: US1 complete — per-session attendance and instructor summary tables render in both email and PDF.
 
@@ -56,9 +56,9 @@ description: "Task list for Phase 2: rich detail tables — Reports Feature Audi
 
 ### Implementation for User Story 8
 
-- [ ] T009 [US8] Group payments by `payment_type` in `ReportsRepository._fetch_payments()` in `app/modules/notifications/repositories/reports_repository.py` — use the existing payment data, build `list[PaymentTypeGroup]` with subtotals
-- [ ] T010 [US8] Build payment type sub-tables with subtotals in `send_daily_report()` in `app/modules/notifications/services/report_notifications.py` — one sub-table per type, header row with type name + subtotal, then student/group/amount rows
-- [ ] T011 [US8] Add payments-by-type sub-tables section to PDF in `app/modules/notifications/pdf/daily_report_pdf.py` — ReportLab sub-tables per type with subtotals
+- [x] T009 [US8] Group payments by `payment_type` in `ReportsRepository._fetch_payments()` in `app/modules/notifications/repositories/reports_repository.py` — use the existing payment data, build `list[PaymentTypeGroup]` with subtotals
+- [x] T010 [US8] Build payment type sub-tables with subtotals in `send_daily_report()` in `app/modules/notifications/services/report_notifications.py` — one sub-table per type, header row with type name + subtotal, then student/group/amount rows
+- [x] T011 [US8] Add payments-by-type sub-tables section to PDF in `app/modules/notifications/pdf/daily_report_pdf.py` — ReportLab sub-tables per type with subtotals
 
 **Checkpoint**: US8 complete — payments grouped by type with subtotals in both email and PDF.
 
@@ -68,7 +68,7 @@ description: "Task list for Phase 2: rich detail tables — Reports Feature Audi
 
 **Purpose**: Update template variables to match the enriched report.
 
-- [ ] T012 Create migration SQL `db/migrations/056_update_daily_report_template.sql` — UPDATE `daily_report` template body to include `{{session_details}}`, `{{instructor_summary}}`, `{{payments_by_type}}` variables, update the `variables` array
+- [x] T012 Create migration SQL `db/migrations/056_update_daily_report_template.sql` — UPDATE `daily_report` template body to include `{{session_details}}`, `{{instructor_summary}}`, `{{payments_by_type}}` variables, update the `variables` array
 
 **Checkpoint**: All Phase 2 tasks complete.
 

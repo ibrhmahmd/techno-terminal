@@ -112,10 +112,10 @@ class BaseNotificationService:
                 WHERE is_active = true
                 AND (notification_types IS NULL OR :notification_type = ANY(notification_types))
             """)
-            result = self._repo._session.exec(stmt, {"notification_type": notification_type}).all()
+            result = self._repo._session.exec(stmt, params={"notification_type": notification_type}).all()
             for recipient_id, email in result:
                 if email and self._is_valid_email(email):
-                    recipients.append((email, recipient_id, "ADDITIONAL"))
+                    recipients.append((email, recipient_id, "EMPLOYEE"))
                 elif email:
                     invalid_emails_found.append((recipient_id, email))
         except Exception as e:
@@ -125,7 +125,7 @@ class BaseNotificationService:
         if not recipients:
             # Validate and use fallback email
             if self._is_valid_email(FALLBACK_EMAIL):
-                recipients.append((FALLBACK_EMAIL, FALLBACK_RECIPIENT_ID, "FALLBACK"))
+                recipients.append((FALLBACK_EMAIL, FALLBACK_RECIPIENT_ID, "EMPLOYEE"))
 
                 # Log warning
                 logger.warning(
@@ -138,7 +138,7 @@ class BaseNotificationService:
                     self._repo.create_log(
                         template_id=None,
                         channel="EMAIL",
-                        recipient_type="FALLBACK_ALERT",
+                        recipient_type="EMPLOYEE",
                         recipient_id=FALLBACK_RECIPIENT_ID,
                         recipient_contact=FALLBACK_EMAIL,
                         body=f"Fallback triggered for notification type: {notification_type}. "
@@ -225,7 +225,7 @@ Add valid email recipients to ensure notifications are delivered properly.
             # Update the fallback alert log entry status to SENT
             # Find the most recent fallback alert log for this notification type
             stmt = select(NotificationLog).where(
-                NotificationLog.recipient_type == "FALLBACK_ALERT",
+                NotificationLog.recipient_type == "EMPLOYEE",
                 NotificationLog.subject == "Notification Fallback Activated"
             ).order_by(NotificationLog.created_at.desc()).limit(1)
             
@@ -262,16 +262,21 @@ Add valid email recipients to ensure notifications are delivered properly.
             for key, val in variables.items():
                 subject = subject.replace(f"{{{{{key}}}}}", str(val))
         
-        # Create log
-        log = self._repo.create_log(
-            template_id=template.id,
-            channel=channel,
-            recipient_type=recipient_type,
-            recipient_id=recipient_id,
-            recipient_contact=contact,
-            body=body,
-            subject=subject,
-        )
+        # Create log (non-blocking — log failures won't block email delivery)
+        log_id = None
+        try:
+            log = self._repo.create_log(
+                template_id=template.id,
+                channel=channel,
+                recipient_type=recipient_type,
+                recipient_id=recipient_id,
+                recipient_contact=contact,
+                body=body,
+                subject=subject,
+            )
+            log_id = log.id
+        except Exception as log_error:
+            logger.warning(f"Failed to create notification log: {log_error}")
         
         # Dispatch (WhatsApp disabled - email only for now)
         success, error = False, "Unknown channel"
@@ -281,9 +286,10 @@ Add valid email recipients to ensure notifications are delivered properly.
         elif channel == "EMAIL":
             success, error = await self._email.send(contact, body, subject, attachments)
         
-        # Update log
-        status = "SENT" if success else "FAILED"
-        self._repo.update_log_status(log.id, status, error)
+        # Update log if it was created
+        if log_id:
+            status = "SENT" if success else "FAILED"
+            self._repo.update_log_status(log_id, status, error)
         
         if success:
             logger.info(f"Notification sent to {recipient_type} {recipient_id} via {channel}")
