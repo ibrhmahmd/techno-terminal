@@ -33,6 +33,7 @@ from app.api.routers.analytics import (
     dashboard_router,
 )
 from app.api.routers.finance import receipt_router, finance_router, reporting_router
+from app.api.routers import admin_auth_router
 
 
 def create_app() -> FastAPI:
@@ -138,6 +139,9 @@ def create_app() -> FastAPI:
     app.include_router(
         dashboard_router, prefix="/api/v1", tags=["Analytics — Dashboard"]
     )
+
+    # Admin Auth
+    app.include_router(admin_auth_router.router, prefix="/api/v1/admin")
 
     # Notifications
     app.include_router(notifications_router, prefix="/api/v1")

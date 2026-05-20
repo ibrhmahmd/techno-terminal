@@ -114,6 +114,7 @@ require_admin = _require_roles(
     UserRole.ADMIN,
     UserRole.SYSTEM_ADMIN,
 )
+require_system_admin = _require_roles(UserRole.SYSTEM_ADMIN)
 # Any valid, active, authenticated user.
 require_any = get_current_user
 
@@ -142,6 +143,11 @@ from app.modules.enrollments.services.enrollment_migration_service import Enroll
 
 def get_auth_service() -> AuthService:
     return AuthService()
+
+
+def get_audit_service() -> "AuditService":
+    from app.modules.auth.services.audit_service import AuditService
+    return AuditService()
 
 
 def get_student_crud_service(

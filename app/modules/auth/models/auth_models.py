@@ -28,6 +28,8 @@ class User(UserBase, table=True):
     supabase_uid: str = Field(unique=True)
     last_login: Optional[datetime] = None
     created_at: Optional[datetime] = None
+    invite_token: Optional[str] = Field(default=None, unique=True)
+    invite_expires_at: Optional[datetime] = None
 
     @property
     def is_admin(self) -> bool:

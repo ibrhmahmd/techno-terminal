@@ -296,7 +296,7 @@ deprecated methods kept for "backward compatibility," or subset methods supersed
 equivalents.
 
 <!-- SPECKIT START -->
-Active plan: `specs/015-self-service-auth/plan.md`
+Active plan: `specs/016-user-auth-management/plan.md`
 
-Phase 0–1 complete (research, data model, contracts). Adding 3 self-service auth endpoints: change password (verify current + set new via Supabase), forgot password (trigger Supabase reset email), and profile update (PATCH username). No new models or migrations.
+Spec 016 fully implemented: 8 phases, 15 endpoints (admin CRUD, self-service email/sessions/activity, invite registration, session security, audit reporting), 1 new model (AuditLog), 5 User model extensions, 6 admin tests. Next: apply migration SQL (063_user_auth_extensions.sql), run full test suite, then audit/cleanup dead code.
 <!-- SPECKIT END -->

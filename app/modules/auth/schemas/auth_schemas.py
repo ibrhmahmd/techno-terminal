@@ -45,3 +45,65 @@ class ForgotPasswordInput(BaseModel):
 
 class UpdateProfileInput(BaseModel):
     username: Optional[str] = None
+
+class UpdateUserInput(BaseModel):
+    role: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class UserAdminDTO(SQLModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    username: str
+    supabase_uid: str
+    role: str
+    is_active: bool = True
+    employee_id: Optional[int] = None
+    last_login: Optional[datetime] = None
+    created_at: Optional[datetime] = None
+
+class InviteUserInput(BaseModel):
+    email: str
+    role: str
+    employee_id: int
+
+class InviteResultDTO(SQLModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    username: str
+    role: str
+    is_active: bool = False
+    invite_expires_at: Optional[datetime] = None
+
+class RegisterUserInput(BaseModel):
+    token: str
+    username: str
+    password: str
+
+    @field_validator("password")
+    @classmethod
+    def _validate_password_length(cls, v: str) -> str:
+        if len(v) < MIN_PASSWORD_LENGTH:
+            raise ValueError(
+                f"Password must be at least {MIN_PASSWORD_LENGTH} characters."
+            )
+        return v
+
+class AuditLogEntryDTO(SQLModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: Optional[int] = None
+    event_type: str
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
+    details: Optional[dict] = None
+    created_at: datetime
+
+class UserSessionDTO(BaseModel):
+    id: str
+    created_at: Optional[datetime] = None
+    last_active_at: Optional[datetime] = None
+    ip: Optional[str] = None
+    user_agent: Optional[str] = None

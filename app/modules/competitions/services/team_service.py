@@ -77,6 +77,8 @@ class TeamService:
         Creates a team and adds all listed students as members.
         3-table schema: uses competition_id, category, subcategory directly.
         Business rules:
+        - At least one student source required: group_id OR student_ids
+        - If group_id provided, pre-fills students from group's current level roster
         - One student can only be in one team per competition
         - If category has subcategories, must specify subcategory
         """
@@ -85,6 +87,9 @@ class TeamService:
             comp = comp_repo.get_competition(db, cmd.competition_id)
             if not comp:
                 raise NotFoundError(f"Competition {cmd.competition_id} not found.")
+
+            # Resolve student IDs: group pre-fill + manual list
+            student_ids = self._resolve_student_ids(db, cmd)
 
             # Business rule: If category has subcategories, must specify subcategory
             if cmd.subcategory is None:
@@ -106,7 +111,7 @@ class TeamService:
 
             # Validate all students are active and collect duplicate warnings
             duplicate_warnings = []
-            for sid in cmd.student_ids:
+            for sid in student_ids:
                 s = db.get(Student, sid)
                 if not s:
                     raise NotFoundError(f"Student {sid} not found.")
@@ -139,7 +144,7 @@ class TeamService:
 
             # Add members with per-student fee from input (default 0 if not specified)
             members_added = 0
-            for sid in cmd.student_ids:
+            for sid in student_ids:
                 amount_due = cmd.student_fees.get(sid, 0.0) if cmd.student_fees else 0.0
                 # Skip duplicates gracefully
                 existing = team_repo.get_team_member(db, team.id, sid)
@@ -151,7 +156,7 @@ class TeamService:
             self._log_team_registration_activity(
                 db=db,
                 team=team,
-                student_ids=cmd.student_ids,
+                student_ids=student_ids,
                 competition_name=comp.name,
                 current_user_id=current_user_id,
             )
@@ -167,6 +172,43 @@ class TeamService:
                 ),
                 warning=warning,
             )
+
+    def _resolve_student_ids(self, db, cmd: RegisterTeamInput) -> list[int]:
+        """Resolve final student IDs from group pre-fill and/or manual list."""
+        group_ids: list[int] = []
+        if cmd.group_id:
+            from app.modules.academics.models.group_models import Group
+            from app.modules.enrollments.repositories.enrollment_repository import list_enrollments
+
+            group = db.get(Group, cmd.group_id)
+            if not group:
+                raise NotFoundError(f"Group {cmd.group_id} not found.")
+            if group.status != "active":
+                raise BusinessRuleError(f"Group '{group.name}' is not active.")
+
+            # Fetch active enrollments at the group's current level
+            enrollments = list_enrollments(db, group_id=cmd.group_id, level_number=group.level_number, status="active")
+            group_ids = [e.student_id for e in enrollments]
+            if not group_ids:
+                raise BusinessRuleError(
+                    f"Group '{group.name}' has no active students at level {group.level_number}."
+                )
+
+        manual_ids = cmd.student_ids or []
+        # Merge: group roster + manual list (union, preserve order)
+        seen = set()
+        combined = []
+        for sid in group_ids + manual_ids:
+            if sid not in seen:
+                seen.add(sid)
+                combined.append(sid)
+
+        if not combined:
+            raise BusinessRuleError(
+                "At least one student is required. Provide student_ids or select a group with active students."
+            )
+
+        return combined
 
     def _log_team_registration_activity(
         self,

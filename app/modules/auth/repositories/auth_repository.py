@@ -1,4 +1,5 @@
-from sqlmodel import Session, select
+from typing import Optional
+from sqlmodel import Session, select, func
 from app.shared.datetime_utils import utc_now
 from app.modules.auth.models.auth_models import User
 from app.modules.auth.schemas.auth_schemas import UserCreate
@@ -37,3 +38,63 @@ def update_user(session: Session, user: User) -> User:
     session.add(user)
     session.flush()
     return user
+
+
+def list_users(
+    session: Session,
+    skip: int = 0,
+    limit: int = 50,
+    is_active: Optional[bool] = None,
+    role: Optional[str] = None,
+    q: Optional[str] = None,
+) -> tuple[list[User], int]:
+    query = select(User)
+    count_query = select(func.count(User.id))
+
+    if is_active is not None:
+        query = query.where(User.is_active == is_active)
+        count_query = count_query.where(User.is_active == is_active)
+    if role is not None:
+        query = query.where(User.role == role)
+        count_query = count_query.where(User.role == role)
+    if q is not None:
+        pattern = f"%{q}%"
+        query = query.where(User.username.ilike(pattern))
+        count_query = count_query.where(User.username.ilike(pattern))
+
+    query = query.order_by(User.id).offset(skip).limit(limit)
+
+    total = session.exec(count_query).one()
+    results = list(session.exec(query).all())
+    return results, total
+
+
+def update_user_role_status(
+    session: Session, user_id: int, role: Optional[str] = None, is_active: Optional[bool] = None
+) -> Optional[User]:
+    user = session.get(User, user_id)
+    if not user:
+        return None
+    if role is not None:
+        user.role = role
+    if is_active is not None:
+        user.is_active = is_active
+    session.add(user)
+    session.flush()
+    return user
+
+
+def deactivate_user(session: Session, user_id: int) -> Optional[User]:
+    user = session.get(User, user_id)
+    if not user:
+        return None
+    user.is_active = False
+    user.supabase_uid = ""
+    session.add(user)
+    session.flush()
+    return user
+
+
+def find_by_invite_token(session: Session, token: str) -> Optional[User]:
+    stmt = select(User).where(User.invite_token == token)
+    return session.exec(stmt).first()

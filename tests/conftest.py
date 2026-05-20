@@ -30,7 +30,7 @@ def admin_token():
     
     Note: Token expires after ~1 hour. Regenerate with script when needed.
     """
-    return "eyJhbGciOiJFUzI1NiIsImtpZCI6IjRmN2U4ODliLWNkNWItNDZlOS1hZDc1LWI4ZDMyY2I3YzI4NCIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL3NyYnBwa2N2cmdpb25laXRrdGRqLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiIxNDAwNmNlMy1lZWU0LTQzODQtYjlhOC02MDIwMDJmNmU0ODgiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzc5MjczMzU5LCJpYXQiOjE3NzkyNjk3NTksImVtYWlsIjoiaWJyYWhpbS5uZXRAdGVjaG5vLmNybSIsInBob25lIjoiIiwiYXBwX21ldGFkYXRhIjp7InByb3ZpZGVyIjoiZW1haWwiLCJwcm92aWRlcnMiOlsiZW1haWwiXX0sInVzZXJfbWV0YWRhdGEiOnsiZW1haWxfdmVyaWZpZWQiOnRydWV9LCJyb2xlIjoiYXV0aGVudGljYXRlZCIsImFhbCI6ImFhbDEiLCJhbXIiOlt7Im1ldGhvZCI6InBhc3N3b3JkIiwidGltZXN0YW1wIjoxNzc5MjY5NzU5fV0sInNlc3Npb25faWQiOiI4YjgxMzhmNi05OWVjLTQzYWUtYTEwMy02MmRjMjNhYjRhMzkiLCJpc19hbm9ueW1vdXMiOmZhbHNlfQ.aHHlpYloD8VpQPX7EL7ijldRZ3unc8Z7GRLMR_wCmwkPjVcMMf2tXH6qzOWrxf4Dq0AfKsYCRrk2eoNWx-NR9A"
+    return "eyJhbGciOiJFUzI1NiIsImtpZCI6IjRmN2U4ODliLWNkNWItNDZlOS1hZDc1LWI4ZDMyY2I3YzI4NCIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL3NyYnBwa2N2cmdpb25laXRrdGRqLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiIxNDAwNmNlMy1lZWU0LTQzODQtYjlhOC02MDIwMDJmNmU0ODgiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzc5Mjc4ODQ3LCJpYXQiOjE3NzkyNzUyNDcsImVtYWlsIjoiaWJyYWhpbS5uZXRAdGVjaG5vLmNybSIsInBob25lIjoiIiwiYXBwX21ldGFkYXRhIjp7InByb3ZpZGVyIjoiZW1haWwiLCJwcm92aWRlcnMiOlsiZW1haWwiXX0sInVzZXJfbWV0YWRhdGEiOnsiZW1haWxfdmVyaWZpZWQiOnRydWV9LCJyb2xlIjoiYXV0aGVudGljYXRlZCIsImFhbCI6ImFhbDEiLCJhbXIiOlt7Im1ldGhvZCI6InBhc3N3b3JkIiwidGltZXN0YW1wIjoxNzc5Mjc1MjQ3fV0sInNlc3Npb25faWQiOiI1OGEwZWJkYS0yMmNkLTRlZWItYWRlMi00MGRiNDUxN2MzYWQiLCJpc19hbm9ueW1vdXMiOmZhbHNlfQ.8lR2USPVUXv2-y2uKIX8jSyHEtS2yqhrJQy81IHk7jffzipJhDk_Ban7q81A_3rGNaY0cps9N5ZDiu8OjkmoGw"
 
 
 @pytest.fixture
@@ -87,6 +87,31 @@ def override_auth(app):
         username="test_admin",
         role="admin",
         supabase_uid="test-admin-001",
+        is_active=True,
+    )
+
+    async def _mock_get_current_user():
+        return mock_user
+
+    app.dependency_overrides[get_current_user] = _mock_get_current_user
+    yield
+    app.dependency_overrides.pop(get_current_user, None)
+
+
+@pytest.fixture
+def override_system_admin_auth(app):
+    """
+    Override get_current_user with a system_admin user.
+    Use with system_admin_headers for token-passing tests.
+    """
+    from app.api.dependencies import get_current_user
+    from app.modules.auth.models.auth_models import User
+
+    mock_user = User(
+        id=1,
+        username="test_sysadmin",
+        role="system_admin",
+        supabase_uid="test-sysadmin-001",
         is_active=True,
     )
 

@@ -49,18 +49,11 @@ class RegisterTeamInput(BaseModel):
     subcategory: Optional[str] = None  # Optional subcategory
     project_name: Optional[str] = None
     project_description: Optional[str] = None
-    student_ids: list[int]
+    student_ids: Optional[list[int]] = None  # Optional if group_id provided
     student_fees: Optional[dict[int, float]] = None  # Per-student fees, missing defaults to 0
     coach_id: Optional[int] = None
-    group_id: Optional[int] = None
+    group_id: Optional[int] = None  # If provided, pre-fills students from group roster
     notes: Optional[str] = None  # Additional notes
-
-    @field_validator("student_ids")
-    @classmethod
-    def at_least_one_student(cls, v: list[int]) -> list[int]:
-        if not v:
-            raise ValueError("At least one student is required.")
-        return v
 
     @field_validator("team_name", mode="before")
     @classmethod

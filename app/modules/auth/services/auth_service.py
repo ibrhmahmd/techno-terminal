@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Tuple
 
 from app.core.supabase_clients import get_supabase_admin, get_supabase_anon
 from app.db.connection import get_session
@@ -9,6 +9,8 @@ from app.modules.auth.constants import is_valid_role
 from app.modules.hr.repositories import EmployeeRepository
 from app.shared.constants import MIN_PASSWORD_LENGTH
 from app.shared.exceptions import AuthError, BusinessRuleError, ConflictError, NotFoundError, ValidationError
+from app.modules.auth.models.audit_log import AuditLogEventType
+from app.modules.auth.services.audit_service import AuditService
 
 class AuthService:
     def get_user_by_supabase_uid(self, uid: str) -> Optional[User]:
@@ -62,6 +64,10 @@ class AuthService:
         admin.auth.admin.update_user_by_id(
             user.supabase_uid, {"password": new_password}
         )
+        AuditService().log_event(
+            event_type=AuditLogEventType.PASSWORD_CHANGE,
+            user_id=user.id,
+        )
 
     def update_profile(self, user: User, dto: UpdateProfileInput) -> User:
         with get_session() as session:
@@ -75,12 +81,176 @@ class AuthService:
             session.refresh(user)
             return user
 
+    def invite_user(self, email: str, role: str, employee_id: int) -> User:
+        import uuid
+        from datetime import timedelta
+        from app.shared.datetime_utils import utc_now
+
+        if not is_valid_role(role):
+            raise ValidationError(f"Invalid role: {role!r}.")
+        with get_session() as session:
+            existing = repo.get_user_by_username(session, email)
+            if existing:
+                raise ConflictError(f"User with email {email!r} already exists.")
+            user_in = UserCreate(
+                username=email,
+                role=role,
+                employee_id=employee_id,
+                is_active=False,
+                supabase_uid="",
+                invite_token=str(uuid.uuid4()),
+                invite_expires_at=utc_now() + timedelta(hours=24),
+            )
+            user = repo.create_user(session, user_in)
+            session.commit()
+            session.refresh(user)
+            return user
+
+    def register_with_invite(self, token: str, username: str, password: str) -> User:
+        from app.shared.datetime_utils import utc_now
+
+        if len(password) < MIN_PASSWORD_LENGTH:
+            raise ValidationError(
+                f"Password must be at least {MIN_PASSWORD_LENGTH} characters."
+            )
+        with get_session() as session:
+            user = repo.find_by_invite_token(session, token)
+            if not user:
+                raise AuthError("Invalid or expired invite token.")
+            if user.invite_expires_at and user.invite_expires_at < utc_now():
+                raise AuthError("Invalid or expired invite token.")
+            existing = repo.get_user_by_username(session, username)
+            if existing:
+                raise ConflictError(f"Username {username!r} already exists.")
+            email_binding = username if "@" in username else f"{username}@system.local"
+            admin = get_supabase_admin()
+            try:
+                auth_response = admin.auth.admin.create_user(
+                    {
+                        "email": email_binding,
+                        "password": password,
+                        "email_confirm": True,
+                    }
+                )
+                native_uid = auth_response.user.id
+            except Exception as e:
+                raise ConflictError(f"Supabase error: {e}") from e
+            user.username = username
+            user.supabase_uid = native_uid
+            user.is_active = True
+            user.invite_token = None
+            user.invite_expires_at = None
+            repo.update_user(session, user)
+            session.commit()
+            session.refresh(user)
+            return user
+
+    def change_email(self, user: User, new_email: str) -> None:
+        admin = get_supabase_admin()
+        try:
+            admin.auth.admin.update_user_by_id(
+                user.supabase_uid, {"email": new_email}
+            )
+        except Exception as e:
+            raise ConflictError(f"Email already in use: {e}") from e
+
+    def logout_all_sessions(self, user: User) -> None:
+        try:
+            admin = get_supabase_admin()
+            admin.auth.admin.sign_out(user.supabase_uid)
+        except Exception:
+            pass
+
+    def list_sessions(self, user: User) -> list[dict]:
+        admin = get_supabase_admin()
+        try:
+            sessions = admin.auth.admin.list_sessions(user.supabase_uid)
+            results = []
+            for s in sessions:
+                results.append({
+                    "id": getattr(s, "id", ""),
+                    "created_at": getattr(s, "created_at", None),
+                    "last_active_at": getattr(s, "last_active_at", None),
+                    "ip": getattr(s, "ip", None),
+                    "user_agent": getattr(s, "user_agent", None),
+                })
+            return results
+        except Exception:
+            return []
+
     def forgot_password(self, email: str) -> None:
         try:
             supabase = get_supabase_anon()
             supabase.auth.reset_password_email(email)
         except Exception:
             pass
+
+    def list_users(
+        self,
+        skip: int = 0,
+        limit: int = 50,
+        is_active: Optional[bool] = None,
+        role: Optional[str] = None,
+        q: Optional[str] = None,
+    ) -> Tuple[list[User], int]:
+        with get_session() as session:
+            return repo.list_users(session, skip, limit, is_active, role, q)
+
+    def get_user(self, user_id: int) -> User:
+        with get_session() as session:
+            user = repo.get_user_by_id(session, user_id)
+            if not user:
+                raise NotFoundError(f"User {user_id} not found.")
+            return user
+
+    def update_user(self, target_user_id: int, dto, current_user: User) -> User:
+        if dto.is_active is False and target_user_id == current_user.id:
+            raise BusinessRuleError("Cannot deactivate your own account.")
+        with get_session() as session:
+            user = repo.update_user_role_status(
+                session, target_user_id, role=dto.role, is_active=dto.is_active
+            )
+            if not user:
+                raise NotFoundError(f"User {target_user_id} not found.")
+            session.commit()
+            session.refresh(user)
+            details = {}
+            if dto.role:
+                details["new_role"] = dto.role
+            if dto.is_active is not None:
+                details["new_is_active"] = dto.is_active
+            if details:
+                AuditService().log_event(
+                    event_type=AuditLogEventType.ROLE_CHANGED,
+                    user_id=target_user_id,
+                    details={"changed_by": current_user.id, **details},
+                )
+            return user
+
+    def deactivate_user(self, target_user_id: int, current_user: User) -> None:
+        if target_user_id == current_user.id:
+            raise BusinessRuleError("Cannot deactivate your own account.")
+        with get_session() as session:
+            user = repo.get_user_by_id(session, target_user_id)
+            if not user:
+                raise NotFoundError(f"User {target_user_id} not found.")
+            supabase_uid = user.supabase_uid
+
+        if supabase_uid:
+            try:
+                admin = get_supabase_admin()
+                admin.auth.admin.delete_user(supabase_uid)
+            except Exception:
+                pass
+
+        with get_session() as session:
+            repo.deactivate_user(session, target_user_id)
+            session.commit()
+        AuditService().log_event(
+            event_type=AuditLogEventType.ACCOUNT_DEACTIVATED,
+            user_id=target_user_id,
+            details={"deactivated_by": current_user.id},
+        )
 
     def link_employee_to_new_user(
         self, employee_id: int, username: str, raw_password: str, role: str

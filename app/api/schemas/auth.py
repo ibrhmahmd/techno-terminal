@@ -39,3 +39,21 @@ class ForgotPasswordRequest(BaseModel):
 
 class UpdateProfileRequest(BaseModel):
     username: str | None = None
+    email: str | None = None
+
+class UpdateUserRequest(BaseModel):
+    role: str | None = None
+    is_active: bool | None = None
+
+class InviteUserRequest(BaseModel):
+    email: str
+    role: str
+    employee_id: int
+
+class RegisterUserRequest(BaseModel):
+    token: str
+    username: str
+    password: str = Field(..., min_length=MIN_PASSWORD_LENGTH)
+
+class ChangeEmailRequest(BaseModel):
+    email: str

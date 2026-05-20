@@ -77,8 +77,9 @@ class TestAuthMe:
 class TestLogin:
     """Tests for POST /api/v1/auth/login."""
 
+    @patch("app.api.routers.auth_router.AuditService.log_event")
     @patch("app.api.routers.auth_router.get_supabase_anon")
-    def test_login_success(self, mock_get_anon, client):
+    def test_login_success(self, mock_get_anon, mock_audit, client):
         mock_supabase = MagicMock()
         mock_resp = MagicMock()
         mock_resp.session = _make_mock_supabase_session()
@@ -110,8 +111,9 @@ class TestLogin:
                 assert data["data"]["user"]["username"] == "test_user"
                 mock_update.assert_called_once_with(1)
 
+    @patch("app.api.routers.auth_router.AuditService.log_event")
     @patch("app.api.routers.auth_router.get_supabase_anon")
-    def test_login_invalid_credentials(self, mock_get_anon, client):
+    def test_login_invalid_credentials(self, mock_get_anon, mock_audit, client):
         mock_supabase = MagicMock()
         mock_supabase.auth.sign_in_with_password.side_effect = Exception("Invalid login credentials")
         mock_get_anon.return_value = mock_supabase
@@ -141,13 +143,14 @@ class TestLogin:
         mock_supabase.auth.sign_in_with_password.return_value = mock_resp
 
         with patch("app.api.routers.auth_router.get_supabase_anon", return_value=mock_supabase):
-            with patch("app.api.routers.auth_router.AuthService.get_user_by_supabase_uid", return_value=None):
-                response = client.post(
-                    "/api/v1/auth/login",
-                    json={"email": "orphan@test.com", "password": "password123456"}
-                )
+            with patch("app.api.routers.auth_router.AuditService.log_event"):
+                with patch("app.api.routers.auth_router.AuthService.get_user_by_supabase_uid", return_value=None):
+                    response = client.post(
+                        "/api/v1/auth/login",
+                        json={"email": "orphan@test.com", "password": "password123456"}
+                    )
 
-                assert response.status_code == 401
+                    assert response.status_code == 401
 
 
 class TestRefresh:
@@ -302,9 +305,10 @@ class TestResetPassword:
 class TestChangePassword:
     """Tests for POST /api/v1/auth/change-password."""
 
+    @patch("app.modules.auth.services.auth_service.AuditService.log_event")
     @patch("app.modules.auth.services.auth_service.get_supabase_anon")
     @patch("app.modules.auth.services.auth_service.get_supabase_admin")
-    def test_change_password_success(self, mock_get_admin, mock_get_anon, client, override_auth, mock_admin_headers):
+    def test_change_password_success(self, mock_get_admin, mock_get_anon, mock_audit, client, override_auth, mock_admin_headers):
         mock_supabase = MagicMock()
         mock_get_anon.return_value = mock_supabase
         mock_admin = MagicMock()
@@ -441,6 +445,73 @@ class TestUpdateProfile:
             "/api/v1/auth/me",
             json={"username": "new_username"}
         )
+
+        assert response.status_code == 401
+
+
+class TestAdminUserManagement:
+    """Tests for /api/v1/admin/users endpoints."""
+
+    @patch("app.api.routers.admin_auth_router.AuthService.list_users")
+    def test_admin_list_users_success(self, mock_list, client, override_system_admin_auth, system_admin_headers):
+        from app.modules.auth.models.auth_models import User
+
+        fake_user = User(id=1, username="admin1", role="system_admin", supabase_uid="uid-1", is_active=True)
+        mock_list.return_value = ([fake_user], 1)
+
+        response = client.get("/api/v1/admin/users", headers=system_admin_headers)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert len(data["data"]) == 1
+
+    @patch("app.api.routers.admin_auth_router.AuthService.get_user")
+    def test_admin_get_user_success(self, mock_get, client, override_system_admin_auth, system_admin_headers):
+        from app.modules.auth.models.auth_models import User
+
+        fake_user = User(id=1, username="admin1", role="system_admin", supabase_uid="uid-1", is_active=True)
+        mock_get.return_value = fake_user
+
+        response = client.get("/api/v1/admin/users/1", headers=system_admin_headers)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["data"]["username"] == "admin1"
+
+    @patch("app.api.routers.admin_auth_router.AuthService.get_user")
+    def test_admin_get_user_not_found(self, mock_get, client, override_system_admin_auth, system_admin_headers):
+        from app.shared.exceptions import NotFoundError
+
+        mock_get.side_effect = NotFoundError("User 999 not found.")
+
+        response = client.get("/api/v1/admin/users/999", headers=system_admin_headers)
+
+        assert response.status_code == 404
+
+    @patch("app.api.routers.admin_auth_router.AuthService.update_user")
+    def test_admin_update_user_success(self, mock_update, client, override_system_admin_auth, system_admin_headers):
+        from app.modules.auth.models.auth_models import User
+
+        fake_user = User(id=2, username="user2", role="admin", supabase_uid="uid-2", is_active=True)
+        mock_update.return_value = fake_user
+
+        response = client.patch(
+            "/api/v1/admin/users/2",
+            headers=system_admin_headers,
+            json={"role": "admin"}
+        )
+
+        assert response.status_code == 200
+
+    def test_admin_requires_system_admin(self, client, override_auth, mock_admin_headers):
+        response = client.get("/api/v1/admin/users", headers=mock_admin_headers)
+
+        assert response.status_code == 403
+
+    def test_admin_unauthorized(self, client):
+        response = client.get("/api/v1/admin/users")
 
         assert response.status_code == 401
 

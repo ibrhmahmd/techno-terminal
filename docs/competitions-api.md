@@ -131,6 +131,12 @@ Auth: admin
   "notes": "string"
 }
 ```
+**Student resolution**:
+- Provide `student_ids` directly, OR
+- Provide `group_id` to auto-fill from group's active roster at current level
+- Both can be provided — results are merged (union, no duplicates)
+- At least one student source is required
+
 **Response**: `TeamRegistrationResultDTO` (201)
 **Note**: Duplicate students return warning in `message` field, not error.
 

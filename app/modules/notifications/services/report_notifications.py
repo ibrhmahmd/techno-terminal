@@ -4,6 +4,7 @@ app/modules/notifications/services/report_notifications.py
 Scheduled report notifications for employees.
 """
 from datetime import date, timedelta
+from typing import Optional
 import logging
 
 from app.modules.notifications.services.base_notification_service import BaseNotificationService
@@ -28,7 +29,7 @@ class ReportNotificationService(BaseNotificationService):
     
     # ── Scheduled Report Methods ─────────────────────────────────────────
     
-    async def send_daily_report(self) -> None:
+    async def send_daily_report(self, target_date: Optional[date] = None) -> None:
         """Daily business summary to all admins."""
         template = self._repo.get_template_by_name("daily_report")
         if not template or not template.is_active:
@@ -38,7 +39,7 @@ class ReportNotificationService(BaseNotificationService):
         # Get notification recipients (fallback handled automatically by base service)
         recipients = self._resolve_notification_recipients("daily_report")
         
-        today = date.today()
+        today = target_date or date.today()
         aggregates = self._fetch_daily_aggregates(today)
         
         # Format payment methods for display
@@ -256,6 +257,179 @@ class ReportNotificationService(BaseNotificationService):
         for email, recipient_id, recipient_type in recipients:
             await self._dispatch(template, "EMAIL", recipient_type, recipient_id, email, variables)
     
+    # ── Public Helpers for Date-Param Endpoints ─────────────────────────
+
+    def get_daily_report_pdf_base64(self, target_date: date) -> tuple[str, str]:
+        """Generate PDF and return (date_str, base64_encoded_pdf)."""
+        from base64 import b64encode
+        from app.modules.notifications.pdf.daily_report_pdf import generate_daily_report_pdf
+        aggregates = self._fetch_daily_aggregates(target_date)
+        has_data = self._has_data(aggregates)
+        if not has_data:
+            from app.shared.exceptions import NotFoundError
+            raise NotFoundError(f"No data found for {target_date}")
+        pdf_bytes = generate_daily_report_pdf(
+            date_str=target_date.isoformat(),
+            aggregates=aggregates.model_dump()
+        )
+        return target_date.isoformat(), b64encode(pdf_bytes).decode()
+
+    def get_report_assets(
+        self, target_date: date
+    ) -> tuple[list[tuple[str, bytes, str]], dict, object]:
+        """Build PDF bytes + variables + template for async dispatch. Raises NotFoundError if no data."""
+        from app.modules.notifications.pdf.daily_report_pdf import generate_daily_report_pdf
+        aggregates = self._fetch_daily_aggregates(target_date)
+        has_data = self._has_data(aggregates)
+        if not has_data:
+            from app.shared.exceptions import NotFoundError
+            raise NotFoundError(f"No data found for {target_date}")
+
+        pdf_bytes = generate_daily_report_pdf(
+            date_str=target_date.isoformat(),
+            aggregates=aggregates.model_dump()
+        )
+        filename = f"daily_report_{target_date.isoformat()}.pdf"
+        attachments = [(filename, pdf_bytes, "application/pdf")]
+        variables = self._build_variables(aggregates, target_date)
+        template = self._repo.get_template_by_name("daily_report")
+        return attachments, variables, template
+
+    def get_daily_report_data(self, target_date: date) -> DailyReportAggregateDTO:
+        """Return aggregate data for a date, raising 404 if empty."""
+        aggregates = self._fetch_daily_aggregates(target_date)
+        has_data = self._has_data(aggregates)
+        if not has_data:
+            from app.shared.exceptions import NotFoundError
+            raise NotFoundError(f"No data found for {target_date}")
+        return aggregates
+
+    def _has_data(self, aggregates: DailyReportAggregateDTO) -> bool:
+        return (
+            aggregates.sessions_held > 0
+            or aggregates.payment_count > 0
+            or aggregates.new_enrollments > 0
+        )
+
+    def _build_variables(
+        self, aggregates: DailyReportAggregateDTO, target_date: date
+    ) -> dict:
+        """Build the template variables dict (shared between email modes)."""
+        payment_methods_str = ", ".join(
+            [f"{method}: {count}" for method, count in aggregates.payment_methods.items()]
+        ) if aggregates.payment_methods else "N/A"
+
+        instructors_str = ", ".join(aggregates.instructors_list) if aggregates.instructors_list else "N/A"
+
+        payment_details_html = ""
+        if aggregates.payment_details:
+            payment_rows = ""
+            for payment in aggregates.payment_details:
+                payment_rows += f"<tr><td>{payment.student_name}</td><td>{payment.group_name}</td><td>{payment.amount:.2f} EGP</td><td>{payment.payment_type}</td></tr>"
+            payment_details_html = f"""
+            <table style="width: 100%; border-collapse: collapse; margin-top: 10px; border: 1px solid #000;">
+                <thead><tr style="background: #333333; color: white;">
+                    <th style="padding: 10px; text-align: left; border: 1px solid #000;">Student</th>
+                    <th style="padding: 10px; text-align: left; border: 1px solid #000;">Group</th>
+                    <th style="padding: 10px; text-align: right; border: 1px solid #000;">Amount</th>
+                    <th style="padding: 10px; text-align: left; border: 1px solid #000;">Type</th>
+                </tr></thead>
+                <tbody>{payment_rows}</tbody>
+            </table>"""
+        else:
+            payment_details_html = "<p style='color: #000; font-style: italic;'>No payments recorded today.</p>"
+
+        session_details_html = ""
+        if aggregates.session_details:
+            session_rows = ""
+            for session_item in aggregates.session_details:
+                session_rows += (
+                    f"<tr><td>{session_item.instructor_name}</td><td>{session_item.session_time}</td>"
+                    f"<td>{session_item.present_count}</td><td>{session_item.absent_count}</td>"
+                    f"<td>{session_item.cancelled_count}</td>"
+                    f"<td>{session_item.student_names_present}</td><td>{session_item.student_names_absent}</td></tr>"
+                )
+            session_details_html = f"""
+            <h3 style="color: #000; margin-top: 20px;">Session Attendance Details</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 10px; border: 1px solid #000;">
+                <thead><tr style="background: #333333; color: white;">
+                    <th style="padding: 8px; text-align: left; border: 1px solid #000;">Instructor</th>
+                    <th style="padding: 8px; text-align: left; border: 1px solid #000;">Time</th>
+                    <th style="padding: 8px; text-align: center; border: 1px solid #000;">Present</th>
+                    <th style="padding: 8px; text-align: center; border: 1px solid #000;">Absent</th>
+                    <th style="padding: 8px; text-align: center; border: 1px solid #000;">Cancelled</th>
+                    <th style="padding: 8px; text-align: left; border: 1px solid #000;">Students Present</th>
+                    <th style="padding: 8px; text-align: left; border: 1px solid #000;">Students Absent</th>
+                </tr></thead>
+                <tbody>{session_rows}</tbody>
+            </table>"""
+        else:
+            session_details_html = "<p style='color: #000; font-style: italic;'>No completed sessions today.</p>"
+
+        instructor_summary_html = ""
+        if aggregates.instructor_summary:
+            instructor_rows = ""
+            for item in aggregates.instructor_summary:
+                instructor_rows += f"<tr><td>{item.instructor_name}</td><td>{item.session_count}</td></tr>"
+            instructor_summary_html = f"""
+            <h3 style="color: #000; margin-top: 20px;">Instructor Summary</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 10px; border: 1px solid #000;">
+                <thead><tr style="background: #333333; color: white;">
+                    <th style="padding: 8px; text-align: left; border: 1px solid #000;">Instructor</th>
+                    <th style="padding: 8px; text-align: center; border: 1px solid #000;">Sessions</th>
+                </tr></thead>
+                <tbody>{instructor_rows}</tbody>
+            </table>"""
+        else:
+            instructor_summary_html = "<p style='color: #000; font-style: italic;'>No instructor summary available.</p>"
+
+        payments_by_type_html = ""
+        if aggregates.payments_by_type:
+            payments_by_type_html = "<h3 style='color: #000; margin-top: 20px;'>Payments by Type</h3>"
+            for ptype_group in aggregates.payments_by_type:
+                sub_rows = ""
+                for payment in ptype_group.items:
+                    sub_rows += f"<tr><td>{payment.student_name}</td><td>{payment.group_name}</td><td style='text-align: right;'>{payment.amount:.2f} EGP</td></tr>"
+                payments_by_type_html += f"""
+                <h4 style="color: #000; margin: 10px 0 5px 0;">{ptype_group.payment_type} (Subtotal: {ptype_group.subtotal:.2f} EGP — {ptype_group.count} payments)</h4>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; border: 1px solid #000;">
+                    <thead><tr style="background: #555555; color: white;">
+                        <th style="padding: 6px; text-align: left; border: 1px solid #000;">Student</th>
+                        <th style="padding: 6px; text-align: left; border: 1px solid #000;">Group</th>
+                        <th style="padding: 6px; text-align: right; border: 1px solid #000;">Amount</th>
+                    </tr></thead>
+                    <tbody>{sub_rows}</tbody>
+                </table>"""
+        else:
+            payments_by_type_html = ""
+
+        return {
+            "date": target_date.isoformat(),
+            "total_revenue": f"{aggregates.total_revenue:.2f}",
+            "new_enrollments": aggregates.new_enrollments,
+            "sessions_held": aggregates.sessions_held,
+            "absent_count": aggregates.absent_count,
+            "payment_count": aggregates.payment_count,
+            "payment_methods": payment_methods_str,
+            "payment_details": payment_details_html,
+            "instructors_list": instructors_str,
+            "attendance_rate": f"{aggregates.attendance_rate:.1%}",
+            "unpaid_count": aggregates.unpaid_count,
+            "session_details": session_details_html,
+            "instructor_summary": instructor_summary_html,
+            "payments_by_type": payments_by_type_html,
+        }
+
+    def _build_daily_report_body(
+        self, aggregates: DailyReportAggregateDTO, target_date: date
+    ) -> str:
+        """Render the daily report template with variables."""
+        template = self._repo.get_template_by_name("daily_report")
+        if not template:
+            return ""
+        variables = self._build_variables(aggregates, target_date)
+        return self._render_template(template, variables)
+
     # ── Private Helpers ──────────────────────────────────────────────────
     
     def _fetch_daily_aggregates(self, target_date: date) -> DailyReportAggregateDTO:

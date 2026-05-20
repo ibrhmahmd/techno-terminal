@@ -1,78 +1,104 @@
-# Implementation Plan: Self-Service Auth Features
+# Implementation Plan: [FEATURE]
 
-**Branch**: `015-self-service-auth` | **Date**: 2026-05-20 | **Spec**: `specs/015-self-service-auth/spec.md`
-**Input**: Feature specification from `/specs/015-self-service-auth/spec.md`
+**Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
+**Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
+
+**Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/plan-template.md` for the execution workflow.
 
 ## Summary
 
-Add three self-service endpoints to the auth module: change password (verify current + set new via Supabase admin API), forgot password (trigger Supabase reset email), and update profile (PATCH username). All guarded by `get_current_user`. AuthService remains stateless. No new models or migrations needed.
+[Extract from feature spec: primary requirement + technical approach from research]
 
 ## Technical Context
 
-**Language/Version**: Python 3.10+  
-**Primary Dependencies**: FastAPI, SQLModel, Supabase Python SDK (auth), Pydantic v2  
-**Storage**: PostgreSQL (local User table), Supabase Auth (credentials, sessions)  
-**Testing**: pytest, httpx (TestClient), unittest.mock for Supabase calls  
-**Target Platform**: Linux server (Leapcell deployment)  
-**Project Type**: Web service (REST API)  
-**Performance Goals**: N/A — 3 lightweight endpoints, no new queries beyond existing patterns  
-**Constraints**: Must maintain backward compatibility. Username update does NOT update Supabase email identity. Deactivated users blocked via 403.  
-**Scale/Scope**: 3 endpoints, ~3-4 files modified, 1 new DTO file, 1 test file updated.
+<!--
+  ACTION REQUIRED: Replace the content in this section with the technical details
+  for the project. The structure here is presented in advisory capacity to guide
+  the iteration process.
+-->
+
+**Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]  
+**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]  
+**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]  
+**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]  
+**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
+**Project Type**: [e.g., library/cli/web-service/mobile-app/compiler/desktop-app or NEEDS CLARIFICATION]  
+**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]  
+**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
+**Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-**Gate 1 — No `-> dict` / `-> list[dict]` / `-> tuple` in service/repository**: All new DTOs will be typed Pydantic models accepting `ConfigDict(from_attributes=True)` where applicable. **PASS**
-
-**Gate 2 — No `from app.api.schemas` inversion in modules**: New service methods will use DTOs from `app/modules/auth/schemas/`. Router will use `app/api/schemas/auth/` for HTTP-only shapes. Services will NOT import from `app.api.schemas`. **PASS**
-
-**Gate 3 — DTO naming convention**: Input DTOs follow `{Operation}{Entity}Input` pattern (e.g., `ChangePasswordInput`). Existing `UserPublicDTO` used for profile output. **PASS**
-
-**Gate 4 — Router concerns only**: Endpoints will delegate to `AuthService` methods. No business logic in routers. **PASS**
-
-**Gate 5 — AuthService is stateless**: Opens own session via `get_session()`. Consistent with existing pattern. **PASS**
-
-### Post-Design Re-Evaluation
-
-All gates remain **PASS** after Phase 1 design. Research.md resolves all unknowns. Data model confirms no entity changes. Contracts define clean API shapes. No new constitution violations introduced.
+[Gates determined based on constitution file]
 
 ## Project Structure
 
 ### Documentation (this feature)
 
 ```text
-specs/015-self-service-auth/
-├── plan.md              # This file
-├── spec.md              # Feature specification
-├── research.md          # Phase 0 output
-├── data-model.md        # Phase 1 output (no entity changes)
-├── quickstart.md        # Phase 1 output
-└── contracts/           # Phase 1 output
-    └── auth-api.md
+specs/[###-feature]/
+├── plan.md              # This file (/speckit.plan command output)
+├── research.md          # Phase 0 output (/speckit.plan command)
+├── data-model.md        # Phase 1 output (/speckit.plan command)
+├── quickstart.md        # Phase 1 output (/speckit.plan command)
+├── contracts/           # Phase 1 output (/speckit.plan command)
+└── tasks.md             # Phase 2 output (/speckit.tasks command - NOT created by /speckit.plan)
 ```
 
 ### Source Code (repository root)
+<!--
+  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
+  for this feature. Delete unused options and expand the chosen structure with
+  real paths (e.g., apps/admin, packages/something). The delivered plan must
+  not include Option labels.
+-->
 
 ```text
-app/
-├── modules/
-│   └── auth/
-│       ├── schemas/
-│       │   └── auth_schemas.py   # Add ChangePasswordInput, ForgotPasswordInput, UpdateProfileInput
-│       └── services/
-│           └── auth_service.py   # Add change_password, forgot_password, update_profile methods
-├── api/
-│   ├── schemas/
-│   │   └── auth.py               # Add HTTP request DTOs (proxy to module DTOs or extend)
-│   └── routers/
-│       └── auth_router.py        # Add 3 new endpoint functions
+# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
+src/
+├── models/
+├── services/
+├── cli/
+└── lib/
+
 tests/
-└── test_auth.py                  # Add test classes for all 3 endpoints + error paths
+├── contract/
+├── integration/
+└── unit/
+
+# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
+backend/
+├── src/
+│   ├── models/
+│   ├── services/
+│   └── api/
+└── tests/
+
+frontend/
+├── src/
+│   ├── components/
+│   ├── pages/
+│   └── services/
+└── tests/
+
+# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
+api/
+└── [same as backend above]
+
+ios/ or android/
+└── [platform-specific structure: feature modules, UI flows, platform tests]
 ```
 
-**Structure Decision**: Single project — extend existing auth module files. No new directories.
+**Structure Decision**: [Document the selected structure and reference the real
+directories captured above]
 
 ## Complexity Tracking
 
-> No constitution violations in this plan. All changes follow existing patterns. N/A.
+> **Fill ONLY if Constitution Check has violations that must be justified**
+
+| Violation | Why Needed | Simpler Alternative Rejected Because |
+|-----------|------------|-------------------------------------|
+| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
+| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |

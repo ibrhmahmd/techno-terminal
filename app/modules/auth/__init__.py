@@ -5,15 +5,23 @@ Instantiates AuthService and re-exports all operations and types at the
 top level so existing imports continue to work without change.
 """
 from app.modules.auth.services.auth_service import AuthService
+from app.modules.auth.services.audit_service import AuditService
 from app.modules.auth.models.auth_models import User, UserBase
 from app.modules.auth.schemas.auth_schemas import (
+    AuditLogEntryDTO,
     ChangePasswordInput,
     ForgotPasswordInput,
+    InviteResultDTO,
+    RegisterUserInput,
     UpdateProfileInput,
+    UpdateUserInput,
+    UserAdminDTO,
     UserCreate,
     UserPublic,
+    UserSessionDTO,
 )
 from app.modules.auth.constants import UserRole, ALL_ROLE_VALUES, is_valid_role
+from app.modules.auth.models.audit_log import AuditLog, AuditLogEventType
 
 # ── Singleton service instance ────────────────────────────────────────────────
 _auth_service = AuthService()
@@ -28,14 +36,23 @@ force_reset_password      = _auth_service.force_reset_password
 __all__ = [
     # Service
     "_auth_service",
+    "AuditService",
     # Models
     "User",
     "UserBase",
     "UserCreate",
     "UserPublic",
+    "AuditLog",
+    "AuditLogEventType",
+    "AuditLogEntryDTO",
     "ChangePasswordInput",
     "ForgotPasswordInput",
+    "InviteResultDTO",
+    "RegisterUserInput",
     "UpdateProfileInput",
+    "UpdateUserInput",
+    "UserAdminDTO",
+    "UserSessionDTO",
     # Constants
     "UserRole",
     "ALL_ROLE_VALUES",

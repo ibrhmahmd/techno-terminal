@@ -20,7 +20,9 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.api.schemas.common import ApiResponse
 from app.modules.auth import AuthService, User, UserPublic
-from app.api.dependencies import get_current_user, require_admin, get_auth_service
+from app.modules.auth.models.audit_log import AuditLogEventType
+from app.modules.auth.services.audit_service import AuditService
+from app.api.dependencies import get_current_user, require_admin, get_auth_service, get_audit_service
 from app.api.schemas.auth import (
     LoginRequest,
     TokenResponse,
@@ -30,6 +32,8 @@ from app.api.schemas.auth import (
     ChangePasswordRequest,
     ForgotPasswordRequest,
     UpdateProfileRequest,
+    ChangeEmailRequest,
+    RegisterUserRequest,
 )
 
 from app.core.supabase_clients import get_supabase_anon
@@ -57,18 +61,30 @@ def login(
         )
         if not res.session:
             raise HTTPException(status_code=401, detail="Invalid credentials")
-    except Exception as e:
+    except Exception:
+        AuditService().log_event(
+            event_type=AuditLogEventType.LOGIN_FAILURE,
+            details={"email": body.email},
+        )
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     # verify against local DB
     user = auth_svc.get_user_by_supabase_uid(res.user.id)
     if not user:
+        AuditService().log_event(
+            event_type=AuditLogEventType.LOGIN_FAILURE,
+            details={"supabase_uid": res.user.id, "reason": "no local identity"},
+        )
         raise HTTPException(
             status_code=401, detail="User authenticated but no local identity found."
         )
 
     # stamp last login
     auth_svc.update_last_login(user.id)
+    AuditService().log_event(
+        event_type=AuditLogEventType.LOGIN_SUCCESS,
+        user_id=user.id,
+    )
 
     return ApiResponse(
         data=TokenResponse(
@@ -229,7 +245,100 @@ def update_profile(
 
     dto = UpdateProfileInput(username=body.username)
     updated = auth_svc.update_profile(user=current_user, dto=dto)
+    if body.email:
+        auth_svc.change_email(user=current_user, new_email=body.email)
     return ApiResponse(
         data=UserPublic.model_validate(updated, from_attributes=True),
         message="Profile updated.",
+    )
+
+
+@router.get(
+    "/me/sessions",
+    response_model=ApiResponse[list[dict]],
+    summary="List active sessions",
+)
+def list_sessions(
+    current_user: User = Depends(get_current_user),
+    auth_svc: AuthService = Depends(get_auth_service),
+):
+    sessions = auth_svc.list_sessions(current_user)
+    return ApiResponse(data=sessions)
+
+
+@router.get(
+    "/me/activity",
+    response_model=ApiResponse[list],
+    summary="List recent account activity",
+)
+def list_my_activity(
+    skip: int = 0,
+    limit: int = 50,
+    current_user: User = Depends(get_current_user),
+    audit_svc = Depends(get_audit_service),
+):
+    logs, total = audit_svc.query_logs(
+        user_id=current_user.id,
+        skip=skip,
+        limit=limit,
+    )
+    return {"success": True, "data": [l.model_dump() for l in logs], "total": total, "skip": skip, "limit": limit}
+
+
+# logout all sessions
+@router.post(
+    "/me/sessions/logout-all",
+    response_model=ApiResponse[None],
+    summary="Revoke all sessions",
+)
+def logout_all_sessions(
+    current_user: User = Depends(get_current_user),
+    auth_svc: AuthService = Depends(get_auth_service),
+):
+    auth_svc.logout_all_sessions(current_user)
+    return ApiResponse(data=None, message="All sessions revoked.")
+
+
+# MFA status stub
+@router.get(
+    "/me/mfa/status",
+    response_model=ApiResponse[dict],
+    summary="Get MFA enrollment status",
+)
+def mfa_status(
+    current_user: User = Depends(get_current_user),
+):
+    return ApiResponse(data={"enrolled": False})
+
+
+# MFA enroll stub
+@router.post(
+    "/me/mfa/enroll",
+    response_model=ApiResponse[None],
+    summary="Enroll in MFA (stub)",
+)
+def mfa_enroll(
+    current_user: User = Depends(get_current_user),
+):
+    return ApiResponse(data=None, message="MFA enrollment is coming soon.")
+
+
+# register with invite token
+@router.post(
+    "/register",
+    response_model=ApiResponse[UserPublic],
+    summary="Register with invite token",
+)
+def register(
+    body: RegisterUserRequest,
+    auth_svc: AuthService = Depends(get_auth_service),
+):
+    user = auth_svc.register_with_invite(
+        token=body.token,
+        username=body.username,
+        password=body.password,
+    )
+    return ApiResponse(
+        data=UserPublic.model_validate(user, from_attributes=True),
+        message="Registration complete.",
     )
