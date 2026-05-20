@@ -62,7 +62,8 @@ def list_teams(
     if include_members:
         data = svc.get_teams_with_members_for_user(competition_id, current_user, category, subcategory)
     else:
-        data = svc.list_teams_for_user(competition_id, current_user, category, subcategory)
+        teams = svc.list_teams_for_user(competition_id, current_user, category, subcategory)
+        data = [TeamWithMembersDTO(team=t, members=[]) for t in teams]
 
     return ApiResponse(data=data)
 

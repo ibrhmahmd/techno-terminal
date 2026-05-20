@@ -29,3 +29,13 @@ class CreateUserRequest(BaseModel):
 
 class ResetPasswordRequest(BaseModel):
     new_password: str = Field(..., min_length=MIN_PASSWORD_LENGTH)
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(..., min_length=MIN_PASSWORD_LENGTH)
+
+class ForgotPasswordRequest(BaseModel):
+    email: str = Field(..., min_length=1)
+
+class UpdateProfileRequest(BaseModel):
+    username: str | None = None

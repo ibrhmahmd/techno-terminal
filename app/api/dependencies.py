@@ -118,7 +118,7 @@ require_admin = _require_roles(
 require_any = get_current_user
 
 
-from app.modules.auth.services.auth_service import AuthService
+from app.modules.auth import AuthService
 
 # ── CRM Service Factories ────────────────────────────────────
 from app.modules.crm.repositories.unit_of_work import StudentUnitOfWork
