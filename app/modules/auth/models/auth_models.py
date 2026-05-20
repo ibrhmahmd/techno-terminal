@@ -4,7 +4,7 @@ from pydantic import field_validator
 from sqlmodel import SQLModel, Field
 
 from app.modules.hr.models import Employee
-from app.modules.auth.constants import ALL_ROLE_VALUES
+from app.modules.auth.constants import ALL_ROLE_VALUES, UserRole
 
 class UserBase(SQLModel):
     username: str = Field(unique=True)
@@ -31,4 +31,4 @@ class User(UserBase, table=True):
 
     @property
     def is_admin(self) -> bool:
-        return self.role in ("admin", "system_admin")
+        return self.role in (UserRole.ADMIN.value, UserRole.SYSTEM_ADMIN.value)

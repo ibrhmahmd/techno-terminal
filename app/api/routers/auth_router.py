@@ -13,11 +13,13 @@ All tokens are issued by Supabase. Use "Authorize" in Swagger UI with:
     Bearer <your_supabase_access_token>
 """
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.api.schemas.common import ApiResponse
-from app.modules.auth import User, UserPublic
+from app.modules.auth import AuthService, User, UserPublic
 from app.api.dependencies import get_current_user, require_admin, get_auth_service
 from app.api.schemas.auth import (
     LoginRequest,
@@ -25,10 +27,14 @@ from app.api.schemas.auth import (
     RefreshRequest,
     CreateUserRequest,
     ResetPasswordRequest,
+    ChangePasswordRequest,
+    ForgotPasswordRequest,
+    UpdateProfileRequest,
 )
 
 from app.core.supabase_clients import get_supabase_anon
-from app.modules.auth.services.auth_service import AuthService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Authentication"])
 http_bearer = HTTPBearer(auto_error=False)
@@ -53,10 +59,6 @@ def login(
             raise HTTPException(status_code=401, detail="Invalid credentials")
     except Exception as e:
         raise HTTPException(status_code=401, detail="Invalid credentials")
-
-        # Add to auth_router.py login endpoint
-    print(f"Login attempt: email={body.email}")
-    # print(f"Supabase URL: {settings.SUPABASE_URL}")
 
     # verify against local DB
     user = auth_svc.get_user_by_supabase_uid(res.user.id)
@@ -122,8 +124,8 @@ def logout(
     if credentials:
         try:
             get_supabase_anon().auth.sign_out()
-        except:
-            pass
+        except Exception as e:
+            logger.warning("Supabase logout failed: %s", e)
     return ApiResponse(data=None, message="Logged out successfully.")
 
 
@@ -174,3 +176,60 @@ def reset_password(
 ):
     auth_svc.force_reset_password(user_id=user_id, new_password=body.new_password)
     return ApiResponse(data=None, message="Password reset successfully.")
+
+
+# change own password
+@router.post(
+    "/change-password",
+    response_model=ApiResponse[None],
+    summary="Change own password",
+)
+def change_password(
+    body: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    auth_svc: AuthService = Depends(get_auth_service),
+):
+    auth_svc.change_password(
+        user=current_user,
+        current_password=body.current_password,
+        new_password=body.new_password,
+    )
+    return ApiResponse(data=None, message="Password changed successfully.")
+
+
+# forgot password
+@router.post(
+    "/forgot-password",
+    response_model=ApiResponse[None],
+    summary="Request password reset email",
+)
+def forgot_password(
+    body: ForgotPasswordRequest,
+    auth_svc: AuthService = Depends(get_auth_service),
+):
+    auth_svc.forgot_password(email=body.email)
+    return ApiResponse(
+        data=None,
+        message="If the email exists, a password reset link has been sent.",
+    )
+
+
+# update own profile
+@router.patch(
+    "/me",
+    response_model=ApiResponse[UserPublic],
+    summary="Update own profile",
+)
+def update_profile(
+    body: UpdateProfileRequest,
+    current_user: User = Depends(get_current_user),
+    auth_svc: AuthService = Depends(get_auth_service),
+):
+    from app.modules.auth.schemas.auth_schemas import UpdateProfileInput
+
+    dto = UpdateProfileInput(username=body.username)
+    updated = auth_svc.update_profile(user=current_user, dto=dto)
+    return ApiResponse(
+        data=UserPublic.model_validate(updated, from_attributes=True),
+        message="Profile updated.",
+    )

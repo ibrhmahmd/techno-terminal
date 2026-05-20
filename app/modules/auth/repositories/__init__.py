@@ -4,7 +4,6 @@ from .auth_repository import (
     get_users_by_employee_id,
     create_user,
     update_last_login,
-    update_user,
     get_user_by_id,
 )
 
@@ -14,6 +13,5 @@ __all__ = [
     "get_users_by_employee_id",
     "create_user",
     "update_last_login",
-    "update_user",
     "get_user_by_id",
 ]
