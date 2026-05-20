@@ -106,3 +106,38 @@ with `params={"notification_type": notification_type}`.
 
 **Decision**: Delete the commented-out PARENT_CODE block (`report_notifications.py:429-441`).
 **Rationale**: Constitution §VI — zero tolerance for commented-out code.
+
+## 10. Per-Session Attendance Table
+
+**Decision**: Add `session_details: list[SessionDetailItem]` to `DailyReportAggregateDTO`, populated via a new query in `ReportsRepository._fetch_session_details()`.
+**Rationale**: FR-012 requires per-session breakdown with instructor name, time, counts, and student name lists. The existing aggregate counts are insufficient for actionable insight per session.
+**Alternatives considered**: Compute from existing attendance data in service (mixes concerns, violates constitution), client-side grouping (requires fetching all attendance records — excessive data transfer).
+
+**Implementation**:
+- New DTO: `SessionDetailItem` with instructor_name, session_time, present_count, absent_count, cancelled_count, student_names_present, student_names_absent
+- New private method `_fetch_session_details()` in `ReportsRepository` that queries each completed session for today with its attendance records
+- Service renders as HTML table, PDF renders as ReportLab table
+- Both email and PDF use the same data structure
+
+## 11. Payment Grouping by Type
+
+**Decision**: Add `payments_by_type: list[PaymentTypeGroup]` to `DailyReportAggregateDTO`, populated by grouping existing payment data by `payment_type` in the repository.
+**Rationale**: FR-013 requires sub-tables per payment type with subtotals. The current flat list sorted by amount doesn't show type-level aggregates.
+**Alternatives considered**: Group in the SQL query with `GROUP BY payment_type` (loses per-payment rows), group in the template (too much logic in template).
+
+**Implementation**:
+- New DTO: `PaymentTypeGroup` with payment_type, subtotal, count, items (list of PaymentDetailItem)
+- Group payments in `ReportsRepository._fetch_payments()` using `itertools.groupby` on the already-fetched payments
+- Build separate HTML sub-tables per type in service
+- Each sub-table has header with type name + subtotal, then student/group/amount rows
+
+## 12. Instructor Summary Table
+
+**Decision**: Add `instructor_summary: list[InstructorSummaryItem]` to `DailyReportAggregateDTO`, populated from a new query.
+**Rationale**: FR-014 requires a dedicated instructor summary (name + session count). The existing `instructors_list` is just a flat name list.
+**Alternatives considered**: Compute from the already-fetched session_details (duplicates session-iteration logic), extend `instructors_list` to tuples (breaking change to existing template variable).
+
+**Implementation**:
+- New DTO: `InstructorSummaryItem` with instructor_name, session_count
+- New query counting sessions per instructor for today
+- Render as a separate table in email and PDF

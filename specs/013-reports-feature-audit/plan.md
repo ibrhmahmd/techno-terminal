@@ -1,21 +1,21 @@
-# Implementation Plan: Reports Feature — Daily Report Fixes
+# Implementation Plan: Reports Feature — Bug Fixes & Rich Tables
 
-**Branch**: `013-reports-feature-audit` | **Date**: 2026-05-19 | **Spec**: `specs/013-reports-feature-audit/spec.md`
+**Branch**: `013-reports-feature-audit` | **Date**: 2026-05-20 | **Spec**: `specs/013-reports-feature-audit/spec.md`
 **Input**: Feature specification from `/specs/013-reports-feature-audit/spec.md`
 
 ## Summary
 
-Fix the daily report to produce accurate, non-empty business data. Five bugs found: attendance query filters for non-existent `late`/`excused` statuses, `paid_at`/`enrolled_at` NULL causes zero revenue/enrollment counts, 6 of 11 template variables computed but never rendered in email body, raw SQL in service layer (constitution violation), and no typed DTOs (constitution violation). Scope is daily-report-only; weekly/monthly/scheduler deferred.
+Two-phased scope: (1) Fix 5 daily report bugs — attendance status filters, COALESCE NULL fallbacks, raw SQL in service layer, untyped dict returns, SQL injection in recipient resolution, dead code. (2) Add 3 rich detail tables to daily report — per-session attendance breakdown with student names, payments grouped by type with subtotals, instructor summary. All tables appear in both email body and PDF attachment.
 
 ## Technical Context
 
 **Language/Version**: Python 3.10+
 **Primary Dependencies**: FastAPI, SQLModel, PostgreSQL, SQLAlchemy, ReportLab, smtplib
-**Storage**: PostgreSQL (existing `notification_templates`, `notification_logs`, `notification_additional_recipients` tables)
-**Testing**: pytest (no existing tests for report notifications — test coverage to be added)
-**Target Platform**: Linux server (Leapcell deployment via uvicorn)
+**Storage**: PostgreSQL (existing `notification_templates`, `notification_logs`, `notification_additional_recipients`, `sessions`, `attendance`, `payments`, `receipts` tables)
+**Testing**: pytest (no existing tests for report notifications)
+**Target Platform**: Linux server (Leapcell via uvicorn)
 **Project Type**: web-service (FastAPI backend, 11-module monolith)
-**Performance Goals**: N/A — reports are async background tasks (non-blocking)
+**Performance Goals**: Reports are async background tasks — no latency targets
 **Constraints**: statement_timeout=30000, pool_size=10+5 overflow, pool_recycle=240s
 **Scale/Scope**: Single FastAPI app; daily report runs once/day for <10 recipients via email + PDF
 
@@ -25,18 +25,13 @@ Fix the daily report to produce accurate, non-empty business data. Five bugs fou
 
 | Gate | Status | Rationale |
 |------|--------|-----------|
-| **I. Layer Separation** | ❌ **VIOLATED** | `report_notifications.py` executes raw SQL via `session.exec(text(...))` — repositories must own all queries |
-| **II. Module Organization** | ✅ PASS | Reports live in existing `notifications.services` — no new module needed |
-| **III. Typed Contracts** | ❌ **VIOLATED** | `_fetch_daily_aggregates()` returns bare `dict` instead of typed DTO |
+| **I. Layer Separation** | ✅ PASS | New queries in ReportsRepository, service delegates, router has no business logic |
+| **II. Module Organization** | ✅ PASS | Flat horizontal layout — new DTOs under `notifications/schemas/`, new methods in existing `ReportsRepository` |
+| **III. Typed Contracts** | ✅ PASS | 3 new DTOs: `SessionDetailItem`, `PaymentTypeGroup`, `InstructorSummaryItem` — no bare dicts |
 | **IV. Response Envelope** | ✅ PASS | Not applicable — reports are background dispatch, not API responses |
-| **V. Auth-Guarded Endpoints** | ✅ PASS | New HTTP trigger endpoints will use existing `require_admin` guard |
-| **VI. Dead Code Discipline** | ❌ **VIOLATED** | Commented-out PARENT_CODE block preserved in `report_notifications.py:429-441` |
+| **V. Auth-Guarded Endpoints** | ✅ PASS | `POST /reports/daily` uses existing `require_admin` guard |
+| **VI. Dead Code Discipline** | ✅ PASS | Already resolved in bug-fix phase — PARENT_CODE block deleted |
 | **VII. Cross-Slice Service Import** | ✅ PASS | No services importing other services within module |
-
-**Justification for violations** (to be resolved by this plan):
-- **Layer Separation (I)**: The inline SQL will be extracted into a new `ReportsRepository` under `app/modules/notifications/repositories/`. The service will call typed repository methods.
-- **Typed Contracts (III)**: A `DailyReportAggregateDTO` Pydantic model will replace the `dict` return.
-- **Dead Code (VI)**: The commented-out PARENT_CODE block will be deleted.
 
 ## Project Structure
 
@@ -44,13 +39,13 @@ Fix the daily report to produce accurate, non-empty business data. Five bugs fou
 
 ```text
 specs/013-reports-feature-audit/
-├── spec.md              # Feature specification (this directory)
+├── spec.md              # Feature specification (clarified)
 ├── plan.md              # This file
-├── research.md          # Phase 0 - implementation decisions
-├── data-model.md        # Phase 1 - DTOs and entities
-├── quickstart.md        # Phase 1 - agent bootstrap
-├── contracts/           # Phase 1 - interface contracts
-└── tasks.md             # Phase 2 - task breakdown
+├── research.md          # Phase 0 — implementation decisions
+├── data-model.md        # Phase 1 — DTOs and entities
+├── quickstart.md        # Phase 1 — agent bootstrap
+├── contracts/           # Phase 1 — interface contracts
+└── tasks.md             # Phase 2 — task breakdown
 ```
 
 ### Source Code (repository root)
@@ -61,35 +56,23 @@ app/modules/notifications/
 │   ├── __init__.py
 │   ├── notification_repository.py      # Existing
 │   ├── admin_settings_repository.py    # Existing
-│   └── reports_repository.py           # NEW — report aggregate queries
+│   └── reports_repository.py           # EXISTS — add 3 new query methods
 ├── schemas/
 │   ├── __init__.py
-│   ├── notification_dto.py             # Existing
-│   ├── template_dto.py                 # Existing
-│   ├── admin_settings_dto.py           # Existing
-│   ├── send_request.py                 # Existing
-│   ├── fallback_dto.py                 # Existing
-│   └── report_dto.py                   # NEW — DailyReportAggregateDTO
+│   ├── report_dto.py                   # EXISTS — add 3 new DTOs
+│   └── ...
 ├── services/
-│   ├── __init__.py
-│   ├── base_notification_service.py    # Existing (modify _resolve_notification_recipients SQL safety)
-│   ├── notification_service.py         # Existing (add HTTP trigger delegates)
-│   ├── enrollment_notifications.py     # Existing
-│   ├── payment_notifications.py        # Existing
-│   ├── competition_notifications.py    # Existing
-│   ├── report_notifications.py         # EXISTS — MODIFY (fix 5 bugs)
-│   └── report_scheduler.py             # Existing (no changes this sprint)
+│   ├── base_notification_service.py    # EXISTS — fixed SQL injection
+│   ├── report_notifications.py         # EXISTS — add table rendering in service
+│   ├── notification_service.py         # Existing
+│   └── report_scheduler.py             # Existing (no changes)
 ├── pdf/
-│   └── daily_report_pdf.py             # Existing (no changes — already uses dict, will receive DTO)
-└── dispatchers/
-    ├── __init__.py
-    ├── i_dispatcher.py
-    ├── email_dispatcher.py
-    └── whatsapp_dispatcher.py
+│   └── daily_report_pdf.py             # EXISTS — add 3 new PDF sections
+└── ...
 ```
 
-**Structure Decision**: Notifications module uses flat horizontal layout (Pattern A) — `reports_repository.py` as a new file under existing `repositories/`, `report_dto.py` under `schemas/`. No new sub-slices needed.
+**Structure Decision**: Notifications module uses flat horizontal layout (Pattern A). No new sub-slices needed. The three new tables are additions to existing `DailyReportAggregateDTO` and `ReportsRepository` — same patterns as the bug-fix phase.
 
 ## Complexity Tracking
 
-No constitution violations remain after this plan — all three violations are resolved by the planned changes.
+No constitution violations. All gates pass.

@@ -20,6 +20,9 @@
 | `payment_details` | `list[PaymentDetailItem]` | Per-payment: student, group, amount, type |
 | `instructors_list` | `list[str]` | `DISTINCT instructors from sessions on target_date` |
 | `unpaid_count` | `int` | `COUNT(enrollments) WHERE balance > 0 (via v_enrollment_balance)` |
+| `session_details` | `list[SessionDetailItem]` | **NEW** — per-session attendance with instructor, time, counts, student names |
+| `payments_by_type` | `list[PaymentTypeGroup]` | **NEW** — payments grouped by type with subtotals |
+| `instructor_summary` | `list[InstructorSummaryItem]` | **NEW** — instructor name + session count |
 
 ### `PaymentDetailItem`
 **File**: `app/modules/notifications/schemas/report_dto.py`
@@ -30,6 +33,37 @@
 | `group_name` | `str` | `groups.name` |
 | `amount` | `float` | `payments.amount` |
 | `payment_type` | `str` | `payments.payment_type` |
+
+### `SessionDetailItem` (NEW)
+**File**: `app/modules/notifications/schemas/report_dto.py`
+
+| Field | Type | Source |
+|-------|------|--------|
+| `instructor_name` | `str` | `employees.full_name` |
+| `session_time` | `str` | `sessions.start_time - end_time` |
+| `present_count` | `int` | `COUNT(attendance WHERE status = 'present' AND session_id = this session)` |
+| `absent_count` | `int` | `COUNT(attendance WHERE status = 'absent' AND session_id = this session)` |
+| `cancelled_count` | `int` | `COUNT(attendance WHERE status = 'cancelled' AND session_id = this session)` |
+| `student_names_present` | `str` | Comma-separated list of student full_names who were present |
+| `student_names_absent` | `str` | Comma-separated list of student full_names who were absent |
+
+### `PaymentTypeGroup` (NEW)
+**File**: `app/modules/notifications/schemas/report_dto.py`
+
+| Field | Type | Source |
+|-------|------|--------|
+| `payment_type` | `str` | `payments.payment_type` |
+| `subtotal` | `float` | `SUM(payments.amount) for this type` |
+| `count` | `int` | `COUNT(payments) for this type` |
+| `items` | `list[PaymentDetailItem]` | Individual payment rows in this group |
+
+### `InstructorSummaryItem` (NEW)
+**File**: `app/modules/notifications/schemas/report_dto.py`
+
+| Field | Type | Source |
+|-------|------|--------|
+| `instructor_name` | `str` | `employees.full_name` |
+| `session_count` | `int` | `COUNT(sessions) WHERE actual_instructor_id = this instructor AND session_date = target_date` |
 
 ## Existing Entities (no changes)
 

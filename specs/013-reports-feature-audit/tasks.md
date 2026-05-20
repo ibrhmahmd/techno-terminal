@@ -1,75 +1,76 @@
 ---
 
-description: "Task list for daily report bug fixes — Reports Feature Audit"
+description: "Task list for Phase 2: rich detail tables — Reports Feature Audit"
 ---
 
-# Tasks: Reports Feature — Daily Report Fixes
+# Tasks: Reports Feature — Rich Detail Tables (Phase 2)
 
 **Input**: Design documents from `specs/013-reports-feature-audit/`
-**Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
+**Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/, quickstart.md
 
-**Scope**: Daily report only. Weekly/monthly/scheduler issues are documented but **deferred** per plan.md.
+**Scope**: Phase 2 only — add per-session attendance table, payment grouping by type, and instructor summary table to daily report. Phase 1 (bug fixes) is already complete.
 
-**User Stories (scoped to daily)**:
-- **US1**: Daily report has accurate attendance metrics (P1)
-- **US5**: Template variables match what the email body renders (P2) — daily report template only
-- **US7**: Manual HTTP trigger exists for on-demand daily reports (P2)
-
----
-
-## Phase 1: Foundational — New Files
-
-**Purpose**: Create the typed DTO and repository layer before modifying the service. Migration SQL is independent.
-
-**⚠️ CRITICAL**: T001–T003 must be complete before US1 service modifications begin.
-
-- [ ] T001 [P] Create `DailyReportAggregateDTO` + `PaymentDetailItem` in `app/modules/notifications/schemas/report_dto.py`
-- [ ] T002 [P] Create `ReportsRepository.get_daily_aggregates()` in `app/modules/notifications/repositories/reports_repository.py` — encapsulate all 7 aggregate queries (revenue via COALESCE, sessions, attendance with present/absent/cancelled only, enrollments via COALESCE, payments, instructors, unpaid count)
-- [ ] T003 [SKIP] Migration already exists as `052_update_daily_report_template_body.sql` — no new migration needed
-
-**Checkpoint**: Foundation ready — US1 service modifications can now begin.
+**User Stories**:
+- **US1**: Daily report has accurate attendance metrics with per-session breakdown (P1) — includes instructor summary table
+- **US8**: Payment breakdown grouped by type with subtotals (P1)
 
 ---
 
-## Phase 2: User Story 1 — Accurate Daily Report Metrics (P1) 🎯 MVP
+## Phase 1: Foundational — DTO Update
 
-**Goal**: Daily report attendance counts use actual domain values (`present`, `absent`, `cancelled` — no `late`/`excused`), revenue/enrollment queries apply COALESCE fallbacks for NULL timestamps, all queries delegate to `ReportsRepository`, and return type is `DailyReportAggregateDTO`.
+**Purpose**: Add 3 new DTOs to `report_dto.py` before repository and service changes.
 
-**Independent Test**: Run `pytest tests/ -v -k daily` after implementation — verify report processes without errors and produces non-zero revenue/enrollment values.
+**⚠️ CRITICAL**: T001 must be complete before all other tasks.
+
+- [ ] T001 [P] Add `SessionDetailItem`, `PaymentTypeGroup`, and `InstructorSummaryItem` DTOs + corresponding fields to `DailyReportAggregateDTO` in `app/modules/notifications/schemas/report_dto.py`
+
+**Checkpoint**: Foundation ready — US1 and US8 can now begin.
+
+---
+
+## Phase 2: User Story 1 — Per-Session Attendance Table (P1)
+
+**Goal**: Daily report includes a per-session attendance table with instructor name, time slot, present/absent/cancelled counts, and comma-separated student names. Also includes a separate instructor summary table. Both appear in email body and PDF.
+
+**Independent Test**: After implementation, inspect daily report email body or PDF — should show one row per completed session with attendance counts and student name lists.
 
 ### Implementation for User Story 1
 
-- [ ] T004 [US1] Fix attendance query in `_fetch_daily_aggregates()`: remove `late`/`excused` filters, count only `present`, `absent`, `cancelled` in `app/modules/notifications/services/report_notifications.py`
-- [ ] T005 [US1] Fix COALESCE fallbacks in `app/modules/notifications/services/report_notifications.py`: apply `COALESCE(paid_at, created_at)` for payment queries and `COALESCE(enrolled_at, created_at)` for enrollment count queries
-- [ ] T006 [US1] Delegate all aggregate queries from `_fetch_daily_aggregates()` in `app/modules/notifications/services/report_notifications.py` to call `ReportsRepository.get_daily_aggregates()` instead of inline raw SQL
-- [ ] T007 [US1] Replace bare `dict` return type in send_daily_report() call chain with `DailyReportAggregateDTO` in `app/modules/notifications/services/report_notifications.py`
-- [ ] T008 [US1] Delete commented-out PARENT_CODE dead code block at `report_notifications.py:429-441`
+- [ ] T002 [P] [US1] Add `_fetch_session_details(target_date)` to `ReportsRepository` in `app/modules/notifications/repositories/reports_repository.py` — query each completed session with its attendance, join to students for names, return `list[SessionDetailItem]`
+- [ ] T003 [P] [US1] Add `_fetch_instructor_summary(target_date)` to `ReportsRepository` in `app/modules/notifications/repositories/reports_repository.py` — query session count per instructor for today, return `list[InstructorSummaryItem]`
+- [ ] T004 [US1] Wire `session_details` and `instructor_summary` into `get_daily_aggregates()` in `app/modules/notifications/repositories/reports_repository.py` — populate the new DTO fields
+- [ ] T005 [US1] Build per-session attendance HTML table in `send_daily_report()` in `app/modules/notifications/services/report_notifications.py` — render session time, instructor, counts, student names
+- [ ] T006 [US1] Build instructor summary HTML table in `send_daily_report()` in `app/modules/notifications/services/report_notifications.py` — render instructor name + session count
+- [ ] T007 [US1] Add per-session attendance table section to PDF in `app/modules/notifications/pdf/daily_report_pdf.py` — ReportLab table with same columns
+- [ ] T008 [US1] Add instructor summary table section to PDF in `app/modules/notifications/pdf/daily_report_pdf.py` — ReportLab table with instructor name + session count
 
-**Checkpoint**: US1 complete — daily report now produces correct attendance counts, non-zero revenue/enrollment values, and uses typed DTOs.
-
----
-
-## Phase 3: User Story 7 — Manual HTTP Trigger (P2)
-
-**Goal**: Admin can trigger daily report on-demand via REST API.
-
-**Independent Test**: Send `POST /api/v1/notifications/reports/daily` with admin JWT — expect `202` or `200` with success envelope.
-
-### Implementation for User Story 7
-
-- [ ] T009 [P] [US7] Add `POST /api/v1/notifications/reports/daily` endpoint in `app/api/routers/notifications/notifications_router.py` using `require_admin` guard + `BackgroundTasks.add_task(svc.report.send_daily_report)`
-
-**Checkpoint**: US7 complete — daily report can be triggered on-demand.
+**Checkpoint**: US1 complete — per-session attendance and instructor summary tables render in both email and PDF.
 
 ---
 
-## Phase 4: Cross-Cutting & Polish
+## Phase 3: User Story 8 — Payment Grouping by Type (P1)
 
-**Purpose**: Fixes not tied to a single user story — SQL injection prevention.
+**Goal**: Daily report payment section groups transactions by payment type (cash, card, transfer, etc.) with subtotals per type, in both email body and PDF.
 
-- [ ] T010 Fix f-string SQL interpolation in `_resolve_notification_recipients()` in `app/modules/notifications/services/base_notification_service.py` — replace `f"'...' = ANY(...)"` with parameterized `:notification_type = ANY(...)`
+**Independent Test**: After implementation, inspect daily report — payments should be organized into sub-tables per type, each with a subtotal EGP header and student/group/amount rows.
 
-**Checkpoint**: All daily report fixes complete.
+### Implementation for User Story 8
+
+- [ ] T009 [US8] Group payments by `payment_type` in `ReportsRepository._fetch_payments()` in `app/modules/notifications/repositories/reports_repository.py` — use the existing payment data, build `list[PaymentTypeGroup]` with subtotals
+- [ ] T010 [US8] Build payment type sub-tables with subtotals in `send_daily_report()` in `app/modules/notifications/services/report_notifications.py` — one sub-table per type, header row with type name + subtotal, then student/group/amount rows
+- [ ] T011 [US8] Add payments-by-type sub-tables section to PDF in `app/modules/notifications/pdf/daily_report_pdf.py` — ReportLab sub-tables per type with subtotals
+
+**Checkpoint**: US8 complete — payments grouped by type with subtotals in both email and PDF.
+
+---
+
+## Phase 4: Polish & Cross-Cutting
+
+**Purpose**: Update template variables to match the enriched report.
+
+- [ ] T012 Create migration SQL `db/migrations/056_update_daily_report_template.sql` — UPDATE `daily_report` template body to include `{{session_details}}`, `{{instructor_summary}}`, `{{payments_by_type}}` variables, update the `variables` array
+
+**Checkpoint**: All Phase 2 tasks complete.
 
 ---
 
@@ -77,47 +78,48 @@ description: "Task list for daily report bug fixes — Reports Feature Audit"
 
 ### Phase Dependencies
 
-- **Foundational (Phase 1)**: No dependencies — T001, T002 can run in parallel
-- **US1 (Phase 2)**: Depends on T001 (DTO exists) and T002 (Repository exists)
-- **US7 (Phase 3)**: Depends on US1 (Phase 2) completion — service must be fixed before triggering
-- **Polish (Phase 4)**: No dependencies on other phases — T010 fully independent
+- **Foundational (Phase 1)**: T001 (DTO update) — blocks all user stories
+- **US1 (Phase 2)**: Depends on T001 (DTO fields exist), T002–T003 can run in parallel
+- **US8 (Phase 3)**: Depends on T001 (DTO fields exist) — can run in parallel with US1 after T001
+- **Polish (Phase 4)**: T012 depends on all phases being complete (template must reference all variables)
 
 ### User Story Dependencies
 
-- **US1 (P1)**: Depends on T001, T002 — No dependencies on other stories
-- **US7 (P2)**: Depends on US1 completion
-- **Polish**: No dependencies
+- **US1 (P1)**: Depends on T001 — no dependency on US8
+- **US8 (P1)**: Depends on T001 — no dependency on US1
+- **Polish**: Depends on both stories complete
 
 ### Within Each Phase
 
-- New files before service modifications
-- Repository before delegation
-- Service fixes before endpoint creation
+- DTO before repository before service before PDF
+- Repository methods before wiring into `get_daily_aggregates()`
+- HTML table before PDF table (same data, different renderers)
 
 ### Parallel Opportunities
 
-- T001, T002 in Phase 1 can run in parallel (different files, no dependencies)
-- T004–T008 within US1 are sequential (same file)
-- T010 is fully independent — can run anytime
-- Phase 2 (US1) and Phase 4 (Polish) can run in parallel (different files, different concerns)
-- Phase 3 (US7) must wait for Phase 2 (US1) completion
+- T002 and T003 in Phase 2 can run in parallel (different repository methods)
+- T005 and T006 in Phase 2 can run in parallel (different HTML table builders in same file — sequential recommended)
+- US1 (Phase 2) and US8 (Phase 3) can run in parallel after T001
+- T007 and T008 can run in parallel (different PDF sections)
 
 ---
 
-## Parallel Example: Phase 1
+## Parallel Example: Phase 2
 
 ```bash
-# Launch both foundation tasks together:
-Task: "Create DTO in app/modules/notifications/schemas/report_dto.py"
-Task: "Create repository in app/modules/notifications/repositories/reports_repository.py"
+# Launch both repository query methods together:
+Task: "Add _fetch_session_details() to ReportsRepository"
+Task: "Add _fetch_instructor_summary() to ReportsRepository"
 ```
 
-## Parallel Example: Phase 2 + 4
+## Parallel Example: Phase 2 + Phase 3
 
 ```bash
-# US1 service fixes and Polish can run in parallel:
-Task: "Fix attendance, COALESCE, delegate to repo, use DTO, delete dead code"
-Task: "Fix SQL injection in base_notification_service.py"
+# US1 and US8 can run in parallel after T001:
+# Developer A:
+Task: "US1 — session details query + HTML + PDF"
+# Developer B:
+Task: "US8 — payment grouping + sub-tables + PDF"
 ```
 
 ---
@@ -126,32 +128,21 @@ Task: "Fix SQL injection in base_notification_service.py"
 
 ### MVP First (Phase 1 + Phase 2 Only)
 
-1. Complete Phase 1: Foundational (DTO, Repository)
-2. Complete Phase 2: US1 — accurate daily report (fix bugs, use typed DTO)
-3. **STOP and VALIDATE**: Run `pytest tests/ -v` — daily report processes with correct values
-4. Deploy/demo if ready — core bugs fixed
+1. Complete Phase 1: T001 (DTO update)
+2. Complete Phase 2: US1 — per-session attendance + instructor summary tables
+3. **STOP and VALIDATE**: Inspect email/PDF output
+4. Deploy/demo if ready
 
 ### Incremental Delivery
 
-1. Phase 1 (Foundation) → DTO, Repository ready
-2. Phase 2 (US1) → Core bug fixes applied → **MVP complete**
-3. Phase 3 (US7) → HTTP trigger available
-4. Phase 4 (Polish) → SQL injection fixed
+1. Phase 1 (DTO) → Types ready
+2. Phase 2 (US1) → Session + instructor tables → **MVP complete**
+3. Phase 3 (US8) → Payment grouping tables
+4. Phase 4 (Polish) → Template migration
 
 ### Parallel Strategy
 
 With multiple developers:
-- Developer A: Phase 1 tasks (all parallel)
-- Developer B: Phase 4 (independent T010)
-- After Phase 1: Developer A → Phase 2 (US1), Developer B → Phase 3 (US7)
-
----
-
-## Notes
-
-- [P] tasks = different files, no dependencies
-- [Story] label maps task to specific user story for traceability
-- Each user story should be independently completable and testable
-- Commit after each phase
-- Stop at any checkpoint to validate independently
-- Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence
+- Developer A: Phase 1 → Phase 2 (US1)
+- Developer B: Phase 3 (US8) — starts after Phase 1
+- Developer A or B: Phase 4 after both stories done

@@ -2,7 +2,7 @@
 
 **Feature Branch**: `013-reports-feature-audit`
 **Created**: 2026-05-19
-**Status**: Clarified (daily report scope)
+**Status**: Clarified (daily report scope + rich tables enhancement)
 **Input**: Full audit of daily/weekly/monthly report features — services logic, DB queries, template bodies, insights, PDF styling, scheduler timing, and business alignment.
 
 ## Clarifications
@@ -15,19 +15,27 @@
 - Q: Should the raw SQL queries inside `_fetch_daily_aggregates()` be refactored to use the analytics repository as the single source of truth? → A: Yes. Move all aggregate queries out of the service into the analytics `financial_repository.py` or a dedicated reports repository. The service should call typed repository methods, not execute raw SQL.
 - Q: Should `enrollments.enrolled_at` NULL values also get a COALESCE fallback (like `paid_at`)? → A: Yes. Use `COALESCE(enrolled_at, created_at)` for enrollment queries AND `COALESCE(paid_at, created_at)` for receipts. Consistent fallback across all date-based report queries.
 
+### Session 2026-05-20
+
+- Q: Should the new rich detail tables (session-attendance, payments by type, instructor table) be added to this sprint or deferred? → A: Add to this sprint. Expand current scope to include tables.
+- Q: Where should the new tables appear — email body, PDF, or both? → A: Both email and PDF.
+- Q: What granularity for the session-attendance table? → A: Full per-session table with instructor name, time, present count, absent count, and student names list.
+- Q: How should today's payments be grouped? → A: Sub-tables per payment type (cash, card, transfer, etc.), each with subtotal and student/group/amount rows.
+- Q: Should instructors get a separate table in addition to being embedded in the session table? → A: Yes — both embedded in session table rows AND a separate instructor summary table (instructor name, session count).
+
 ---
 
 ## Executive Summary
 
-The reports feature (`ReportNotificationService` + `ReportScheduler` + `daily_report_pdf.py`) is functionally working but has 15+ issues across 6 dimensions. The daily report is the most mature (PDF attachment, rich metrics, HTML payment table). Weekly and monthly reports are thin — 3 metrics each, no PDF, no actionable insights beyond raw numbers. The scheduler relies on in-memory state lost on restart. Several queries use attendance status values (`late`, `excused`) that don't exist in the domain model. Template variables are computed but never rendered in email bodies.
+The reports feature (`ReportNotificationService` + `ReportScheduler` + `daily_report_pdf.py`) is functionally working but has 15+ issues across 6 dimensions. The daily report has been extended beyond bug fixes to include rich detail tables: per-session attendance breakdown with student names, payments grouped by type with subtotals, and an instructor summary. These tables appear in both the email body and PDF attachment. Weekly and monthly reports remain deferred — they are thin (3 metrics each, no PDF, no actionable insights beyond raw numbers). The scheduler relies on in-memory state lost on restart. Several queries use attendance status values (`late`, `excused`) that don't exist in the domain model — now fixed.
 
 ---
 
 ## User Scenarios & Testing
 
-### User Story 1 — Daily report has accurate attendance metrics (P1)
+### User Story 1 — Daily report has accurate attendance metrics with per-session breakdown (P1)
 
-The attendance breakdown in the daily report shows absent, present (including late), and excused counts. The attendance rate is used in the PDF summary card.
+The daily report shows accurate attendance counts using only valid domain statuses (`present`, `absent`, `cancelled`). Beyond the aggregate numbers, the report includes a per-session attendance table with instructor name, time, present/absent/cancelled counts, and student names lists. A separate instructor summary table shows each instructor's session count.
 
 **Bug Found**: `_fetch_daily_aggregates()` queries for `Attendance.status IN ('present', 'late')` and `Attendance.status == 'excused'`, but the domain model defines `AttendanceStatus = Literal['present', 'absent', 'cancelled']`. The `late` and `excused` statuses **do not exist** in the database. The present+late count always equals present count, and excused is always 0.
 
@@ -35,6 +43,8 @@ The attendance breakdown in the daily report shows absent, present (including la
 1. **Given** an attendance record marked with status `present`, **When** `_fetch_daily_aggregates` runs, **Then** it counts as `present_count`.
 2. **Given** the domain only has `present`, `absent`, `cancelled` statuses, **When** the attendance query filters for `late` or `excused`, **Then** those counts are always zero (bug).
 3. **Fix**: Remove `late` and `excused` references from the query. Count only `present`, `absent`, `cancelled`. No DB migration needed.
+4. **Given** sessions were held today, **When** the daily report is generated, **Then** the email body and PDF include a per-session table with instructor name, time period, present/absent/cancelled counts, and comma-separated student names for present and absent students.
+5. **Given** instructors taught sessions today, **When** the daily report is generated, **Then** the email body and PDF include a separate instructor summary table with each instructor's name and session count.
 
 ### User Story 2 — Monthly report covers the preceding full month (P1)
 
@@ -88,6 +98,15 @@ The weekly report fires on Monday. It should cover the previous Monday–Sunday 
 2. **Given** an admin user, **When** calling `POST /api/v1/notifications/reports/weekly`, **Then** the weekly report is sent.
 3. **Given** an admin user, **When** calling `POST /api/v1/notifications/reports/monthly`, **Then** the monthly report is sent.
 
+### User Story 8 — Payment breakdown grouped by type with subtotals (P1)
+
+The daily report payment section groups transactions by payment type (cash, card, transfer, etc.) with subtotals per type, in both email body and PDF attachment.
+
+**Acceptance**:
+1. **Given** payments exist for today, **When** the daily report is generated, **Then** payments are displayed in sub-tables grouped by `payment_type`, each with a header showing the type name and subtotal EGP.
+2. **Given** a payment type group has rows, **When** the sub-table renders, **Then** each row shows student name, group name, and amount — consistent with the existing payment detail rows.
+3. **Given** no payments exist for today, **When** the daily report is generated, **Then** a single "No payments recorded today" message appears instead of empty sub-tables.
+
 ---
 
 ## Requirements
@@ -107,6 +126,9 @@ The weekly report fires on Monday. It should cover the previous Monday–Sunday 
 - **FR-009b**: Move all aggregate queries from inside `_fetch_daily_aggregates()` into the analytics `financial_repository.py` (for revenue-related metrics) or a dedicated `reports_repository.py` under `app/modules/notifications/repositories/`. The service must call typed repository methods — no raw SQL in the service layer.
 - **FR-010**: Weekly report must use `get_revenue_by_date()` from the analytics service for revenue, consistent with daily and monthly reports.
 - **FR-011**: Report email bodies must be updated to include rich metrics (payment details table, attendance rate, instructor list, payment methods breakdown) matching the PDF attachment's content.
+- **FR-012**: Daily report MUST include a per-session attendance table with columns: instructor name, session time, present count, absent count, cancelled count, and student names list (comma-separated). Appears in both email body and PDF.
+- **FR-013**: Daily report payment breakdown MUST use sub-tables per payment type (cash, card, transfer, etc.). Each sub-table shows the type header with subtotal EGP, followed by student/group/amount rows. Appears in both email body and PDF.
+- **FR-014**: Daily report MUST include a separate instructor summary table with columns: instructor name, number of sessions taught today. Appears in both email body and PDF.
 
 ### Non-Functional Requirements
 
@@ -131,6 +153,9 @@ The weekly report fires on Monday. It should cover the previous Monday–Sunday 
 3. What happens when the scheduler fires during a DB maintenance window? The `_dispatch` method catches exceptions at the log-update stage. The scheduler loop also has a top-level `try/except`. Acceptable.
 4. What happens if a template name is changed or deleted? The scheduler checks `if not template or not template.is_active` and skips. Acceptable.
 5. What happens on months with fewer than 31 days? Day-1 check `now.day == 1` handles this correctly — it fires on day 1 regardless of month length.
+6. What happens when a session has no attendance records? The per-session table shows 0 for all counts and empty student name lists — acceptable.
+7. What happens when an instructor taught multiple sessions? The separate instructor summary shows session_count > 1, and the session table shows one row per session with the same instructor name — acceptable duplication.
+8. What happens when a payment type appears only once? The sub-table shows one row with the full subtotal equal to that single payment amount — correct behavior.
 
 ---
 
@@ -236,3 +261,7 @@ create_app() lifespan
 - **SC-007: Scheduler does not double-send any report type after server restart within the same period.
 - **SC-008**: All `_fetch_*_aggregates()` methods return typed DTOs instead of `dict`.
 - **SC-009**: All f-string SQL interpolations in notification domain are migrated to parameterized queries.
+- **SC-010**: Daily report email body contains a per-session attendance table with instructor name, time, and student names lists for present/absent.
+- **SC-011**: Daily report PDF contains the same per-session attendance table with identical columns.
+- **SC-012**: Daily report payment section groups payments by type with subtotal per type, in both email and PDF.
+- **SC-013**: Daily report includes a separate instructor summary table (name + session count) in both email and PDF.

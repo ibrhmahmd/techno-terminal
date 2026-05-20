@@ -297,4 +297,6 @@ equivalents.
 
 <!-- SPECKIT START -->
 Active plan: `specs/013-reports-feature-audit/plan.md`
+
+Phase 1 (bug fixes) implementation complete. Phase 2 (rich tables) pending — 3 new DTOs, 3 new repository query methods, 3 new HTML table builders in service, 3 new PDF table sections, 1 migration update.
 <!-- SPECKIT END -->

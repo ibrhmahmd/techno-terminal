@@ -19,14 +19,26 @@
 | `app/api/routers/notifications/notifications_router.py` | Add `POST /reports/daily` endpoint |
 | `db/migrations/056_update_daily_report_template.sql` | **NEW** — update template body with rich HTML |
 
-## Bug Checklist
+## Phase 1 Checklist (Bug Fixes — DONE)
 
-- [ ] Attendance: remove `late`/`excused` filters, use `present`/`absent`/`cancelled`
-- [ ] Revenue: `COALESCE(paid_at, created_at)` in analytics query + inline payment query
-- [ ] Enrollments: `COALESCE(enrolled_at, created_at)` in enrollment count query
-- [ ] Repository: extract all 7 aggregate queries into `ReportsRepository`
-- [ ] DTO: replace `dict` return with `DailyReportAggregateDTO`
-- [ ] Dead code: delete commented-out PARENT_CODE block (lines 429-441)
-- [ ] SQL injection: fix f-string in `_resolve_notification_recipients`
-- [ ] Template: update daily_report body via migration to render rich HTML
-- [ ] Endpoint: add `POST /api/v1/notifications/reports/daily`
+- [x] Attendance: remove `late`/`excused` filters, use `present`/`absent`/`cancelled`
+- [x] Revenue: `COALESCE(paid_at, created_at)` in analytics query + inline payment query
+- [x] Enrollments: `COALESCE(enrolled_at, created_at)` in enrollment count query
+- [x] Repository: extract all 7 aggregate queries into `ReportsRepository`
+- [x] DTO: replace `dict` return with `DailyReportAggregateDTO`
+- [x] Dead code: delete commented-out PARENT_CODE block (lines 429-441)
+- [x] SQL injection: fix f-string in `_resolve_notification_recipients`
+- [x] Endpoint: add `POST /api/v1/notifications/reports/daily`
+
+## Phase 2 Checklist (Rich Tables — NOT STARTED)
+
+- [ ] DTO: add `SessionDetailItem`, `PaymentTypeGroup`, `InstructorSummaryItem` to `report_dto.py`
+- [ ] Repository: add `_fetch_session_details()` and `_fetch_instructor_summary()` to `ReportsRepository`
+- [ ] Repository: group payments by type in `_fetch_payments()`
+- [ ] Service: build per-session attendance HTML table in `send_daily_report()`
+- [ ] Service: build payment type sub-tables with subtotals in `send_daily_report()`
+- [ ] Service: build instructor summary HTML table in `send_daily_report()`
+- [ ] PDF: add per-session attendance table section in `daily_report_pdf.py`
+- [ ] PDF: add payments-by-type sub-tables section in `daily_report_pdf.py`
+- [ ] PDF: add instructor summary table section in `daily_report_pdf.py`
+- [ ] Template: update `daily_report` body via migration to include 3 new table variables
