@@ -307,8 +307,7 @@ def get_attendance_service() -> AttendanceService:
 
 
 # Competition services
-from app.modules.competitions.services.competition_service import CompetitionService
-from app.modules.competitions.services.team_service import TeamService
+from app.modules.competitions import CompetitionService, TeamService
 
 def get_competition_service() -> CompetitionService:
     """Returns a fresh CompetitionService instance per request."""
@@ -321,7 +320,7 @@ def get_team_service() -> TeamService:
 
 # ── Coach Read-Only Guard ─────────────────────────────────────────────────────
 
-from app.modules.competitions.models.team_models import Team
+from app.modules.competitions.models import Team
 
 
 async def require_coach_or_admin(

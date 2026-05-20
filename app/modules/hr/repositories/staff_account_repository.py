@@ -8,7 +8,6 @@ from sqlalchemy import select
 from sqlmodel import Session
 
 from app.modules.hr.models import Employee
-from app.modules.hr.schemas import CreateEmployeeAccountDTO, StaffAccountLinkDTO
 from app.shared.exceptions import NotFoundError
 
 if TYPE_CHECKING:
@@ -22,7 +21,7 @@ class StaffAccountRepository:
         self._session = session
 
     def create_linked_account(
-        self, employee: Employee, dto: CreateEmployeeAccountDTO, supabase_uid: str
+        self, employee: Employee, dto: "CreateEmployeeAccountDTO", supabase_uid: str
     ) -> tuple[Employee, "User"]:
         """Create user and link to employee in one transaction.
         
@@ -34,8 +33,8 @@ class StaffAccountRepository:
         Returns:
             Tuple of (updated Employee, created User)
         """
-        # Import here to avoid circular dependency
         from app.modules.auth.models.auth_models import User
+        from app.modules.hr.schemas import CreateEmployeeAccountDTO
         
         user = User(
             username=dto.email,
@@ -52,14 +51,14 @@ class StaffAccountRepository:
 
         return employee, user
 
-    def list_all_with_employees(self) -> list[StaffAccountLinkDTO]:
+    def list_all_with_employees(self) -> list["StaffAccountLinkDTO"]:
         """List all user-employee linked accounts.
         
         Returns:
             List of StaffAccountLinkDTO with user and employee data
         """
-        # Import here to avoid circular dependency
         from app.modules.auth.models.auth_models import User
+        from app.modules.hr.schemas import StaffAccountLinkDTO
         
         stmt = select(User, Employee).join(
             Employee, User.employee_id == Employee.id

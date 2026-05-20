@@ -87,6 +87,11 @@ class PayCompetitionFeeInput(BaseModel):
     received_by_user_id: Optional[int] = None
 
 
+class RefundCompetitionFeeBody(BaseModel):
+    """Input for refunding a competition fee payment."""
+    amount: float  # Refund amount (must not exceed amount_paid)
+
+
 # ── Complex Service Aggregate Output DTOs ─────────────────────────────────
 
 class StudentCompetitionDTO(BaseModel):
@@ -109,6 +114,16 @@ class AddTeamMemberResultDTO(BaseModel):
     team_member_id: int
     student_id: int
     student_name: str
+
+
+class TeamRegistrationResultWithWarningDTO(BaseModel):
+    result: TeamRegistrationResultDTO
+    warning: Optional[str] = None
+
+
+class AddTeamMemberResultWithWarningDTO(BaseModel):
+    result: AddTeamMemberResultDTO
+    warning: Optional[str] = None
 
 
 class TeamMemberRosterDTO(BaseModel):
@@ -148,3 +163,29 @@ class CompetitionSummaryDTO(BaseModel):
     """Returned by get_competition_summary"""
     competition: CompetitionDTO
     categories: list[CategoryWithTeamsDTO]
+
+
+class TeamMemberWithNameDTO(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    member: TeamMemberDTO
+    student_name: str
+
+
+class CompetitionSummaryDataDTO(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    competition: Optional[CompetitionDTO] = None
+    teams: list[TeamDTO]
+    members_by_team: dict[int, list[TeamMemberWithNameDTO]]
+
+
+class CategorySubcategoryDTO(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    category: str
+    subcategory: Optional[str] = None
+
+
+class StudentMembershipEnrichedDTO(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    membership: TeamMemberDTO
+    team: TeamDTO
+    competition: Optional[CompetitionDTO] = None

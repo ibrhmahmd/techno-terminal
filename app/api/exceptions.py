@@ -34,14 +34,18 @@ def register_exception_handlers(app):
         Handle Pydantic validation errors with standardized format.
         """
         errors = exc.errors()
-        message = "; ".join([f"{e['loc']}: {e['msg']}" for e in errors[:3]])
+        message = "; ".join([f"{e['loc']}: {str(e['msg'])}" for e in errors[:3]])
         return JSONResponse(
             status_code=422,
             content={
                 "success": False,
                 "error": "ValidationError",
                 "message": message,
-                "details": errors
+                "details": [
+                    {k: str(v) if not isinstance(v, (str, int, float, bool, list, dict, type(None))) else v
+                     for k, v in err.items()}
+                    for err in errors
+                ]
             },
         )
 

@@ -7,6 +7,7 @@ from app.shared.exceptions import NotFoundError, BusinessRuleError
 from app.modules.competitions.schemas.competition_schemas import (
     CreateCompetitionInput,
     CompetitionDTO,
+    CategoryInfoDTO,
 )
 from app.modules.competitions.schemas.team_schemas import (
     CompetitionSummaryDTO,
@@ -15,13 +16,6 @@ from app.modules.competitions.schemas.team_schemas import (
     TeamDTO,
     TeamMemberDTO,
 )
-
-
-class CategoryInfoDTO:
-    """Simple DTO for category/subcategory info."""
-    def __init__(self, category: str, subcategories: list[str]):
-        self.category = category
-        self.subcategories = subcategories
 
 
 class CompetitionService:
@@ -80,18 +74,15 @@ class CompetitionService:
         Uses the teams table to derive categories (3-table design).
         """
         with get_session() as db:
-            # Get distinct category/subcategory tuples from teams
-            cat_tuples = team_repo.get_distinct_categories(db, competition_id)
+            cat_rows = team_repo.get_distinct_categories(db, competition_id)
 
-            # Group by category
             cat_map = {}
-            for category, subcategory in cat_tuples:
-                if category not in cat_map:
-                    cat_map[category] = set()
-                if subcategory:
-                    cat_map[category].add(subcategory)
+            for row in cat_rows:
+                if row.category not in cat_map:
+                    cat_map[row.category] = set()
+                if row.subcategory:
+                    cat_map[row.category].add(row.subcategory)
 
-            # Convert to DTOs
             return [
                 CategoryInfoDTO(
                     category=cat,
@@ -105,34 +96,30 @@ class CompetitionService:
         Returns competition + all categories + teams + member fee status.
         Uses batch loading: single JOIN query instead of N+1.
         """
-        from app.modules.competitions.repositories import competition_repository as comp_repo
         from app.modules.competitions.schemas.team_schemas import (
             TeamWithMembersDTO,
-            TeamMemberDTO,
             CategoryWithTeamsDTO,
         )
 
         with get_session() as db:
-            comp, teams, members_by_team = comp_repo.get_competition_summary_data(db, competition_id)
-            if not comp:
+            summary_data = comp_repo.get_competition_summary_data(db, competition_id)
+            if not summary_data.competition:
                 return None
 
-            # Group teams by category/subcategory
             category_map: dict[tuple, list] = {}
-            for team in teams:
-                key = (team.category, team.subcategory)
-                category_map.setdefault(key, []).append(team)
+            for team_dto in summary_data.teams:
+                key = (team_dto.category, team_dto.subcategory)
+                category_map.setdefault(key, []).append(team_dto)
 
-            # Build category DTOs from pre-fetched data
             cat_dtos = []
             for (category, subcategory), team_list in category_map.items():
                 team_dtos = []
-                for team in team_list:
-                    member_rows = members_by_team.get(team.id, [])
+                for team_dto in team_list:
+                    member_rows = summary_data.members_by_team.get(team_dto.id, [])
                     team_dtos.append(
                         TeamWithMembersDTO(
-                            team=TeamDTO.model_validate(team),
-                            members=[TeamMemberDTO.model_validate(m) for m, _ in member_rows]
+                            team=team_dto,
+                            members=[mwr.member for mwr in member_rows]
                         )
                     )
 
@@ -145,6 +132,6 @@ class CompetitionService:
                 )
 
             return CompetitionSummaryDTO(
-                competition=CompetitionDTO.model_validate(comp),
+                competition=summary_data.competition,
                 categories=cat_dtos
             )

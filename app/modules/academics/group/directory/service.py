@@ -155,3 +155,32 @@ class GroupDirectoryService:
                 total=total_groups,
                 group_by=group_by
             )
+
+    def get_enriched_groups_by_course(
+        self,
+        course_id: int,
+        include_inactive: bool = False,
+        level_number: int | None = None,
+        skip: int = 0,
+        limit: int = 50
+    ) -> tuple[list[EnrichedGroupDTO], int]:
+        """Get enriched groups for a specific course."""
+        with get_session() as session:
+            results, total = repo.get_enriched_groups_by_course(
+                session, course_id, include_inactive, level_number, skip, limit
+            )
+            return list(results), total
+
+    def get_enriched_groups_by_type(
+        self,
+        group_type: str,
+        status: str | None = None,
+        skip: int = 0,
+        limit: int = 50
+    ) -> tuple[list[EnrichedGroupDTO], int]:
+        """Get enriched groups filtered by type."""
+        with get_session() as session:
+            results, total = repo.get_enriched_groups_by_type(
+                session, group_type, status, skip, limit
+            )
+            return list(results), total

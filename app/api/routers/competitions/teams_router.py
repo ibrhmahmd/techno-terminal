@@ -21,9 +21,9 @@ from app.api.schemas.competitions.team_schemas import (
 )
 from app.api.dependencies import require_any, require_admin, get_team_service
 from app.modules.auth import User
-from app.modules.competitions.services.team_service import TeamService
+from app.modules.competitions import TeamService
 
-from app.modules.competitions.schemas.team_schemas import (
+from app.modules.competitions.schemas import (
     RegisterTeamInput,
     AddTeamMemberInput,
     TeamRegistrationResultDTO,
@@ -59,27 +59,12 @@ def list_teams(
     if competition_id is None:
         raise HTTPException(status_code=400, detail="competition_id is required")
 
-    if not current_user.is_admin and current_user.employee_id:
-        teams = svc.list_teams_for_coach(competition_id, current_user.employee_id, category, subcategory)
-        if include_members:
-            result = []
-            for team in teams:
-                members = svc.get_team_members_for_team(team.id)
-                result.append(
-                    TeamWithMembersDTO(
-                        team=TeamDTO.model_validate(team),
-                        members=[TeamMemberDTO.model_validate(m) for m in members]
-                    )
-                )
-            return ApiResponse(data=result)
-        return ApiResponse(data=[TeamDTO.model_validate(t) for t in teams])
-
     if include_members:
-        teams = svc.get_teams_with_members(competition_id, category, subcategory)
+        data = svc.get_teams_with_members_for_user(competition_id, current_user, category, subcategory)
     else:
-        teams = svc.list_teams(competition_id, category, subcategory)
+        data = svc.list_teams_for_user(competition_id, current_user, category, subcategory)
 
-    return ApiResponse(data=teams)
+    return ApiResponse(data=data)
 
 
 @router.post(
@@ -107,10 +92,10 @@ def register_team(
     svc: TeamService = Depends(get_team_service),
 ):
     """Register a team for a competition."""
-    result, warning = svc.register_team(body, current_user_id=current_user.id)
+    reg_result = svc.register_team(body, current_user_id=current_user.id)
     return ApiResponse(
-        data=result,
-        message=warning or "Team registered successfully."
+        data=reg_result.result,
+        message=reg_result.warning or "Team registered successfully."
     )
 
 
@@ -258,15 +243,15 @@ def add_team_member(
     svc: TeamService = Depends(get_team_service),
 ):
     """Add a member to an existing team."""
-    result, warning = svc.add_team_member_to_existing(
+    add_result = svc.add_team_member_to_existing(
         team_id=team_id,
         student_id=body.student_id,
         amount_due=body.amount_due,
         current_user_id=current_user.id,
     )
     return ApiResponse(
-        data=result,
-        message=warning or "Member added successfully."
+        data=add_result.result,
+        message=add_result.warning or "Member added successfully."
     )
 
 

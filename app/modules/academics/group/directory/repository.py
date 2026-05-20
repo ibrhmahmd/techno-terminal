@@ -239,3 +239,129 @@ def get_groups_by_course(
     
     return results, total
 
+
+def get_enriched_groups_by_course(
+    session: Session,
+    course_id: int,
+    include_inactive: bool = False,
+    level_number: int | None = None,
+    skip: int = 0,
+    limit: int = 50
+) -> tuple[Sequence[EnrichedGroupDTO], int]:
+    """Get enriched groups associated with a specific course."""
+    base_stmt = select(Group).where(Group.course_id == course_id)
+    if not include_inactive:
+        base_stmt = base_stmt.where(Group.status == GROUP_STATUS_ACTIVE)
+    if level_number:
+        base_stmt = base_stmt.where(Group.level_number == level_number)
+    
+    count_stmt = select(func.count()).select_from(base_stmt.subquery())
+    total = session.exec(count_stmt).one()
+
+    where_clauses = ["g.course_id = :course_id"]
+    params = {"course_id": course_id, "limit": limit, "skip": skip}
+    
+    if not include_inactive:
+        where_clauses.append(f"g.status = '{GROUP_STATUS_ACTIVE}'")
+    if level_number:
+        where_clauses.append("g.level_number = :level_number")
+        params["level_number"] = level_number
+        
+    where_sql = " AND ".join(where_clauses)
+    
+    stmt = text(f"""
+        SELECT
+            g.id,
+            g.name AS group_name,
+            g.course_id,
+            c.name AS course_name,
+            g.instructor_id,
+            COALESCE(e.full_name, '{INSTRUCTOR_PLACEHOLDER}') AS instructor_name,
+            g.level_number,
+            g.default_day,
+            g.default_time_start,
+            g.default_time_end,
+            g.max_capacity,
+            g.notes,
+            g.status,
+            (
+                SELECT COUNT(*) 
+                FROM enrollments e2 
+                WHERE e2.group_id = g.id 
+                AND e2.level_number = g.level_number 
+                AND e2.status = '{ENROLLMENT_STATUS_ACTIVE}'
+            ) AS current_student_count
+        FROM groups g
+        JOIN courses c ON g.course_id = c.id
+        LEFT JOIN employees e ON g.instructor_id = e.id
+        WHERE {where_sql}
+        ORDER BY g.id
+        LIMIT :limit OFFSET :skip
+    """)
+    result = session.execute(stmt, params)
+    enriched_groups = [EnrichedGroupDTO(**dict(row._mapping)) for row in result.all()]
+    
+    return enriched_groups, total
+
+
+def get_enriched_groups_by_type(
+    session: Session,
+    group_type: str,
+    status: str | None = None,
+    skip: int = 0,
+    limit: int = 50
+) -> tuple[Sequence[EnrichedGroupDTO], int]:
+    """Filter enriched groups by type with pagination."""
+    base_stmt = select(Group).where(Group.name.ilike(f"%{group_type}%"))
+    if status:
+        base_stmt = base_stmt.where(Group.status == status)
+    else:
+        base_stmt = base_stmt.where(Group.status == GROUP_STATUS_ACTIVE)
+    
+    count_stmt = select(func.count()).select_from(base_stmt.subquery())
+    total = session.exec(count_stmt).one()
+
+    where_clauses = ["g.name ILIKE :group_type"]
+    params = {"group_type": f"%{group_type}%", "limit": limit, "skip": skip}
+    
+    if status:
+        where_clauses.append("g.status = :status")
+        params["status"] = status
+    else:
+        where_clauses.append(f"g.status = '{GROUP_STATUS_ACTIVE}'")
+        
+    where_sql = " AND ".join(where_clauses)
+    
+    stmt = text(f"""
+        SELECT
+            g.id,
+            g.name AS group_name,
+            g.course_id,
+            c.name AS course_name,
+            g.instructor_id,
+            COALESCE(e.full_name, '{INSTRUCTOR_PLACEHOLDER}') AS instructor_name,
+            g.level_number,
+            g.default_day,
+            g.default_time_start,
+            g.default_time_end,
+            g.max_capacity,
+            g.notes,
+            g.status,
+            (
+                SELECT COUNT(*) 
+                FROM enrollments e2 
+                WHERE e2.group_id = g.id 
+                AND e2.level_number = g.level_number 
+                AND e2.status = '{ENROLLMENT_STATUS_ACTIVE}'
+            ) AS current_student_count
+        FROM groups g
+        JOIN courses c ON g.course_id = c.id
+        LEFT JOIN employees e ON g.instructor_id = e.id
+        WHERE {where_sql}
+        ORDER BY g.id
+        LIMIT :limit OFFSET :skip
+    """)
+    result = session.execute(stmt, params)
+    enriched_groups = [EnrichedGroupDTO(**dict(row._mapping)) for row in result.all()]
+    
+    return enriched_groups, total

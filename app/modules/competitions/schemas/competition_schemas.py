@@ -11,6 +11,12 @@ from app.shared.validators import validate_non_empty_string
 
 # ── Competition Output DTOs ──────────────────────────────────────────────
 
+class CategoryInfoDTO(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    category: str
+    subcategories: list[str]
+
+
 class CompetitionDTO(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int

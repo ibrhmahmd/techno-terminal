@@ -64,7 +64,8 @@ class GmailEmailDispatcher:
             # Attach files if provided
             if attachments:
                 for filename, file_bytes, mimetype in attachments:
-                    part = MIMEBase("application", mimetype)
+                    maintype, subtype = mimetype.split("/", 1)
+                    part = MIMEBase(maintype, subtype)
                     part.set_payload(file_bytes)
                     encoders.encode_base64(part)
                     part.add_header(

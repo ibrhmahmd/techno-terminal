@@ -1,3 +1,4 @@
+import asyncio
 from typing import List
 from fastapi import APIRouter, Depends, BackgroundTasks
 
@@ -53,3 +54,11 @@ def get_parent_logs(
 ):
     logs = svc._repo.get_logs(recipient_type="PARENT", recipient_id=parent_id, limit=limit, offset=offset)
     return ApiResponse(data=[NotificationLogDTO.model_validate(log) for log in logs])
+
+@router.post("/reports/daily", response_model=ApiResponse[str], summary="Trigger daily report")
+async def trigger_daily_report(
+    _user: User = Depends(require_admin),
+    svc: NotificationService = Depends(get_notification_service)
+):
+    asyncio.create_task(svc.report.send_daily_report())
+    return ApiResponse(data="Daily report queued")
