@@ -27,8 +27,7 @@ from sqlmodel import Session
 
 from app.db.connection import get_session
 from app.core.supabase_clients import get_supabase_anon, get_supabase_admin
-from app.modules.auth import get_user_by_supabase_uid
-from app.modules.auth import User
+from app.modules.auth import AuthService, User
 from app.modules.auth.constants import UserRole
 
 logger = logging.getLogger(__name__)
@@ -72,7 +71,7 @@ async def get_current_user(
         logger.warning("Supabase JWT validation failed: %s", type(e).__name__)
         raise credentials_exception
 
-    user = get_user_by_supabase_uid(supabase_uid)
+    user = AuthService().get_user_by_supabase_uid(supabase_uid)
     if user is None:
         raise credentials_exception
 

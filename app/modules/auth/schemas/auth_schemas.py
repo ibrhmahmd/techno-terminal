@@ -62,11 +62,6 @@ class UserAdminDTO(SQLModel):
     last_login: Optional[datetime] = None
     created_at: Optional[datetime] = None
 
-class InviteUserInput(BaseModel):
-    email: str
-    role: str
-    employee_id: int
-
 class InviteResultDTO(SQLModel):
     model_config = ConfigDict(from_attributes=True)
 

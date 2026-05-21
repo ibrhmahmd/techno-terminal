@@ -143,8 +143,7 @@ def generate_daily_report_pdf(
         ['Payment Transactions', str(aggregates.get('payment_count', 0))],
         ['Payment Methods', payment_methods_str],
         ['Instructors Today', instructors_str],
-        ['Attendance Rate', f"{aggregates.get('attendance_rate', 0):.1%}"],
-        ['Unpaid Enrollments', str(aggregates.get('unpaid_count', 0))]
+        ['Attendance Rate', f"{aggregates.get('attendance_rate', 0):.1%}"]
     ]
     
     metrics_table = Table(metrics_data, colWidths=[7*cm, 7*cm])

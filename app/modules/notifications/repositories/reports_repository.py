@@ -35,7 +35,6 @@ class ReportsRepository:
         new_enrollments = self._fetch_new_enrollments(target_date)
         payments, payment_count, payment_methods, payment_details, payments_by_type = self._fetch_payments(target_date)
         instructors_list = self._fetch_instructors(target_date)
-        unpaid_count = self._fetch_unpaid_count()
         session_details = self._fetch_session_details(target_date)
         instructor_summary = self._fetch_instructor_summary(target_date)
 
@@ -54,7 +53,6 @@ class ReportsRepository:
             payment_methods=payment_methods,
             payment_details=payment_details,
             instructors_list=instructors_list,
-            unpaid_count=unpaid_count,
             session_details=session_details,
             payments_by_type=payments_by_type,
             instructor_summary=instructor_summary,
@@ -255,22 +253,3 @@ class ReportsRepository:
             logger.warning(f"Could not fetch instructor summary: {e}")
             return []
 
-    def _fetch_unpaid_count(self) -> int:
-        try:
-            unpaid_stmt = text("""
-                SELECT COUNT(DISTINCT e.id)
-                FROM enrollments e
-                LEFT JOIN (
-                    SELECT enrollment_id, COALESCE(SUM(amount), 0) as total_paid
-                    FROM payments
-                    WHERE deleted_at IS NULL
-                    GROUP BY enrollment_id
-                ) p ON e.id = p.enrollment_id
-                WHERE e.status = 'active'
-                AND (e.amount_due - COALESCE(e.discount_applied, 0) - COALESCE(p.total_paid, 0)) > 0
-            """)
-            result = self._session.exec(unpaid_stmt).one()
-            return int(result[0]) if result else 0
-        except Exception as e:
-            logger.warning(f"Could not fetch unpaid count: {e}")
-            return 0

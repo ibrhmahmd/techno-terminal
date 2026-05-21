@@ -12,6 +12,7 @@ from tests.utils.notification_mocks import (
     MockEmailDispatcher,
     MockWhatsAppDispatcher,
 )
+from app.modules.notifications.schemas.report_dto import DailyReportAggregateDTO
 
 
 class _MockSession:
@@ -276,21 +277,29 @@ class TestDailyReport:
 
     @pytest.fixture
     def mock_aggregates(self):
-        return {
-            "total_revenue": 15000.0,
-            "new_enrollments": 3,
-            "sessions_held": 8,
-            "absent_count": 2,
-            "payment_count": 5,
-            "payment_methods": {"cash": 3, "card": 2},
-            "instructors_list": ["Ahmed", "Sara"],
-            "attendance_rate": 0.875,
-            "unpaid_count": 4,
-            "payment_details": [
-                {"student_name": "Omar", "group_name": "Group A", "amount": 3000.0, "payment_type": "cash"},
-                {"student_name": "Ali", "group_name": "Group B", "amount": 2500.0, "payment_type": "card"},
+        from app.modules.notifications.schemas.report_dto import (
+            DailyReportAggregateDTO, PaymentDetailItem, SessionDetailItem,
+            PaymentTypeGroup, InstructorSummaryItem,
+        )
+        return DailyReportAggregateDTO(
+            date="2026-05-13",
+            total_revenue=15000.0,
+            new_enrollments=3,
+            sessions_held=8,
+            present_count=6,
+            absent_count=2,
+            attendance_rate=0.75,
+            payment_count=5,
+            payment_methods={"cash": 3, "card": 2},
+            payment_details=[
+                PaymentDetailItem(student_name="Omar", group_name="Group A", amount=3000.0, payment_type="cash"),
+                PaymentDetailItem(student_name="Ali", group_name="Group B", amount=2500.0, payment_type="card"),
             ],
-        }
+            instructors_list=["Ahmed", "Sara"],
+            session_details=[],
+            payments_by_type=[],
+            instructor_summary=[],
+        )
 
     @pytest.mark.asyncio
     async def test_send_daily_report_sends_email(self, mock_repo, mock_email,
@@ -346,12 +355,12 @@ class TestDailyReport:
         """T010: PDF handles empty payment details gracefully."""
         from app.modules.notifications.pdf.daily_report_pdf import generate_daily_report_pdf
 
-        empty_aggregates = dict(mock_aggregates)
-        empty_aggregates["payment_details"] = []
-        empty_aggregates["payment_methods"] = {}
-        empty_aggregates["instructors_list"] = []
+        empty_aggregates = mock_aggregates.model_copy()
+        empty_aggregates.payment_details = []
+        empty_aggregates.payment_methods = {}
+        empty_aggregates.instructors_list = []
 
-        pdf_bytes = generate_daily_report_pdf(date_str="2026-05-13", aggregates=empty_aggregates)
+        pdf_bytes = generate_daily_report_pdf(date_str="2026-05-13", aggregates=empty_aggregates.model_dump())
         assert isinstance(pdf_bytes, bytes)
         assert len(pdf_bytes) > 100
 
@@ -359,7 +368,7 @@ class TestDailyReport:
         """T010: PDF generates with all data present (smoke test)."""
         from app.modules.notifications.pdf.daily_report_pdf import generate_daily_report_pdf
 
-        pdf_bytes = generate_daily_report_pdf(date_str="2026-05-13", aggregates=mock_aggregates)
+        pdf_bytes = generate_daily_report_pdf(date_str="2026-05-13", aggregates=mock_aggregates.model_dump())
         assert isinstance(pdf_bytes, bytes)
         assert len(pdf_bytes) > 100
 
@@ -385,8 +394,8 @@ class TestDailyReport:
 
             aggregates = svc._fetch_daily_aggregates(datetime(2026, 5, 13).date())
 
-            assert isinstance(aggregates, dict)
-            assert "instructors_list" in aggregates
+            assert isinstance(aggregates, DailyReportAggregateDTO)
+            assert aggregates.instructors_list is not None
 
 
 # ── US8: Integration Smoke Tests (requires real DB) ─────────────────────
@@ -402,22 +411,24 @@ class TestDailyReportIntegration:
         from app.modules.notifications.services.notification_service import (
             NotificationService
         )
+        from app.modules.notifications.schemas.report_dto import (
+            DailyReportAggregateDTO
+        )
         repo = NotificationRepository(db_session)
         svc = NotificationService(repo)
 
         today = date.today()
         aggregates = svc.report._fetch_daily_aggregates(today)
 
-        assert isinstance(aggregates, dict)
-        assert "instructors_list" in aggregates
-        assert "payment_details" in aggregates
-        assert "payment_count" in aggregates
-        assert "total_revenue" in aggregates
-        assert "new_enrollments" in aggregates
-        assert "sessions_held" in aggregates
-        assert "absent_count" in aggregates
-        assert "attendance_rate" in aggregates
-        assert "unpaid_count" in aggregates
+        assert isinstance(aggregates, DailyReportAggregateDTO)
+        assert aggregates.instructors_list is not None
+        assert aggregates.payment_details is not None
+        assert aggregates.payment_count >= 0
+        assert aggregates.total_revenue >= 0
+        assert aggregates.new_enrollments >= 0
+        assert aggregates.sessions_held >= 0
+        assert aggregates.absent_count >= 0
+        assert aggregates.attendance_rate >= 0
 
     def test_daily_report_template_exists_and_active(self, db_session):
         """Verify daily_report template is seeded in DB."""
@@ -446,7 +457,6 @@ class TestDailyReportIntegration:
             "payment_methods": {"cash": 3, "card": 2},
             "instructors_list": ["Ahmed", "Sara"],
             "attendance_rate": 0.875,
-            "unpaid_count": 4,
             "payment_details": [
                 {"student_name": "Omar", "group_name": "Group A",
                  "amount": 3000.0, "payment_type": "cash"},
@@ -460,6 +470,7 @@ class TestDailyReportIntegration:
                       b"#667eea", b"#E65150", b"#2c3e50"):
             assert color not in pdf_bytes, f"PDF still contains color {color.decode()}"
 
+    @pytest.mark.skip("Manual visual test - not for automated runs")
     @pytest.mark.asyncio
     async def test_send_visual_report_email(self, db_session):
         """Send a real email with real data to the fallback inbox for visual inspection.
@@ -493,19 +504,19 @@ class TestDailyReportIntegration:
         assert template is not None
 
         payment_methods_str = ", ".join(
-            f"{m}: {c}" for m, c in aggregates["payment_methods"].items()
-        ) if aggregates["payment_methods"] else "N/A"
-        instructors_str = ", ".join(aggregates["instructors_list"]) if aggregates["instructors_list"] else "N/A"
+            f"{m}: {c}" for m, c in aggregates.payment_methods.items()
+        ) if aggregates.payment_methods else "N/A"
+        instructors_str = ", ".join(aggregates.instructors_list) if aggregates.instructors_list else "N/A"
 
         payment_details_html = ""
-        if aggregates["payment_details"]:
+        if aggregates.payment_details:
             payment_rows = ""
-            for p in aggregates["payment_details"]:
+            for p in aggregates.payment_details:
                 payment_rows += (
-                    f"<tr><td style='padding: 8px; border: 1px solid #000;'>{p['student_name']}</td>"
-                    f"<td style='padding: 8px; border: 1px solid #000;'>{p['group_name']}</td>"
-                    f"<td style='padding: 8px; border: 1px solid #000; text-align: right;'>{p['amount']:.2f} EGP</td>"
-                    f"<td style='padding: 8px; border: 1px solid #000;'>{p['payment_type']}</td></tr>"
+                    f"<tr><td style='padding: 8px; border: 1px solid #000;'>{p.student_name}</td>"
+                    f"<td style='padding: 8px; border: 1px solid #000;'>{p.group_name}</td>"
+                    f"<td style='padding: 8px; border: 1px solid #000; text-align: right;'>{p.amount:.2f} EGP</td>"
+                    f"<td style='padding: 8px; border: 1px solid #000;'>{p.payment_type}</td></tr>"
                 )
             payment_details_html = f"""
             <table style="width: 100%; border-collapse: collapse; margin-top: 10px; border: 1px solid #000;">
@@ -520,21 +531,21 @@ class TestDailyReportIntegration:
                 <tbody>
                     {payment_rows}
                 </tbody>
-            </table>
-            """
+            </table>"""
+        else:
+            payment_details_html = "<p>No payments recorded today.</p>"
 
         variables = {
             "date": today.strftime("%Y-%m-%d"),
-            "total_revenue": f"{aggregates['total_revenue']:.2f}",
-            "new_enrollments": str(aggregates["new_enrollments"]),
-            "sessions_held": str(aggregates["sessions_held"]),
-            "absent_count": str(aggregates["absent_count"]),
-            "payment_count": str(aggregates["payment_count"]),
+            "total_revenue": f"{aggregates.total_revenue:.2f}",
+            "new_enrollments": aggregates.new_enrollments,
+            "sessions_held": aggregates.sessions_held,
+            "absent_count": aggregates.absent_count,
+            "payment_count": aggregates.payment_count,
             "payment_methods": payment_methods_str,
             "payment_details": payment_details_html,
             "instructors_list": instructors_str,
-            "attendance_rate": f"{aggregates['attendance_rate']:.1%}",
-            "unpaid_count": str(aggregates["unpaid_count"]),
+            "attendance_rate": f"{aggregates.attendance_rate:.1%}",
         }
 
         # 3. Render the email body

@@ -47,7 +47,6 @@ class DailyReportAggregateDTO(BaseModel):
     payment_methods: dict[str, int]
     payment_details: list[PaymentDetailItem]
     instructors_list: list[str]
-    unpaid_count: int
     session_details: list[SessionDetailItem] = []
     payments_by_type: list[PaymentTypeGroup] = []
     instructor_summary: list[InstructorSummaryItem] = []
