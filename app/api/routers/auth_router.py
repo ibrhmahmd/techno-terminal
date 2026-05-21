@@ -19,10 +19,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.api.schemas.common import ApiResponse
-from app.modules.auth import AuthService, User, UserPublic
+from app.modules.auth import AuthService, User, UserPublic, UserSessionDTO
 from app.modules.auth.models.audit_log import AuditLogEventType
 from app.modules.auth.services.audit_service import AuditService
 from app.api.dependencies import get_current_user, require_admin, get_auth_service, get_audit_service
+from app.modules.auth.schemas.auth_schemas import UpdateProfileInput
 from app.api.schemas.auth import (
     LoginRequest,
     TokenResponse,
@@ -32,7 +33,6 @@ from app.api.schemas.auth import (
     ChangePasswordRequest,
     ForgotPasswordRequest,
     UpdateProfileRequest,
-    ChangeEmailRequest,
     RegisterUserRequest,
 )
 
@@ -241,8 +241,6 @@ def update_profile(
     current_user: User = Depends(get_current_user),
     auth_svc: AuthService = Depends(get_auth_service),
 ):
-    from app.modules.auth.schemas.auth_schemas import UpdateProfileInput
-
     dto = UpdateProfileInput(username=body.username)
     updated = auth_svc.update_profile(user=current_user, dto=dto)
     if body.email:
@@ -255,7 +253,7 @@ def update_profile(
 
 @router.get(
     "/me/sessions",
-    response_model=ApiResponse[list[dict]],
+    response_model=ApiResponse[list[UserSessionDTO]],
     summary="List active sessions",
 )
 def list_sessions(
@@ -277,12 +275,14 @@ def list_my_activity(
     current_user: User = Depends(get_current_user),
     audit_svc = Depends(get_audit_service),
 ):
-    logs, total = audit_svc.query_logs(
+    result = audit_svc.query_logs(
         user_id=current_user.id,
         skip=skip,
         limit=limit,
     )
-    return {"success": True, "data": [l.model_dump() for l in logs], "total": total, "skip": skip, "limit": limit}
+    return ApiResponse(
+        data=[l.model_dump() for l in result.items],
+    )
 
 
 # logout all sessions
@@ -302,7 +302,7 @@ def logout_all_sessions(
 # MFA status stub
 @router.get(
     "/me/mfa/status",
-    response_model=ApiResponse[dict],
+    response_model=ApiResponse,
     summary="Get MFA enrollment status",
 )
 def mfa_status(

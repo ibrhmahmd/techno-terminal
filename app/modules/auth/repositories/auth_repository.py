@@ -29,7 +29,6 @@ def update_last_login(session: Session, user_id: int) -> None:
         user.last_login = utc_now()
         session.add(user)
 
-# ── RepositoryProtocol aliases ────────────────────────────────────────────────
 def get_user_by_id(session: Session, user_id: int) -> User | None:
     return session.get(User, user_id)
 

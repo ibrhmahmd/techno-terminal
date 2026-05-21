@@ -1,5 +1,6 @@
 from .auth_schemas import (
     AuditLogEntryDTO,
+    AuditLogQueryResult,
     ChangePasswordInput,
     ForgotPasswordInput,
     InviteResultDTO,
@@ -8,12 +9,14 @@ from .auth_schemas import (
     UpdateUserInput,
     UserAdminDTO,
     UserCreate,
+    UserListResult,
     UserPublic,
     UserSessionDTO,
 )
 
 __all__ = [
     "AuditLogEntryDTO",
+    "AuditLogQueryResult",
     "ChangePasswordInput",
     "ForgotPasswordInput",
     "InviteResultDTO",
@@ -22,6 +25,7 @@ __all__ = [
     "UpdateUserInput",
     "UserAdminDTO",
     "UserCreate",
+    "UserListResult",
     "UserPublic",
     "UserSessionDTO",
 ]

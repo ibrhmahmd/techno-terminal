@@ -7,8 +7,6 @@ Prefix: /api/v1/admin  (mounted in main.py)
 Tag:    Admin Auth
 """
 
-from fastapi import APIRouter, Depends, Query
-
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query
@@ -35,10 +33,10 @@ def list_users(
     _user: User = Depends(require_system_admin),
     auth_svc: AuthService = Depends(get_auth_service),
 ):
-    users, total = auth_svc.list_users(skip=skip, limit=limit, is_active=is_active, role=role, q=q)
+    result = auth_svc.list_users(skip=skip, limit=limit, is_active=is_active, role=role, q=q)
     return PaginatedResponse(
-        data=[UserAdminDTO.model_validate(u, from_attributes=True) for u in users],
-        total=total,
+        data=[UserAdminDTO.model_validate(u, from_attributes=True) for u in result.items],
+        total=result.total,
         skip=skip,
         limit=limit,
     )
@@ -123,14 +121,14 @@ def audit_logins(
 ):
     from_date_dt = datetime.fromisoformat(from_date) if from_date else None
     to_date_dt = datetime.fromisoformat(to_date) if to_date else None
-    logs, total = audit_svc.query_logins(
+    result = audit_svc.query_logins(
         user_id=user_id,
         from_date=from_date_dt,
         to_date=to_date_dt,
         skip=skip,
         limit=limit,
     )
-    return PaginatedResponse(data=logs, total=total, skip=skip, limit=limit)
+    return PaginatedResponse(data=result.items, total=result.total, skip=skip, limit=limit)
 
 
 @router.get(
@@ -149,14 +147,14 @@ def audit_password_changes(
 ):
     from_date_dt = datetime.fromisoformat(from_date) if from_date else None
     to_date_dt = datetime.fromisoformat(to_date) if to_date else None
-    logs, total = audit_svc.query_password_changes(
+    result = audit_svc.query_password_changes(
         user_id=user_id,
         from_date=from_date_dt,
         to_date=to_date_dt,
         skip=skip,
         limit=limit,
     )
-    return PaginatedResponse(data=logs, total=total, skip=skip, limit=limit)
+    return PaginatedResponse(data=result.items, total=result.total, skip=skip, limit=limit)
 
 
 @router.get(
@@ -174,10 +172,10 @@ def audit_failed_attempts(
 ):
     from_date_dt = datetime.fromisoformat(from_date)
     to_date_dt = datetime.fromisoformat(to_date) if to_date else None
-    logs, total = audit_svc.query_failed_attempts(
+    result = audit_svc.query_failed_attempts(
         from_date=from_date_dt,
         to_date=to_date_dt,
         skip=skip,
         limit=limit,
     )
-    return PaginatedResponse(data=logs, total=total, skip=skip, limit=limit)
+    return PaginatedResponse(data=result.items, total=result.total, skip=skip, limit=limit)

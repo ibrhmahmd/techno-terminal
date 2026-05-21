@@ -4,7 +4,7 @@ from typing import Optional
 from app.db.connection import get_session
 import app.modules.auth.repositories.audit_repository as audit_repo
 from app.modules.auth.models.audit_log import AuditLog, AuditLogEventType
-from app.modules.auth.schemas.auth_schemas import AuditLogEntryDTO
+from app.modules.auth.schemas.auth_schemas import AuditLogEntryDTO, AuditLogQueryResult
 
 
 class AuditService:
@@ -37,7 +37,7 @@ class AuditService:
         to_date: Optional[datetime] = None,
         skip: int = 0,
         limit: int = 50,
-    ) -> tuple[list[AuditLogEntryDTO], int]:
+    ) -> AuditLogQueryResult:
         with get_session() as session:
             logs, total = audit_repo.list_logs(
                 session,
@@ -52,7 +52,7 @@ class AuditService:
                 AuditLogEntryDTO.model_validate(log, from_attributes=True)
                 for log in logs
             ]
-            return dtos, total
+            return AuditLogQueryResult(items=dtos, total=total)
 
     def query_logins(
         self,
@@ -61,7 +61,7 @@ class AuditService:
         to_date: Optional[datetime] = None,
         skip: int = 0,
         limit: int = 50,
-    ) -> tuple[list[AuditLogEntryDTO], int]:
+    ) -> AuditLogQueryResult:
         return self.query_logs(
             event_type=AuditLogEventType.LOGIN_SUCCESS,
             user_id=user_id,
@@ -78,7 +78,7 @@ class AuditService:
         to_date: Optional[datetime] = None,
         skip: int = 0,
         limit: int = 50,
-    ) -> tuple[list[AuditLogEntryDTO], int]:
+    ) -> AuditLogQueryResult:
         return self.query_logs(
             event_type=AuditLogEventType.PASSWORD_CHANGE,
             user_id=user_id,
@@ -94,7 +94,7 @@ class AuditService:
         to_date: Optional[datetime] = None,
         skip: int = 0,
         limit: int = 50,
-    ) -> tuple[list[AuditLogEntryDTO], int]:
+    ) -> AuditLogQueryResult:
         return self.query_logs(
             event_type=AuditLogEventType.LOGIN_FAILURE,
             from_date=from_date,

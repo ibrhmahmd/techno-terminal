@@ -55,5 +55,4 @@ class RegisterUserRequest(BaseModel):
     username: str
     password: str = Field(..., min_length=MIN_PASSWORD_LENGTH)
 
-class ChangeEmailRequest(BaseModel):
-    email: str
+

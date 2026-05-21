@@ -1,10 +1,15 @@
-from typing import Optional, Tuple
+from typing import Optional
 
 from app.core.supabase_clients import get_supabase_admin, get_supabase_anon
 from app.db.connection import get_session
 import app.modules.auth.repositories.auth_repository as repo
 from app.modules.auth.models.auth_models import User
-from app.modules.auth.schemas.auth_schemas import UpdateProfileInput, UserCreate
+from app.modules.auth.schemas.auth_schemas import (
+    UpdateProfileInput,
+    UserCreate,
+    UserListResult,
+    UserSessionDTO,
+)
 from app.modules.auth.constants import is_valid_role
 from app.modules.hr.repositories import EmployeeRepository
 from app.shared.constants import MIN_PASSWORD_LENGTH
@@ -12,7 +17,11 @@ from app.shared.exceptions import AuthError, BusinessRuleError, ConflictError, N
 from app.modules.auth.models.audit_log import AuditLogEventType
 from app.modules.auth.services.audit_service import AuditService
 
+
 class AuthService:
+    def __init__(self, audit_svc: AuditService | None = None):
+        self._audit = audit_svc or AuditService()
+
     def get_user_by_supabase_uid(self, uid: str) -> Optional[User]:
         """Retrieves a local user profile explicitly mapped to a verified Supabase JWT."""
         with get_session() as session:
@@ -64,7 +73,7 @@ class AuthService:
         admin.auth.admin.update_user_by_id(
             user.supabase_uid, {"password": new_password}
         )
-        AuditService().log_event(
+        self._audit.log_event(
             event_type=AuditLogEventType.PASSWORD_CHANGE,
             user_id=user.id,
         )
@@ -161,19 +170,19 @@ class AuthService:
         except Exception:
             pass
 
-    def list_sessions(self, user: User) -> list[dict]:
+    def list_sessions(self, user: User) -> list[UserSessionDTO]:
         admin = get_supabase_admin()
         try:
             sessions = admin.auth.admin.list_sessions(user.supabase_uid)
             results = []
             for s in sessions:
-                results.append({
-                    "id": getattr(s, "id", ""),
-                    "created_at": getattr(s, "created_at", None),
-                    "last_active_at": getattr(s, "last_active_at", None),
-                    "ip": getattr(s, "ip", None),
-                    "user_agent": getattr(s, "user_agent", None),
-                })
+                results.append(UserSessionDTO(
+                    id=getattr(s, "id", ""),
+                    created_at=getattr(s, "created_at", None),
+                    last_active_at=getattr(s, "last_active_at", None),
+                    ip=getattr(s, "ip", None),
+                    user_agent=getattr(s, "user_agent", None),
+                ))
             return results
         except Exception:
             return []
@@ -192,9 +201,10 @@ class AuthService:
         is_active: Optional[bool] = None,
         role: Optional[str] = None,
         q: Optional[str] = None,
-    ) -> Tuple[list[User], int]:
+    ) -> UserListResult:
         with get_session() as session:
-            return repo.list_users(session, skip, limit, is_active, role, q)
+            items, total = repo.list_users(session, skip, limit, is_active, role, q)
+            return UserListResult(items=items, total=total)
 
     def get_user(self, user_id: int) -> User:
         with get_session() as session:
@@ -220,7 +230,7 @@ class AuthService:
             if dto.is_active is not None:
                 details["new_is_active"] = dto.is_active
             if details:
-                AuditService().log_event(
+                self._audit.log_event(
                     event_type=AuditLogEventType.ROLE_CHANGED,
                     user_id=target_user_id,
                     details={"changed_by": current_user.id, **details},
@@ -246,7 +256,7 @@ class AuthService:
         with get_session() as session:
             repo.deactivate_user(session, target_user_id)
             session.commit()
-        AuditService().log_event(
+        self._audit.log_event(
             event_type=AuditLogEventType.ACCOUNT_DEACTIVATED,
             user_id=target_user_id,
             details={"deactivated_by": current_user.id},
