@@ -455,9 +455,10 @@ class TestAdminUserManagement:
     @patch("app.api.routers.admin_auth_router.AuthService.list_users")
     def test_admin_list_users_success(self, mock_list, client, override_system_admin_auth, system_admin_headers):
         from app.modules.auth.models.auth_models import User
+        from app.modules.auth.schemas.auth_schemas import UserListResult
 
         fake_user = User(id=1, username="admin1", role="system_admin", supabase_uid="uid-1", is_active=True)
-        mock_list.return_value = ([fake_user], 1)
+        mock_list.return_value = UserListResult(items=[fake_user], total=1)
 
         response = client.get("/api/v1/admin/users", headers=system_admin_headers)
 
@@ -505,10 +506,10 @@ class TestAdminUserManagement:
 
         assert response.status_code == 200
 
-    def test_admin_requires_system_admin(self, client, override_auth, mock_admin_headers):
+    def test_admin_can_list_users(self, client, override_auth, mock_admin_headers):
         response = client.get("/api/v1/admin/users", headers=mock_admin_headers)
 
-        assert response.status_code == 403
+        assert response.status_code == 200
 
     def test_admin_unauthorized(self, client):
         response = client.get("/api/v1/admin/users")

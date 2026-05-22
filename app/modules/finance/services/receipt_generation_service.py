@@ -3,6 +3,7 @@ app/modules/finance/services/receipt_generation_service.py
 ─────────────────────────────────────────────────────────
 Automated receipt generation with template support.
 """
+import logging
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from decimal import Decimal
@@ -17,6 +18,8 @@ from app.modules.enrollments.models.enrollment_models import Enrollment
 from app.modules.academics.models.group_models import Group
 from app.modules.crm.models.student_models import Student
 from app.shared.exceptions import NotFoundError
+
+logger = logging.getLogger(__name__)
 
 
 class ReceiptGenerationService:
@@ -98,8 +101,8 @@ class ReceiptGenerationService:
                         net_balance = float(result[0] or 0)
                         if net_balance < 0:
                             balance_remaining = abs(net_balance)
-                except:
-                    pass  # Balance calculation failed, continue without
+                except Exception:
+                    logger.warning("Balance query failed for student %s — continuing without balance", student.id)
             
             # Render based on template
             if template_name == 'detailed':

@@ -16,11 +16,12 @@ from email import encoders
 from typing import List, Optional, Tuple
 
 from app.core.config import settings
+from app.modules.notifications.dispatchers.i_dispatcher import IMessageDispatcher
 
 logger = logging.getLogger(__name__)
 
 
-class GmailEmailDispatcher:
+class GmailEmailDispatcher(IMessageDispatcher):
     """
     Sends emails via Gmail SMTP using App Password auth.
 
@@ -64,7 +65,7 @@ class GmailEmailDispatcher:
             # Attach files if provided
             if attachments:
                 for filename, file_bytes, mimetype in attachments:
-                    maintype, subtype = mimetype.split("/", 1)
+                    maintype, subtype = mimetype.split("/", 1) if "/" in mimetype else (mimetype, "application")
                     part = MIMEBase(maintype, subtype)
                     part.set_payload(file_bytes)
                     encoders.encode_base64(part)

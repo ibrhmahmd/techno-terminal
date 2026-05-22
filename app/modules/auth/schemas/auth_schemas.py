@@ -7,7 +7,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, field_validator
 from sqlmodel import SQLModel
 
-from app.modules.auth.models.auth_models import UserBase
+from app.modules.auth.models.auth_models import User, UserBase
 from app.shared.constants import MIN_PASSWORD_LENGTH
 
 class UserCreate(UserBase):
@@ -102,3 +102,17 @@ class UserSessionDTO(BaseModel):
     last_active_at: Optional[datetime] = None
     ip: Optional[str] = None
     user_agent: Optional[str] = None
+
+
+class UserListResult(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    items: list[User]
+    total: int
+
+
+class AuditLogQueryResult(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    items: list[AuditLogEntryDTO]
+    total: int

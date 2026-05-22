@@ -22,7 +22,7 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 
 class CreateUserRequest(BaseModel):
-    employee_id: int
+    employee_id: int | None = None
     username: str
     password: str
     role: str
@@ -48,12 +48,11 @@ class UpdateUserRequest(BaseModel):
 class InviteUserRequest(BaseModel):
     email: str
     role: str
-    employee_id: int
+    employee_id: int | None = None
 
 class RegisterUserRequest(BaseModel):
     token: str
     username: str
     password: str = Field(..., min_length=MIN_PASSWORD_LENGTH)
 
-class ChangeEmailRequest(BaseModel):
-    email: str
+

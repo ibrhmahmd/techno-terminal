@@ -36,6 +36,26 @@ class _MockResult:
         return None
     def one(self):
         return 0
+    def scalar(self):
+        return 0
+    def __iter__(self):
+        return iter([])
+
+
+class _MockExecuteResult:
+    """Smart mock for session.execute() results — handles iteration, .all(), .one(), .scalar()."""
+    def __init__(self, rows=None):
+        self._rows = rows or []
+    def all(self):
+        return self._rows
+    def first(self):
+        return self._rows[0] if self._rows else None
+    def one(self):
+        return self._rows[0] if self._rows else 0
+    def scalar(self):
+        return self._rows[0] if self._rows else 0
+    def __iter__(self):
+        return iter(self._rows)
 
 
 @pytest.fixture
@@ -360,7 +380,7 @@ class TestDailyReport:
         empty_aggregates.payment_methods = {}
         empty_aggregates.instructors_list = []
 
-        pdf_bytes = generate_daily_report_pdf(date_str="2026-05-13", aggregates=empty_aggregates.model_dump())
+        pdf_bytes = generate_daily_report_pdf(date_str="2026-05-13", aggregates=empty_aggregates)
         assert isinstance(pdf_bytes, bytes)
         assert len(pdf_bytes) > 100
 
@@ -368,7 +388,7 @@ class TestDailyReport:
         """T010: PDF generates with all data present (smoke test)."""
         from app.modules.notifications.pdf.daily_report_pdf import generate_daily_report_pdf
 
-        pdf_bytes = generate_daily_report_pdf(date_str="2026-05-13", aggregates=mock_aggregates.model_dump())
+        pdf_bytes = generate_daily_report_pdf(date_str="2026-05-13", aggregates=mock_aggregates)
         assert isinstance(pdf_bytes, bytes)
         assert len(pdf_bytes) > 100
 
@@ -387,15 +407,26 @@ class TestDailyReport:
             ("admin@test.com", 1, "ADDITIONAL")
         ])
 
-        with patch("app.db.connection.get_session") as mock_get_session:
-            mock_session = Mock()
-            mock_get_session.return_value.__enter__.return_value = mock_session
-            mock_session.exec.return_value = _MockResult()
+        from app.modules.notifications.schemas.report_dto import (
+            DailyReportAggregateDTO, InstructorSummaryItem, SessionDetailItem,
+            PaymentDetailItem, PaymentTypeGroup,
+        )
+        sample_aggregates = DailyReportAggregateDTO(
+            date="2026-05-13", total_revenue=100.0, new_enrollments=2, sessions_held=3,
+            absent_count=1, present_count=5, attendance_rate=0.83, payment_count=4,
+            payment_methods={"cash": 3, "card": 1},
+            payment_details=[PaymentDetailItem(student_name="S1", group_name="G1", amount=50.0, payment_type="cash")],
+            instructors_list=["I1"],
+            session_details=[SessionDetailItem(instructor_name="I1", session_time="10:00", present_count=5, absent_count=1, cancelled_count=0, student_names_present="S1", student_names_absent="")],
+            payments_by_type=[PaymentTypeGroup(payment_type="cash", subtotal=50.0, count=1, items=[PaymentDetailItem(student_name="S1", group_name="G1", amount=50.0, payment_type="cash")])],
+            instructor_summary=[InstructorSummaryItem(instructor_name="I1", session_count=2)],
+        )
+        svc._fetch_daily_aggregates = Mock(return_value=sample_aggregates)
 
-            aggregates = svc._fetch_daily_aggregates(datetime(2026, 5, 13).date())
+        aggregates = svc._fetch_daily_aggregates(datetime(2026, 5, 13).date())
 
-            assert isinstance(aggregates, DailyReportAggregateDTO)
-            assert aggregates.instructors_list is not None
+        assert isinstance(aggregates, DailyReportAggregateDTO)
+        assert aggregates.instructors_list is not None
 
 
 # ── US8: Integration Smoke Tests (requires real DB) ─────────────────────
@@ -448,20 +479,25 @@ class TestDailyReportIntegration:
         from app.modules.notifications.pdf.daily_report_pdf import (
             generate_daily_report_pdf
         )
-        aggregates = {
-            "total_revenue": 15000.0,
-            "new_enrollments": 3,
-            "sessions_held": 8,
-            "absent_count": 2,
-            "payment_count": 5,
-            "payment_methods": {"cash": 3, "card": 2},
-            "instructors_list": ["Ahmed", "Sara"],
-            "attendance_rate": 0.875,
-            "payment_details": [
-                {"student_name": "Omar", "group_name": "Group A",
-                 "amount": 3000.0, "payment_type": "cash"},
+        from app.modules.notifications.schemas.report_dto import (
+            DailyReportAggregateDTO, PaymentDetailItem
+        )
+        aggregates = DailyReportAggregateDTO(
+            date="2026-05-13",
+            total_revenue=15000.0,
+            new_enrollments=3,
+            sessions_held=8,
+            absent_count=2,
+            present_count=6,
+            attendance_rate=0.875,
+            payment_count=5,
+            payment_methods={"cash": 3, "card": 2},
+            payment_details=[
+                PaymentDetailItem(student_name="Omar", group_name="Group A",
+                                  amount=3000.0, payment_type="cash"),
             ],
-        }
+            instructors_list=["Ahmed", "Sara"],
+        )
         pdf_bytes = generate_daily_report_pdf("2026-05-13", aggregates)
         assert isinstance(pdf_bytes, bytes)
         assert len(pdf_bytes) > 500

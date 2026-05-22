@@ -287,7 +287,7 @@ def get_roster_for_group_level(
             e.amount_due,
             COALESCE(e.discount_applied, 0) AS discount_applied,
             COALESCE(p.total_paid, 0) AS total_paid,
-            (e.amount_due - COALESCE(e.discount_applied, 0) - COALESCE(p.total_paid, 0)) AS balance
+            (COALESCE(e.amount_due, 0) - COALESCE(e.discount_applied, 0) - COALESCE(p.total_paid, 0)) AS balance
         FROM enrollments e
         JOIN students s ON e.student_id = s.id
         LEFT JOIN (
@@ -307,7 +307,7 @@ def get_roster_for_group_level(
     result: list[StudentRosterDTO] = []
     for row in rows:
         mapping = row._mapping
-        balance = float(mapping['balance'])
+        balance = float(mapping['balance'] or 0)
         result.append(StudentRosterDTO(
             student_id=mapping['student_id'],
             student_name=mapping['student_name'],

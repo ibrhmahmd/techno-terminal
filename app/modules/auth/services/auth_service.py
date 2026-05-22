@@ -1,10 +1,16 @@
-from typing import Optional, Tuple
+import logging
+from typing import Optional
 
 from app.core.supabase_clients import get_supabase_admin, get_supabase_anon
 from app.db.connection import get_session
 import app.modules.auth.repositories.auth_repository as repo
 from app.modules.auth.models.auth_models import User
-from app.modules.auth.schemas.auth_schemas import UpdateProfileInput, UserCreate
+from app.modules.auth.schemas.auth_schemas import (
+    UpdateProfileInput,
+    UserCreate,
+    UserListResult,
+    UserSessionDTO,
+)
 from app.modules.auth.constants import is_valid_role
 from app.modules.hr.repositories import EmployeeRepository
 from app.shared.constants import MIN_PASSWORD_LENGTH
@@ -12,7 +18,13 @@ from app.shared.exceptions import AuthError, BusinessRuleError, ConflictError, N
 from app.modules.auth.models.audit_log import AuditLogEventType
 from app.modules.auth.services.audit_service import AuditService
 
+logger = logging.getLogger(__name__)
+
+
 class AuthService:
+    def __init__(self, audit_svc: AuditService | None = None):
+        self._audit = audit_svc or AuditService()
+
     def get_user_by_supabase_uid(self, uid: str) -> Optional[User]:
         """Retrieves a local user profile explicitly mapped to a verified Supabase JWT."""
         with get_session() as session:
@@ -59,12 +71,13 @@ class AuthService:
                 {"email": email_binding, "password": current_password}
             )
         except Exception as e:
+            logger.warning("Supabase sign-in failed during password change: %s", e)
             raise AuthError("Current password is incorrect.") from e
         admin = get_supabase_admin()
         admin.auth.admin.update_user_by_id(
             user.supabase_uid, {"password": new_password}
         )
-        AuditService().log_event(
+        self._audit.log_event(
             event_type=AuditLogEventType.PASSWORD_CHANGE,
             user_id=user.id,
         )
@@ -81,7 +94,7 @@ class AuthService:
             session.refresh(user)
             return user
 
-    def invite_user(self, email: str, role: str, employee_id: int) -> User:
+    def invite_user(self, email: str, role: str, employee_id: int | None) -> User:
         import uuid
         from datetime import timedelta
         from app.shared.datetime_utils import utc_now
@@ -92,6 +105,10 @@ class AuthService:
             existing = repo.get_user_by_username(session, email)
             if existing:
                 raise ConflictError(f"User with email {email!r} already exists.")
+            if employee_id is not None:
+                emp_repo = EmployeeRepository(session)
+                if not emp_repo.get_by_id(employee_id):
+                    raise NotFoundError(f"Employee {employee_id} not found.")
             user_in = UserCreate(
                 username=email,
                 role=role,
@@ -159,23 +176,24 @@ class AuthService:
             admin = get_supabase_admin()
             admin.auth.admin.sign_out(user.supabase_uid)
         except Exception:
-            pass
+            logger.exception("Failed to log out Supabase sessions for user %s", user.id)
 
-    def list_sessions(self, user: User) -> list[dict]:
+    def list_sessions(self, user: User) -> list[UserSessionDTO]:
         admin = get_supabase_admin()
         try:
             sessions = admin.auth.admin.list_sessions(user.supabase_uid)
             results = []
             for s in sessions:
-                results.append({
-                    "id": getattr(s, "id", ""),
-                    "created_at": getattr(s, "created_at", None),
-                    "last_active_at": getattr(s, "last_active_at", None),
-                    "ip": getattr(s, "ip", None),
-                    "user_agent": getattr(s, "user_agent", None),
-                })
+                results.append(UserSessionDTO(
+                    id=getattr(s, "id", ""),
+                    created_at=getattr(s, "created_at", None),
+                    last_active_at=getattr(s, "last_active_at", None),
+                    ip=getattr(s, "ip", None),
+                    user_agent=getattr(s, "user_agent", None),
+                ))
             return results
         except Exception:
+            logger.exception("Failed to list Supabase sessions for user %s", user.id)
             return []
 
     def forgot_password(self, email: str) -> None:
@@ -183,7 +201,7 @@ class AuthService:
             supabase = get_supabase_anon()
             supabase.auth.reset_password_email(email)
         except Exception:
-            pass
+            logger.exception("Forgot password email failed for %s", email)
 
     def list_users(
         self,
@@ -192,9 +210,10 @@ class AuthService:
         is_active: Optional[bool] = None,
         role: Optional[str] = None,
         q: Optional[str] = None,
-    ) -> Tuple[list[User], int]:
+    ) -> UserListResult:
         with get_session() as session:
-            return repo.list_users(session, skip, limit, is_active, role, q)
+            items, total = repo.list_users(session, skip, limit, is_active, role, q)
+            return UserListResult(items=items, total=total)
 
     def get_user(self, user_id: int) -> User:
         with get_session() as session:
@@ -220,7 +239,7 @@ class AuthService:
             if dto.is_active is not None:
                 details["new_is_active"] = dto.is_active
             if details:
-                AuditService().log_event(
+                self._audit.log_event(
                     event_type=AuditLogEventType.ROLE_CHANGED,
                     user_id=target_user_id,
                     details={"changed_by": current_user.id, **details},
@@ -241,19 +260,19 @@ class AuthService:
                 admin = get_supabase_admin()
                 admin.auth.admin.delete_user(supabase_uid)
             except Exception:
-                pass
+                logger.exception("Failed to delete Supabase user %s for deactivation", supabase_uid)
 
         with get_session() as session:
             repo.deactivate_user(session, target_user_id)
             session.commit()
-        AuditService().log_event(
+        self._audit.log_event(
             event_type=AuditLogEventType.ACCOUNT_DEACTIVATED,
             user_id=target_user_id,
             details={"deactivated_by": current_user.id},
         )
 
     def link_employee_to_new_user(
-        self, employee_id: int, username: str, raw_password: str, role: str
+        self, employee_id: int | None, username: str, raw_password: str, role: str
     ) -> User:
         if len(raw_password) < MIN_PASSWORD_LENGTH:
             raise ValidationError(
@@ -263,12 +282,13 @@ class AuthService:
             raise ValidationError(f"Invalid role: {role!r}.")
 
         with get_session() as session:
-            emp_repo = EmployeeRepository(session)
-            emp = emp_repo.get_by_id(employee_id)
-            if not emp:
-                raise NotFoundError(f"Employee {employee_id} not found.")
-            if repo.get_users_by_employee_id(session, employee_id):
-                raise ConflictError("This employee already has a linked login.")
+            if employee_id is not None:
+                emp_repo = EmployeeRepository(session)
+                emp = emp_repo.get_by_id(employee_id)
+                if not emp:
+                    raise NotFoundError(f"Employee {employee_id} not found.")
+                if repo.get_users_by_employee_id(session, employee_id):
+                    raise ConflictError("This employee already has a linked login.")
             if repo.get_user_by_username(session, username):
                 raise ConflictError(f"Username {username!r} already exists.")
 
@@ -303,5 +323,5 @@ class AuthService:
                 try:
                     admin.auth.admin.delete_user(native_uid)
                 except Exception:
-                    pass
+                    logger.exception("Failed to clean up Supabase user %s after DB rollback", native_uid)
                 raise

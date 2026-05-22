@@ -6,8 +6,11 @@ Dashboard analytics router.
 Endpoints for the admin dashboard daily overview API.
 """
 
+import logging
 from datetime import date
 from fastapi import APIRouter, Depends, Query, HTTPException, status
+
+logger = logging.getLogger(__name__)
 
 from app.api.schemas.common import ApiResponse, ErrorResponse
 from app.modules.analytics.schemas.dashboard_schemas import DashboardDailyOverviewDTO
@@ -58,9 +61,9 @@ def get_daily_overview(
             data=result,
             message="Dashboard overview loaded successfully.",
         )
-    except Exception as e:
-        # Log the error and return a generic error message
+    except Exception:
+        logger.exception("Dashboard overview failed for date=%s", date_param)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to load dashboard overview: {str(e)}"
+            detail="Failed to load dashboard overview. Check server logs for details.",
         )

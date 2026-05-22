@@ -1,11 +1,13 @@
-from fastapi import FastAPI
-from contextlib import asynccontextmanager
 import asyncio
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.exceptions import register_exception_handlers
 from app.api.middleware.logging_middleware import logging_middleware
+from app.core.config import configure_logging, settings
 from app.api.routers import auth_router
 from app.api.routers import attendance_router
 from app.api.routers import enrollments_router
@@ -37,6 +39,8 @@ from app.api.routers import admin_auth_router
 
 
 def create_app() -> FastAPI:
+    configure_logging(settings)
+
     from app.db.connection import get_engine
     from sqlmodel import Session
     from app.modules.notifications.repositories.notification_repository import (
@@ -72,6 +76,8 @@ def create_app() -> FastAPI:
         redoc_url="/api/v1/redoc",
         openapi_url="/api/v1/openapi.json",
     )
+
+    app.state.slow_request_ms = settings.slow_request_ms
 
     # 1. Access logger (runs first — outermost wrapper)
     app.add_middleware(BaseHTTPMiddleware, dispatch=logging_middleware)

@@ -4,7 +4,6 @@ app/modules/notifications/pdf/daily_report_pdf.py
 PDF generation for daily business reports.
 """
 from datetime import date
-from typing import Dict, Any
 from io import BytesIO
 
 from reportlab.lib import colors
@@ -15,10 +14,12 @@ from reportlab.platypus import (
     SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
 )
 
+from app.modules.notifications.schemas.report_dto import DailyReportAggregateDTO
+
 
 def generate_daily_report_pdf(
     date_str: str,
-    aggregates: Dict[str, Any]
+    aggregates: DailyReportAggregateDTO
 ) -> bytes:
     """
     Generate a PDF daily report.
@@ -79,10 +80,10 @@ def generate_daily_report_pdf(
     # Summary Cards Table
     summary_data = [
         ['Total Revenue', 'New Enrollments'],
-        [f"{aggregates['total_revenue']:.2f} EGP", str(aggregates['new_enrollments'])],
+        [f"{aggregates.total_revenue:.2f} EGP", str(aggregates.new_enrollments)],
         ['', ''],
-        ['Sessions Held', 'Absent Students'],
-        [str(aggregates['sessions_held']), str(aggregates['absent_count'])]
+        ['Sessions Held', 'Present / Absent'],
+        [str(aggregates.sessions_held), f"{aggregates.present_count} / {aggregates.absent_count}"]
     ]
     
     summary_table = Table(summary_data, colWidths=[7*cm, 7*cm])
@@ -131,19 +132,19 @@ def generate_daily_report_pdf(
     
     # Format payment methods for display
     payment_methods_str = ", ".join(
-        [f"{method}: {count}" for method, count in aggregates.get("payment_methods", {}).items()]
-    ) if aggregates.get("payment_methods") else "N/A"
+        [f"{method}: {count}" for method, count in aggregates.payment_methods.items()]
+    ) if aggregates.payment_methods else "N/A"
     
     # Format instructors list
-    instructors_str = ", ".join(aggregates.get("instructors_list", [])) if aggregates.get("instructors_list") else "N/A"
+    instructors_str = ", ".join(aggregates.instructors_list) if aggregates.instructors_list else "N/A"
     
     # Metrics table
     metrics_data = [
         ['Metric', 'Value'],
-        ['Payment Transactions', str(aggregates.get('payment_count', 0))],
+        ['Payment Transactions', str(aggregates.payment_count)],
         ['Payment Methods', payment_methods_str],
         ['Instructors Today', instructors_str],
-        ['Attendance Rate', f"{aggregates.get('attendance_rate', 0):.1%}"]
+        ['Attendance Rate', f"{aggregates.attendance_rate:.1%}"]
     ]
     
     metrics_table = Table(metrics_data, colWidths=[7*cm, 7*cm])
@@ -179,7 +180,7 @@ def generate_daily_report_pdf(
     elements.append(Spacer(1, 1*cm))
     
     # Payment Details Section
-    payment_details = aggregates.get('payment_details', [])
+    payment_details = aggregates.payment_details
     if payment_details:
         elements.append(Paragraph("Payment Details", heading_style))
         elements.append(Spacer(1, 0.3*cm))
@@ -188,10 +189,10 @@ def generate_daily_report_pdf(
         payment_data = [['Student', 'Group', 'Amount', 'Type']]
         for payment in payment_details:
             payment_data.append([
-                payment['student_name'],
-                payment['group_name'],
-                f"{payment['amount']:.2f} EGP",
-                payment['payment_type']
+                payment.student_name,
+                payment.group_name,
+                f"{payment.amount:.2f} EGP",
+                payment.payment_type
             ])
         
         payment_table = Table(payment_data, colWidths=[5*cm, 4*cm, 3*cm, 2*cm])
@@ -225,7 +226,7 @@ def generate_daily_report_pdf(
         elements.append(Spacer(1, 1*cm))
 
     # Payments by Type Sub-tables
-    payments_by_type = aggregates.get('payments_by_type', [])
+    payments_by_type = aggregates.payments_by_type
     if payments_by_type:
         elements.append(Paragraph("Payments by Type", heading_style))
         elements.append(Spacer(1, 0.3*cm))
@@ -241,17 +242,17 @@ def generate_daily_report_pdf(
             )
             elements.append(
                 Paragraph(
-                    f"{ptype_group['payment_type']} — Subtotal: {ptype_group['subtotal']:.2f} EGP ({ptype_group['count']} payments)",
+                    f"{ptype_group.payment_type} — Subtotal: {ptype_group.subtotal:.2f} EGP ({ptype_group.count} payments)",
                     type_heading
                 )
             )
 
             sub_data = [['Student', 'Group', 'Amount']]
-            for payment in ptype_group['items']:
+            for payment in ptype_group.items:
                 sub_data.append([
-                    payment['student_name'],
-                    payment['group_name'],
-                    f"{payment['amount']:.2f} EGP",
+                    payment.student_name,
+                    payment.group_name,
+                    f"{payment.amount:.2f} EGP",
                 ])
 
             sub_table = Table(sub_data, colWidths=[5*cm, 4*cm, 5*cm])
@@ -276,7 +277,7 @@ def generate_daily_report_pdf(
             elements.append(Spacer(1, 0.3*cm))
 
     # Session Details Table
-    session_details = aggregates.get('session_details', [])
+    session_details = aggregates.session_details
     if session_details:
         elements.append(Paragraph("Session Attendance Details", heading_style))
         elements.append(Spacer(1, 0.3*cm))
@@ -285,14 +286,16 @@ def generate_daily_report_pdf(
 
         session_data = [['Instructor', 'Time', 'P', 'A', 'C', 'Students Present', 'Students Absent']]
         for s in session_details:
+            def _truncate(name_str: str, max_len: int = 80) -> str:
+                return (name_str[:max_len] + '...') if len(name_str) > max_len else name_str
             session_data.append([
-                s['instructor_name'],
-                s['session_time'],
-                str(s['present_count']),
-                str(s['absent_count']),
-                str(s['cancelled_count']),
-                Paragraph(s['student_names_present'], body_style),
-                Paragraph(s['student_names_absent'], body_style),
+                s.instructor_name,
+                s.session_time,
+                str(s.present_count),
+                str(s.absent_count),
+                str(s.cancelled_count),
+                Paragraph(_truncate(s.student_names_present), body_style),
+                Paragraph(_truncate(s.student_names_absent), body_style),
             ])
 
         session_table = Table(session_data, colWidths=[2.5*cm, 2*cm, 1*cm, 1*cm, 1*cm, 4.5*cm, 4.5*cm])
@@ -318,14 +321,14 @@ def generate_daily_report_pdf(
         elements.append(Spacer(1, 0.5*cm))
 
     # Instructor Summary Table
-    instructor_summary = aggregates.get('instructor_summary', [])
+    instructor_summary = aggregates.instructor_summary
     if instructor_summary:
         elements.append(Paragraph("Instructor Summary", heading_style))
         elements.append(Spacer(1, 0.3*cm))
 
         instr_data = [['Instructor', 'Sessions']]
         for i in instructor_summary:
-            instr_data.append([i['instructor_name'], str(i['session_count'])])
+            instr_data.append([i.instructor_name, str(i.session_count)])
 
         instr_table = Table(instr_data, colWidths=[7*cm, 7*cm])
         instr_table.setStyle(TableStyle([

@@ -5,7 +5,9 @@ Scheduled report notifications for employees.
 """
 from datetime import date, timedelta
 from typing import Optional
+from decimal import Decimal
 import logging
+from pydantic import BaseModel, ConfigDict
 
 from app.modules.notifications.services.base_notification_service import BaseNotificationService
 from app.modules.notifications.repositories.notification_repository import NotificationRepository
@@ -16,6 +18,15 @@ from app.modules.notifications.schemas.report_dto import (
     SessionDetailItem,
     InstructorSummaryItem,
 )
+
+
+class PeriodReportAggregateDTO(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    total_revenue: Decimal = Decimal("0.00")
+    new_students: int = 0
+    attendance_rate: float = 0.0
+    new_enrollments: int = 0
+    active_students: int = 0
 
 
 logger = logging.getLogger(__name__)
@@ -183,7 +194,7 @@ class ReportNotificationService(BaseNotificationService):
             from app.modules.notifications.pdf.daily_report_pdf import generate_daily_report_pdf
             pdf_bytes = generate_daily_report_pdf(
                 date_str=today.strftime("%Y-%m-%d"),
-                aggregates=aggregates.model_dump()
+                aggregates=aggregates
             )
             logger.info(f"Generated daily report PDF for {today}")
         except Exception as e:
@@ -221,35 +232,35 @@ class ReportNotificationService(BaseNotificationService):
         variables = {
             "week_start": week_start.strftime("%Y-%m-%d"),
             "week_end": week_end.strftime("%Y-%m-%d"),
-            "total_revenue": f"{aggregates['total_revenue']:.2f}",
-            "new_students": aggregates["new_students"],
-            "attendance_rate": f"{aggregates['attendance_rate']:.1f}",
+            "total_revenue": f"{aggregates.total_revenue:.2f}",
+            "new_students": aggregates.new_students,
+            "attendance_rate": f"{aggregates.attendance_rate:.1f}",
         }
-        
+
         # Send to all enabled recipients (admins + additional recipients)
         for email, recipient_id, recipient_type in recipients:
             await self._dispatch(template, "EMAIL", recipient_type, recipient_id, email, variables)
-    
+
     async def send_monthly_report(self) -> None:
         """Monthly business summary to all admins."""
         template = self._repo.get_template_by_name("monthly_report")
         if not template or not template.is_active:
             logger.warning("monthly_report template not found or inactive - skipping.")
             return
-        
+
         # Get notification recipients (fallback handled automatically by base service)
         recipients = self._resolve_notification_recipients("monthly_report")
-        
+
         today = date.today()
         month_start = today.replace(day=1)
-        
+
         aggregates = self._fetch_monthly_aggregates(month_start, today)
-        
+
         variables = {
             "month": today.strftime("%B %Y"),
-            "total_revenue": f"{aggregates['total_revenue']:.2f}",
-            "new_enrollments": aggregates["new_enrollments"],
-            "active_students": aggregates["active_students"],
+            "total_revenue": f"{aggregates.total_revenue:.2f}",
+            "new_enrollments": aggregates.new_enrollments,
+            "active_students": aggregates.active_students,
         }
         
         # Send to all enabled recipients (admins + additional recipients)
@@ -269,7 +280,7 @@ class ReportNotificationService(BaseNotificationService):
             raise NotFoundError(f"No data found for {target_date}")
         pdf_bytes = generate_daily_report_pdf(
             date_str=target_date.isoformat(),
-            aggregates=aggregates.model_dump()
+            aggregates=aggregates
         )
         return target_date.isoformat(), b64encode(pdf_bytes).decode()
 
@@ -286,7 +297,7 @@ class ReportNotificationService(BaseNotificationService):
 
         pdf_bytes = generate_daily_report_pdf(
             date_str=target_date.isoformat(),
-            aggregates=aggregates.model_dump()
+            aggregates=aggregates
         )
         filename = f"daily_report_{target_date.isoformat()}.pdf"
         attachments = [(filename, pdf_bytes, "application/pdf")]
@@ -308,6 +319,7 @@ class ReportNotificationService(BaseNotificationService):
             aggregates.sessions_held > 0
             or aggregates.payment_count > 0
             or aggregates.new_enrollments > 0
+            or aggregates.present_count > 0
         )
 
     def _build_variables(
@@ -418,16 +430,6 @@ class ReportNotificationService(BaseNotificationService):
             "payments_by_type": payments_by_type_html,
         }
 
-    def _build_daily_report_body(
-        self, aggregates: DailyReportAggregateDTO, target_date: date
-    ) -> str:
-        """Render the daily report template with variables."""
-        template = self._repo.get_template_by_name("daily_report")
-        if not template:
-            return ""
-        variables = self._build_variables(aggregates, target_date)
-        return self._render_template(template, variables)
-
     # ── Private Helpers ──────────────────────────────────────────────────
     
     def _fetch_daily_aggregates(self, target_date: date) -> DailyReportAggregateDTO:
@@ -437,12 +439,12 @@ class ReportNotificationService(BaseNotificationService):
             repo = ReportsRepository(session)
             return repo.get_daily_aggregates(target_date)
     
-    def _fetch_weekly_aggregates(self, week_start: date, week_end: date) -> dict: #TODO remove Dict and write a typed DTO class
+    def _fetch_weekly_aggregates(self, week_start: date, week_end: date) -> PeriodReportAggregateDTO:
         """Fetch weekly metrics."""
-        total_revenue = 0.0
+        total_revenue = Decimal("0.00")
         new_students = 0
         attendance_rate = 0.0
-        
+
         try:
             from app.modules.analytics.services.financial_service import FinancialAnalyticsService
             fin_svc = FinancialAnalyticsService()
@@ -450,7 +452,7 @@ class ReportNotificationService(BaseNotificationService):
             total_revenue = sum(r.net_revenue for r in revenue_data)
         except Exception as e:
             logger.warning(f"Could not fetch weekly revenue: {e}")
-        
+
         try:
             from app.db.connection import get_session
             from sqlmodel import select, func
@@ -463,7 +465,7 @@ class ReportNotificationService(BaseNotificationService):
                 new_students = session.exec(stmt).one() or 0
         except Exception as e:
             logger.warning(f"Could not fetch weekly new students: {e}")
-        
+
         try:
             from app.modules.analytics.services.bi_service import BIAnalyticsService
             bi_svc = BIAnalyticsService()
@@ -474,19 +476,19 @@ class ReportNotificationService(BaseNotificationService):
                 attendance_rate = (total_active / total_all * 100) if total_all > 0 else 0.0
         except Exception as e:
             logger.warning(f"Could not fetch weekly attendance rate: {e}")
-        
-        return {
-            "total_revenue": total_revenue,
-            "new_students": new_students,
-            "attendance_rate": attendance_rate,
-        }
+
+        return PeriodReportAggregateDTO(
+            total_revenue=total_revenue,
+            new_students=new_students,
+            attendance_rate=attendance_rate,
+        )
     
-    def _fetch_monthly_aggregates(self, month_start: date, month_end: date) -> dict: #TODO remove Dict and write a typed DTO class
+    def _fetch_monthly_aggregates(self, month_start: date, month_end: date) -> PeriodReportAggregateDTO:
         """Fetch monthly metrics."""
-        total_revenue = 0.0
+        total_revenue = Decimal("0.00")
         new_enrollments = 0
         active_students = 0
-        
+
         try:
             from app.modules.analytics.services.financial_service import FinancialAnalyticsService
             fin_svc = FinancialAnalyticsService()
@@ -494,7 +496,7 @@ class ReportNotificationService(BaseNotificationService):
             total_revenue = sum(r.net_revenue for r in revenue_data)
         except Exception as e:
             logger.warning(f"Could not fetch monthly revenue: {e}")
-        
+
         try:
             from app.db.connection import get_session
             from sqlmodel import select, func
@@ -505,19 +507,19 @@ class ReportNotificationService(BaseNotificationService):
                     Enrollment.enrolled_at <= month_end,
                 )
                 new_enrollments = session.exec(new_stmt).one() or 0
-                
+
                 active_stmt = select(func.count()).select_from(Enrollment).where(
                     Enrollment.status == "active"
                 )
                 active_students = session.exec(active_stmt).one() or 0
         except Exception as e:
             logger.warning(f"Could not fetch monthly enrollment stats: {e}")
-        
-        return {
-            "total_revenue": total_revenue,
-            "new_enrollments": new_enrollments,
-            "active_students": active_students,
-        }
+
+        return PeriodReportAggregateDTO(
+            total_revenue=total_revenue,
+            new_enrollments=new_enrollments,
+            active_students=active_students,
+        )
     
     # ── Bulk Marketing (now sends to all admins via email) ──────────────
     

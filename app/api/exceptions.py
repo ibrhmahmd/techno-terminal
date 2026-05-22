@@ -1,6 +1,8 @@
 """
 FastAPI exceptions handler mappings.
 """
+import logging
+
 from fastapi import Request, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
@@ -12,6 +14,9 @@ from app.shared.exceptions import (
     ConflictError,
     AuthError
 )
+
+logger = logging.getLogger("api.access")
+
 
 def register_exception_handlers(app):
     @app.exception_handler(NotFoundError)
@@ -97,4 +102,17 @@ def register_exception_handlers(app):
                 "message": exc.detail,
             },
             headers=exc.headers,
+        )
+
+    @app.exception_handler(Exception)
+    async def unhandled_exception_handler(request: Request, exc: Exception):
+        """Catch-all: log full traceback and return 500."""
+        logger.exception("Unhandled exception on %s %s", request.method, request.url.path)
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error": "InternalServerError",
+                "message": "An unexpected error occurred. The server logs contain details.",
+            },
         )

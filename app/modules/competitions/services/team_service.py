@@ -1,3 +1,4 @@
+import logging
 from datetime import date
 from decimal import Decimal
 from typing import Optional, TYPE_CHECKING
@@ -34,6 +35,8 @@ from app.modules.finance.repositories.unit_of_work import FinanceUnitOfWork
 from app.modules.finance.services.receipt_service import ReceiptService
 from app.modules.finance.services.refund_service import RefundService
 from app.modules.finance import ReceiptLineInput
+
+logger = logging.getLogger(__name__)
 
 
 class TeamService:
@@ -237,9 +240,7 @@ class TeamService:
                 )
             uow.commit()
         except Exception:
-            # Don't fail the registration if logging fails
-            # In production, you'd want to log this error somewhere
-            pass
+            logger.exception("Failed to log competition registration activity for team %s", team.id)
 
     def _log_payment_activity(
         self,
@@ -266,8 +267,7 @@ class TeamService:
             )
             uow.commit()
         except Exception:
-            # Don't fail the payment if logging fails
-            pass
+            logger.exception("Failed to log payment activity for student %s, payment %s", student_id, payment_id)
 
     def _log_placement_activity(
         self,
@@ -303,8 +303,7 @@ class TeamService:
             )
             uow.commit()
         except Exception:
-            # Don't fail if logging fails
-            pass
+            logger.exception("Failed to log placement activity for student %s, competition %s", student_id, competition_id)
 
     def get_team_by_id(self, team_id: int) -> TeamDTO | None:
         """Get a single team by ID."""

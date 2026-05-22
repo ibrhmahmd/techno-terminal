@@ -3,6 +3,7 @@ from app.modules.auth.services.audit_service import AuditService
 from app.modules.auth.models.auth_models import User, UserBase
 from app.modules.auth.schemas.auth_schemas import (
     AuditLogEntryDTO,
+    AuditLogQueryResult,
     ChangePasswordInput,
     ForgotPasswordInput,
     InviteResultDTO,
@@ -11,6 +12,7 @@ from app.modules.auth.schemas.auth_schemas import (
     UpdateUserInput,
     UserAdminDTO,
     UserCreate,
+    UserListResult,
     UserPublic,
     UserSessionDTO,
 )
@@ -27,6 +29,7 @@ __all__ = [
     "AuditLog",
     "AuditLogEventType",
     "AuditLogEntryDTO",
+    "AuditLogQueryResult",
     "ChangePasswordInput",
     "ForgotPasswordInput",
     "InviteResultDTO",
@@ -34,6 +37,7 @@ __all__ = [
     "UpdateProfileInput",
     "UpdateUserInput",
     "UserAdminDTO",
+    "UserListResult",
     "UserSessionDTO",
     "UserRole",
     "ALL_ROLE_VALUES",

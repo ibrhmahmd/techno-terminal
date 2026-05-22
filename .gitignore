@@ -30,6 +30,14 @@ Thumbs.db
 *.log
 etl_log.txt
 
+# Coverage
+.coverage
+htmlcov/
+
+# Editor swap files
+*.swp
+*.tmp
+
 # Data (raw data is not version controlled)
 data/raw/
 data/processed/

@@ -1,0 +1,48 @@
+# Git
+.git/
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyc
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Environment
+.env
+*.env
+
+# IDE
+.vs/
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp
+*.swp
+*.tmp
+*.log
+
+# Not needed in production image
+tests/
+specs/
+docs/
+scripts/
+data/
+archieve/
+.streamlit/
+.fastapicloud/
+.opencode/
+db/migrations/

@@ -4,7 +4,7 @@ app/modules/notifications/services/payment_notifications.py
 Payment notification handlers.
 """
 import logging
-from typing import List, Optional, Tuple
+from typing import Optional
 from fastapi import BackgroundTasks
 
 from app.modules.notifications.services.base_notification_service import BaseNotificationService
