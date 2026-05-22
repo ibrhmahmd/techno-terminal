@@ -90,7 +90,7 @@ class AuthService:
             session.refresh(user)
             return user
 
-    def invite_user(self, email: str, role: str, employee_id: int) -> User:
+    def invite_user(self, email: str, role: str, employee_id: int | None) -> User:
         import uuid
         from datetime import timedelta
         from app.shared.datetime_utils import utc_now
@@ -101,6 +101,10 @@ class AuthService:
             existing = repo.get_user_by_username(session, email)
             if existing:
                 raise ConflictError(f"User with email {email!r} already exists.")
+            if employee_id is not None:
+                emp_repo = EmployeeRepository(session)
+                if not emp_repo.get_by_id(employee_id):
+                    raise NotFoundError(f"Employee {employee_id} not found.")
             user_in = UserCreate(
                 username=email,
                 role=role,
@@ -263,7 +267,7 @@ class AuthService:
         )
 
     def link_employee_to_new_user(
-        self, employee_id: int, username: str, raw_password: str, role: str
+        self, employee_id: int | None, username: str, raw_password: str, role: str
     ) -> User:
         if len(raw_password) < MIN_PASSWORD_LENGTH:
             raise ValidationError(
@@ -273,12 +277,13 @@ class AuthService:
             raise ValidationError(f"Invalid role: {role!r}.")
 
         with get_session() as session:
-            emp_repo = EmployeeRepository(session)
-            emp = emp_repo.get_by_id(employee_id)
-            if not emp:
-                raise NotFoundError(f"Employee {employee_id} not found.")
-            if repo.get_users_by_employee_id(session, employee_id):
-                raise ConflictError("This employee already has a linked login.")
+            if employee_id is not None:
+                emp_repo = EmployeeRepository(session)
+                emp = emp_repo.get_by_id(employee_id)
+                if not emp:
+                    raise NotFoundError(f"Employee {employee_id} not found.")
+                if repo.get_users_by_employee_id(session, employee_id):
+                    raise ConflictError("This employee already has a linked login.")
             if repo.get_user_by_username(session, username):
                 raise ConflictError(f"Username {username!r} already exists.")
 
