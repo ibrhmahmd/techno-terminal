@@ -2,6 +2,7 @@ import asyncio
 from datetime import datetime
 import logging
 from typing import Callable
+import zoneinfo
 
 from app.core.config import settings
 from app.modules.notifications.services.notification_service import NotificationService
@@ -17,10 +18,11 @@ async def start_report_scheduler(make_service: Callable[[], NotificationService]
     Checks every 60 seconds whether a scheduled report is due.
     Uses a 'last_sent' guard to prevent double-sends on fast restarts.
     """
-    logger.info(f"Notification report scheduler started. Daily report at {DAILY_REPORT_HOUR:02d}:{DAILY_REPORT_MINUTE:02d}")
+    logger.info(f"Notification report scheduler started. Daily report at {DAILY_REPORT_HOUR:02d}:{DAILY_REPORT_MINUTE:02d} (Cairo Time)")
     last_daily = None
     last_weekly = None
     last_monthly = None
+    cairo_tz = zoneinfo.ZoneInfo("Africa/Cairo")
 
     if not settings.scheduler_enabled:
         logger.info("Report scheduler is disabled via SCHEDULER_ENABLED setting.")
@@ -28,7 +30,7 @@ async def start_report_scheduler(make_service: Callable[[], NotificationService]
 
     while True:
         try:
-            now = datetime.now()
+            now = datetime.now(cairo_tz)
 
             # Check if we're in the execution window for daily report
             # Window-based check prevents missed reports if server is busy at exact time
