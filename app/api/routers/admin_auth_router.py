@@ -11,7 +11,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query
 
-from app.api.dependencies import require_system_admin, get_auth_service, get_audit_service
+from app.api.dependencies import require_admin, get_auth_service, get_audit_service
 from app.api.schemas.common import ApiResponse, PaginatedResponse
 from app.api.schemas.auth import UpdateUserRequest, InviteUserRequest
 from app.modules.auth import AuthService, AuditService, User, UserAdminDTO, InviteResultDTO, AuditLogEntryDTO
@@ -30,7 +30,7 @@ def list_users(
     is_active: bool | None = None,
     role: str | None = None,
     q: str | None = None,
-    _user: User = Depends(require_system_admin),
+    _user: User = Depends(require_admin),
     auth_svc: AuthService = Depends(get_auth_service),
 ):
     result = auth_svc.list_users(skip=skip, limit=limit, is_active=is_active, role=role, q=q)
@@ -49,7 +49,7 @@ def list_users(
 )
 def get_user(
     user_id: int,
-    _user: User = Depends(require_system_admin),
+    _user: User = Depends(require_admin),
     auth_svc: AuthService = Depends(get_auth_service),
 ):
     user = auth_svc.get_user(user_id)
@@ -64,7 +64,7 @@ def get_user(
 def update_user(
     user_id: int,
     body: UpdateUserRequest,
-    current_user: User = Depends(require_system_admin),
+    current_user: User = Depends(require_admin),
     auth_svc: AuthService = Depends(get_auth_service),
 ):
     updated = auth_svc.update_user(user_id, body, current_user)
@@ -81,7 +81,7 @@ def update_user(
 )
 def deactivate_user(
     user_id: int,
-    current_user: User = Depends(require_system_admin),
+    current_user: User = Depends(require_admin),
     auth_svc: AuthService = Depends(get_auth_service),
 ):
     auth_svc.deactivate_user(user_id, current_user)
@@ -95,7 +95,7 @@ def deactivate_user(
 )
 def invite_user(
     body: InviteUserRequest,
-    _user: User = Depends(require_system_admin),
+    _user: User = Depends(require_admin),
     auth_svc: AuthService = Depends(get_auth_service),
 ):
     user = auth_svc.invite_user(email=body.email, role=body.role, employee_id=body.employee_id)
@@ -116,7 +116,7 @@ def audit_logins(
     to_date: str | None = Query(None, alias="to"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
-    _user: User = Depends(require_system_admin),
+    _user: User = Depends(require_admin),
     audit_svc: AuditService = Depends(get_audit_service),
 ):
     from_date_dt = datetime.fromisoformat(from_date) if from_date else None
@@ -142,7 +142,7 @@ def audit_password_changes(
     to_date: str | None = Query(None, alias="to"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
-    _user: User = Depends(require_system_admin),
+    _user: User = Depends(require_admin),
     audit_svc: AuditService = Depends(get_audit_service),
 ):
     from_date_dt = datetime.fromisoformat(from_date) if from_date else None
@@ -167,7 +167,7 @@ def audit_failed_attempts(
     to_date: str | None = Query(None, alias="to"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
-    _user: User = Depends(require_system_admin),
+    _user: User = Depends(require_admin),
     audit_svc: AuditService = Depends(get_audit_service),
 ):
     from_date_dt = datetime.fromisoformat(from_date)

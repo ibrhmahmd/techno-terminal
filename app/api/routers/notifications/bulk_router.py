@@ -5,10 +5,11 @@ from app.api.schemas.common import ApiResponse
 from app.modules.auth.models import User
 from app.modules.notifications.services.notification_service import NotificationService
 from app.modules.notifications.schemas.send_request import SendBulkRequest
+from app.modules.notifications.schemas.notification_dto import BulkSendResultDTO
 
 router = APIRouter()
 
-@router.post("/bulk", response_model=ApiResponse[dict], summary="Bulk send to parent list") #TODO remove Dict and write a typed DTO class
+@router.post("/bulk", response_model=ApiResponse[BulkSendResultDTO], summary="Bulk send to parent list")
 def send_bulk(
     body: SendBulkRequest,
     background_tasks: BackgroundTasks,
@@ -16,4 +17,4 @@ def send_bulk(
     svc: NotificationService = Depends(get_notification_service)
 ):
     queued_count = svc.send_bulk(body.parent_ids, body.template_name, body.extra_vars, background_tasks)
-    return ApiResponse(data={"queued_count": queued_count}, message=f"Queued {queued_count} notifications")
+    return ApiResponse(data=BulkSendResultDTO(queued_count=queued_count), message=f"Queued {queued_count} notifications")

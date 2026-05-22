@@ -26,7 +26,7 @@ description: "Task list for Notifications Module Audit — 32 issues, 21 user st
 
 **Purpose**: Single config field needed by 2 user stories
 
-- [ ] T001 Add `fallback_email: str = "ibrahim.ahmd.net@gmail.com"` to `Settings` class in `app/core/config.py`
+- [x] T001 Add `fallback_email`, `scheduler_enabled`, `daily_report_hour`, `daily_report_minute` to `Settings` class in `app/core/config.py`
 
 ---
 

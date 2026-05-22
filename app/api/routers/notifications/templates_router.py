@@ -14,7 +14,7 @@ def list_templates(
     _user: User = Depends(require_admin),
     svc: NotificationService = Depends(get_notification_service)
 ):
-    templates = svc._repo.get_all_templates()
+    templates = svc.get_all_templates()
     return ApiResponse(data=[TemplateDTO.model_validate(t) for t in templates])
 
 @router.get("/templates/{template_id}", response_model=ApiResponse[TemplateDTO], summary="Get single template")
@@ -23,7 +23,7 @@ def get_template(
     _user: User = Depends(require_admin),
     svc: NotificationService = Depends(get_notification_service)
 ):
-    template = svc._repo.get_template_by_id(template_id)
+    template = svc.get_template_by_id(template_id)
     if not template:
         raise HTTPException(status_code=404, detail="Template not found")
     return ApiResponse(data=TemplateDTO.model_validate(template))
@@ -34,7 +34,7 @@ def create_template(
     _user: User = Depends(require_admin),
     svc: NotificationService = Depends(get_notification_service)
 ):
-    template = svc._repo.create_template(
+    template = svc.create_template(
         name=body.name,
         channel=body.channel,
         body=body.body,
@@ -51,16 +51,16 @@ def update_template(
     _user: User = Depends(require_admin),
     svc: NotificationService = Depends(get_notification_service)
 ):
-    template = svc._repo.get_template_by_id(template_id)
+    template = svc.get_template_by_id(template_id)
     if not template:
         raise HTTPException(status_code=404, detail="Template not found")
     if template.is_standard:
-        # Prevent dangerous updates to standard templates. Only allow body/subject/is_active
         kwargs = body.model_dump(exclude_unset=True)
         if "name" in kwargs or "variables" in kwargs or "channel" in kwargs:
             raise HTTPException(status_code=400, detail="Cannot edit name, channel, or variables of a standard template")
-    
-    updated = svc._repo.update_template(template_id, **body.model_dump(exclude_unset=True))
+
+    dump = body.model_dump(exclude_unset=True)
+    updated = svc.update_template(template_id, **dump)
     if not updated:
         raise HTTPException(status_code=404, detail="Template not found")
     return ApiResponse(data=TemplateDTO.model_validate(updated), message="Template updated")
@@ -71,13 +71,13 @@ def delete_template(
     _user: User = Depends(require_admin),
     svc: NotificationService = Depends(get_notification_service)
 ):
-    template = svc._repo.get_template_by_id(template_id)
+    template = svc.get_template_by_id(template_id)
     if not template:
         raise HTTPException(status_code=404, detail="Template not found")
     if template.is_standard:
         raise HTTPException(status_code=400, detail="Standard templates cannot be deleted")
-        
-    svc._repo.delete_template(template_id)
+
+    svc.delete_template(template_id)
     return ApiResponse(data="Template deleted successfully")
 
 

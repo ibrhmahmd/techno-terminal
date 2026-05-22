@@ -34,7 +34,7 @@ def send_receipt_notification(
     _user: User = Depends(require_admin),
     svc: NotificationService = Depends(get_notification_service)
 ):
-    svc.notify_payment_receipt(receipt_id, student_id, amount, receipt_number, background_tasks)
+    svc.payment.notify_payment_received(receipt_id, student_id, amount, receipt_number, background_tasks)
     return ApiResponse(data="Payment receipt notification queued")
 
 @router.get("/logs", response_model=ApiResponse[List[NotificationLogDTO]], summary="Get notification logs")
@@ -44,7 +44,7 @@ def get_logs(
     _user: User = Depends(require_admin),
     svc: NotificationService = Depends(get_notification_service)
 ):
-    logs = svc._repo.get_logs(limit=limit, offset=offset)
+    logs = svc.get_logs(limit=limit, offset=offset)
     return ApiResponse(data=[NotificationLogDTO.model_validate(log) for log in logs])
 
 @router.get("/logs/parent/{parent_id}", response_model=ApiResponse[List[NotificationLogDTO]], summary="Get parent logs")
@@ -55,7 +55,7 @@ def get_parent_logs(
     _user: User = Depends(require_admin),
     svc: NotificationService = Depends(get_notification_service)
 ):
-    logs = svc._repo.get_logs(recipient_type="PARENT", recipient_id=parent_id, limit=limit, offset=offset)
+    logs = svc.get_logs(recipient_type="PARENT", recipient_id=parent_id, limit=limit, offset=offset)
     return ApiResponse(data=[NotificationLogDTO.model_validate(log) for log in logs])
 
 @router.post("/reports/daily", response_model=ApiResponse, summary="Trigger daily report")

@@ -1,17 +1,15 @@
 import asyncio
-import os
 from datetime import datetime
 import logging
+from typing import Callable
 
+from app.core.config import settings
 from app.modules.notifications.services.notification_service import NotificationService
 
 logger = logging.getLogger(__name__)
 
-# Load daily report schedule from environment (default: 20:00 = 8 PM)
-DAILY_REPORT_HOUR = int(os.getenv("DAILY_REPORT_HOUR", "20"))
-DAILY_REPORT_MINUTE = int(os.getenv("DAILY_REPORT_MINUTE", "0"))
-
-from typing import Callable
+DAILY_REPORT_HOUR = settings.daily_report_hour
+DAILY_REPORT_MINUTE = settings.daily_report_minute
 
 async def start_report_scheduler(make_service: Callable[[], NotificationService]) -> None:
     """
@@ -23,6 +21,10 @@ async def start_report_scheduler(make_service: Callable[[], NotificationService]
     last_daily = None
     last_weekly = None
     last_monthly = None
+
+    if not settings.scheduler_enabled:
+        logger.info("Report scheduler is disabled via SCHEDULER_ENABLED setting.")
+        return
 
     while True:
         try:
@@ -49,9 +51,9 @@ async def start_report_scheduler(make_service: Callable[[], NotificationService]
                             await svc.send_monthly_report()
                             last_monthly = today
                     finally:
-                        svc._repo._session.close()
+                        svc.close_session()
 
-        except Exception as e:
-            logger.error(f"Error in report scheduler: {e}")
+        except Exception:
+            logger.exception("Error in report scheduler")
 
         await asyncio.sleep(60)

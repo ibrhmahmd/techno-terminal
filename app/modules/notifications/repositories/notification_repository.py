@@ -8,7 +8,7 @@ Follows the established repository pattern:
   - No business logic
   - ORM in, ORM out
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 
 from sqlmodel import Session, select, col
@@ -27,11 +27,6 @@ class NotificationRepository:
 
     def get_template_by_name(self, name: str) -> Optional[NotificationTemplate]:
         stmt = select(NotificationTemplate).where(NotificationTemplate.name == name)
-        return self._session.exec(stmt).first()
-
-    def get_template_by_code(self, code: str) -> Optional[NotificationTemplate]:
-        """Get template by code (unique identifier like 'ENROLLMENT_COMPLETED')."""
-        stmt = select(NotificationTemplate).where(NotificationTemplate.code == code)
         return self._session.exec(stmt).first()
 
     def get_template_by_id(self, template_id: int) -> Optional[NotificationTemplate]:
@@ -57,7 +52,7 @@ class NotificationRepository:
             variables=variables,
             subject=subject,
             is_standard=is_standard,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
         )
         self._session.add(template)
         self._session.flush()
@@ -73,7 +68,7 @@ class NotificationRepository:
         for key, val in kwargs.items():
             if hasattr(template, key):
                 setattr(template, key, val)
-        template.updated_at = datetime.utcnow()
+        template.updated_at = datetime.now(timezone.utc)
         self._session.add(template)
         self._session.flush()
         self._session.refresh(template)
@@ -108,7 +103,7 @@ class NotificationRepository:
             body=body,
             subject=subject,
             status="PENDING",
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
         )
         self._session.add(log)
         self._session.flush()
@@ -126,7 +121,7 @@ class NotificationRepository:
             log.status = status
             log.error_message = error_message
             if status == "SENT":
-                log.sent_at = datetime.utcnow()
+                log.sent_at = datetime.now(timezone.utc)
             self._session.add(log)
             self._session.flush()
 

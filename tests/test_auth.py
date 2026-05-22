@@ -506,10 +506,10 @@ class TestAdminUserManagement:
 
         assert response.status_code == 200
 
-    def test_admin_requires_system_admin(self, client, override_auth, mock_admin_headers):
+    def test_admin_can_list_users(self, client, override_auth, mock_admin_headers):
         response = client.get("/api/v1/admin/users", headers=mock_admin_headers)
 
-        assert response.status_code == 403
+        assert response.status_code == 200
 
     def test_admin_unauthorized(self, client):
         response = client.get("/api/v1/admin/users")

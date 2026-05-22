@@ -5,14 +5,15 @@ Base helpers for all notification services.
 No business logic - just contact resolution, template rendering, dispatch.
 """
 import logging
-import os
 import re
-from datetime import datetime
-from typing import Optional, Tuple
+from datetime import datetime, timezone
+from typing import List, Optional, Tuple
 from sqlmodel import select
 
-# Fallback email configuration from environment variable
-FALLBACK_EMAIL = os.getenv("FALLBACK_EMAIL", "ibrahim.ahmd.net@gmail.com")
+from app.core.config import settings
+
+# Fallback email configuration
+FALLBACK_EMAIL = settings.fallback_email
 FALLBACK_RECIPIENT_ID = -1  # Special ID to indicate fallback
 
 from app.modules.notifications.repositories.notification_repository import NotificationRepository
@@ -20,7 +21,6 @@ from app.modules.notifications.dispatchers.email_dispatcher import GmailEmailDis
 from app.modules.notifications.dispatchers.whatsapp_dispatcher import TwilioWhatsAppDispatcher
 from app.modules.notifications.models.notification_template import NotificationTemplate
 from app.modules.notifications.schemas.fallback_dto import FallbackAlertContext
-from typing import List, Optional, Tuple
 from app.modules.crm.models.parent_models import Parent
 from app.modules.crm.models.link_models import StudentParent
 from app.modules.crm.models.student_models import Student
@@ -36,6 +36,7 @@ class BaseNotificationService:
         self._repo = repo
         self._email = GmailEmailDispatcher()
         self._whatsapp = TwilioWhatsAppDispatcher()
+        self._background_tasks: set = set()
     
     @staticmethod
     def _is_valid_email(email: str) -> bool:
@@ -154,11 +155,13 @@ class BaseNotificationService:
                     notification_type=notification_type,
                     entity_id=entity_id,
                     entity_description=entity_description,
-                    intended_recipients_count=0
+                    intended_recipients_count=len(invalid_emails_found)
                 )
                 try:
                     import asyncio
-                    asyncio.create_task(self._send_fallback_alert(context))
+                    task = asyncio.create_task(self._send_fallback_alert(context))
+                    self._background_tasks.add(task)
+                    task.add_done_callback(self._background_tasks.discard)
                 except Exception as alert_error:
                     logger.error(f"Failed to send fallback alert: {alert_error}")
             else:
@@ -183,6 +186,25 @@ class BaseNotificationService:
             body = body.replace(f"{{{{{key}}}}}", str(val))
         return body
     
+    def _get_group_name(self, group_id: int) -> str:
+        from app.modules.academics.models import Group
+        group = self._repo._session.get(Group, group_id)
+        return group.name if group else "Unknown Group"
+
+    def _get_instructor_name(self, group_id: int) -> str:
+        from app.modules.academics.models import Group
+        from app.modules.hr.models import Employee
+        group = self._repo._session.get(Group, group_id)
+        if group and group.instructor_id:
+            instructor = self._repo._session.get(Employee, group.instructor_id)
+            return instructor.full_name if instructor else "Unknown"
+        return "Unknown"
+
+    def _get_student_name(self, student_id: int) -> str:
+        from app.modules.crm.models.student_models import Student
+        student = self._repo._session.get(Student, student_id)
+        return student.full_name if student else f"Student #{student_id}"
+
     async def _send_fallback_alert(self, context: FallbackAlertContext) -> None:
         """
         Send alert notification to fallback email about fallback activation.
@@ -210,7 +232,7 @@ Details:
 - Notification Type: {context.notification_type}
 {entity_info}- Intended Recipients: {context.intended_recipients_count}
 - Fallback Email: {FALLBACK_EMAIL}
-- Timestamp: {datetime.utcnow().isoformat()}
+- Timestamp: {datetime.now(timezone.utc).isoformat()}
 
 ACTION REQUIRED:
 Please check the notification_additional_recipients table configuration.
@@ -238,6 +260,16 @@ Add valid email recipients to ensure notifications are delivered properly.
         except Exception as e:
             logger.error(f"Failed to send fallback alert: {e}")
     
+    async def dispatch_notification(
+        self, template: NotificationTemplate, channel: str, recipient_type: str,
+        recipient_id: int, contact: str, variables: dict,
+        attachments: Optional[List[Tuple[str, bytes, str]]] = None
+    ) -> None:
+        """Public wrapper for _dispatch."""
+        await self._dispatch(
+            template, channel, recipient_type, recipient_id, contact, variables, attachments
+        )
+
     async def _dispatch(
         self, template: NotificationTemplate, channel: str, recipient_type: str,
         recipient_id: int, contact: str, variables: dict,

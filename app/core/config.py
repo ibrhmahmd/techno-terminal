@@ -38,6 +38,12 @@ class Settings(BaseSettings):
     receipt_signature_label: str = ""
     receipt_receipt_label: str = "Payment Receipt"
 
+    # Notifications Configuration
+    fallback_email: str = "ibrahim.ahmd.net@gmail.com"
+    scheduler_enabled: bool = True
+    daily_report_hour: int = 20
+    daily_report_minute: int = 0
+
     # Logging Configuration
     log_level: str = "INFO"
     slow_request_ms: int = 5000

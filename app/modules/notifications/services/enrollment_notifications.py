@@ -120,13 +120,6 @@ class EnrollmentNotificationService(BaseNotificationService):
         # Send to all enabled recipients
         for email, recipient_id, recipient_type in recipients:
             await self._dispatch(template, "EMAIL", recipient_type, recipient_id, email, variables)
-        
-        # PARENT CODE PRESERVED (disabled):
-        # email, parent_id, parent_name, student_name = self._resolve_contact(
-        #     student_id, template.channel
-        # )
-        # if email and parent_id:
-        #     await self._dispatch(template, template.channel, "PARENT", parent_id, email, variables)
     
     async def _process_completed(self, student_id: int, enrollment_id: int,
                                   group_id: int, level_number: int, 
@@ -184,13 +177,6 @@ class EnrollmentNotificationService(BaseNotificationService):
         # Send to all enabled recipients
         for email, recipient_id, recipient_type in recipients:
             await self._dispatch(template, "EMAIL", recipient_type, recipient_id, email, variables)
-        
-        # PARENT CODE PRESERVED (disabled):
-        # email, parent_id, parent_name, student_name = self._resolve_contact(
-        #     student_id, template.channel
-        # )
-        # if email and parent_id:
-        #     await self._dispatch(template, template.channel, "PARENT", parent_id, email, variables)
     
     async def _process_transferred(self, student_id: int, from_enrollment_id: int,
                                     to_enrollment_id: int, from_group_id: int,
@@ -220,13 +206,6 @@ class EnrollmentNotificationService(BaseNotificationService):
         # Send to all enabled recipients
         for email, recipient_id, recipient_type in recipients:
             await self._dispatch(template, "EMAIL", recipient_type, recipient_id, email, variables)
-        
-        # PARENT CODE PRESERVED (disabled):
-        # email, parent_id, parent_name, student_name = self._resolve_contact(
-        #     student_id, template.channel
-        # )
-        # if email and parent_id:
-        #     await self._dispatch(template, template.channel, "PARENT", parent_id, email, variables)
     
     async def _process_progression(self, student_id: int, old_level: int,
                                     new_level: int, group_id: int, enrollment_id: int) -> None:
@@ -255,31 +234,7 @@ class EnrollmentNotificationService(BaseNotificationService):
         # Send to all enabled recipients
         for email, recipient_id, recipient_type in recipients:
             await self._dispatch(template, "EMAIL", recipient_type, recipient_id, email, variables)
-        
-        # PARENT CODE PRESERVED (disabled):
-        # email, parent_id, parent_name, student_name = self._resolve_contact(
-        #     student_id, template.channel
-        # )
-        # if email and parent_id:
-        #     await self._dispatch(template, template.channel, "PARENT", parent_id, email, variables)
     
     # ── Helpers ───────────────────────────────────────────────────────────
-    
-    def _get_group_name(self, group_id: int) -> str:
-        from app.modules.academics.models import Group
-        group = self._repo._session.get(Group, group_id)
-        return group.name if group else "Unknown Group"
-    
-    def _get_instructor_name(self, group_id: int) -> str:
-        from app.modules.academics.models import Group
-        from app.modules.hr.models import Employee
-        group = self._repo._session.get(Group, group_id)
-        if group and group.instructor_id:
-            instructor = self._repo._session.get(Employee, group.instructor_id)
-            return instructor.full_name if instructor else "Unknown"
-        return "Unknown"
-    
-    def _get_student_name(self, student_id: int) -> str:
-        from app.modules.crm.models.student_models import Student
-        student = self._repo._session.get(Student, student_id)
-        return student.full_name if student else f"Student #{student_id}"
+    # Inherited from BaseNotificationService:
+    #   _get_group_name(), _get_instructor_name(), _get_student_name()

@@ -16,3 +16,7 @@ class NotificationLogDTO(BaseModel):
     error_message: Optional[str]
     sent_at: Optional[datetime]
     created_at: datetime
+
+
+class BulkSendResultDTO(BaseModel):
+    queued_count: int

@@ -13,11 +13,12 @@ from twilio.rest import Client
 from twilio.base.exceptions import TwilioRestException
 
 from app.core.config import settings
+from app.modules.notifications.dispatchers.i_dispatcher import IMessageDispatcher
 
 logger = logging.getLogger(__name__)
 
 
-class TwilioWhatsAppDispatcher:
+class TwilioWhatsAppDispatcher(IMessageDispatcher):
     """
     Sends WhatsApp messages through Twilio.
 
@@ -28,11 +29,15 @@ class TwilioWhatsAppDispatcher:
     """
 
     def __init__(self) -> None:
-        self._client = Client(
-            settings.twilio_account_sid,
-            settings.twilio_auth_token,
-        )
+        self._client = None
         self._from_number = settings.twilio_whatsapp_from
+
+    def _ensure_client(self) -> None:
+        if self._client is None:
+            self._client = Client(
+                settings.twilio_account_sid,
+                settings.twilio_auth_token,
+            )
 
     def send(
         self,
@@ -56,6 +61,7 @@ class TwilioWhatsAppDispatcher:
         to_number = recipient if recipient.startswith("whatsapp:") else f"whatsapp:{recipient}"
 
         try:
+            self._ensure_client()
             message = self._client.messages.create(
                 body=body,
                 from_=self._from_number,
