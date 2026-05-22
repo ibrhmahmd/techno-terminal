@@ -105,13 +105,17 @@ class BaseNotificationService:
         recipients = []
         invalid_emails_found = []
 
-        # Get all active additional recipients for this notification type (global - no admin_id filter)
+        # Get all active additional recipients for this notification type where the admin has it enabled
         try:
             stmt = text("""
-                SELECT id, email
-                FROM notification_additional_recipients
-                WHERE is_active = true
-                AND (notification_types IS NULL OR :notification_type = ANY(notification_types))
+                SELECT nar.id, nar.email
+                FROM notification_additional_recipients nar
+                JOIN admin_notification_settings ans
+                    ON ans.admin_id = nar.admin_id
+                    AND ans.notification_type = :notification_type
+                    AND ans.is_enabled = true
+                WHERE nar.is_active = true
+                AND (nar.notification_types IS NULL OR :notification_type = ANY(nar.notification_types))
             """)
             result = self._repo._session.execute(stmt, params={"notification_type": notification_type}).all()
             for recipient_id, email in result:

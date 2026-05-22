@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 
 from app.core.supabase_clients import get_supabase_admin, get_supabase_anon
@@ -16,6 +17,8 @@ from app.shared.constants import MIN_PASSWORD_LENGTH
 from app.shared.exceptions import AuthError, BusinessRuleError, ConflictError, NotFoundError, ValidationError
 from app.modules.auth.models.audit_log import AuditLogEventType
 from app.modules.auth.services.audit_service import AuditService
+
+logger = logging.getLogger(__name__)
 
 
 class AuthService:
@@ -68,6 +71,7 @@ class AuthService:
                 {"email": email_binding, "password": current_password}
             )
         except Exception as e:
+            logger.warning("Supabase sign-in failed during password change: %s", e)
             raise AuthError("Current password is incorrect.") from e
         admin = get_supabase_admin()
         admin.auth.admin.update_user_by_id(
@@ -172,7 +176,7 @@ class AuthService:
             admin = get_supabase_admin()
             admin.auth.admin.sign_out(user.supabase_uid)
         except Exception:
-            pass
+            logger.exception("Failed to log out Supabase sessions for user %s", user.id)
 
     def list_sessions(self, user: User) -> list[UserSessionDTO]:
         admin = get_supabase_admin()
@@ -189,6 +193,7 @@ class AuthService:
                 ))
             return results
         except Exception:
+            logger.exception("Failed to list Supabase sessions for user %s", user.id)
             return []
 
     def forgot_password(self, email: str) -> None:
@@ -196,7 +201,7 @@ class AuthService:
             supabase = get_supabase_anon()
             supabase.auth.reset_password_email(email)
         except Exception:
-            pass
+            logger.exception("Forgot password email failed for %s", email)
 
     def list_users(
         self,
@@ -255,7 +260,7 @@ class AuthService:
                 admin = get_supabase_admin()
                 admin.auth.admin.delete_user(supabase_uid)
             except Exception:
-                pass
+                logger.exception("Failed to delete Supabase user %s for deactivation", supabase_uid)
 
         with get_session() as session:
             repo.deactivate_user(session, target_user_id)
@@ -318,5 +323,5 @@ class AuthService:
                 try:
                     admin.auth.admin.delete_user(native_uid)
                 except Exception:
-                    pass
+                    logger.exception("Failed to clean up Supabase user %s after DB rollback", native_uid)
                 raise
