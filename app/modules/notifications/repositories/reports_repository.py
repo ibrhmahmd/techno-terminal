@@ -3,6 +3,7 @@ import logging
 from typing import List
 
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session, select, func
 
 from app.modules.notifications.schemas.report_dto import (
@@ -13,11 +14,8 @@ from app.modules.notifications.schemas.report_dto import (
     SessionDetailItem,
 )
 from app.modules.academics.models.session_models import CourseSession
-from app.modules.attendance.models.attendance_models import Attendance
-from app.modules.crm.models.student_models import Student
 from app.modules.enrollments.models.enrollment_models import Enrollment
 from app.modules.finance.models.payment import Payment
-from app.modules.finance.models.receipt import Receipt
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +67,7 @@ class ReportsRepository:
             """)
             result = self._session.execute(stmt, {"target_date": target_date}).scalar()
             return float(result or 0.0)
-        except Exception as e:
+        except SQLAlchemyError as e:
             logger.warning(f"Could not fetch daily revenue: {e}")
             return 0.0
 
@@ -81,76 +79,55 @@ class ReportsRepository:
         return self._session.exec(stmt).one() or 0
 
     def _fetch_attendance(self, target_date: date) -> tuple[int, int, int]:
-        session_ids_subq = select(CourseSession.id).where(
-            CourseSession.session_date == target_date
-        )
-        present = self._session.exec(
-            select(func.count()).select_from(Attendance).where(
-                Attendance.session_id.in_(session_ids_subq),
-                Attendance.status == "present",
-            )
-        ).one() or 0
-        absent = self._session.exec(
-            select(func.count()).select_from(Attendance).where(
-                Attendance.session_id.in_(session_ids_subq),
-                Attendance.status == "absent",
-            )
-        ).one() or 0
-        cancelled = self._session.exec(
-            select(func.count()).select_from(Attendance).where(
-                Attendance.session_id.in_(session_ids_subq),
-                Attendance.status == "cancelled",
-            )
-        ).one() or 0
-        return present, absent, cancelled
+        stmt = text("""
+            SELECT
+                COALESCE(COUNT(*) FILTER (WHERE a.status = 'present'), 0) AS present_count,
+                COALESCE(COUNT(*) FILTER (WHERE a.status = 'absent'), 0) AS absent_count,
+                COALESCE(COUNT(*) FILTER (WHERE a.status = 'cancelled'), 0) AS cancelled_count
+            FROM attendance a
+            JOIN sessions s ON a.session_id = s.id
+            WHERE s.session_date = :target_date
+        """)
+        result = self._session.execute(stmt, {"target_date": target_date}).one()
+        return result.present_count, result.absent_count, result.cancelled_count
 
     def _fetch_new_enrollments(self, target_date: date) -> int:
         stmt = select(func.count()).select_from(Enrollment).where(
-            func.coalesce(Enrollment.enrolled_at, Enrollment.created_at) >= target_date,
-            func.coalesce(Enrollment.enrolled_at, Enrollment.created_at) < target_date + timedelta(days=1),
+            func.date(func.coalesce(Enrollment.enrolled_at, Enrollment.created_at)) >= target_date,
+            func.date(func.coalesce(Enrollment.enrolled_at, Enrollment.created_at)) < target_date + timedelta(days=1),
         )
         return self._session.exec(stmt).one() or 0
 
     def _fetch_payments(self, target_date: date) -> tuple[
         List[Payment], int, dict[str, int], List[PaymentDetailItem], List[PaymentTypeGroup]
     ]:
-        payment_stmt = (
-            select(Payment)
-            .join(Receipt, Payment.receipt_id == Receipt.id)
-            .where(
-                func.coalesce(Receipt.paid_at, Receipt.created_at) >= target_date,
-                func.coalesce(Receipt.paid_at, Receipt.created_at) < target_date + timedelta(days=1),
-                Payment.deleted_at.is_(None),
-            )
-        )
-        payments = list(self._session.exec(payment_stmt).all())
-        payment_count = len(payments)
+        stmt = text("""
+            SELECT p.amount, p.payment_type,
+                   COALESCE(s.full_name, 'Unknown') AS student_name,
+                   COALESCE(g.name, 'N/A') AS group_name
+            FROM payments p
+            JOIN receipts r ON p.receipt_id = r.id
+            LEFT JOIN students s ON p.student_id = s.id
+            LEFT JOIN enrollments e ON p.enrollment_id = e.id
+            LEFT JOIN groups g ON e.group_id = g.id
+            WHERE DATE(COALESCE(r.paid_at, r.created_at)) = :target_date
+              AND p.deleted_at IS NULL
+        """)
+        rows = self._session.execute(stmt, {"target_date": target_date}).all()
+        payment_count = len(rows)
         payment_methods: dict[str, int] = {}
         payment_details: list[PaymentDetailItem] = []
 
-        for payment in payments:
-            method = str(payment.payment_type) if payment.payment_type else "unknown"
+        for row in rows:
+            amount, ptype, student_name, group_name = row
+            method = str(ptype) if ptype else "unknown"
             payment_methods[method] = payment_methods.get(method, 0) + 1
-
-            try:
-                student = self._session.get(Student, payment.student_id)
-                student_name = student.full_name if student else "Unknown"
-                group_name = "N/A"
-                if payment.enrollment_id:
-                    enrollment = self._session.get(Enrollment, payment.enrollment_id)
-                    if enrollment and enrollment.group_id:
-                        from app.modules.academics.models.group_models import Group
-                        group = self._session.get(Group, enrollment.group_id)
-                        group_name = group.name if group else "N/A"
-
-                payment_details.append(PaymentDetailItem(
-                    student_name=student_name,
-                    group_name=group_name,
-                    amount=float(payment.amount),
-                    payment_type=method,
-                ))
-            except Exception as e:
-                logger.warning(f"Could not fetch payment details for payment {payment.id}: {e}")
+            payment_details.append(PaymentDetailItem(
+                student_name=student_name,
+                group_name=group_name,
+                amount=float(amount),
+                payment_type=method,
+            ))
 
         payment_details.sort(key=lambda x: x.amount, reverse=True)
 
@@ -166,7 +143,7 @@ class ReportsRepository:
                 items=items,
             ))
 
-        return payments, payment_count, payment_methods, payment_details, payments_by_type
+        return [], payment_count, payment_methods, payment_details, payments_by_type
 
     def _fetch_instructors(self, target_date: date) -> list[str]:
         try:
@@ -178,59 +155,69 @@ class ReportsRepository:
             """)
             result = self._session.execute(instructor_stmt, {"target_date": target_date})
             return [row[0] for row in result]
-        except Exception as e:
+        except SQLAlchemyError as e:
             logger.warning(f"Could not fetch instructors: {e}")
             return []
 
     def _fetch_session_details(self, target_date: date) -> list[SessionDetailItem]:
         try:
-            sessions = self._session.exec(
-                select(CourseSession).where(
-                    CourseSession.session_date == target_date,
-                    CourseSession.status == "completed",
-                )
-            ).all()
+            session_stmt = text("""
+                SELECT s.id, s.start_time, s.end_time,
+                       COALESCE(e.full_name, '') AS instructor_name
+                FROM sessions s
+                LEFT JOIN employees e ON s.actual_instructor_id = e.id
+                WHERE s.session_date = :target_date
+                  AND s.status = 'completed'
+                ORDER BY s.id
+            """)
+            sessions = self._session.execute(session_stmt, {"target_date": target_date}).all()
+
+            session_ids = [row[0] for row in sessions]
+            if not session_ids:
+                return []
+
+            attend_stmt = text("""
+                SELECT a.session_id, a.status,
+                       COALESCE(st.full_name, 'Unknown') AS student_name
+                FROM attendance a
+                LEFT JOIN students st ON a.student_id = st.id
+                WHERE a.session_id = ANY(:session_ids)
+                ORDER BY a.session_id
+            """)
+            attend_rows = self._session.execute(attend_stmt, {"session_ids": session_ids}).all()
+
+            attendance_map: dict[int, dict[str, list[str]]] = {}
+            counts_map: dict[int, dict[str, int]] = {}
+            for sid in session_ids:
+                attendance_map[sid] = {"present": [], "absent": []}
+                counts_map[sid] = {"present": 0, "absent": 0, "cancelled": 0}
+
+            for attend_sid, status, student_name in attend_rows:
+                if status in ("present", "absent"):
+                    attendance_map[attend_sid][status].append(student_name)
+                if status in counts_map.get(attend_sid, {}):
+                    counts_map[attend_sid][status] += 1
+                elif status == "cancelled" and attend_sid in counts_map:
+                    counts_map[attend_sid]["cancelled"] += 1
 
             details = []
-            for session_obj in sessions:
-                instructor_name = ""
-                if session_obj.actual_instructor_id:
-                    from app.modules.hr.models.employee_models import Employee
-                    emp = self._session.get(Employee, session_obj.actual_instructor_id)
-                    instructor_name = emp.full_name if emp else "Unknown"
-
-                session_time = f"{session_obj.start_time.strftime('%H:%M')} - {session_obj.end_time.strftime('%H:%M')}"
-
-                attendance_records = self._session.exec(
-                    select(Attendance).where(Attendance.session_id == session_obj.id)
-                ).all()
-
-                present_count = sum(1 for a in attendance_records if a.status == "present")
-                absent_count = sum(1 for a in attendance_records if a.status == "absent")
-                cancelled_count = sum(1 for a in attendance_records if a.status == "cancelled")
-
-                present_names = []
-                absent_names = []
-                for a in attendance_records:
-                    student = self._session.get(Student, a.student_id)
-                    name = student.full_name if student else "Unknown"
-                    if a.status == "present":
-                        present_names.append(name)
-                    elif a.status == "absent":
-                        absent_names.append(name)
-
+            for row in sessions:
+                sid, start_time, end_time, instructor_name = row
+                session_time = f"{start_time.strftime('%H:%M')} - {end_time.strftime('%H:%M')}"
+                c = counts_map.get(sid, {"present": 0, "absent": 0, "cancelled": 0})
+                a = attendance_map.get(sid, {"present": [], "absent": []})
                 details.append(SessionDetailItem(
                     instructor_name=instructor_name,
                     session_time=session_time,
-                    present_count=present_count,
-                    absent_count=absent_count,
-                    cancelled_count=cancelled_count,
-                    student_names_present=", ".join(present_names),
-                    student_names_absent=", ".join(absent_names),
+                    present_count=c["present"],
+                    absent_count=c["absent"],
+                    cancelled_count=c["cancelled"],
+                    student_names_present=", ".join(a["present"]),
+                    student_names_absent=", ".join(a["absent"]),
                 ))
 
             return details
-        except Exception as e:
+        except SQLAlchemyError as e:
             logger.warning(f"Could not fetch session details: {e}")
             return []
 
@@ -241,6 +228,7 @@ class ReportsRepository:
                 FROM sessions s
                 JOIN employees e ON s.actual_instructor_id = e.id
                 WHERE s.session_date = :target_date
+                  AND s.status = 'completed'
                 GROUP BY e.full_name
                 ORDER BY session_count DESC
             """)
@@ -249,7 +237,7 @@ class ReportsRepository:
                 InstructorSummaryItem(instructor_name=row[0], session_count=row[1])
                 for row in result
             ]
-        except Exception as e:
+        except SQLAlchemyError as e:
             logger.warning(f"Could not fetch instructor summary: {e}")
             return []
 

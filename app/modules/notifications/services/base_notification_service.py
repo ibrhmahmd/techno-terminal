@@ -112,7 +112,7 @@ class BaseNotificationService:
                 WHERE is_active = true
                 AND (notification_types IS NULL OR :notification_type = ANY(notification_types))
             """)
-            result = self._repo._session.exec(stmt, params={"notification_type": notification_type}).all()
+            result = self._repo._session.execute(stmt, params={"notification_type": notification_type}).all()
             for recipient_id, email in result:
                 if email and self._is_valid_email(email):
                     recipients.append((email, recipient_id, "EMPLOYEE"))
@@ -248,7 +248,7 @@ Add valid email recipients to ensure notifications are delivered properly.
         Args:
             template: Notification template
             channel: "EMAIL" or "WHATSAPP"
-            recipient_type: "ADDITIONAL", "FALLBACK", etc.
+            recipient_type: "PARENT" or "EMPLOYEE" (must match DB CHECK constraint)
             recipient_id: ID of recipient
             contact: Email address or phone number
             variables: Template variable substitutions

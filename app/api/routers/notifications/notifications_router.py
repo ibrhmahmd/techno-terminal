@@ -66,6 +66,9 @@ async def trigger_daily_report(
     svc: NotificationService = Depends(get_notification_service)
 ):
     report_date = target_date or date.today()
+    if report_date > date.today():
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Report date cannot be in the future")
     svc_report = svc.report
 
     if body and body.email_recipients:
@@ -99,6 +102,9 @@ async def get_daily_report_data(
     svc: NotificationService = Depends(get_notification_service)
 ):
     report_date = target_date or date.today()
+    if report_date > date.today():
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Report date cannot be in the future")
     try:
         aggregates = await asyncio.to_thread(svc.report.get_daily_report_data, report_date)
     except Exception:

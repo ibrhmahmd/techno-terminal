@@ -183,7 +183,7 @@ class ReportNotificationService(BaseNotificationService):
             from app.modules.notifications.pdf.daily_report_pdf import generate_daily_report_pdf
             pdf_bytes = generate_daily_report_pdf(
                 date_str=today.strftime("%Y-%m-%d"),
-                aggregates=aggregates.model_dump()
+                aggregates=aggregates
             )
             logger.info(f"Generated daily report PDF for {today}")
         except Exception as e:
@@ -269,7 +269,7 @@ class ReportNotificationService(BaseNotificationService):
             raise NotFoundError(f"No data found for {target_date}")
         pdf_bytes = generate_daily_report_pdf(
             date_str=target_date.isoformat(),
-            aggregates=aggregates.model_dump()
+            aggregates=aggregates
         )
         return target_date.isoformat(), b64encode(pdf_bytes).decode()
 
@@ -286,7 +286,7 @@ class ReportNotificationService(BaseNotificationService):
 
         pdf_bytes = generate_daily_report_pdf(
             date_str=target_date.isoformat(),
-            aggregates=aggregates.model_dump()
+            aggregates=aggregates
         )
         filename = f"daily_report_{target_date.isoformat()}.pdf"
         attachments = [(filename, pdf_bytes, "application/pdf")]
@@ -308,6 +308,7 @@ class ReportNotificationService(BaseNotificationService):
             aggregates.sessions_held > 0
             or aggregates.payment_count > 0
             or aggregates.new_enrollments > 0
+            or aggregates.present_count > 0
         )
 
     def _build_variables(
@@ -417,16 +418,6 @@ class ReportNotificationService(BaseNotificationService):
             "instructor_summary": instructor_summary_html,
             "payments_by_type": payments_by_type_html,
         }
-
-    def _build_daily_report_body(
-        self, aggregates: DailyReportAggregateDTO, target_date: date
-    ) -> str:
-        """Render the daily report template with variables."""
-        template = self._repo.get_template_by_name("daily_report")
-        if not template:
-            return ""
-        variables = self._build_variables(aggregates, target_date)
-        return self._render_template(template, variables)
 
     # ── Private Helpers ──────────────────────────────────────────────────
     
