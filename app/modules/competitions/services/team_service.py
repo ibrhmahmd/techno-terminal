@@ -3,7 +3,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Optional, TYPE_CHECKING
 from sqlmodel import select
-from fastapi import HTTPException
+from fastapi import BackgroundTasks, HTTPException
 from app.db.connection import get_session
 import app.modules.competitions.repositories.team_repository as team_repo
 import app.modules.competitions.repositories.competition_repository as comp_repo
@@ -36,11 +36,18 @@ from app.modules.finance.services.receipt_service import ReceiptService
 from app.modules.finance.services.refund_service import RefundService
 from app.modules.finance import ReceiptLineInput
 
+if TYPE_CHECKING:
+    from app.modules.notifications.services.notification_service import NotificationService
+
 logger = logging.getLogger(__name__)
 
 
 class TeamService:
     """Service layer for managing Teams with 3-table schema."""
+
+    def __init__(self, notification_svc: Optional["NotificationService"] = None) -> None:
+        self._notification_svc = notification_svc
+
 
     def get_student_competitions(self, student_id: int) -> list[StudentCompetitionDTO]:
         """
@@ -74,7 +81,8 @@ class TeamService:
             return result
 
     def register_team(
-        self, cmd: RegisterTeamInput, current_user_id: Optional[int] = None
+        self, cmd: RegisterTeamInput, current_user_id: Optional[int] = None,
+        background_tasks: Optional[BackgroundTasks] = None,
     ) -> TeamRegistrationResultWithWarningDTO:
         """
         Creates a team and adds all listed students as members.
@@ -164,8 +172,22 @@ class TeamService:
                 current_user_id=current_user_id,
             )
 
+            # Notify: team registration per student
+            # Commit first so data is visible to the background task's fresh session
             db.commit()
             db.refresh(team)
+            if self._notification_svc and background_tasks:
+                for sid in student_ids:
+                    self._notification_svc.competition.notify_team_registration(
+                        student_id=sid,
+                        team_id=team.id,
+                        team_name=team.team_name,
+                        competition_name=comp.name,
+                        category=cmd.category,
+                        subcategory=cmd.subcategory,
+                        background_tasks=background_tasks,
+                    )
+
 
             warning = "; ".join(duplicate_warnings) if duplicate_warnings else None
             return TeamRegistrationResultWithWarningDTO(
@@ -448,6 +470,7 @@ class TeamService:
         placement_rank: int,
         placement_label: Optional[str] = None,
         current_user_id: Optional[int] = None,
+        background_tasks: Optional[BackgroundTasks] = None,
     ) -> TeamDTO:
         """
         Update team placement after competition.
@@ -490,8 +513,22 @@ class TeamService:
                         current_user_id=current_user_id,
                     )
 
-            db.commit()
-            db.refresh(team)
+                # Notify: placement announcement per member
+                # Commit first so data is visible to the background task's fresh session
+                db.commit()
+                db.refresh(team)
+                if self._notification_svc and background_tasks:
+                    for m in members:
+                        self._notification_svc.competition.notify_placement_announcement(
+                            student_id=m.student_id,
+                            team_id=team_id,
+                            team_name=team.team_name,
+                            competition_name=comp.name if comp else "Unknown",
+                            placement_rank=placement_rank,
+                            placement_label=placement_label,
+                            background_tasks=background_tasks,
+                        )
+
 
             return TeamDTO.model_validate(team) if team else None
 
@@ -501,6 +538,7 @@ class TeamService:
         student_id: int,
         amount_due: float = 0.0,
         current_user_id: Optional[int] = None,
+        background_tasks: Optional[BackgroundTasks] = None,
     ) -> AddTeamMemberResultWithWarningDTO:
         """Add a student to an existing team. Returns (result, warning_or_None)."""
         with get_session() as db:
@@ -540,8 +578,21 @@ class TeamService:
                 current_user_id=current_user_id,
             )
 
+            # Notify: team registration for added member
+            # Commit first so data is visible to the background task's fresh session
             db.commit()
             db.refresh(m)
+            if self._notification_svc and background_tasks:
+                self._notification_svc.competition.notify_team_registration(
+                    student_id=student_id,
+                    team_id=team_id,
+                    team_name=team.team_name,
+                    competition_name=comp.name if comp else "Unknown",
+                    category=team.category,
+                    subcategory=team.subcategory,
+                    background_tasks=background_tasks,
+                )
+
 
             return AddTeamMemberResultWithWarningDTO(
                 result=AddTeamMemberResultDTO(
@@ -591,7 +642,10 @@ class TeamService:
                 for mwr in member_rows
             ]
 
-    def pay_competition_fee(self, cmd: PayCompetitionFeeInput) -> PayCompetitionFeeResponseDTO:
+    def pay_competition_fee(
+        self, cmd: PayCompetitionFeeInput,
+        background_tasks: Optional[BackgroundTasks] = None,
+    ) -> PayCompetitionFeeResponseDTO:
         """
         Process competition fee payment for a team member.
         Single atomic transaction: validation + receipt creation + fee recording.
@@ -655,7 +709,21 @@ class TeamService:
             )
 
             # Single atomic commit — if anything fails, everything rolls back
+            # Commit first so data is visible to the background task's fresh session
             db.commit()
+
+            # Notify: competition fee paid
+            if self._notification_svc and background_tasks:
+                self._notification_svc.competition.notify_competition_fee_paid(
+                    student_id=cmd.student_id,
+                    team_id=cmd.team_id,
+                    team_name=team.team_name,
+                    competition_name=comp.name if comp else "Unknown",
+                    amount=Decimal(str(amount)),
+                    receipt_number=result.receipt_number,
+                    background_tasks=background_tasks,
+                )
+
 
             # Get updated member for response (from same session)
             updated_member = team_repo.get_team_member(db, cmd.team_id, cmd.student_id)

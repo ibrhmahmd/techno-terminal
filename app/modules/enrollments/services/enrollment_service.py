@@ -115,13 +115,18 @@ class EnrollmentService:
                     )
 
                 # Trigger Notification
-                if self._notification_svc and background_tasks:
-                    self._notification_svc.notify_enrollment(
-                        created.id, student.id, group.id, background_tasks
-                    )
-
+                # Commit first so enrollment is visible to the background task's fresh session
                 session.commit()
                 session.refresh(created)
+                if self._notification_svc and background_tasks:
+                    self._notification_svc.enrollment.notify_enrollment_created(
+                        student_id=student.id,
+                        enrollment_id=created.id,
+                        group_id=group.id,
+                        level_number=group.level_number,
+                        background_tasks=background_tasks,
+                    )
+
                 return EnrollmentDTO.model_validate(created), capacity_exceeded
         except IntegrityError:
             raise ConflictError(f"'{student.full_name}' was just enrolled in this group by another request. Please refresh and try again.")
@@ -190,19 +195,20 @@ class EnrollmentService:
                 )
 
             # Trigger transfer notification
+            # Commit first so enrollment is visible to the background task's fresh session
+            session.commit()
+            session.refresh(created)
             if self._notification_svc and background_tasks:
-                self._notification_svc.notify_enrollment_transferred(
+                self._notification_svc.enrollment.notify_enrollment_transferred(
                     student_id=source.student_id,
                     from_enrollment_id=data.from_enrollment_id,
                     to_enrollment_id=created.id,
                     from_group_id=source.group_id,
                     to_group_id=data.to_group_id,
-                    transferred_by_user_id=data.created_by,
+                    transferred_by=data.created_by,
                     background_tasks=background_tasks,
                 )
 
-            session.commit()
-            session.refresh(created)
             return EnrollmentDTO.model_validate(created)
 
 
@@ -236,18 +242,19 @@ class EnrollmentService:
                 )
 
             # Trigger drop notification
+            # Commit first so enrollment change is visible to the background task's fresh session
+            session.commit()
+            session.refresh(updated)
             if self._notification_svc and background_tasks:
-                self._notification_svc.notify_enrollment_dropped(
+                self._notification_svc.enrollment.notify_enrollment_dropped(
                     student_id=student_id,
                     enrollment_id=enrollment_id,
                     group_id=group_id,
                     reason=reason,
-                    dropped_by_user_id=performed_by,
+                    dropped_by=performed_by,
                     background_tasks=background_tasks,
                 )
 
-            session.commit()
-            session.refresh(updated)
             return EnrollmentDTO.model_validate(updated)
 
 
@@ -281,8 +288,11 @@ class EnrollmentService:
                 )
 
             # Trigger completion notification
+            # Commit first so enrollment change is visible to the background task's fresh session
+            session.commit()
+            session.refresh(updated)
             if self._notification_svc and background_tasks:
-                self._notification_svc.notify_enrollment_completed(
+                self._notification_svc.enrollment.notify_enrollment_completed(
                     student_id=student_id,
                     enrollment_id=enrollment_id,
                     group_id=group_id,
@@ -291,8 +301,6 @@ class EnrollmentService:
                     background_tasks=background_tasks,
                 )
 
-            session.commit()
-            session.refresh(updated)
             return EnrollmentDTO.model_validate(updated)
 
 

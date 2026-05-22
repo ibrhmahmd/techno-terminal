@@ -37,7 +37,15 @@ class BaseNotificationService:
         self._email = GmailEmailDispatcher()
         self._whatsapp = TwilioWhatsAppDispatcher()
         self._background_tasks: set = set()
-    
+
+    # ── Session helper ───────────────────────────────────────────────────────
+
+    def _new_session(self):
+        """Context manager that opens a fresh DB session independent of the request lifecycle.
+        Use this inside background task processors so they don't rely on the
+        already-closed request session held in self._repo."""
+        from app.db.connection import get_session
+        return get_session()
     @staticmethod
     def _is_valid_email(email: str) -> bool:
         """Validate email format using regex pattern."""
@@ -53,33 +61,34 @@ class BaseNotificationService:
         Resolve parent contact for student.
         Returns: (contact, parent_id, parent_name, student_name)
         """
-        student = self._repo._session.get(Student, student_id)
-        if not student:
-            return None, None, "", ""
-        
-        # Get primary parent
-        stmt = select(Parent, StudentParent).join(StudentParent).where(
-            StudentParent.student_id == student_id,
-            StudentParent.is_primary.is_(True),
-        )
-        result = self._repo._session.exec(stmt).first()
-        
-        # Fallback to any parent
-        if not result:
-            stmt2 = select(Parent, StudentParent).join(StudentParent).where(
-                StudentParent.student_id == student_id
+        with self._new_session() as session:
+            student = session.get(Student, student_id)
+            if not student:
+                return None, None, "", ""
+
+            # Get primary parent
+            stmt = select(Parent, StudentParent).join(StudentParent).where(
+                StudentParent.student_id == student_id,
+                StudentParent.is_primary.is_(True),
             )
-            result = self._repo._session.exec(stmt2).first()
-        
-        if result:
-            parent, _ = result
-            if channel == "EMAIL":
-                contact = parent.email
-            else:
-                contact = parent.phone_primary
-            return contact, parent.id, parent.full_name, student.full_name
-        
-        return None, None, "", student.full_name
+            result = session.exec(stmt).first()
+
+            # Fallback to any parent
+            if not result:
+                stmt2 = select(Parent, StudentParent).join(StudentParent).where(
+                    StudentParent.student_id == student_id
+                )
+                result = session.exec(stmt2).first()
+
+            if result:
+                parent, _ = result
+                if channel == "EMAIL":
+                    contact = parent.email
+                else:
+                    contact = parent.phone_primary
+                return contact, parent.id, parent.full_name, student.full_name
+
+            return None, None, "", student.full_name
     
     def _resolve_notification_recipients(
         self,
@@ -117,7 +126,8 @@ class BaseNotificationService:
                 WHERE nar.is_active = true
                 AND (nar.notification_types IS NULL OR :notification_type = ANY(nar.notification_types))
             """)
-            result = self._repo._session.execute(stmt, params={"notification_type": notification_type}).all()
+            with self._new_session() as session:
+                result = session.execute(stmt, params={"notification_type": notification_type}).all()
             for recipient_id, email in result:
                 if email and self._is_valid_email(email):
                     recipients.append((email, recipient_id, "EMPLOYEE"))
@@ -192,21 +202,24 @@ class BaseNotificationService:
     
     def _get_group_name(self, group_id: int) -> str:
         from app.modules.academics.models import Group
-        group = self._repo._session.get(Group, group_id)
+        with self._new_session() as session:
+            group = session.get(Group, group_id)
         return group.name if group else "Unknown Group"
 
     def _get_instructor_name(self, group_id: int) -> str:
         from app.modules.academics.models import Group
         from app.modules.hr.models import Employee
-        group = self._repo._session.get(Group, group_id)
-        if group and group.instructor_id:
-            instructor = self._repo._session.get(Employee, group.instructor_id)
-            return instructor.full_name if instructor else "Unknown"
+        with self._new_session() as session:
+            group = session.get(Group, group_id)
+            if group and group.instructor_id:
+                instructor = session.get(Employee, group.instructor_id)
+                return instructor.full_name if instructor else "Unknown"
         return "Unknown"
 
     def _get_student_name(self, student_id: int) -> str:
         from app.modules.crm.models.student_models import Student
-        student = self._repo._session.get(Student, student_id)
+        with self._new_session() as session:
+            student = session.get(Student, student_id)
         return student.full_name if student else f"Student #{student_id}"
 
     async def _send_fallback_alert(self, context: FallbackAlertContext) -> None:
@@ -254,12 +267,13 @@ Add valid email recipients to ensure notifications are delivered properly.
                 NotificationLog.recipient_type == "EMPLOYEE",
                 NotificationLog.subject == "Notification Fallback Activated"
             ).order_by(NotificationLog.created_at.desc()).limit(1)
-            
-            log_entry = self._repo._session.exec(stmt).first()
-            if log_entry:
-                log_entry.status = "SENT"
-                self._repo._session.add(log_entry)
-                self._repo._session.commit()
+
+            with self._new_session() as session:
+                log_entry = session.exec(stmt).first()
+                if log_entry:
+                    log_entry.status = "SENT"
+                    session.add(log_entry)
+                    session.commit()
                 
         except Exception as e:
             logger.error(f"Failed to send fallback alert: {e}")
@@ -298,19 +312,23 @@ Add valid email recipients to ensure notifications are delivered properly.
             for key, val in variables.items():
                 subject = subject.replace(f"{{{{{key}}}}}", str(val))
         
-        # Create log (non-blocking — log failures won't block email delivery)
+        # Create log entry in a fresh session (non-blocking — log failures won't block email delivery)
         log_id = None
         try:
-            log = self._repo.create_log(
-                template_id=template.id,
-                channel=channel,
-                recipient_type=recipient_type,
-                recipient_id=recipient_id,
-                recipient_contact=contact,
-                body=body,
-                subject=subject,
-            )
-            log_id = log.id
+            from app.modules.notifications.repositories.notification_repository import NotificationRepository
+            with self._new_session() as log_session:
+                log_repo = NotificationRepository(log_session)
+                log = log_repo.create_log(
+                    template_id=template.id,
+                    channel=channel,
+                    recipient_type=recipient_type,
+                    recipient_id=recipient_id,
+                    recipient_contact=contact,
+                    body=body,
+                    subject=subject,
+                )
+                log_session.commit()
+                log_id = log.id
         except Exception as log_error:
             logger.warning(f"Failed to create notification log: {log_error}")
         
@@ -322,11 +340,18 @@ Add valid email recipients to ensure notifications are delivered properly.
         elif channel == "EMAIL":
             success, error = await self._email.send(contact, body, subject, attachments)
         
-        # Update log if it was created
+        # Update log status in a fresh session
         if log_id:
-            status = "SENT" if success else "FAILED"
-            self._repo.update_log_status(log_id, status, error)
-        
+            try:
+                with self._new_session() as log_session:
+                    from app.modules.notifications.repositories.notification_repository import NotificationRepository
+                    log_repo = NotificationRepository(log_session)
+                    status = "SENT" if success else "FAILED"
+                    log_repo.update_log_status(log_id, status, error)
+                    log_session.commit()
+            except Exception as update_error:
+                logger.warning(f"Failed to update notification log status: {update_error}")
+
         if success:
             logger.info(f"Notification sent to {recipient_type} {recipient_id} via {channel}")
         else:

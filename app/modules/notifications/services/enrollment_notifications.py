@@ -97,18 +97,19 @@ class EnrollmentNotificationService(BaseNotificationService):
         
         # Get schedule info from group
         schedule = "Schedule not available"
-        group = self._repo._session.get(Group, group_id)
-        if group and group.default_day:
-            from datetime import time as dt_time
-            start_time = group.default_time_start.strftime("%I:%M %p") if group.default_time_start else "TBD"
-            end_time = group.default_time_end.strftime("%I:%M %p") if group.default_time_end else "TBD"
-            schedule = f"{group.default_day} {start_time} - {end_time}"
-        
+        with self._new_session() as session:
+            group = session.get(Group, group_id)
+            if group and group.default_day:
+                start_time = group.default_time_start.strftime("%I:%M %p") if group.default_time_start else "TBD"
+                end_time = group.default_time_end.strftime("%I:%M %p") if group.default_time_end else "TBD"
+                schedule = f"{group.default_day} {start_time} - {end_time}"
+
         # Get enrollment date
         enrollment_date = "N/A"
-        enrollment = self._repo._session.get(Enrollment, enrollment_id)
-        if enrollment and enrollment.created_at:
-            enrollment_date = enrollment.created_at.strftime("%Y-%m-%d")
+        with self._new_session() as session:
+            enrollment = session.get(Enrollment, enrollment_id)
+            if enrollment and enrollment.created_at:
+                enrollment_date = enrollment.created_at.strftime("%Y-%m-%d")
         
         variables = {
             "parent_name": "Admin",

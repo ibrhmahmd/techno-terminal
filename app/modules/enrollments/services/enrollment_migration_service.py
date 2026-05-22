@@ -108,7 +108,7 @@ class EnrollmentMigrationService:
             # TODO: Trigger level progression notification
             # Requires background_tasks from router layer
             # if self._notification_svc and background_tasks:
-            #     self._notification_svc.notify_level_progression(
+            #     self._notification_svc.enrollment.notify_level_progression(
             #         student_id=enrollment.student_id,
             #         old_level=data.from_level,
             #         new_level=data.to_level,
@@ -169,7 +169,7 @@ class EnrollmentMigrationService:
             # TODO: Trigger enrollment completed notification
             # Requires background_tasks from router layer
             # if self._notification_svc and background_tasks:
-            #     self._notification_svc.notify_enrollment_completed(
+            #     self._notification_svc.enrollment.notify_enrollment_completed(
             #         student_id=enrollment.student_id,
             #         enrollment_id=enrollment.id,
             #         group_id=group_id,

@@ -20,9 +20,9 @@ from app.modules.finance.interfaces.dto import (
 )
 from app.modules.notifications.services.notification_service import NotificationService
 from app.modules.notifications.repositories.notification_repository import NotificationRepository
-from app.db.connection import get_engine
-from sqlmodel import Session
+from app.db.connection import get_session
 from app.shared.exceptions import NotFoundError
+
 
 
 class StudentPaymentService:
@@ -119,9 +119,8 @@ class StudentPaymentService:
                 sent_at=datetime.utcnow(),
             )
         
-        # Create notification service
-        session = Session(get_engine(), expire_on_commit=False)
-        try:
+        # Create notification service with a properly managed session
+        with get_session() as session:
             notification_svc = NotificationService(NotificationRepository(session))
             
             # Format amount for display
@@ -168,5 +167,4 @@ class StudentPaymentService:
                 recipient_contact=recipient_contact,
                 sent_at=datetime.utcnow(),
             )
-        finally:
-            session.close()
+

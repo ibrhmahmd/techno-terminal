@@ -18,6 +18,7 @@ from app.modules.notifications.interfaces.i_notification_repository import INoti
 from app.modules.notifications.services.enrollment_notifications import EnrollmentNotificationService
 from app.modules.notifications.services.payment_notifications import PaymentNotificationService
 from app.modules.notifications.services.report_notifications import ReportNotificationService
+from app.modules.notifications.services.competition_notifications import CompetitionNotificationService
 from app.modules.notifications.models.notification_template import NotificationTemplate
 from app.modules.notifications.schemas.template_dto import TemplateTestResultDTO
 from app.db.connection import get_session
@@ -34,6 +35,7 @@ class NotificationService:
         service = NotificationService(repo)
         service.enrollment.notify_enrollment_created(...)
         service.payment.notify_payment_received(...)
+        service.competition.notify_team_registration(...)
         await service.report.send_daily_report()
     """
 
@@ -43,6 +45,8 @@ class NotificationService:
         self.enrollment = EnrollmentNotificationService(repo)
         self.payment = PaymentNotificationService(repo)
         self.report = ReportNotificationService(repo)
+        self.competition = CompetitionNotificationService(repo)
+
 
     # ── Template CRUD (delegates to self._repo) ─────────────────────────
 

@@ -318,9 +318,11 @@ def get_competition_service() -> CompetitionService:
     """Returns a fresh CompetitionService instance per request."""
     return CompetitionService()
 
-def get_team_service() -> TeamService:
-    """Returns a fresh TeamService instance per request."""
-    return TeamService()
+def get_team_service(
+    notification_svc: "NotificationService" = Depends(get_notification_service),
+) -> TeamService:
+    """Returns a fresh TeamService instance with notification support."""
+    return TeamService(notification_svc=notification_svc)
 
 
 # ── Coach Read-Only Guard ─────────────────────────────────────────────────────

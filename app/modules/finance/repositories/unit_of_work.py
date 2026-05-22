@@ -69,10 +69,15 @@ class FinanceUnitOfWork:
         return self._reporting
 
     def commit(self) -> None:
-        """Commit the current transaction. Flushes always; commits only if we own the session."""
+        """Commit the current transaction.
+        
+        Always performs a real session.commit() so that data is visible to any
+        background tasks fired after this call. When the session is injected via
+        get_db(), the subsequent get_db() teardown commit is a safe no-op on an
+        already-clean transaction.
+        """
         self._session.flush()
-        if self._own_session:
-            self._session.commit()
+        self._session.commit()
 
     def rollback(self) -> None:
         """Rollback the current transaction."""

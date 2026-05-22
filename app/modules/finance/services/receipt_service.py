@@ -3,13 +3,16 @@ app/modules/finance/services/receipt_service.py
 ─────────────────────────────────────────────
 Receipt service implementation with proper SOLID compliance.
 """
+
 from decimal import Decimal
 from typing import Optional, List, TYPE_CHECKING
 from fastapi import BackgroundTasks
 
 if TYPE_CHECKING:
     from app.modules.crm.services.activity_service import StudentActivityService
-    from app.modules.notifications.services.notification_service import NotificationService
+    from app.modules.notifications.services.notification_service import (
+        NotificationService,
+    )
 
 from app.modules.finance.interfaces import (
     IReceiptService,
@@ -47,10 +50,14 @@ class ReceiptService(IReceiptService):
         self._activity_svc = activity_svc
         self._notification_svc = notification_svc
 
-    def create(self, dto: CreateReceiptServiceDTO, background_tasks: Optional[BackgroundTasks] = None) -> ReceiptFinalizedDTO:
+    def create(
+        self,
+        dto: CreateReceiptServiceDTO,
+        background_tasks: Optional[BackgroundTasks] = None,
+    ) -> ReceiptFinalizedDTO:
         """
         Create a new receipt with charge lines.
-        
+
         Validates for overpayment risk unless allow_credit=True.
         """
         if not dto.lines:
@@ -67,6 +74,7 @@ class ReceiptService(IReceiptService):
 
         # Create receipt and payment lines atomically
         from app.modules.finance.interfaces import CreateReceiptDTO
+
         receipt = self._uow.receipts.create(
             CreateReceiptDTO(
                 payer_name=dto.payer_name,
@@ -83,6 +91,7 @@ class ReceiptService(IReceiptService):
 
         for line in dto.lines:
             from app.modules.finance.interfaces import AddPaymentLineDTO
+
             payment = self._uow.payments.add_line(
                 AddPaymentLineDTO(
                     receipt_id=receipt.id,
@@ -121,6 +130,7 @@ class ReceiptService(IReceiptService):
         # Log payment activities for each line
         if self._activity_svc:
             from app.modules.crm.interfaces.dtos.log_payment_dto import LogPaymentDTO
+
             for line in processed_lines:
                 if line.student_id:  # Only log if associated with a student
                     self._activity_svc.log_payment(
@@ -137,8 +147,12 @@ class ReceiptService(IReceiptService):
         if self._notification_svc and background_tasks:
             for line in processed_lines:
                 if line.student_id:
-                    self._notification_svc.notify_payment_receipt(
-                        receipt.id, line.student_id, str(line.amount), str(receipt.receipt_number), background_tasks
+                    self._notification_svc.payment.notify_payment_received(
+                        receipt.id,
+                        line.student_id,
+                        str(line.amount),
+                        str(receipt.receipt_number),
+                        background_tasks,
                     )
 
         return ReceiptFinalizedDTO(
@@ -230,8 +244,10 @@ class ReceiptService(IReceiptService):
         for payment in payments:
             # Get student
             student = self._uow.get_model_by_id(Student, payment.student_id)
-            student_name = student.full_name if student else f"Student #{payment.student_id}"
-            student_phone = getattr(student, 'phone', None)
+            student_name = (
+                student.full_name if student else f"Student #{payment.student_id}"
+            )
+            student_phone = getattr(student, "phone", None)
 
             # Get parent info (preferred contact)
             parent_id = None
@@ -239,7 +255,10 @@ class ReceiptService(IReceiptService):
             parent_phone = None
             if student:
                 from sqlmodel import select
-                stmt = select(StudentParent).where(StudentParent.student_id == student.id)
+
+                stmt = select(StudentParent).where(
+                    StudentParent.student_id == student.id
+                )
                 parent_link = self._uow._session.exec(stmt).first()
                 if parent_link:
                     parent = self._uow.get_model_by_id(Parent, parent_link.parent_id)
@@ -268,7 +287,9 @@ class ReceiptService(IReceiptService):
                         if group:
                             group_name = group.name
                             if group.course_id:
-                                course = self._uow.get_model_by_id(Course, group.course_id)
+                                course = self._uow.get_model_by_id(
+                                    Course, group.course_id
+                                )
                                 if course:
                                     course_name = course.name
 
@@ -279,10 +300,13 @@ class ReceiptService(IReceiptService):
 
             if enrollment_id:
                 balance_dto = self._uow.payments.get_enrollment_balance(enrollment_id)
-                if balance_dto and hasattr(balance_dto, 'status'):
+                if balance_dto and hasattr(balance_dto, "status"):
                     balance_status = balance_dto.status
-                    is_partial = balance_status in ('partial', 'unpaid')
-                    if hasattr(balance_dto, 'remaining_balance') and balance_dto.remaining_balance < 0:
+                    is_partial = balance_status in ("partial", "unpaid")
+                    if (
+                        hasattr(balance_dto, "remaining_balance")
+                        and balance_dto.remaining_balance < 0
+                    ):
                         remaining_amount = abs(balance_dto.remaining_balance)
 
             enhanced.append(
@@ -291,7 +315,7 @@ class ReceiptService(IReceiptService):
                     amount=float(payment.amount),
                     transaction_type=payment.transaction_type,
                     payment_type=payment.payment_type,
-                    discount_amount=float(getattr(payment, 'discount_amount', 0.0)),
+                    discount_amount=float(getattr(payment, "discount_amount", 0.0)),
                     notes=payment.notes,
                     student_id=payment.student_id,
                     student_name=student_name,
@@ -323,9 +347,7 @@ class ReceiptService(IReceiptService):
         # TODO: Implement when notification tracking is added
         pass
 
-    def _assess_overpayment_risk(
-        self, lines: List[ReceiptLineInput]
-    ) -> List:
+    def _assess_overpayment_risk(self, lines: List[ReceiptLineInput]) -> List:
         """Internal: Check which lines would create credit."""
         from app.modules.finance.interfaces import OverpaymentRiskItem
 
@@ -357,9 +379,7 @@ class ReceiptService(IReceiptService):
 
         return risks
 
-    def _link_competition_payment(
-        self, team_member_id: int, payment_id: int
-    ) -> None:
+    def _link_competition_payment(self, team_member_id: int, payment_id: int) -> None:
         """Internal: Link payment to team member for competition fees.
 
         NOTE: The TeamMember model no longer has fee_paid/payment_id fields
