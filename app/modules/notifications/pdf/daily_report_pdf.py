@@ -2,7 +2,9 @@
 app/modules/notifications/pdf/daily_report_pdf.py
 ─────────────────────────────────────────────────────────────
 PDF generation for daily business reports.
+Refactored to Light Minimalist styling with modern tables.
 """
+import os
 from datetime import date
 from io import BytesIO
 
@@ -11,10 +13,24 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import cm
 from reportlab.platypus import (
-    SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+    SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
 )
 
+from app.core.config import settings
 from app.modules.notifications.schemas.report_dto import DailyReportAggregateDTO
+
+
+# --- Theme Colors (Light Minimalist) ---
+TEXT_DARK = colors.HexColor('#1E293B')
+TEXT_LIGHT = colors.HexColor('#64748B')
+HEADER_BG = colors.HexColor('#F8FAFC')
+ALT_BG = colors.HexColor('#F1F5F9')
+BORDER_COLOR = colors.HexColor('#E2E8F0')
+WHITE = colors.white
+
+def format_currency(amount: float) -> str:
+    """Format large numbers with commas."""
+    return f"{amount:,.2f} EGP"
 
 
 def generate_daily_report_pdf(
@@ -22,350 +38,331 @@ def generate_daily_report_pdf(
     aggregates: DailyReportAggregateDTO
 ) -> bytes:
     """
-    Generate a PDF daily report.
-    
-    Args:
-        date_str: Report date string
-        aggregates: Dictionary containing all daily metrics
-        
-    Returns:
-        PDF bytes ready for email attachment
+    Generate a PDF daily report with a modern minimalist layout.
     """
     buffer = BytesIO()
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
-        rightMargin=2*cm,
-        leftMargin=2*cm,
-        topMargin=2*cm,
-        bottomMargin=2*cm
+        rightMargin=1.5*cm,
+        leftMargin=1.5*cm,
+        topMargin=1.5*cm,
+        bottomMargin=1.5*cm
     )
     
-    # Container for the 'Flowable' objects
     elements = []
-    
-    # Styles
     styles = getSampleStyleSheet()
+    
+    # Custom Paragraph Styles
     title_style = ParagraphStyle(
         'CustomTitle',
         parent=styles['Heading1'],
-        fontSize=24,
-        textColor=colors.black,
-        spaceAfter=30,
-        alignment=1  # Center
+        fontSize=26,
+        textColor=TEXT_DARK,
+        spaceAfter=5,
+        alignment=0  # Left
     )
     
     subtitle_style = ParagraphStyle(
         'CustomSubtitle',
         parent=styles['Normal'],
-        fontSize=14,
-        textColor=colors.black,
-        spaceAfter=20,
-        alignment=1  # Center
+        fontSize=12,
+        textColor=TEXT_LIGHT,
+        spaceAfter=30,
+        alignment=0  # Left
     )
     
     heading_style = ParagraphStyle(
         'CustomHeading',
         parent=styles['Heading2'],
-        fontSize=16,
-        textColor=colors.black,
-        spaceAfter=12
+        fontSize=14,
+        textColor=TEXT_DARK,
+        spaceAfter=15,
+        spaceBefore=20
     )
     
-    # Title
-    elements.append(Paragraph("Daily Business Report", title_style))
-    elements.append(Paragraph(date_str, subtitle_style))
+    card_title_style = ParagraphStyle('CardTitle', parent=styles['Normal'], fontSize=11, textColor=TEXT_LIGHT, spaceAfter=8)
+    card_value_style = ParagraphStyle('CardValue', parent=styles['Normal'], fontSize=18, textColor=TEXT_DARK, fontName='Helvetica-Bold')
+
+    # Header with Logo (Optional)
+    header_data = [[
+        Paragraph("Daily Business Report", title_style),
+        ""  # Placeholder for logo
+    ]]
+    
+    if settings.pdf_logo_path and os.path.exists(settings.pdf_logo_path):
+        try:
+            # We add the image to the right column
+            logo = Image(settings.pdf_logo_path, width=4*cm, height=2*cm, kind='proportional')
+            header_data[0][1] = logo
+        except Exception:
+            pass
+
+    # Wrap the title and subtitle in a table to align with the logo
+    title_block = [
+        Paragraph("Daily Business Report", title_style),
+        Paragraph(f"Date: {date_str}", subtitle_style)
+    ]
+    header_table = Table([[title_block, header_data[0][1]]], colWidths=[12*cm, 6*cm])
+    header_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+        ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+    ]))
+    elements.append(header_table)
     elements.append(Spacer(1, 0.5*cm))
     
-    # Summary Cards Table
-    summary_data = [
-        ['Total Revenue', 'New Enrollments'],
-        [f"{aggregates.total_revenue:.2f} EGP", str(aggregates.new_enrollments)],
-        ['', ''],
-        ['Sessions Held', 'Present / Absent'],
-        [str(aggregates.sessions_held), f"{aggregates.present_count} / {aggregates.absent_count}"]
+    # --- Summary Cards (2x2 Grid) ---
+    # We use a 3x3 table with empty rows/cols for spacing
+    card_data = [
+        [
+            [Paragraph("💰 Total Revenue", card_title_style), Paragraph(format_currency(aggregates.total_revenue), card_value_style)],
+            "",
+            [Paragraph("📈 New Enrollments", card_title_style), Paragraph(str(aggregates.new_enrollments), card_value_style)]
+        ],
+        ["", "", ""],
+        [
+            [Paragraph("👨‍🏫 Sessions Held", card_title_style), Paragraph(str(aggregates.sessions_held), card_value_style)],
+            "",
+            [Paragraph("👥 Present / Absent", card_title_style), Paragraph(f"{aggregates.present_count} / {aggregates.absent_count}", card_value_style)]
+        ]
     ]
     
-    summary_table = Table(summary_data, colWidths=[7*cm, 7*cm])
-    summary_table.setStyle(TableStyle([
-        # Header row styling — B&W: white bg, black text, thin bottom border
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f5f5f5')),
-        ('BACKGROUND', (0, 3), (-1, 3), colors.HexColor('#f5f5f5')),
+    card_table = Table(card_data, colWidths=[8.5*cm, 1*cm, 8.5*cm], rowHeights=[2.5*cm, 0.5*cm, 2.5*cm])
+    card_table.setStyle(TableStyle([
+        # Backgrounds for the cards
+        ('BACKGROUND', (0, 0), (0, 0), HEADER_BG),
+        ('BACKGROUND', (2, 0), (2, 0), HEADER_BG),
+        ('BACKGROUND', (0, 2), (0, 2), HEADER_BG),
+        ('BACKGROUND', (2, 2), (2, 2), HEADER_BG),
         
-        # Value row styling — alternating light gray
-        ('BACKGROUND', (0, 1), (0, 1), colors.white),
-        ('BACKGROUND', (1, 1), (1, 1), colors.HexColor('#fafafa')),
-        ('BACKGROUND', (0, 4), (0, 4), colors.white),
-        ('BACKGROUND', (1, 4), (1, 4), colors.HexColor('#fafafa')),
+        # Padding
+        ('TOPPADDING', (0, 0), (-1, -1), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+        ('LEFTPADDING', (0, 0), (-1, -1), 16),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 16),
         
-        # Text styling — all black
-        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
-        
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTNAME', (0, 3), (-1, 3), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 12),
-        ('FONTSIZE', (0, 1), (-1, 1), 20),
-        ('FONTSIZE', (0, 3), (-1, 3), 12),
-        ('FONTSIZE', (0, 4), (-1, 4), 20),
-        
-        ('TOPPADDING', (0, 0), (-1, 0), 12),
-        ('TOPPADDING', (0, 1), (-1, 1), 20),
-        ('TOPPADDING', (0, 3), (-1, 3), 12),
-        ('TOPPADDING', (0, 4), (-1, 4), 20),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BOTTOMPADDING', (0, 1), (-1, 1), 20),
-        ('BOTTOMPADDING', (0, 3), (-1, 3), 12),
-        ('BOTTOMPADDING', (0, 4), (-1, 4), 20),
-        
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-        ('BOX', (0, 0), (-1, 0), 1.5, colors.black),
-        ('BOX', (0, 3), (-1, 4), 1.5, colors.black),
+        # Subtle Borders around cards
+        ('BOX', (0, 0), (0, 0), 0.5, BORDER_COLOR),
+        ('BOX', (2, 0), (2, 0), 0.5, BORDER_COLOR),
+        ('BOX', (0, 2), (0, 2), 0.5, BORDER_COLOR),
+        ('BOX', (2, 2), (2, 2), 0.5, BORDER_COLOR),
     ]))
-    
-    elements.append(summary_table)
+    elements.append(card_table)
     elements.append(Spacer(1, 1*cm))
     
-    # Additional Metrics Section
+    # --- Additional Metrics ---
     elements.append(Paragraph("Additional Metrics", heading_style))
-    elements.append(Spacer(1, 0.3*cm))
     
-    # Format payment methods for display
-    payment_methods_str = ", ".join(
-        [f"{method}: {count}" for method, count in aggregates.payment_methods.items()]
-    ) if aggregates.payment_methods else "N/A"
-    
-    # Format instructors list
+    payment_methods_str = ", ".join([f"{m}: {c}" for m, c in aggregates.payment_methods.items()]) if aggregates.payment_methods else "N/A"
     instructors_str = ", ".join(aggregates.instructors_list) if aggregates.instructors_list else "N/A"
     
-    # Metrics table
     metrics_data = [
-        ['Metric', 'Value'],
         ['Payment Transactions', str(aggregates.payment_count)],
         ['Payment Methods', payment_methods_str],
         ['Instructors Today', instructors_str],
         ['Attendance Rate', f"{aggregates.attendance_rate:.1%}"]
     ]
     
-    metrics_table = Table(metrics_data, colWidths=[7*cm, 7*cm])
+    metrics_table = Table(metrics_data, colWidths=[6*cm, 12*cm])
     metrics_table.setStyle(TableStyle([
-        # Header — B&W
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#333333')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 12),
-        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-        
-        # Body rows — alternating
-        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
-        ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
-        ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),
-        ('FONTNAME', (1, 1), (1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 10),
-        ('ALIGN', (0, 1), (0, -1), 'LEFT'),
-        ('ALIGN', (1, 1), (1, -1), 'RIGHT'),
-        ('ALIGN', (1, -1), (1, -1), 'RIGHT'),
-        
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cccccc')),
-        ('BOX', (0, 0), (-1, 0), 1.5, colors.black),
-        ('BOX', (0, 0), (-1, -1), 1.5, colors.black),
-        
-        ('TOPPADDING', (0, 0), (-1, -1), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
-        ('LEFTPADDING', (0, 0), (-1, -1), 10),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+        ('BACKGROUND', (0, 0), (-1, -1), WHITE),
+        ('TEXTCOLOR', (0, 0), (0, -1), TEXT_LIGHT),
+        ('TEXTCOLOR', (1, 0), (1, -1), TEXT_DARK),
+        ('FONTNAME', (1, 0), (1, -1), 'Helvetica-Bold'),
+        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+        ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+        ('LINEBELOW', (0, 0), (-1, -2), 0.5, BORDER_COLOR),  # Subtle line between rows
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
     ]))
-    
     elements.append(metrics_table)
-    elements.append(Spacer(1, 1*cm))
     
-    # Payment Details Section
-    payment_details = aggregates.payment_details
-    if payment_details:
+    # --- Payment Details ---
+    if aggregates.payment_details:
         elements.append(Paragraph("Payment Details", heading_style))
-        elements.append(Spacer(1, 0.3*cm))
-        
-        # Payment details table
         payment_data = [['Student', 'Group', 'Amount', 'Type']]
-        for payment in payment_details:
+        
+        for idx, payment in enumerate(aggregates.payment_details):
             payment_data.append([
                 payment.student_name,
                 payment.group_name,
-                f"{payment.amount:.2f} EGP",
+                format_currency(payment.amount),
                 payment.payment_type
             ])
+            
+        payment_table = Table(payment_data, colWidths=[6*cm, 5.5*cm, 4*cm, 2.5*cm])
         
-        payment_table = Table(payment_data, colWidths=[5*cm, 4*cm, 3*cm, 2*cm])
-        payment_table.setStyle(TableStyle([
-            # Header — B&W
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#333333')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        # Apply zebra striping manually
+        style_commands = [
+            ('BACKGROUND', (0, 0), (-1, 0), HEADER_BG),
+            ('TEXTCOLOR', (0, 0), (-1, 0), TEXT_DARK),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('FONTSIZE', (0, 0), (-1, 0), 10),
-            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-            
-            # Body rows — alternating
-            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
-            ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
-            ('FONTSIZE', (0, 1), (-1, -1), 9),
-            ('ALIGN', (0, 1), (1, -1), 'LEFT'),
-            ('ALIGN', (2, 1), (2, -1), 'RIGHT'),
-            ('ALIGN', (3, 1), (3, -1), 'CENTER'),
-            
-            # Grid — thin black
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-            ('BOX', (0, 0), (-1, 0), 1.5, colors.black),
-            
+            ('ALIGN', (0, 0), (1, -1), 'LEFT'),
+            ('ALIGN', (2, 0), (2, -1), 'RIGHT'),
+            ('ALIGN', (3, 0), (3, -1), 'CENTER'),
+            ('LINEBELOW', (0, 0), (-1, 0), 1, BORDER_COLOR),  # Header underline
             ('TOPPADDING', (0, 0), (-1, -1), 8),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-            ('LEFTPADDING', (0, 0), (-1, -1), 8),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
-        ]))
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('TEXTCOLOR', (0, 1), (-1, -1), TEXT_DARK),
+        ]
         
+        for i in range(1, len(payment_data)):
+            bg = WHITE if i % 2 != 0 else ALT_BG
+            style_commands.append(('BACKGROUND', (0, i), (-1, i), bg))
+            style_commands.append(('LINEBELOW', (0, i), (-1, i), 0.5, BORDER_COLOR))
+            
+        payment_table.setStyle(TableStyle(style_commands))
         elements.append(payment_table)
-        elements.append(Spacer(1, 1*cm))
+        elements.append(Spacer(1, 0.5*cm))
 
-    # Payments by Type Sub-tables
-    payments_by_type = aggregates.payments_by_type
-    if payments_by_type:
+    # --- Payments by Type Sub-tables ---
+    if aggregates.payments_by_type:
         elements.append(Paragraph("Payments by Type", heading_style))
-        elements.append(Spacer(1, 0.3*cm))
 
-        for ptype_group in payments_by_type:
+        for ptype_group in aggregates.payments_by_type:
             type_heading = ParagraphStyle(
                 'TypeHeading',
                 parent=styles['Normal'],
                 fontSize=11,
-                textColor=colors.black,
+                textColor=TEXT_DARK,
                 spaceAfter=6,
                 spaceBefore=10,
             )
-            elements.append(
-                Paragraph(
-                    f"{ptype_group.payment_type} — Subtotal: {ptype_group.subtotal:.2f} EGP ({ptype_group.count} payments)",
-                    type_heading
-                )
-            )
+            elements.append(Paragraph(
+                f"<b>{ptype_group.payment_type}</b> &mdash; Subtotal: {format_currency(ptype_group.subtotal)} ({ptype_group.count} payments)",
+                type_heading
+            ))
 
             sub_data = [['Student', 'Group', 'Amount']]
             for payment in ptype_group.items:
                 sub_data.append([
                     payment.student_name,
                     payment.group_name,
-                    f"{payment.amount:.2f} EGP",
+                    format_currency(payment.amount),
                 ])
 
-            sub_table = Table(sub_data, colWidths=[5*cm, 4*cm, 5*cm])
-            sub_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#555555')),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            sub_table = Table(sub_data, colWidths=[7*cm, 6*cm, 5*cm])
+            
+            style_commands = [
+                ('BACKGROUND', (0, 0), (-1, 0), HEADER_BG),
+                ('TEXTCOLOR', (0, 0), (-1, 0), TEXT_DARK),
                 ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
                 ('FONTSIZE', (0, 0), (-1, 0), 9),
-                ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.white),
-                ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
-                ('FONTSIZE', (0, 1), (-1, -1), 8),
-                ('ALIGN', (0, 1), (1, -1), 'LEFT'),
-                ('ALIGN', (2, 1), (2, -1), 'RIGHT'),
-                ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+                ('ALIGN', (0, 0), (1, -1), 'LEFT'),
+                ('ALIGN', (2, 0), (2, -1), 'RIGHT'),
+                ('LINEBELOW', (0, 0), (-1, 0), 1, BORDER_COLOR),
                 ('TOPPADDING', (0, 0), (-1, -1), 6),
                 ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-                ('LEFTPADDING', (0, 0), (-1, -1), 6),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 6),
-            ]))
+                ('FONTSIZE', (0, 1), (-1, -1), 8),
+                ('TEXTCOLOR', (0, 1), (-1, -1), TEXT_DARK),
+            ]
+            
+            for i in range(1, len(sub_data)):
+                bg = WHITE if i % 2 != 0 else ALT_BG
+                style_commands.append(('BACKGROUND', (0, i), (-1, i), bg))
+                style_commands.append(('LINEBELOW', (0, i), (-1, i), 0.5, BORDER_COLOR))
+
+            sub_table.setStyle(TableStyle(style_commands))
             elements.append(sub_table)
             elements.append(Spacer(1, 0.3*cm))
 
-    # Session Details Table
-    session_details = aggregates.session_details
-    if session_details:
-        elements.append(Paragraph("Session Attendance Details", heading_style))
-        elements.append(Spacer(1, 0.3*cm))
-
-        body_style = ParagraphStyle('BodySmall', parent=styles['Normal'], fontSize=7, leading=8, textColor=colors.black)
-
-        session_data = [['Instructor', 'Time', 'P', 'A', 'C', 'Students Present', 'Students Absent']]
-        for s in session_details:
-            def _truncate(name_str: str, max_len: int = 80) -> str:
-                return (name_str[:max_len] + '...') if len(name_str) > max_len else name_str
-            session_data.append([
-                s.instructor_name,
-                s.session_time,
-                str(s.present_count),
-                str(s.absent_count),
-                str(s.cancelled_count),
-                Paragraph(_truncate(s.student_names_present), body_style),
-                Paragraph(_truncate(s.student_names_absent), body_style),
-            ])
-
-        session_table = Table(session_data, colWidths=[2.5*cm, 2*cm, 1*cm, 1*cm, 1*cm, 4.5*cm, 4.5*cm])
-        session_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#333333')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+    # --- Session Attendance Details ---
+    if aggregates.session_details:
+        elements.append(Paragraph("Session Attendance", heading_style))
+        
+        body_style_italic = ParagraphStyle('BodyItalic', parent=styles['Normal'], fontSize=8, textColor=TEXT_LIGHT, fontName='Helvetica-Oblique')
+        
+        session_data = [['Instructor', 'Time', 'P', 'A', 'C']]
+        style_commands = [
+            ('BACKGROUND', (0, 0), (-1, 0), HEADER_BG),
+            ('TEXTCOLOR', (0, 0), (-1, 0), TEXT_DARK),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 9),
-            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
-            ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
-            ('FONTSIZE', (0, 1), (-1, -1), 8),
-            ('ALIGN', (0, 1), (0, -1), 'LEFT'),
-            ('ALIGN', (1, 1), (1, -1), 'CENTER'),
-            ('ALIGN', (2, 1), (-1, -1), 'CENTER'),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-            ('TOPPADDING', (0, 0), (-1, -1), 6),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-            ('LEFTPADDING', (0, 0), (-1, -1), 6),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 6),
-        ]))
+            ('ALIGN', (0, 0), (1, -1), 'LEFT'),
+            ('ALIGN', (2, 0), (-1, -1), 'CENTER'),
+            ('LINEBELOW', (0, 0), (-1, 0), 1, BORDER_COLOR),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('TEXTCOLOR', (0, 1), (-1, -1), TEXT_DARK),
+        ]
+        
+        current_row = 1
+        group_idx = 0
+        for s in aggregates.session_details:
+            bg = WHITE if group_idx % 2 == 0 else ALT_BG
+            
+            # Master Row
+            session_data.append([s.instructor_name, s.session_time, str(s.present_count), str(s.absent_count), str(s.cancelled_count)])
+            style_commands.append(('BACKGROUND', (0, current_row), (-1, current_row), bg))
+            
+            master_row_idx = current_row
+            current_row += 1
+            
+            # Sub-row for Absentees
+            if s.student_names_absent:
+                absent_str = f"Absent: {s.student_names_absent}"
+                session_data.append([Paragraph(absent_str, body_style_italic), '', '', '', ''])
+                style_commands.append(('SPAN', (0, current_row), (-1, current_row)))
+                style_commands.append(('BACKGROUND', (0, current_row), (-1, current_row), bg))
+                # Remove padding top for sub-row so it hugs the master row
+                style_commands.append(('TOPPADDING', (0, current_row), (-1, current_row), 0))
+                # Remove padding bottom for master row
+                style_commands.append(('BOTTOMPADDING', (0, master_row_idx), (-1, master_row_idx), 0))
+                current_row += 1
+            
+            # Bottom border for the group
+            style_commands.append(('LINEBELOW', (0, current_row - 1), (-1, current_row - 1), 0.5, BORDER_COLOR))
+            group_idx += 1
+            
+        session_table = Table(session_data, colWidths=[6*cm, 6*cm, 2*cm, 2*cm, 2*cm])
+        session_table.setStyle(TableStyle(style_commands))
         elements.append(session_table)
         elements.append(Spacer(1, 0.5*cm))
 
-    # Instructor Summary Table
-    instructor_summary = aggregates.instructor_summary
-    if instructor_summary:
+    # --- Instructor Summary Table ---
+    if aggregates.instructor_summary:
         elements.append(Paragraph("Instructor Summary", heading_style))
-        elements.append(Spacer(1, 0.3*cm))
 
         instr_data = [['Instructor', 'Sessions']]
-        for i in instructor_summary:
+        for i in aggregates.instructor_summary:
             instr_data.append([i.instructor_name, str(i.session_count)])
 
-        instr_table = Table(instr_data, colWidths=[7*cm, 7*cm])
-        instr_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#333333')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        instr_table = Table(instr_data, colWidths=[9*cm, 9*cm])
+        
+        style_commands = [
+            ('BACKGROUND', (0, 0), (-1, 0), HEADER_BG),
+            ('TEXTCOLOR', (0, 0), (-1, 0), TEXT_DARK),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('FONTSIZE', (0, 0), (-1, 0), 10),
-            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
-            ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
-            ('FONTSIZE', (0, 1), (-1, -1), 9),
-            ('ALIGN', (0, 1), (-1, -1), 'LEFT'),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+            ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+            ('LINEBELOW', (0, 0), (-1, 0), 1, BORDER_COLOR),
             ('TOPPADDING', (0, 0), (-1, -1), 8),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-            ('LEFTPADDING', (0, 0), (-1, -1), 8),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
-        ]))
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('TEXTCOLOR', (0, 1), (-1, -1), TEXT_DARK),
+        ]
+        
+        for i in range(1, len(instr_data)):
+            bg = WHITE if i % 2 != 0 else ALT_BG
+            style_commands.append(('BACKGROUND', (0, i), (-1, i), bg))
+            style_commands.append(('LINEBELOW', (0, i), (-1, i), 0.5, BORDER_COLOR))
+
+        instr_table.setStyle(TableStyle(style_commands))
         elements.append(instr_table)
         elements.append(Spacer(1, 0.5*cm))
 
-    # Footer
-    footer_style = ParagraphStyle(
-        'Footer',
-        parent=styles['Normal'],
-        fontSize=9,
-        textColor=colors.HexColor('#666666'),
-        alignment=1  # Center
-    )
+    # --- Footer ---
+    elements.append(Spacer(1, 1*cm))
+    footer_style = ParagraphStyle('Footer', parent=styles['Normal'], fontSize=8, textColor=TEXT_LIGHT, alignment=1)
     elements.append(Paragraph("Techno Terminal Automated Report", footer_style))
     elements.append(Paragraph(f"Generated on {date_str}", footer_style))
     
-    # Build PDF
     doc.build(elements)
     
-    # Get the PDF bytes
     pdf_bytes = buffer.getvalue()
     buffer.close()
-    
     return pdf_bytes
