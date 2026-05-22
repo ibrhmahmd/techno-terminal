@@ -18,8 +18,8 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from app.api.schemas.common import ApiResponse
-from app.modules.auth import AuthService, User, UserPublic, UserSessionDTO
+from app.api.schemas.common import ApiResponse, PaginatedResponse
+from app.modules.auth import AuthService, User, UserPublic, UserSessionDTO, AuditLogEntryDTO
 from app.modules.auth.models.audit_log import AuditLogEventType
 from app.modules.auth.services.audit_service import AuditService
 from app.api.dependencies import get_current_user, require_admin, get_auth_service, get_audit_service
@@ -266,7 +266,7 @@ def list_sessions(
 
 @router.get(
     "/me/activity",
-    response_model=ApiResponse[list],
+    response_model=PaginatedResponse[AuditLogEntryDTO],
     summary="List recent account activity",
 )
 def list_my_activity(
@@ -280,8 +280,11 @@ def list_my_activity(
         skip=skip,
         limit=limit,
     )
-    return ApiResponse(
-        data=[l.model_dump() for l in result.items],
+    return PaginatedResponse(
+        data=result.items,
+        total=result.total,
+        skip=skip,
+        limit=limit,
     )
 
 
