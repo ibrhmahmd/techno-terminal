@@ -296,7 +296,7 @@ deprecated methods kept for "backward compatibility," or subset methods supersed
 equivalents.
 
 <!-- SPECKIT START -->
-Active plan: `specs/016-user-auth-management/plan.md`
+Active plan: `specs/018-notifications-module-audit/plan.md`
 
-Spec 016 fully implemented: 8 phases, 15 endpoints (admin CRUD, self-service email/sessions/activity, invite registration, session security, audit reporting), 1 new model (AuditLog), 5 User model extensions, 6 admin tests. Next: apply migration SQL (063_user_auth_extensions.sql), run full test suite, then audit/cleanup dead code.
+Spec 018 planned: 32 issues across 26 notification module files → 21 user stories (3 P1, 10 P2, 8 P3). Phase 0 research complete, Phase 1 design complete. All fixes code-only — no new migrations. Next: generate tasks.md via `/speckit.tasks`, then implement P1→P3.
 <!-- SPECKIT END -->
