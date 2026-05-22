@@ -4,12 +4,15 @@ app/modules/notifications/services/enrollment_notifications.py
 Enrollment notification handlers.
 Kept simple: one public method per notification type.
 """
+import logging
 from datetime import datetime
 from typing import Optional
 from fastapi import BackgroundTasks
 
 from app.modules.notifications.services.base_notification_service import BaseNotificationService
 from app.modules.notifications.repositories.notification_repository import NotificationRepository
+
+logger = logging.getLogger(__name__)
 
 
 class EnrollmentNotificationService(BaseNotificationService):
@@ -77,6 +80,7 @@ class EnrollmentNotificationService(BaseNotificationService):
         
         template = self._repo.get_template_by_name("enrollment_confirmation")
         if not template or not template.is_active:
+            logger.warning("enrollment_confirmation template not found or inactive — skipping")
             return
         
         # Get notification recipients with entity context for fallback alert
@@ -126,6 +130,7 @@ class EnrollmentNotificationService(BaseNotificationService):
                                   completion_date: datetime) -> None:
         template = self._repo.get_template_by_name("enrollment_completed")
         if not template or not template.is_active:
+            logger.warning("enrollment_completed template not found or inactive — skipping")
             return
         
         # Get notification recipients with entity context for fallback alert
@@ -155,6 +160,7 @@ class EnrollmentNotificationService(BaseNotificationService):
                                 dropped_by: Optional[int]) -> None:
         template = self._repo.get_template_by_name("enrollment_dropped")
         if not template or not template.is_active:
+            logger.warning("enrollment_dropped template not found or inactive — skipping")
             return
         
         # Get notification recipients with entity context for fallback alert
@@ -183,6 +189,7 @@ class EnrollmentNotificationService(BaseNotificationService):
                                     to_group_id: int, transferred_by: Optional[int]) -> None:
         template = self._repo.get_template_by_name("enrollment_transferred")
         if not template or not template.is_active:
+            logger.warning("enrollment_transferred template not found or inactive — skipping")
             return
         
         # Get notification recipients with entity context for fallback alert
@@ -211,6 +218,7 @@ class EnrollmentNotificationService(BaseNotificationService):
                                     new_level: int, group_id: int, enrollment_id: int) -> None:
         template = self._repo.get_template_by_name("level_progression")
         if not template or not template.is_active:
+            logger.warning("level_progression template not found or inactive — skipping")
             return
         
         # Get notification recipients with entity context for fallback alert

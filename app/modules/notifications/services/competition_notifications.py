@@ -3,12 +3,15 @@ app/modules/notifications/services/competition_notifications.py
 ─────────────────────────────────────────────────────────────
 Competition notification handlers for team registration, payment, and placement.
 """
+import logging
 from typing import Optional
 from decimal import Decimal
 from fastapi import BackgroundTasks
 
 from app.modules.notifications.services.base_notification_service import BaseNotificationService
 from app.modules.notifications.repositories.notification_repository import NotificationRepository
+
+logger = logging.getLogger(__name__)
 
 
 class CompetitionNotificationService(BaseNotificationService):
@@ -82,6 +85,7 @@ class CompetitionNotificationService(BaseNotificationService):
         """Process team registration notification."""
         template = self._repo.get_template_by_name("competition_team_registration")
         if not template or not template.is_active:
+            logger.warning("competition_team_registration template not found or inactive — skipping")
             return
 
         # Get notification recipients with entity context for fallback alert
@@ -119,6 +123,7 @@ class CompetitionNotificationService(BaseNotificationService):
         """Process fee payment notification."""
         template = self._repo.get_template_by_name("competition_fee_payment")
         if not template or not template.is_active:
+            logger.warning("competition_fee_payment template not found or inactive — skipping")
             return
 
         # Get notification recipients with entity context for fallback alert
@@ -156,6 +161,7 @@ class CompetitionNotificationService(BaseNotificationService):
         """Process placement announcement notification."""
         template = self._repo.get_template_by_name("competition_placement")
         if not template or not template.is_active:
+            logger.warning("competition_placement template not found or inactive — skipping")
             return
 
         # Get notification recipients with entity context for fallback alert

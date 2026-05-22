@@ -9,6 +9,7 @@ Refactored to split 777-line monolith into focused modules:
 - payment_notifications.py (payment events)
 - report_notifications.py (scheduled reports)
 """
+import logging
 from datetime import datetime
 from typing import Optional
 from fastapi import BackgroundTasks
@@ -21,6 +22,8 @@ from app.modules.notifications.models.notification_template import NotificationT
 from app.modules.notifications.schemas.template_dto import TemplateTestResultDTO
 from app.db.connection import get_session
 from app.modules.notifications.repositories.admin_settings_repository import AdminSettingsRepository
+
+logger = logging.getLogger(__name__)
 
 
 class NotificationService:
