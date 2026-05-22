@@ -29,6 +29,9 @@ def get_engine():
                         "options": "-c statement_timeout=30000",
                     },
                 )
+                from app.db.query_logger import install_query_logger
+
+                install_query_logger(_engine)
     return _engine
 
 

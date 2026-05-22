@@ -32,6 +32,9 @@ _HEALTH_PATHS = {"/health", "/kaithhealthcheck"}
 
 async def logging_middleware(request: Request, call_next) -> Response:
     request_id = uuid.uuid4().hex[:8]
+    from app.db.query_logger import set_db_request_id
+
+    set_db_request_id(request_id)
     start = time.perf_counter()
 
     response: Response = await call_next(request)
