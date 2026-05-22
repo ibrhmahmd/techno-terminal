@@ -1,6 +1,8 @@
-from fastapi import FastAPI
-from contextlib import asynccontextmanager
 import asyncio
+import logging
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -37,6 +39,13 @@ from app.api.routers import admin_auth_router
 
 
 def create_app() -> FastAPI:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(levelname)s: %(message)s",
+        force=True,
+    )
+    logging.getLogger("api.access").setLevel(logging.INFO)
+
     from app.db.connection import get_engine
     from sqlmodel import Session
     from app.modules.notifications.repositories.notification_repository import (
