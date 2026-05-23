@@ -194,11 +194,15 @@ class ReportNotificationService(BaseNotificationService):
         Outlook, and Apple Mail on both desktop and mobile.
         """
         # ── Scalar helpers ───────────────────────────────────────────────
-        payment_methods_str = ", ".join(
-            [f"{method}: {count}" for method, count in aggregates.payment_methods.items()]
-        ) if aggregates.payment_methods else "N/A"
+        def _to_html_list(items: list[str]) -> str:
+            if not items:
+                return "N/A"
+            list_items = "".join([f"<li>{item}</li>" for item in items])
+            return f'<ul style="margin: 0; padding-left: 20px;">{list_items}</ul>'
 
-        instructors_str = ", ".join(aggregates.instructors_list) if aggregates.instructors_list else "N/A"
+        payment_methods_list = [f"{method}: {count}" for method, count in aggregates.payment_methods.items()] if aggregates.payment_methods else []
+        payment_methods_str = _to_html_list(payment_methods_list)
+        instructors_str = _to_html_list(aggregates.instructors_list or [])
 
         # ── Inline-style constants ───────────────────────────────────────
         TH = 'padding: 8px 10px; text-align: left; border: 1px solid #ddd; color: #fff;'
@@ -294,6 +298,9 @@ class ReportNotificationService(BaseNotificationService):
             session_rows = ""
             for i, s in enumerate(aggregates.session_details):
                 bg = _row_bg(i)
+                present_list = [n.strip() for n in s.student_names_present.split(",") if n.strip()] if s.student_names_present else []
+                absent_list = [n.strip() for n in s.student_names_absent.split(",") if n.strip()] if s.student_names_absent else []
+                
                 session_rows += (
                     f'<tr style="background: {bg};">'
                     f'<td style="{TD}">{s.instructor_name}</td>'
@@ -301,8 +308,8 @@ class ReportNotificationService(BaseNotificationService):
                     f'<td style="{TD_C}">{s.present_count}</td>'
                     f'<td style="{TD_C}">{s.absent_count}</td>'
                     f'<td style="{TD_C}">{s.cancelled_count}</td>'
-                    f'<td style="{TD}">{s.student_names_present}</td>'
-                    f'<td style="{TD}">{s.student_names_absent}</td>'
+                    f'<td style="{TD}">{_to_html_list(present_list) if present_list else "—"}</td>'
+                    f'<td style="{TD}">{_to_html_list(absent_list) if absent_list else "—"}</td>'
                     f'</tr>'
                 )
             session_details_html = f"""
