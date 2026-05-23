@@ -3,7 +3,7 @@ app/modules/notifications/services/report_notifications.py
 ─────────────────────────────────────────────────────────────
 Scheduled report notifications for employees.
 """
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from typing import Optional
 from decimal import Decimal
 import logging
@@ -301,10 +301,17 @@ class ReportNotificationService(BaseNotificationService):
                 present_list = [n.strip() for n in s.student_names_present.split(",") if n.strip()] if s.student_names_present else []
                 absent_list = [n.strip() for n in s.student_names_absent.split(",") if n.strip()] if s.student_names_absent else []
                 
+                try:
+                    # Convert 24h format to 12h format (e.g., "14:30:00" -> "02:30 PM")
+                    t_format = "%H:%M:%S" if s.session_time and len(s.session_time.split(":")) == 3 else "%H:%M"
+                    display_time = datetime.strptime(s.session_time, t_format).strftime("%I:%M %p") if s.session_time else "—"
+                except (ValueError, TypeError):
+                    display_time = s.session_time or "—"
+
                 session_rows += (
                     f'<tr style="background: {bg};">'
                     f'<td style="{TD}">{s.instructor_name}</td>'
-                    f'<td style="{TD_C}">{s.session_time}</td>'
+                    f'<td style="{TD_C}">{display_time}</td>'
                     f'<td style="{TD_C}">{s.present_count}</td>'
                     f'<td style="{TD_C}">{s.absent_count}</td>'
                     f'<td style="{TD_C}">{s.cancelled_count}</td>'

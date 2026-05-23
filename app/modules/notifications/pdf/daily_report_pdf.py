@@ -4,7 +4,7 @@ app/modules/notifications/pdf/daily_report_pdf.py
 PDF generation for daily business reports.
 B&W theme, optimised for 30+ payment rows, printer-friendly.
 """
-from datetime import date
+from datetime import date, datetime
 from io import BytesIO
 
 from reportlab.lib import colors
@@ -137,10 +137,10 @@ def generate_daily_report_pdf(
     elements.append(Paragraph("Additional Metrics", heading_style))
     elements.append(_section_rule())
 
-    payment_methods_str = ", ".join(
-        [f"{method}: {count}" for method, count in aggregates.payment_methods.items()]
+    payment_methods_str = "<br/>".join(
+        [f"&bull; {method}: {count}" for method, count in aggregates.payment_methods.items()]
     ) if aggregates.payment_methods else "N/A"
-    instructors_str = ", ".join(aggregates.instructors_list) if aggregates.instructors_list else "N/A"
+    instructors_str = "<br/>".join([f"&bull; {i}" for i in aggregates.instructors_list]) if aggregates.instructors_list else "N/A"
 
     # Wrap long text values in Paragraph so they word-wrap inside the cell
     metrics_wrap = ParagraphStyle(
@@ -300,14 +300,24 @@ def generate_daily_report_pdf(
         sess_data = [['Instructor', 'Time', 'P', 'A', 'C', 'Students Present', 'Students Absent']]
 
         for s in session_details:
+            present_names = "<br/>".join([f"&bull; {n.strip()}" for n in s.student_names_present.split(",") if n.strip()]) if s.student_names_present else "—"
+            absent_names = "<br/>".join([f"&bull; {n.strip()}" for n in s.student_names_absent.split(",") if n.strip()]) if s.student_names_absent else "—"
+            
+            try:
+                # Convert 24h format to 12h format (e.g., "14:30:00" -> "02:30 PM")
+                t_format = "%H:%M:%S" if s.session_time and len(s.session_time.split(":")) == 3 else "%H:%M"
+                display_time = datetime.strptime(s.session_time, t_format).strftime("%I:%M %p") if s.session_time else "—"
+            except (ValueError, TypeError):
+                display_time = s.session_time or "—"
+
             sess_data.append([
                 s.instructor_name,
-                s.session_time,
+                display_time,
                 str(s.present_count),
                 str(s.absent_count),
                 str(s.cancelled_count),
-                Paragraph(s.student_names_present or "—", wrap_style),
-                Paragraph(s.student_names_absent or "—", wrap_style),
+                Paragraph(present_names, wrap_style),
+                Paragraph(absent_names, wrap_style),
             ])
 
         sess_cmds = [
