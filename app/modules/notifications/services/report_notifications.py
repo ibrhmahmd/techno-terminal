@@ -46,148 +46,13 @@ class ReportNotificationService(BaseNotificationService):
         if not template or not template.is_active:
             logger.warning("daily_report template not found or inactive - skipping.")
             return
-        
-        # Get notification recipients (fallback handled automatically by base service)
+
         recipients = self._resolve_notification_recipients("daily_report")
-        
+
         today = target_date or date.today()
         aggregates = self._fetch_daily_aggregates(today)
-        
-        # Format payment methods for display
-        payment_methods_str = ", ".join(
-            [f"{method}: {count}" for method, count in aggregates.payment_methods.items()]
-        ) if aggregates.payment_methods else "N/A"
-        
-        # Format instructors list
-        instructors_str = ", ".join(aggregates.instructors_list) if aggregates.instructors_list else "N/A"
-        
-        # Format payment details for template
-        payment_details_html = ""
-        if aggregates.payment_details:
-            payment_rows = ""
-            for payment in aggregates.payment_details:
-                payment_rows += f"<tr><td>{payment.student_name}</td><td>{payment.group_name}</td><td>{payment.amount:.2f} EGP</td><td>{payment.payment_type}</td></tr>"
-            payment_details_html = f"""
-            <table style="width: 100%; border-collapse: collapse; margin-top: 10px; border: 1px solid #000;">
-                <thead>
-                    <tr style="background: #333333; color: white;">
-                        <th style="padding: 10px; text-align: left; border: 1px solid #000;">Student</th>
-                        <th style="padding: 10px; text-align: left; border: 1px solid #000;">Group</th>
-                        <th style="padding: 10px; text-align: right; border: 1px solid #000;">Amount</th>
-                        <th style="padding: 10px; text-align: left; border: 1px solid #000;">Type</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {payment_rows}
-                </tbody>
-            </table>
-            """
-        else:
-            payment_details_html = "<p style='color: #000; font-style: italic;'>No payments recorded today.</p>"
-        
-        # Build session details HTML table
-        session_details_html = ""
-        if aggregates.session_details:
-            session_rows = ""
-            for session_item in aggregates.session_details:
-                session_rows += (
-                    f"<tr>"
-                    f"<td>{session_item.instructor_name}</td>"
-                    f"<td>{session_item.session_time}</td>"
-                    f"<td>{session_item.present_count}</td>"
-                    f"<td>{session_item.absent_count}</td>"
-                    f"<td>{session_item.cancelled_count}</td>"
-                    f"<td>{session_item.student_names_present}</td>"
-                    f"<td>{session_item.student_names_absent}</td>"
-                    f"</tr>"
-                )
-            session_details_html = f"""
-            <h3 style="color: #000; margin-top: 20px;">Session Attendance Details</h3>
-            <table style="width: 100%; border-collapse: collapse; margin-top: 10px; border: 1px solid #000;">
-                <thead>
-                    <tr style="background: #333333; color: white;">
-                        <th style="padding: 8px; text-align: left; border: 1px solid #000;">Instructor</th>
-                        <th style="padding: 8px; text-align: left; border: 1px solid #000;">Time</th>
-                        <th style="padding: 8px; text-align: center; border: 1px solid #000;">Present</th>
-                        <th style="padding: 8px; text-align: center; border: 1px solid #000;">Absent</th>
-                        <th style="padding: 8px; text-align: center; border: 1px solid #000;">Cancelled</th>
-                        <th style="padding: 8px; text-align: left; border: 1px solid #000;">Students Present</th>
-                        <th style="padding: 8px; text-align: left; border: 1px solid #000;">Students Absent</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {session_rows}
-                </tbody>
-            </table>
-            """
-        else:
-            session_details_html = "<p style='color: #000; font-style: italic;'>No completed sessions today.</p>"
+        variables = self._build_variables(aggregates, today)
 
-        # Build instructor summary HTML table
-        instructor_summary_html = ""
-        if aggregates.instructor_summary:
-            instructor_rows = ""
-            for item in aggregates.instructor_summary:
-                instructor_rows += f"<tr><td>{item.instructor_name}</td><td>{item.session_count}</td></tr>"
-            instructor_summary_html = f"""
-            <h3 style="color: #000; margin-top: 20px;">Instructor Summary</h3>
-            <table style="width: 100%; border-collapse: collapse; margin-top: 10px; border: 1px solid #000;">
-                <thead>
-                    <tr style="background: #333333; color: white;">
-                        <th style="padding: 8px; text-align: left; border: 1px solid #000;">Instructor</th>
-                        <th style="padding: 8px; text-align: center; border: 1px solid #000;">Sessions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {instructor_rows}
-                </tbody>
-            </table>
-            """
-        else:
-            instructor_summary_html = "<p style='color: #000; font-style: italic;'>No instructor summary available.</p>"
-
-        # Build payments by type HTML sub-tables
-        payments_by_type_html = ""
-        if aggregates.payments_by_type:
-            payments_by_type_html = "<h3 style='color: #000; margin-top: 20px;'>Payments by Type</h3>"
-            for ptype_group in aggregates.payments_by_type:
-                sub_rows = ""
-                for payment in ptype_group.items:
-                    sub_rows += f"<tr><td>{payment.student_name}</td><td>{payment.group_name}</td><td style='text-align: right;'>{payment.amount:.2f} EGP</td></tr>"
-                payments_by_type_html += f"""
-                <h4 style="color: #000; margin: 10px 0 5px 0;">{ptype_group.payment_type} (Subtotal: {ptype_group.subtotal:.2f} EGP — {ptype_group.count} payments)</h4>
-                <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; border: 1px solid #000;">
-                    <thead>
-                        <tr style="background: #555555; color: white;">
-                            <th style="padding: 6px; text-align: left; border: 1px solid #000;">Student</th>
-                            <th style="padding: 6px; text-align: left; border: 1px solid #000;">Group</th>
-                            <th style="padding: 6px; text-align: right; border: 1px solid #000;">Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {sub_rows}
-                    </tbody>
-                </table>
-                """
-        else:
-            payments_by_type_html = ""
-
-        variables = {
-            "date": today.strftime("%Y-%m-%d"),
-            "total_revenue": f"{aggregates.total_revenue:.2f}",
-            "new_enrollments": aggregates.new_enrollments,
-            "sessions_held": aggregates.sessions_held,
-            "absent_count": aggregates.absent_count,
-            "payment_count": aggregates.payment_count,
-            "payment_methods": payment_methods_str,
-            "payment_details": payment_details_html,
-            "instructors_list": instructors_str,
-            "attendance_rate": f"{aggregates.attendance_rate:.1%}",
-            "session_details": session_details_html,
-            "instructor_summary": instructor_summary_html,
-            "payments_by_type": payments_by_type_html,
-        }
-        
         # Generate PDF attachment
         pdf_bytes = None
         try:
@@ -199,14 +64,12 @@ class ReportNotificationService(BaseNotificationService):
             logger.info(f"Generated daily report PDF for {today}")
         except Exception as e:
             logger.error(f"Failed to generate daily report PDF: {e}")
-        
-        # Prepare attachments
+
         attachments = None
         if pdf_bytes:
             filename = f"daily_report_{today.strftime('%Y-%m-%d')}.pdf"
             attachments = [(filename, pdf_bytes, "application/pdf")]
-        
-        # Send to all enabled recipients with PDF attachment
+
         for email, recipient_id, recipient_type in recipients:
             await self._dispatch(
                 template, "EMAIL", recipient_type, recipient_id, email,
@@ -325,98 +188,171 @@ class ReportNotificationService(BaseNotificationService):
     def _build_variables(
         self, aggregates: DailyReportAggregateDTO, target_date: date
     ) -> dict:
-        """Build the template variables dict (shared between email modes)."""
+        """Build the template variables dict (shared between all email dispatch modes).
+
+        Produces fully-inlined HTML tables that render correctly in Gmail,
+        Outlook, and Apple Mail on both desktop and mobile.
+        """
+        # ── Scalar helpers ───────────────────────────────────────────────
         payment_methods_str = ", ".join(
             [f"{method}: {count}" for method, count in aggregates.payment_methods.items()]
         ) if aggregates.payment_methods else "N/A"
 
         instructors_str = ", ".join(aggregates.instructors_list) if aggregates.instructors_list else "N/A"
 
+        # ── Inline-style constants ───────────────────────────────────────
+        TH = 'padding: 8px 10px; text-align: left; border: 1px solid #ddd; color: #fff;'
+        TH_R = 'padding: 8px 10px; text-align: right; border: 1px solid #ddd; color: #fff;'
+        TH_C = 'padding: 8px 10px; text-align: center; border: 1px solid #ddd; color: #fff;'
+        TD = 'padding: 8px 10px; text-align: left; border: 1px solid #ddd; color: #000;'
+        TD_R = 'padding: 8px 10px; text-align: right; border: 1px solid #ddd; color: #000;'
+        TD_C = 'padding: 8px 10px; text-align: center; border: 1px solid #ddd; color: #000;'
+        TABLE = 'width: 100%; border-collapse: collapse; margin-top: 8px; border: 1px solid #000; min-width: 600px;'
+        WRAP = 'overflow-x: auto; -webkit-overflow-scrolling: touch;'
+
+        def _row_bg(idx: int) -> str:
+            return '#f5f5f5' if idx % 2 == 0 else '#ffffff'
+
+        # ── Payment Breakdown (merged & grouped) ─────────────────────────
         payment_details_html = ""
-        if aggregates.payment_details:
-            payment_rows = ""
-            for payment in aggregates.payment_details:
-                payment_rows += f"<tr><td>{payment.student_name}</td><td>{payment.group_name}</td><td>{payment.amount:.2f} EGP</td><td>{payment.payment_type}</td></tr>"
+        if aggregates.payments_by_type:
+            rows_html = ""
+            row_counter = 0
+            grand_total = 0.0
+
+            for ptype_group in aggregates.payments_by_type:
+                count_label = f"{ptype_group.count} payment{'s' if ptype_group.count != 1 else ''}"
+                rows_html += (
+                    f'<tr style="background: #e8e8e8;">'
+                    f'<td colspan="3" style="padding: 8px 10px; border: 1px solid #ddd; font-weight: bold; color: #000;">'
+                    f'{ptype_group.payment_type} &mdash; {count_label} &mdash; '
+                    f'Subtotal: {ptype_group.subtotal:,.2f} EGP</td></tr>'
+                )
+                for payment in ptype_group.items:
+                    bg = _row_bg(row_counter)
+                    rows_html += (
+                        f'<tr style="background: {bg};">'
+                        f'<td style="{TD}">{payment.student_name}</td>'
+                        f'<td style="{TD}">{payment.group_name}</td>'
+                        f'<td style="{TD_R}">{payment.amount:,.2f} EGP</td>'
+                        f'</tr>'
+                    )
+                    row_counter += 1
+                grand_total += ptype_group.subtotal
+
+            rows_html += (
+                f'<tr style="background: #333; color: #fff;">'
+                f'<td colspan="3" style="padding: 10px; border: 1px solid #000; '
+                f'font-weight: bold; text-align: center; font-size: 14px; color: #fff;">'
+                f'Total Revenue: {grand_total:,.2f} EGP</td></tr>'
+            )
+
             payment_details_html = f"""
-            <table style="width: 100%; border-collapse: collapse; margin-top: 10px; border: 1px solid #000;">
-                <thead><tr style="background: #333333; color: white;">
-                    <th style="padding: 10px; text-align: left; border: 1px solid #000;">Student</th>
-                    <th style="padding: 10px; text-align: left; border: 1px solid #000;">Group</th>
-                    <th style="padding: 10px; text-align: right; border: 1px solid #000;">Amount</th>
-                    <th style="padding: 10px; text-align: left; border: 1px solid #000;">Type</th>
+            <h3 style="color: #000; margin-top: 20px;">Payment Breakdown</h3>
+            <div style="{WRAP}">
+            <table style="{TABLE}">
+                <thead><tr style="background: #333;">
+                    <th style="{TH}">Student</th>
+                    <th style="{TH}">Group</th>
+                    <th style="{TH_R}">Amount</th>
                 </tr></thead>
-                <tbody>{payment_rows}</tbody>
-            </table>"""
+                <tbody>{rows_html}</tbody>
+            </table>
+            </div>"""
+        elif aggregates.payment_details:
+            # Fallback: flat list when no type grouping
+            rows_html = ""
+            for i, payment in enumerate(aggregates.payment_details):
+                bg = _row_bg(i)
+                rows_html += (
+                    f'<tr style="background: {bg};">'
+                    f'<td style="{TD}">{payment.student_name}</td>'
+                    f'<td style="{TD}">{payment.group_name}</td>'
+                    f'<td style="{TD_R}">{payment.amount:,.2f} EGP</td>'
+                    f'<td style="{TD_C}">{payment.payment_type}</td>'
+                    f'</tr>'
+                )
+            payment_details_html = f"""
+            <h3 style="color: #000; margin-top: 20px;">Payment Details</h3>
+            <div style="{WRAP}">
+            <table style="{TABLE}">
+                <thead><tr style="background: #333;">
+                    <th style="{TH}">Student</th>
+                    <th style="{TH}">Group</th>
+                    <th style="{TH_R}">Amount</th>
+                    <th style="{TH_C}">Type</th>
+                </tr></thead>
+                <tbody>{rows_html}</tbody>
+            </table>
+            </div>"""
         else:
             payment_details_html = "<p style='color: #000; font-style: italic;'>No payments recorded today.</p>"
 
+        # ── Session Attendance Details ────────────────────────────────────
         session_details_html = ""
         if aggregates.session_details:
             session_rows = ""
-            for session_item in aggregates.session_details:
+            for i, s in enumerate(aggregates.session_details):
+                bg = _row_bg(i)
                 session_rows += (
-                    f"<tr><td>{session_item.instructor_name}</td><td>{session_item.session_time}</td>"
-                    f"<td>{session_item.present_count}</td><td>{session_item.absent_count}</td>"
-                    f"<td>{session_item.cancelled_count}</td>"
-                    f"<td>{session_item.student_names_present}</td><td>{session_item.student_names_absent}</td></tr>"
+                    f'<tr style="background: {bg};">'
+                    f'<td style="{TD}">{s.instructor_name}</td>'
+                    f'<td style="{TD_C}">{s.session_time}</td>'
+                    f'<td style="{TD_C}">{s.present_count}</td>'
+                    f'<td style="{TD_C}">{s.absent_count}</td>'
+                    f'<td style="{TD_C}">{s.cancelled_count}</td>'
+                    f'<td style="{TD}">{s.student_names_present}</td>'
+                    f'<td style="{TD}">{s.student_names_absent}</td>'
+                    f'</tr>'
                 )
             session_details_html = f"""
             <h3 style="color: #000; margin-top: 20px;">Session Attendance Details</h3>
-            <table style="width: 100%; border-collapse: collapse; margin-top: 10px; border: 1px solid #000;">
-                <thead><tr style="background: #333333; color: white;">
-                    <th style="padding: 8px; text-align: left; border: 1px solid #000;">Instructor</th>
-                    <th style="padding: 8px; text-align: left; border: 1px solid #000;">Time</th>
-                    <th style="padding: 8px; text-align: center; border: 1px solid #000;">Present</th>
-                    <th style="padding: 8px; text-align: center; border: 1px solid #000;">Absent</th>
-                    <th style="padding: 8px; text-align: center; border: 1px solid #000;">Cancelled</th>
-                    <th style="padding: 8px; text-align: left; border: 1px solid #000;">Students Present</th>
-                    <th style="padding: 8px; text-align: left; border: 1px solid #000;">Students Absent</th>
+            <div style="{WRAP}">
+            <table style="{TABLE}">
+                <thead><tr style="background: #333;">
+                    <th style="{TH}">Instructor</th>
+                    <th style="{TH_C}">Time</th>
+                    <th style="{TH_C}">P</th>
+                    <th style="{TH_C}">A</th>
+                    <th style="{TH_C}">C</th>
+                    <th style="{TH}">Students Present</th>
+                    <th style="{TH}">Students Absent</th>
                 </tr></thead>
                 <tbody>{session_rows}</tbody>
-            </table>"""
+            </table>
+            </div>"""
         else:
             session_details_html = "<p style='color: #000; font-style: italic;'>No completed sessions today.</p>"
 
+        # ── Instructor Summary ───────────────────────────────────────────
         instructor_summary_html = ""
         if aggregates.instructor_summary:
             instructor_rows = ""
-            for item in aggregates.instructor_summary:
-                instructor_rows += f"<tr><td>{item.instructor_name}</td><td>{item.session_count}</td></tr>"
+            for i, item in enumerate(aggregates.instructor_summary):
+                bg = _row_bg(i)
+                instructor_rows += (
+                    f'<tr style="background: {bg};">'
+                    f'<td style="{TD}">{item.instructor_name}</td>'
+                    f'<td style="{TD_R}">{item.session_count}</td>'
+                    f'</tr>'
+                )
             instructor_summary_html = f"""
             <h3 style="color: #000; margin-top: 20px;">Instructor Summary</h3>
-            <table style="width: 100%; border-collapse: collapse; margin-top: 10px; border: 1px solid #000;">
-                <thead><tr style="background: #333333; color: white;">
-                    <th style="padding: 8px; text-align: left; border: 1px solid #000;">Instructor</th>
-                    <th style="padding: 8px; text-align: center; border: 1px solid #000;">Sessions</th>
+            <div style="{WRAP}">
+            <table style="{TABLE}">
+                <thead><tr style="background: #333;">
+                    <th style="{TH}">Instructor</th>
+                    <th style="{TH_R}">Sessions</th>
                 </tr></thead>
                 <tbody>{instructor_rows}</tbody>
-            </table>"""
+            </table>
+            </div>"""
         else:
             instructor_summary_html = "<p style='color: #000; font-style: italic;'>No instructor summary available.</p>"
 
-        payments_by_type_html = ""
-        if aggregates.payments_by_type:
-            payments_by_type_html = "<h3 style='color: #000; margin-top: 20px;'>Payments by Type</h3>"
-            for ptype_group in aggregates.payments_by_type:
-                sub_rows = ""
-                for payment in ptype_group.items:
-                    sub_rows += f"<tr><td>{payment.student_name}</td><td>{payment.group_name}</td><td style='text-align: right;'>{payment.amount:.2f} EGP</td></tr>"
-                payments_by_type_html += f"""
-                <h4 style="color: #000; margin: 10px 0 5px 0;">{ptype_group.payment_type} (Subtotal: {ptype_group.subtotal:.2f} EGP — {ptype_group.count} payments)</h4>
-                <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; border: 1px solid #000;">
-                    <thead><tr style="background: #555555; color: white;">
-                        <th style="padding: 6px; text-align: left; border: 1px solid #000;">Student</th>
-                        <th style="padding: 6px; text-align: left; border: 1px solid #000;">Group</th>
-                        <th style="padding: 6px; text-align: right; border: 1px solid #000;">Amount</th>
-                    </tr></thead>
-                    <tbody>{sub_rows}</tbody>
-                </table>"""
-        else:
-            payments_by_type_html = ""
-
         return {
             "date": target_date.isoformat(),
-            "total_revenue": f"{aggregates.total_revenue:.2f}",
+            "total_revenue": f"{aggregates.total_revenue:,.2f}",
             "new_enrollments": aggregates.new_enrollments,
             "sessions_held": aggregates.sessions_held,
             "absent_count": aggregates.absent_count,
@@ -427,7 +363,7 @@ class ReportNotificationService(BaseNotificationService):
             "attendance_rate": f"{aggregates.attendance_rate:.1%}",
             "session_details": session_details_html,
             "instructor_summary": instructor_summary_html,
-            "payments_by_type": payments_by_type_html,
+            "payments_by_type": "",  # Merged into payment_details — kept for template compat
         }
 
     # ── Private Helpers ──────────────────────────────────────────────────
