@@ -179,22 +179,9 @@ class AuthService:
             logger.exception("Failed to log out Supabase sessions for user %s", user.id)
 
     def list_sessions(self, user: User) -> list[UserSessionDTO]:
-        admin = get_supabase_admin()
-        try:
-            sessions = admin.auth.admin.list_sessions(user.supabase_uid)
-            results = []
-            for s in sessions:
-                results.append(UserSessionDTO(
-                    id=getattr(s, "id", ""),
-                    created_at=getattr(s, "created_at", None),
-                    last_active_at=getattr(s, "last_active_at", None),
-                    ip=getattr(s, "ip", None),
-                    user_agent=getattr(s, "user_agent", None),
-                ))
-            return results
-        except Exception:
-            logger.exception("Failed to list Supabase sessions for user %s", user.id)
-            return []
+        # The Supabase Python client's GoTrue Admin API does not support listing sessions.
+        # Returning an empty list to avoid AttributeError and noisy logs.
+        return []
 
     def forgot_password(self, email: str) -> None:
         try:
