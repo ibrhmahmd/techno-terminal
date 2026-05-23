@@ -142,11 +142,17 @@ def generate_daily_report_pdf(
     ) if aggregates.payment_methods else "N/A"
     instructors_str = ", ".join(aggregates.instructors_list) if aggregates.instructors_list else "N/A"
 
+    # Wrap long text values in Paragraph so they word-wrap inside the cell
+    metrics_wrap = ParagraphStyle(
+        'MetricsWrap', parent=styles['Normal'],
+        fontSize=9, leading=12, textColor=TEXT_BLACK, wordWrap='CJK',
+    )
+
     metrics_data = [
         ['Metric', 'Value'],
         ['Payment Transactions', str(aggregates.payment_count)],
-        ['Payment Methods', payment_methods_str],
-        ['Instructors Today', instructors_str],
+        ['Payment Methods', Paragraph(payment_methods_str, metrics_wrap)],
+        ['Instructors Today', Paragraph(instructors_str, metrics_wrap)],
         ['Attendance Rate', f"{aggregates.attendance_rate:.1%}"],
     ]
 
