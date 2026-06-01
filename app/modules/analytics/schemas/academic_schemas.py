@@ -28,6 +28,7 @@ class TodaySessionDTO(BaseModel):
 class UnpaidAttendeeDTO(BaseModel):
     student_id: int
     student_name: str
+    group_name: str
     parent_name: Optional[str]
     phone_primary: Optional[str]
     total_balance: float

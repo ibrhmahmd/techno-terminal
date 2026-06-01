@@ -78,7 +78,7 @@ class EnrollmentNotificationService(BaseNotificationService):
         from app.modules.academics.models.group_models import Group
         from app.modules.enrollments.models.enrollment_models import Enrollment
         
-        template = self._repo.get_template_by_name("enrollment_confirmation")
+        template = self._get_template_by_name("enrollment_confirmation")
         if not template or not template.is_active:
             logger.warning("enrollment_confirmation template not found or inactive — skipping")
             return
@@ -129,7 +129,7 @@ class EnrollmentNotificationService(BaseNotificationService):
     async def _process_completed(self, student_id: int, enrollment_id: int,
                                   group_id: int, level_number: int, 
                                   completion_date: datetime) -> None:
-        template = self._repo.get_template_by_name("enrollment_completed")
+        template = self._get_template_by_name("enrollment_completed")
         if not template or not template.is_active:
             logger.warning("enrollment_completed template not found or inactive — skipping")
             return
@@ -159,7 +159,7 @@ class EnrollmentNotificationService(BaseNotificationService):
     async def _process_dropped(self, student_id: int, enrollment_id: int,
                                 group_id: int, reason: Optional[str],
                                 dropped_by: Optional[int]) -> None:
-        template = self._repo.get_template_by_name("enrollment_dropped")
+        template = self._get_template_by_name("enrollment_dropped")
         if not template or not template.is_active:
             logger.warning("enrollment_dropped template not found or inactive — skipping")
             return
@@ -188,7 +188,7 @@ class EnrollmentNotificationService(BaseNotificationService):
     async def _process_transferred(self, student_id: int, from_enrollment_id: int,
                                     to_enrollment_id: int, from_group_id: int,
                                     to_group_id: int, transferred_by: Optional[int]) -> None:
-        template = self._repo.get_template_by_name("enrollment_transferred")
+        template = self._get_template_by_name("enrollment_transferred")
         if not template or not template.is_active:
             logger.warning("enrollment_transferred template not found or inactive — skipping")
             return
@@ -217,7 +217,7 @@ class EnrollmentNotificationService(BaseNotificationService):
     
     async def _process_progression(self, student_id: int, old_level: int,
                                     new_level: int, group_id: int, enrollment_id: int) -> None:
-        template = self._repo.get_template_by_name("level_progression")
+        template = self._get_template_by_name("level_progression")
         if not template or not template.is_active:
             logger.warning("level_progression template not found or inactive — skipping")
             return

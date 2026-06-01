@@ -15,10 +15,11 @@ from fastapi import APIRouter, Depends, Query, BackgroundTasks
 
 from app.api.schemas.common import ApiResponse
 from app.api.schemas.enrollments.enrollment import EnrollmentPublic, StudentEnrollmentSummaryPublic
-from app.api.dependencies import require_admin, require_any, get_enrollment_service
-from app.modules.enrollments.schemas.enrollment_schemas import EnrollStudentInput, TransferStudentInput
+from app.api.dependencies import require_admin, require_any, get_enrollment_service, get_enrollment_directory_service
+from app.modules.enrollments.core.schemas import EnrollStudentInput, TransferStudentInput
 from app.modules.auth import User
-from app.modules.enrollments.services.enrollment_service import EnrollmentService
+from app.modules.enrollments.core.service import EnrollmentCoreService as EnrollmentService
+from app.modules.enrollments.directory.service import EnrollmentDirectoryService
 
 router = APIRouter(tags=["Enrollments"])
 
@@ -36,14 +37,14 @@ def enroll_student(
     svc: EnrollmentService = Depends(get_enrollment_service),
 ):
     enrollment_data = body.model_copy(update={"created_by": current_user.id})
-    enrollment, capacity_exceeded = svc.enroll_student(enrollment_data, background_tasks=background_tasks)
+    result = svc.enroll_student(enrollment_data, background_tasks=background_tasks)
     
     msg = "Student enrolled successfully."
-    if capacity_exceeded:
+    if result.capacity_exceeded:
         msg += " WARNING: Group capacity exceeded."
         
     return ApiResponse(
-        data=EnrollmentPublic.model_validate(enrollment),
+        data=EnrollmentPublic.model_validate(result.enrollment),
         message=msg
     )
 
@@ -103,7 +104,7 @@ def transfer_student(
 def get_student_enrollments(
     student_id: int,
     _user: User = Depends(require_any),
-    svc: EnrollmentService = Depends(get_enrollment_service),
+    svc: EnrollmentDirectoryService = Depends(get_enrollment_directory_service),
 ):
     enrollments = svc.get_student_enrollments(student_id)
     return ApiResponse(data=[EnrollmentPublic.model_validate(e) for e in enrollments])
@@ -142,7 +143,7 @@ def get_group_enrollments_summary(
     group_id: int,
     level: int = Query(None, description="Filter to a specific level number"),
     _user: User = Depends(require_any),
-    svc: EnrollmentService = Depends(get_enrollment_service),
+    svc: EnrollmentDirectoryService = Depends(get_enrollment_directory_service),
 ):
     """
     Returns summary of all student enrollments for a group.

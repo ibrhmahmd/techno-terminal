@@ -137,8 +137,9 @@ from app.modules.academics.group.level.service import GroupLevelService
 from app.modules.academics.session.service import SessionService
 from app.modules.academics.group.analytics.service import GroupAnalyticsService
 
-from app.modules.enrollments.services.enrollment_service import EnrollmentService
-from app.modules.enrollments.services.enrollment_migration_service import EnrollmentMigrationService
+from app.modules.enrollments.core.service import EnrollmentCoreService as EnrollmentService
+from app.modules.enrollments.directory.service import EnrollmentDirectoryService
+from app.modules.enrollments.lifecycle.service import EnrollmentLifecycleService as EnrollmentMigrationService
 
 def get_auth_service() -> AuthService:
     return AuthService()
@@ -233,6 +234,11 @@ def get_enrollment_service(
         activity_svc=activity_svc,
             notification_svc=notification_svc
         )
+
+
+def get_enrollment_directory_service() -> EnrollmentDirectoryService:
+    """Returns an EnrollmentDirectoryService for read-only enrollment queries."""
+    return EnrollmentDirectoryService()
 
 
 def get_enrollment_migration_service(

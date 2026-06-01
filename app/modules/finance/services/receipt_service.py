@@ -143,17 +143,21 @@ class ReceiptService(IReceiptService):
                         )
                     )
 
-        # Handle Notifications
+        # Handle Notifications — one notification per receipt (not per line).
+        # _process_received already fetches all lines for the receipt, so firing
+        # once is correct. Use the first line that has a student_id.
         if self._notification_svc and background_tasks:
-            for line in processed_lines:
-                if line.student_id:
-                    self._notification_svc.payment.notify_payment_received(
-                        receipt.id,
-                        line.student_id,
-                        str(line.amount),
-                        str(receipt.receipt_number),
-                        background_tasks,
-                    )
+            primary_student_id = next(
+                (line.student_id for line in processed_lines if line.student_id), None
+            )
+            if primary_student_id:
+                self._notification_svc.payment.notify_payment_received(
+                    receipt.id,
+                    primary_student_id,
+                    str(total),
+                    str(receipt.receipt_number),
+                    background_tasks,
+                )
 
         return ReceiptFinalizedDTO(
             receipt_id=receipt.id,

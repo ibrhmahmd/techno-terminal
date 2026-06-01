@@ -41,12 +41,16 @@ from app.shared.exceptions import ConflictError
 import app.modules.academics.group.level.repository as level_repo
 from app.modules.academics.group.level.repository import list_group_levels
 import app.modules.academics.session.repository as session_repo
-import app.modules.enrollments.repositories.enrollment_repository as enrollment_repo
 import app.modules.academics.group.directory.repository as group_repo
 from app.modules.academics.group.analytics.repository import (
     get_enrollment_stats_by_levels,
     get_payment_stats_by_levels,
 )
+from app.modules.enrollments.analytics.repository import (
+    get_roster_for_group_level,
+    get_enrollments_by_group_with_students,
+)
+from app.modules.enrollments.analytics.schemas import GroupEnrollmentDTO
 
 
 class GroupDetailsService:
@@ -305,12 +309,11 @@ class GroupDetailsService:
         Returns roster + sessions with attendance map.
         Uses 3-query pattern similar to dashboard.
         """
-        import app.modules.enrollments.repositories.enrollment_repository as enrollment_repo
         import app.modules.attendance.repositories.attendance_repository as attendance_repo
         
         with get_session() as session:
             # Query 1: Get roster (active enrollments with billing status)
-            roster_data = enrollment_repo.get_roster_for_group_level(
+            roster_data = get_roster_for_group_level(
                 session, group_id, level_number
             )
             
@@ -327,11 +330,11 @@ class GroupDetailsService:
             # Build roster DTOs
             roster: list[AttendanceRosterStudentDTO] = [
                 AttendanceRosterStudentDTO(
-                    student_id=r["student_id"],
-                    student_name=r["student_name"],
-                    enrollment_id=r["enrollment_id"],
-                    billing_status=r["billing_status"],
-                    joined_at=r["joined_at"].isoformat() if r["joined_at"] else None,
+                    student_id=r.student_id,
+                    student_name=r.student_name,
+                    enrollment_id=r.enrollment_id,
+                    billing_status=r.billing_status,
+                    joined_at=r.joined_at.isoformat() if r.joined_at else None,
                 )
                 for r in roster_data
             ]
@@ -348,8 +351,8 @@ class GroupDetailsService:
                 # Build attendance map for this session
                 session_attendance: dict[int, str | None] = {}
                 for r in roster_data:
-                    key = (s.id, r["student_id"])
-                    session_attendance[r["student_id"]] = attendance_map.get(key)
+                    key = (s.id, r.student_id)
+                    session_attendance[r.student_id] = attendance_map.get(key)
                 
                 session_dtos.append(AttendanceSessionDTO(
                     session_id=s.id,
@@ -495,7 +498,7 @@ class GroupDetailsService:
             levels = list_group_levels(session, group_id, include_inactive=True)
             
             # Get all enrollments with student details
-            enrollments_data = enrollment_repo.get_enrollments_by_group_with_students(
+            enrollments_data = get_enrollments_by_group_with_students(
                 session, group_id
             )
             
@@ -505,23 +508,23 @@ class GroupDetailsService:
             )
             
             # Group enrollments by level
-            enrollments_by_level: dict[int, list[dict]] = defaultdict(list)
+            enrollments_by_level: dict[int, list[GroupEnrollmentDTO]] = defaultdict(list)
             student_ids: set[int] = set()
             
             for e in enrollments_data:
-                enrollments_by_level[e["level_number"]].append(e)
-                student_ids.add(e["student_id"])
+                enrollments_by_level[e.level_number].append(e)
+                student_ids.add(e.student_id)
             
             # Build student lookup table
             students_lookup: dict[int, StudentLookupDTO] = {}
             for e in enrollments_data:
-                sid = e["student_id"]
+                sid = e.student_id
                 if sid not in students_lookup:
                     students_lookup[sid] = StudentLookupDTO(
                         student_id=sid,
-                        student_name=e["student_name"],
-                        phone=e.get("student_phone"),
-                        parent_name=e.get("parent_name"),
+                        student_name=e.student_name,
+                        phone=e.student_phone,
+                        parent_name=e.parent_name,
                     )
             
             # Build per-level enrollment DTOs
@@ -534,29 +537,29 @@ class GroupDetailsService:
                 # Build enrollment DTOs
                 enrollment_dtos = [
                     EnrollmentInLevelDTO(
-                        enrollment_id=e["enrollment_id"],
-                        student_id=e["student_id"],
-                        status=e["status"],
-                        enrolled_at=e["enrolled_at"].isoformat() if e["enrolled_at"] else "",
-                        sessions_attended=e["sessions_attended"],
-                        sessions_total=e["sessions_total"],
-                        payment_status=e["payment_status"],
-                        amount_due=e["amount_due"],
-                        amount_paid=e["amount_paid"],
-                        discount_applied=e["discount_applied"],
-                        can_transfer=e["can_transfer"],
-                        can_drop=e["can_drop"],
+                        enrollment_id=e.enrollment_id,
+                        student_id=e.student_id,
+                        status=e.status,
+                        enrolled_at=e.enrolled_at.isoformat() if e.enrolled_at else "",
+                        sessions_attended=e.sessions_attended,
+                        sessions_total=e.sessions_total,
+                        payment_status=e.payment_status,
+                        amount_due=e.amount_due,
+                        amount_paid=e.amount_paid,
+                        discount_applied=e.discount_applied,
+                        can_transfer=e.can_transfer,
+                        can_drop=e.can_drop,
                     )
                     for e in level_enrollments
                 ]
                 
                 # Calculate summary
                 total = len(level_enrollments)
-                active = sum(1 for e in level_enrollments if e["status"] == "active")
-                completed = sum(1 for e in level_enrollments if e["status"] == "completed")
-                dropped = sum(1 for e in level_enrollments if e["status"] == "dropped")
-                paid = sum(1 for e in level_enrollments if e["payment_status"] == "paid")
-                unpaid = sum(1 for e in level_enrollments if e["payment_status"] == "due")
+                active = sum(1 for e in level_enrollments if e.status == "active")
+                completed = sum(1 for e in level_enrollments if e.status == "completed")
+                dropped = sum(1 for e in level_enrollments if e.status == "dropped")
+                paid = sum(1 for e in level_enrollments if e.payment_status == "paid")
+                unpaid = sum(1 for e in level_enrollments if e.payment_status == "due")
                 
                 # Get course name
                 course = session.get(Course, level.course_id) if level.course_id else None

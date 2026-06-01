@@ -12,6 +12,8 @@ from app.modules.notifications.schemas.report_dto import (
     PaymentDetailItem,
     PaymentTypeGroup,
     SessionDetailItem,
+    TomorrowPreviewDTO,
+    UnpaidAttendeeItem,
 )
 from app.modules.academics.models.session_models import CourseSession
 from app.modules.enrollments.models.enrollment_models import Enrollment
@@ -240,4 +242,104 @@ class ReportsRepository:
         except SQLAlchemyError as e:
             logger.warning(f"Could not fetch instructor summary: {e}")
             return []
+
+    def fetch_session3_unpaid(self, target_date: date) -> list[UnpaidAttendeeItem]:
+        """Students enrolled in groups that had session 3 today, with debt."""
+        try:
+            stmt = text("""
+                SELECT DISTINCT
+                    st.id AS student_id,
+                    st.full_name AS student_name,
+                    COALESCE(g.name, '') AS group_name,
+                    SUM(CASE WHEN vb.balance < 0 THEN -vb.balance ELSE 0 END)
+                        OVER (PARTITION BY st.id) AS amount_owed
+                FROM sessions s
+                JOIN groups g ON s.group_id = g.id
+                JOIN enrollments e ON e.group_id = s.group_id AND e.level_number = s.level_number AND e.status = 'active'
+                JOIN students st ON e.student_id = st.id
+                JOIN v_enrollment_balance vb ON vb.student_id = st.id
+                WHERE s.session_date = :target_date
+                  AND s.session_number = 3
+                  AND s.status IN ('completed', 'scheduled')
+                  AND vb.balance < 0
+                ORDER BY amount_owed DESC
+            """)
+            rows = self._session.execute(stmt, {"target_date": target_date}).all()
+            return [
+                UnpaidAttendeeItem(
+                    student_name=row.student_name,
+                    group_name=row.group_name,
+                    amount_owed=float(row.amount_owed),
+                    payment_status="not_paid",
+                )
+                for row in rows
+            ]
+        except SQLAlchemyError as e:
+            logger.warning(f"Could not fetch session-3 unpaid attendees: {e}")
+            return []
+
+    def fetch_tomorrow_preview(self, today: date) -> TomorrowPreviewDTO:
+        """Sessions scheduled for tomorrow with unpaid attendee alerts."""
+        tomorrow = today + timedelta(days=1)
+        try:
+            # Count sessions for tomorrow
+            session_stmt = text("""
+                SELECT COUNT(DISTINCT s.id) AS session_count,
+                       COUNT(DISTINCT e.student_id) AS expected_student_count
+                FROM sessions s
+                JOIN enrollments e ON e.group_id = s.group_id AND e.level_number = s.level_number
+                WHERE s.session_date = :tomorrow
+                  AND s.status = 'scheduled'
+            """)
+            count_result = self._session.execute(session_stmt, {"tomorrow": tomorrow}).one()
+            session_count = count_result.session_count or 0
+            expected_count = count_result.expected_student_count or 0
+
+            if session_count == 0:
+                return TomorrowPreviewDTO(
+                    session_count=0, expected_student_count=0,
+                    unpaid_attendees=[], has_sessions=False
+                )
+
+            # Students with debt who are expected tomorrow
+            unpaid_stmt = text("""
+                SELECT DISTINCT
+                    st.full_name AS student_name,
+                    COALESCE(g.name, 'N/A') AS group_name,
+                    SUM(CASE WHEN vb.balance < 0 THEN -vb.balance ELSE 0 END)
+                        OVER (PARTITION BY st.id) AS amount_owed,
+                    CASE WHEN vb.balance < 0 THEN 'not_paid' ELSE 'paid' END AS payment_status
+                FROM sessions s
+                JOIN enrollments e ON e.group_id = s.group_id AND e.level_number = s.level_number
+                JOIN students st ON e.student_id = st.id
+                JOIN v_enrollment_balance vb ON vb.student_id = st.id
+                LEFT JOIN groups g ON e.group_id = g.id
+                WHERE s.session_date = :tomorrow
+                  AND s.status = 'scheduled'
+                  AND vb.balance < 0
+                ORDER BY amount_owed DESC
+            """)
+            unpaid_rows = self._session.execute(unpaid_stmt, {"tomorrow": tomorrow}).all()
+            unpaid_attendees = [
+                UnpaidAttendeeItem(
+                    student_name=row.student_name,
+                    group_name=row.group_name,
+                    amount_owed=float(row.amount_owed),
+                    payment_status=str(row.payment_status),
+                )
+                for row in unpaid_rows
+            ]
+
+            return TomorrowPreviewDTO(
+                session_count=session_count,
+                expected_student_count=expected_count,
+                unpaid_attendees=unpaid_attendees,
+                has_sessions=True,
+            )
+        except SQLAlchemyError as e:
+            logger.warning(f"Could not fetch tomorrow preview: {e}")
+            return TomorrowPreviewDTO(
+                session_count=0, expected_student_count=0,
+                unpaid_attendees=[], has_sessions=False
+            )
 

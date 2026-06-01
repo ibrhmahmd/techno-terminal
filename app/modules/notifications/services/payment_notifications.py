@@ -46,10 +46,10 @@ class PaymentNotificationService(BaseNotificationService):
         from app.modules.crm.models.student_models import Student
         from app.modules.academics.models.group_models import Group
         from app.modules.enrollments.models.enrollment_models import Enrollment
-        from sqlalchemy import select
+        from sqlmodel import select
         from app.db.connection import get_session
 
-        template = self._repo.get_template_by_name("payment_receipt")
+        template = self._get_template_by_name("payment_receipt")
         if not template or not template.is_active:
             logger.warning(f"Payment receipt template not found or inactive for receipt {receipt_id}")
             return
@@ -156,7 +156,7 @@ class PaymentNotificationService(BaseNotificationService):
             )
 
     async def _process_reminder(self, student_id: int, amount_due: str, due_date: str) -> None:
-        template = self._repo.get_template_by_name("payment_reminder")
+        template = self._get_template_by_name("payment_reminder")
         if not template or not template.is_active:
             logger.warning(f"Payment reminder template not found or inactive for student {student_id}")
             return
