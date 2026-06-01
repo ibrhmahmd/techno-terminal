@@ -36,18 +36,17 @@ class CreateGroupLevelDTO(BaseModel):
 
 
 
-
 class ProgressLevelDTO(BaseModel):
     """Input for progressing to next level."""
     group_id: int
     price_override: Optional[Decimal] = None
     auto_migrate_enrollments: bool = True
-    target_level: Optional[int] = None  # If None, defaults to current + 1
-    complete_current_level: bool = True  # If False, keeps current level active
-    instructor_id: Optional[int] = None  # Override group's default instructor
-    session_start_date: Optional[date] = None  # Override default session start date
-    course_id: Optional[int] = None  # Override group's course
-    group_name: Optional[str] = None  # Override group name
+    target_level: Optional[int] = None
+    complete_current_level: bool = True
+    instructor_id: Optional[int] = None
+    session_start_date: Optional[date] = None
+    course_id: Optional[int] = None
+    group_name: Optional[str] = None
 
 
 class CreateGroupWithLevelDTO(BaseModel):
@@ -57,16 +56,6 @@ class CreateGroupWithLevelDTO(BaseModel):
     start_date: Optional[date] = None
 
 
-
-
-
-class MigrateEnrollmentsDTO(BaseModel):
-    """Input for migrating enrollments between levels."""
-    group_id: int
-    from_level: int
-    to_level: int
-    price_override: Optional[Decimal] = None
-    preserve_discounts: bool = True
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -117,16 +106,6 @@ class LevelProgressionResult(BaseModel):
     sessions_created: int
     enrollments_migrated: int
     message: str
-
-
-class EnrollmentMigrationResult(BaseModel):
-    """Output for enrollment migration."""
-    count: int
-    old_level: int
-    new_level: int
-    migrated_enrollment_ids: List[int]
-    new_enrollment_ids: List[int]
-    total_amount_due: float = 0.0
 
 
 class GroupCreationResult(BaseModel):

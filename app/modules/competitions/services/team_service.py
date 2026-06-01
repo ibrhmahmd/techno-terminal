@@ -203,7 +203,7 @@ class TeamService:
         group_ids: list[int] = []
         if cmd.group_id:
             from app.modules.academics.models.group_models import Group
-            from app.modules.enrollments.repositories.enrollment_repository import list_enrollments
+            from app.modules.enrollments.directory.repository import list_enrollments
 
             group = db.get(Group, cmd.group_id)
             if not group:

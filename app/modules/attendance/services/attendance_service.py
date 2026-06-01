@@ -1,5 +1,5 @@
 from app.db.connection import get_session
-from app.modules.enrollments.repositories.enrollment_repository import get_active_enrollment
+from app.modules.enrollments.core.repository import get_active_enrollment
 from app.modules.academics.models.session_models import CourseSession
 from app.modules.attendance.models.attendance_models import Attendance
 from app.modules.attendance.schemas.attendance_schemas import (

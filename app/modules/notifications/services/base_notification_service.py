@@ -46,6 +46,19 @@ class BaseNotificationService:
         already-closed request session held in self._repo."""
         from app.db.connection import get_session
         return get_session()
+
+    def _get_template_by_name(self, name: str) -> Optional["NotificationTemplate"]:
+        """Fetch a notification template using a fresh session.
+
+        MUST be used inside background task processors — self._repo holds the
+        request-scoped session which is already closed by the time any
+        BackgroundTask runs.
+        """
+        with self._new_session() as session:
+            from app.modules.notifications.repositories.notification_repository import NotificationRepository
+            fresh_repo = NotificationRepository(session)
+            return fresh_repo.get_template_by_name(name)
+
     @staticmethod
     def _is_valid_email(email: str) -> bool:
         """Validate email format using regex pattern."""

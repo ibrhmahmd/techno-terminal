@@ -153,7 +153,6 @@ def generate_daily_report_pdf(
         ['Payment Transactions', str(aggregates.payment_count)],
         ['Payment Methods', Paragraph(payment_methods_str, metrics_wrap)],
         ['Instructors Today', Paragraph(instructors_str, metrics_wrap)],
-        ['Attendance Rate', f"{aggregates.attendance_rate:.1%}"],
     ]
 
     metrics_cmds = [
@@ -379,6 +378,45 @@ def generate_daily_report_pdf(
         instr_table = Table(instr_data, colWidths=[9*cm, PAGE_WIDTH - 9*cm], repeatRows=1)
         instr_table.setStyle(TableStyle(instr_cmds))
         elements.append(instr_table)
+        elements.append(Spacer(1, 0.5*cm))
+
+    # ── Unpaid Students (Session 3) ────────────────────────────────────────
+    today_unpaid = aggregates.today_unpaid_attendees
+    if today_unpaid:
+        elements.append(Paragraph("Unpaid Students (Session 3)", heading_style))
+        elements.append(_section_rule())
+
+        unpiad_col_widths = [5*cm, 5*cm, PAGE_WIDTH - 10*cm]
+        unpiad_data = [['Student', 'Group', 'Amount']]
+
+        for u in today_unpaid:
+            unpiad_data.append([
+                u.student_name,
+                u.group_name,
+                f"{u.amount_owed:,.2f} EGP",
+            ])
+
+        unpiad_cmds = [
+            ('BACKGROUND',     (0, 0), (-1, 0), HEADER_BG),
+            ('TEXTCOLOR',      (0, 0), (-1, 0), HEADER_FG),
+            ('FONTNAME',       (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE',       (0, 0), (-1, 0), 10),
+            ('ALIGN',          (0, 0), (-1, 0), 'CENTER'),
+            ('TEXTCOLOR',      (0, 1), (-1, -1), TEXT_BLACK),
+            ('FONTSIZE',       (0, 1), (-1, -1), 9),
+            ('ALIGN',          (0, 1), (1, -1), 'LEFT'),
+            ('ALIGN',          (2, 1), (2, -1), 'RIGHT'),
+            ('GRID',           (0, 0), (-1, -1), 0.5, BORDER),
+            ('BOX',            (0, 0), (-1, -1), 1, BORDER_DARK),
+            ('TOPPADDING',     (0, 0), (-1, -1), 7),
+            ('BOTTOMPADDING',  (0, 0), (-1, -1), 7),
+            ('LEFTPADDING',    (0, 0), (-1, -1), 8),
+            ('RIGHTPADDING',   (0, 0), (-1, -1), 8),
+        ]
+        _alternating_rows(unpiad_cmds, 1, len(unpiad_data))
+        unpiad_table = Table(unpiad_data, colWidths=unpiad_col_widths, repeatRows=1)
+        unpiad_table.setStyle(TableStyle(unpiad_cmds))
+        elements.append(unpiad_table)
         elements.append(Spacer(1, 0.5*cm))
 
     # ── Footer ───────────────────────────────────────────────────────────

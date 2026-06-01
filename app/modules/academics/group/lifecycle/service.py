@@ -13,8 +13,9 @@ from app.modules.academics.models import Course, Group, CourseSession
 from app.modules.academics.models.group_level_models import GroupLevel, GroupCourseHistory
 from app.modules.academics.group.level.service import GroupLevelService
 from app.modules.academics.session.service import SessionService
-from app.modules.enrollments.services.enrollment_migration_service import (
-    EnrollmentMigrationService,
+from app.modules.enrollments.lifecycle.service import EnrollmentLifecycleService as EnrollmentMigrationService
+from app.modules.enrollments.lifecycle.schemas import (
+    MigrateEnrollmentsDTO,
 )
 from app.modules.hr.models import Employee
 import app.modules.academics.group.level.repository as repo
@@ -24,7 +25,6 @@ from app.modules.academics.group.lifecycle.schemas import (
     CreateGroupWithLevelDTO,
     CreateGroupLevelDTO,
     ProgressLevelDTO,
-    MigrateEnrollmentsDTO,
     
     GroupCreationResult,
     LevelProgressionResult,

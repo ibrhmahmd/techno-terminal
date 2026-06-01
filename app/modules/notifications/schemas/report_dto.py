@@ -34,6 +34,36 @@ class InstructorSummaryItem(BaseModel):
     session_count: int
 
 
+class UnpaidAttendeeItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    student_name: str
+    group_name: str
+    amount_owed: float
+    payment_status: str
+
+
+class TopDebtorItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    student_name: str
+    amount_owed: float
+
+
+class OutstandingByGroupItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    group_name: str
+    course_name: str
+    debtor_count: int
+    total_outstanding: float
+
+
+class TomorrowPreviewDTO(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    session_count: int = 0
+    expected_student_count: int = 0
+    unpaid_attendees: list[UnpaidAttendeeItem] = []
+    has_sessions: bool = False
+
+
 class DailyReportAggregateDTO(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     date: str
@@ -50,3 +80,9 @@ class DailyReportAggregateDTO(BaseModel):
     session_details: list[SessionDetailItem] = []
     payments_by_type: list[PaymentTypeGroup] = []
     instructor_summary: list[InstructorSummaryItem] = []
+    total_outstanding_debt: float = 0.0
+    debtor_count: int = 0
+    top_debtors: list[TopDebtorItem] = []
+    outstanding_by_group: list[OutstandingByGroupItem] = []
+    today_unpaid_attendees: list[UnpaidAttendeeItem] = []
+    tomorrow_preview: TomorrowPreviewDTO = TomorrowPreviewDTO()

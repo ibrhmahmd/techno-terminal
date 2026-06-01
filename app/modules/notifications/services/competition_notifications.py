@@ -83,7 +83,7 @@ class CompetitionNotificationService(BaseNotificationService):
         subcategory: Optional[str],
     ) -> None:
         """Process team registration notification."""
-        template = self._repo.get_template_by_name("competition_team_registration")
+        template = self._get_template_by_name("competition_team_registration")
         if not template or not template.is_active:
             logger.warning("competition_team_registration template not found or inactive — skipping")
             return
@@ -121,7 +121,7 @@ class CompetitionNotificationService(BaseNotificationService):
         receipt_number: str,
     ) -> None:
         """Process fee payment notification."""
-        template = self._repo.get_template_by_name("competition_fee_payment")
+        template = self._get_template_by_name("competition_fee_payment")
         if not template or not template.is_active:
             logger.warning("competition_fee_payment template not found or inactive — skipping")
             return
@@ -159,7 +159,7 @@ class CompetitionNotificationService(BaseNotificationService):
         placement_label: Optional[str],
     ) -> None:
         """Process placement announcement notification."""
-        template = self._repo.get_template_by_name("competition_placement")
+        template = self._get_template_by_name("competition_placement")
         if not template or not template.is_active:
             logger.warning("competition_placement template not found or inactive — skipping")
             return

@@ -296,7 +296,7 @@ deprecated methods kept for "backward compatibility," or subset methods supersed
 equivalents.
 
 <!-- SPECKIT START -->
-Active plan: `specs/018-notifications-module-audit/plan.md`
+Active plan: `specs/019-daily-report-redesign/plan.md`
 
-Spec 018 planned: 32 issues across 26 notification module files → 21 user stories (3 P1, 10 P2, 8 P3). Phase 0 research complete, Phase 1 design complete. All fixes code-only — no new migrations. Next: generate tasks.md via `/speckit.tasks`, then implement P1→P3.
+Spec 019 planned: redesign daily report email to Precision Engine design system (Space Grotesk/Inter, tonal layering, teal/deep slate), add debtors data (today's unpaid attendees, top 5 debtors, outstanding by group, tomorrow's unpaid preview), deliver CLI test script for visual validation. 4 user stories (3 P1, 1 P2). All changes code-only except template body migration. Next: generate tasks.md via `/speckit.tasks`.
 <!-- SPECKIT END -->

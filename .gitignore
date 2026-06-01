@@ -48,3 +48,6 @@ archieve/
 .pytest_cache/
 .fastapicloud/
 .opencode/
+
+# Generated test artifacts
+test_report_*.pdf
