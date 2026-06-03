@@ -203,18 +203,18 @@ def filter_groups_query(
         where_clauses.append("g.default_day = ANY(:day)")
 
     # ── Instructor filters ────────────────────────────────────────────────────
-    if filters.instructor_id is not None:
-        params["instructor_id"] = filters.instructor_id
-        where_clauses.append("g.instructor_id = :instructor_id")
+    if filters.instructor_ids:
+        params["instructor_ids"] = list(filters.instructor_ids)
+        where_clauses.append("g.instructor_id = ANY(:instructor_ids)")
 
     if filters.instructor_name is not None:
         params["instructor_name"] = f"%{filters.instructor_name}%"
         where_clauses.append("COALESCE(e.full_name, '') ILIKE :instructor_name")
 
     # ── Level number ──────────────────────────────────────────────────────────
-    if filters.level_number is not None:
-        params["level_number"] = filters.level_number
-        where_clauses.append("g.level_number = :level_number")
+    if filters.level_numbers:
+        params["level_numbers"] = list(filters.level_numbers)
+        where_clauses.append("g.level_number = ANY(:level_numbers)")
 
     # ── Status ────────────────────────────────────────────────────────────────
     if filters.status:

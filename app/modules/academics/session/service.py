@@ -116,7 +116,10 @@ class SessionService:
             )
             from app.shared.audit_utils import apply_create_audit
             apply_create_audit(cs)
-            return repo.create_session(session, cs)
+            result = repo.create_session(session, cs)
+            session.commit()
+            session.refresh(result)
+            return result
 
     def update_session(self, session_id: int, data: UpdateSessionDTO) -> CourseSession:
         with get_session() as session:

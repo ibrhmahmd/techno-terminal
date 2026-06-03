@@ -134,9 +134,8 @@ class GroupDetailsService:
                     )
                 levels = [level]
             else:
-                # Default to current active level
-                active_level = level_repo.get_current_group_level(session, group_id)
-                levels = [active_level] if active_level else []
+                # Return ALL levels for group (frontend needs full history for LevelSelector)
+                levels = list(level_repo.list_group_levels(session, group_id, include_inactive=True))
             
             if not levels:
                 # Return empty response
@@ -417,12 +416,22 @@ class GroupDetailsService:
                 net_collected = collected - refunds
                 due = max(0, expected - net_collected)
                 
+                # Get actual enrolled student count for this level (not just those with payments)
+                from app.modules.enrollments.models.enrollment_models import Enrollment
+                from sqlmodel import select, func
+                
+                enrolled_stmt = select(func.count(Enrollment.id)).where(
+                    Enrollment.group_id == group_id,
+                    Enrollment.level_number == ln,
+                    Enrollment.status.in_(["active", "completed"])
+                )
+                total_students = session.exec(enrolled_stmt).first() or 0
+                
                 # Count unique students who paid
                 paid_students = set(
                     p["student_id"] for p in level_payments 
                     if p["transaction_type"] != "refund"
                 )
-                total_students = len(set(p["student_id"] for p in level_payments))
                 
                 # Get course name
                 course = session.get(Course, level.course_id) if level.course_id else None
@@ -454,7 +463,7 @@ class GroupDetailsService:
                     due=due,
                     total_students=total_students,
                     paid_count=len(paid_students),
-                    unpaid_count=total_students - len(paid_students),
+                    unpaid_count=max(0, total_students - len(paid_students)),
                     payments=payment_dtos,
                 ))
                 

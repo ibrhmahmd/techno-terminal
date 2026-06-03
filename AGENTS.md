@@ -43,7 +43,7 @@ Optional PDF/receipt settings in `app/core/config.py` (env-driven).
 
 ### D+ Hybrid Pattern (dominant-entity modules)
 
-Modules like `academics/group/` and `crm/student/` split into sub-slices (`core/`, `directory/`, `lifecycle/`, `analytics/`). Models stay horizontal (`models/` per module, never per-slice). Each slice contains: `__init__.py`, `interface.py`, `service.py`, `repository.py`, `schemas.py`.
+`academics/group/` and `enrollments/` split into sub-slices (`core/`, `directory/`, `lifecycle/`, `analytics/`). Models stay horizontal (`models/` per module, never per-slice). Each slice contains: `__init__.py`, `interface.py`, `service.py`, `repository.py`, `schemas.py`. CRM uses traditional horizontal layers (`services/`, `repositories/`, `models/`, `schemas/`) — not D+.
 
 **Interface design**: `@runtime_checkable` Protocols named `{Entity}{Concern}Interface` (no `I-` prefix, no `Protocol` suffix). Every public service method appears in the interface.
 

@@ -43,10 +43,10 @@ class GroupFilterDTO(BaseModel):
     # Day filter — accepts full names or abbreviations; normalized before use
     day: Optional[List[str]] = None
     # Instructor filters
-    instructor_id: Optional[int] = None
+    instructor_ids: Optional[List[int]] = None
     instructor_name: Optional[str] = None
     # Level (numeric rank on group, e.g. 1, 2, 3 — not the DB level_id)
-    level_number: Optional[int] = None
+    level_numbers: Optional[List[int]] = None
     # Status
     status: Optional[List[str]] = None
     # Price range (from courses.price_per_level)
