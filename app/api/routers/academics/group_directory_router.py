@@ -13,7 +13,6 @@ from typing import List, Optional
 
 from app.api.schemas.common import ApiResponse, PaginatedResponse
 from app.api.schemas.academics.group import (
-    GroupListItem,
     EnrichedGroupPublic,
 )
 from app.api.schemas.academics.grouped import GroupedGroupsResponse, GroupedItem

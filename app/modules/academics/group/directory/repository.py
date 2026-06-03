@@ -189,7 +189,7 @@ def filter_groups_query(
 
     # ── Course filter ─────────────────────────────────────────────────────────
     if filters.course_ids:
-        params["course_ids"] = tuple(filters.course_ids)
+        params["course_ids"] = list(filters.course_ids)
         where_clauses.append("g.course_id = ANY(:course_ids)")
 
     if filters.course_name is not None:
@@ -199,7 +199,7 @@ def filter_groups_query(
     # ── Day of week ───────────────────────────────────────────────────────────
     # Caller must normalize abbreviations to full names before calling.
     if filters.day:
-        params["day"] = tuple(filters.day)
+        params["day"] = list(filters.day)
         where_clauses.append("g.default_day = ANY(:day)")
 
     # ── Instructor filters ────────────────────────────────────────────────────
@@ -218,11 +218,11 @@ def filter_groups_query(
 
     # ── Status ────────────────────────────────────────────────────────────────
     if filters.status:
-        params["status"] = tuple(filters.status)
+        params["status"] = list(filters.status)
         where_clauses.append("g.status = ANY(:status)")
     else:
         if filters.include_inactive:
-            params["default_status"] = tuple(["active", "inactive"])
+            params["default_status"] = ["active", "inactive"]
             where_clauses.append("g.status = ANY(:default_status)")
         else:
             params["default_status"] = "active"
