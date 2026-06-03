@@ -5,17 +5,18 @@ Service class for Group Directory business logic.
 """
 from datetime import date
 from app.db.connection import get_session
-from app.modules.academics.models import Group
+from app.modules.academics.constants import DAY_ORDER
 from app.modules.academics.group.core.schemas import EnrichedGroupDTO
-from app.modules.academics.group.directory.schemas import GroupedItemDTO, GroupedGroupsResult
+from app.modules.academics.group.directory.schemas import (
+    GroupedItemDTO,
+    GroupedGroupsResult,
+    GroupFilterDTO,
+    GroupFilterResultDTO,
+)
 import app.modules.academics.group.directory.repository as repo
 
 
 class GroupDirectoryService:
-    def get_all_active_groups(self, include_inactive: bool = False) -> list[Group]:
-        with get_session() as session:
-            return list(repo.list_all_active_groups(session, include_inactive))
-
     def get_all_active_groups_enriched(self) -> list[EnrichedGroupDTO]:
         """Returns groups with instructor_name and course_name joined for display."""
         with get_session() as session:
@@ -29,51 +30,6 @@ class GroupDirectoryService:
     def get_enriched_group_by_id(self, group_id: int) -> EnrichedGroupDTO | None:
         with get_session() as session:
             return repo.get_enriched_group_by_id(session, group_id)
-
-    def search_groups(
-        self,
-        query: str,
-        status: str | None = None,
-        skip: int = 0,
-        limit: int = 20
-    ) -> tuple[list[Group], int]:
-        """Search groups by name with optional status filter."""
-        with get_session() as session:
-            results, total = repo.search_groups(session, query, status, skip, limit)
-            return list(results), total
-
-    def get_groups_by_type(
-        self,
-        group_type: str,
-        status: str | None = None,
-        skip: int = 0,
-        limit: int = 50
-    ) -> tuple[list[Group], int]:
-        """Get groups filtered by type."""
-        with get_session() as session:
-            results, total = repo.get_groups_by_type(session, group_type, status, skip, limit)
-            return list(results), total
-
-
-    def get_all_archived_groups(self, include_inactive: bool = False) -> list[Group]:
-        """Get all archived groups."""
-        with get_session() as session:
-            return list(repo.get_all_archived_groups(session, include_inactive))
-
-    def get_groups_by_course(
-        self,
-        course_id: int,
-        include_inactive: bool = False,
-        level_number: int | None = None,
-        skip: int = 0,
-        limit: int = 50
-    ) -> tuple[list[Group], int]:
-        """Get all groups for a specific course."""
-        with get_session() as session:
-            results, total = repo.get_groups_by_course(
-                session, course_id, include_inactive, level_number, skip, limit
-            )
-            return list(results), total
 
     def get_groups_grouped(
         self,
@@ -89,11 +45,11 @@ class GroupDirectoryService:
         valid_fields = {"day", "course", "instructor", "status"}
         if group_by not in valid_fields:
             raise ValueError(f"Invalid group_by field. Must be one of: {valid_fields}")
-        
+
         with get_session() as session:
             # Get all active groups with enrichment
             groups = repo.get_enriched_groups(session)
-            
+
             # Apply search filter if provided
             if search:
                 search_lower = search.lower()
@@ -103,10 +59,10 @@ class GroupDirectoryService:
                     or search_lower in (g.course_name or "").lower()
                     or search_lower in (g.instructor_name or "").lower()
                 ]
-            
+
             # Group the results
             grouped_data: dict[str, dict] = {}
-            
+
             for group in groups:
                 # Determine the key based on group_by field
                 if group_by == "day":
@@ -123,7 +79,7 @@ class GroupDirectoryService:
                     label = group.status.title()
                 else:
                     continue
-                
+
                 if key not in grouped_data:
                     grouped_data[key] = {
                         "key": key,
@@ -131,7 +87,7 @@ class GroupDirectoryService:
                         "groups": []
                     }
                 grouped_data[key]["groups"].append(group)
-            
+
             # Convert to DTOs and apply pagination
             all_items = [
                 GroupedItemDTO(
@@ -142,45 +98,31 @@ class GroupDirectoryService:
                 )
                 for item in grouped_data.values()
             ]
-            
-            # Sort by label for consistent ordering
-            all_items.sort(key=lambda x: x.label)
-            
+
+            # Sort by Arabic/Islamic week order (Friday=0 … Thursday=6, Unspecified=99)
+            all_items.sort(key=lambda x: DAY_ORDER.get(x.label, 99))
+
             # Apply pagination at the group level
             total_groups = len(all_items)
             paginated_items = all_items[skip : skip + limit]
-            
+
             return GroupedGroupsResult(
                 groups=paginated_items,
                 total=total_groups,
                 group_by=group_by
             )
 
-    def get_enriched_groups_by_course(
-        self,
-        course_id: int,
-        include_inactive: bool = False,
-        level_number: int | None = None,
-        skip: int = 0,
-        limit: int = 50
-    ) -> tuple[list[EnrichedGroupDTO], int]:
-        """Get enriched groups for a specific course."""
-        with get_session() as session:
-            results, total = repo.get_enriched_groups_by_course(
-                session, course_id, include_inactive, level_number, skip, limit
-            )
-            return list(results), total
+    def filter_groups(self, filters: GroupFilterDTO) -> GroupFilterResultDTO:
+        """Filter groups by multiple criteria with pagination.
 
-    def get_enriched_groups_by_type(
-        self,
-        group_type: str,
-        status: str | None = None,
-        skip: int = 0,
-        limit: int = 50
-    ) -> tuple[list[EnrichedGroupDTO], int]:
-        """Get enriched groups filtered by type."""
+        Delegates to repository for raw SQL execution. Day normalization
+        (abbreviation → full name) must be done by the caller (router).
+        """
         with get_session() as session:
-            results, total = repo.get_enriched_groups_by_type(
-                session, group_type, status, skip, limit
+            rows, total = repo.filter_groups_query(session, filters)
+            return GroupFilterResultDTO(
+                groups=rows,
+                total=total,
+                skip=filters.skip,
+                limit=filters.limit,
             )
-            return list(results), total

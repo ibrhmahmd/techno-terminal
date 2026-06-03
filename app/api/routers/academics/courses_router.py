@@ -8,7 +8,8 @@ Endpoints for course management.
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.schemas.common import ApiResponse, PaginatedResponse
-from app.api.schemas.academics import CoursePublic, GroupListItem
+from app.api.schemas.academics import CoursePublic
+from app.modules.academics.group.directory.schemas import GroupFilterResultDTO
 from app.api.dependencies import require_admin, require_any, get_course_service, get_group_directory_service
 from app.modules.academics.course.schemas import AddNewCourseInput, UpdateCourseDTO, CourseStatsDTO
 from app.modules.auth import User
@@ -73,37 +74,6 @@ def get_course_stats(
     if not stats:
         raise HTTPException(status_code=404, detail=f"Course {course_id} not found")
     return ApiResponse(data=stats)
-
-
-# get groups for a course (must be before /{course_id})
-@router.get(
-    "/academics/courses/{course_id}/groups",
-    response_model=PaginatedResponse[GroupListItem],
-    summary="Get groups for a course",
-)
-def get_course_groups(
-    course_id: int,
-    include_inactive: bool = Query(False),
-    level_number: int | None = Query(None, gt=0),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
-    _user: User = Depends(require_any),
-    group_svc: GroupDirectoryService = Depends(get_group_directory_service),
-):
-    from app.api.schemas.academics.group import GroupListItem
-    results, total = group_svc.get_groups_by_course(
-        course_id=course_id,
-        include_inactive=include_inactive,
-        level_number=level_number,
-        skip=skip,
-        limit=limit,
-    )
-    return PaginatedResponse(
-        data=[GroupListItem.model_validate(g) for g in results],
-        total=total,
-        skip=skip,
-        limit=limit,
-    )
 
 
 # get a single course by ID

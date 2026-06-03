@@ -6,6 +6,7 @@ Public-facing Grouped Groups DTOs.
 from enum import Enum
 
 from pydantic import BaseModel
+from app.api.schemas.academics.group import EnrichedGroupPublic
 
 
 class GroupByField(str, Enum):
@@ -21,7 +22,7 @@ class GroupedItem(BaseModel):
     key: str
     label: str
     count: int
-    groups: list[dict]  # EnrichedGroupPublic - will be imported as Any to avoid circular import #TODO remove Dict and write a typed DTO class
+    groups: list[EnrichedGroupPublic]
 
 
 class GroupedGroupsResponse(BaseModel):

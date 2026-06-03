@@ -16,7 +16,6 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from app.api.schemas.common import ApiResponse, PaginatedResponse
 from app.api.schemas.academics.group import (
     GroupPublic,
-    GroupListItem,
     ProgressGroupLevelRequest,
     ProgressGroupLevelResult,
 )

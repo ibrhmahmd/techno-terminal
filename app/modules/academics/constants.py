@@ -23,6 +23,31 @@ WEEKDAYS: list[str] = [
     "Sunday",
 ]
 
+# Display sort order for group-by-day views (Arabic/Islamic week, Friday-first).
+# Does NOT affect date arithmetic — WEEKDAYS above remains unchanged (Python Monday=0).
+DAY_ORDER: dict[str, int] = {
+    "Friday": 0,
+    "Saturday": 1,
+    "Sunday": 2,
+    "Monday": 3,
+    "Tuesday": 4,
+    "Wednesday": 5,
+    "Thursday": 6,
+}
+
+# Day abbreviation → canonical name mapping (mirrors students_router.py).
+# Used by the groups filter endpoint to accept shorthand day names.
+DAY_ABBREV_MAP: dict[str, str] = {
+    "mon": "Monday",
+    "tue": "Tuesday",
+    "wed": "Wednesday",
+    "thu": "Thursday",
+    "thurs": "Thursday",
+    "fri": "Friday",
+    "sat": "Saturday",
+    "sun": "Sunday",
+}
+
 # ── Domain Types ──────────────────────────────────────────────────────────────
 GroupStatus: TypeAlias = Literal["active", "inactive", "archived"]
 GROUP_STATUSES: list[GroupStatus] = ["active", "inactive", "archived"]

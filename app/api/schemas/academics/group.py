@@ -35,28 +35,6 @@ class GroupPublic(BaseModel):
     def parse_time(cls, value):
         return time_to_str(value)
 
-
-class GroupListItem(BaseModel):
-    """
-    Slim group for list endpoints — includes denormalized names for display.
-    """
-
-    id: int
-    name: str
-    course_id: int
-    level_number: int
-    default_day: Optional[str] = None
-    default_time_start: Optional[str] = None
-    status: str = "active"
-
-    model_config = {"from_attributes": True}
-
-    @field_validator("default_time_start", mode="before")
-    @classmethod
-    def parse_time(cls, value):
-        return time_to_str(value)
-
-
 class EnrichedGroupPublic(BaseModel):
     """
     Group profile with denormalized instructor and course names.
