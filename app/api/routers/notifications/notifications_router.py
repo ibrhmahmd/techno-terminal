@@ -4,7 +4,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, BackgroundTasks, Query
 
 from app.api.dependencies import require_admin, get_notification_service
-from app.api.schemas.common import ApiResponse
+from app.api.schemas.common import ApiResponse, PaginatedResponse
 from app.api.schemas.notifications.report_request import DailyReportRequest, WeeklyReportRequest, MonthlyReportRequest
 from app.modules.auth.models import User
 from app.modules.notifications.services.notification_service import NotificationService
@@ -37,15 +37,24 @@ def send_receipt_notification(
     svc.payment.notify_payment_received(receipt_id, student_id, amount, receipt_number, background_tasks)
     return ApiResponse(data="Payment receipt notification queued")
 
-@router.get("/logs", response_model=ApiResponse[List[NotificationLogDTO]], summary="Get notification logs")
+@router.get("/logs", response_model=PaginatedResponse[NotificationLogDTO], summary="Get notification logs")
 def get_logs(
     limit: int = 50,
     offset: int = 0,
+    status: Optional[str] = Query(None),
+    channel: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
     _user: User = Depends(require_admin),
     svc: NotificationService = Depends(get_notification_service)
 ):
-    logs = svc.get_logs(limit=limit, offset=offset)
-    return ApiResponse(data=[NotificationLogDTO.model_validate(log) for log in logs])
+    logs = svc.get_logs(limit=limit, offset=offset, status=status, channel=channel, search=search)
+    total = svc.count_logs(status=status, channel=channel, search=search)
+    return PaginatedResponse(
+        data=[NotificationLogDTO.model_validate(log) for log in logs],
+        total=total,
+        skip=offset,
+        limit=limit
+    )
 
 @router.get("/logs/parent/{parent_id}", response_model=ApiResponse[List[NotificationLogDTO]], summary="Get parent logs")
 def get_parent_logs(

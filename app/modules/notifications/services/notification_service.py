@@ -69,14 +69,36 @@ class NotificationService:
         self,
         recipient_type: Optional[str] = None,
         recipient_id: Optional[int] = None,
+        status: Optional[str] = None,
+        channel: Optional[str] = None,
+        search: Optional[str] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> list:
         return self._repo.get_logs(
             recipient_type=recipient_type,
             recipient_id=recipient_id,
+            status=status,
+            channel=channel,
+            search=search,
             limit=limit,
             offset=offset,
+        )
+
+    def count_logs(
+        self,
+        recipient_type: Optional[str] = None,
+        recipient_id: Optional[int] = None,
+        status: Optional[str] = None,
+        channel: Optional[str] = None,
+        search: Optional[str] = None,
+    ) -> int:
+        return self._repo.count_logs(
+            recipient_type=recipient_type,
+            recipient_id=recipient_id,
+            status=status,
+            channel=channel,
+            search=search,
         )
 
     def close_session(self) -> None:

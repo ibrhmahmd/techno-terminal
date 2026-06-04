@@ -38,10 +38,16 @@ class INotificationRepository(Protocol):
     def get_logs(
         self, recipient_type: Optional[str] = None,
         recipient_id: Optional[int] = None,
+        status: Optional[str] = None,
+        channel: Optional[str] = None,
+        search: Optional[str] = None,
         limit: int = 50, offset: int = 0,
     ) -> List[NotificationLog]: ...
     def count_logs(
         self, recipient_type: Optional[str] = None,
         recipient_id: Optional[int] = None,
+        status: Optional[str] = None,
+        channel: Optional[str] = None,
+        search: Optional[str] = None,
     ) -> int: ...
 

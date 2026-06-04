@@ -129,6 +129,9 @@ class NotificationRepository:
         self,
         recipient_type: Optional[str] = None,
         recipient_id: Optional[int] = None,
+        status: Optional[str] = None,
+        channel: Optional[str] = None,
+        search: Optional[str] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> List[NotificationLog]:
@@ -137,6 +140,15 @@ class NotificationRepository:
             stmt = stmt.where(NotificationLog.recipient_type == recipient_type)
         if recipient_id is not None:
             stmt = stmt.where(NotificationLog.recipient_id == recipient_id)
+        if status:
+            stmt = stmt.where(NotificationLog.status == status)
+        if channel:
+            stmt = stmt.where(NotificationLog.channel == channel)
+        if search:
+            stmt = stmt.where(
+                (col(NotificationLog.recipient_contact).ilike(f"%{search}%")) |
+                (col(NotificationLog.subject).ilike(f"%{search}%"))
+            )
         stmt = stmt.order_by(col(NotificationLog.created_at).desc())
         stmt = stmt.offset(offset).limit(limit)
         return list(self._session.exec(stmt).all())
@@ -145,6 +157,9 @@ class NotificationRepository:
         self,
         recipient_type: Optional[str] = None,
         recipient_id: Optional[int] = None,
+        status: Optional[str] = None,
+        channel: Optional[str] = None,
+        search: Optional[str] = None,
     ) -> int:
         from sqlalchemy import func
         stmt = select(func.count()).select_from(NotificationLog)
@@ -152,5 +167,14 @@ class NotificationRepository:
             stmt = stmt.where(NotificationLog.recipient_type == recipient_type)
         if recipient_id is not None:
             stmt = stmt.where(NotificationLog.recipient_id == recipient_id)
+        if status:
+            stmt = stmt.where(NotificationLog.status == status)
+        if channel:
+            stmt = stmt.where(NotificationLog.channel == channel)
+        if search:
+            stmt = stmt.where(
+                (col(NotificationLog.recipient_contact).ilike(f"%{search}%")) |
+                (col(NotificationLog.subject).ilike(f"%{search}%"))
+            )
         return self._session.exec(stmt).one()
 
