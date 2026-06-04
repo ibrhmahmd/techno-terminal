@@ -140,17 +140,15 @@ class NotificationService:
 
         # Resolve admins using base notification service's logic
         recipients = self.report._resolve_notification_recipients(
-            recipient_type="ADMIN",
-            recipient_id=0,
-            fallback_email=True
+            notification_type="admin_login_alert"
         )
 
-        for recipient_id, email_address in recipients:
+        for email_address, recipient_id, recipient_type in recipients:
             background_tasks.add_task(
                 self.report._dispatch,
                 template=template,
                 channel="EMAIL",
-                recipient_type="ADMIN",
+                recipient_type=recipient_type,
                 recipient_id=recipient_id,
                 contact=email_address,
                 variables=variables,

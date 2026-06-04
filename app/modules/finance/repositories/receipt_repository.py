@@ -111,12 +111,12 @@ class ReceiptRepository(IReceiptRepository):
                 COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type IN ('payment','charge')), 0)
                 - COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type = 'refund'), 0) AS total,
                 r.payment_method,
-                r.paid_at as issued_at
+                COALESCE(r.paid_at, r.created_at) as issued_at
             FROM receipts r
             LEFT JOIN payments p ON p.receipt_id = r.id
-            WHERE r.paid_at >= :fd_start AND r.paid_at < :td_end
-            GROUP BY r.id, r.receipt_number, r.payer_name, r.payment_method, r.paid_at
-            ORDER BY r.paid_at DESC
+            WHERE COALESCE(r.paid_at, r.created_at) >= :fd_start AND COALESCE(r.paid_at, r.created_at) < :td_end
+            GROUP BY r.id, r.receipt_number, r.payer_name, r.payment_method, COALESCE(r.paid_at, r.created_at)
+            ORDER BY issued_at DESC
             LIMIT :limit
             """
         )
@@ -140,7 +140,7 @@ class ReceiptRepository(IReceiptRepository):
         """Search receipts with filters."""
         fd_start = date_at_utc_midnight(criteria.from_date)
         td_end = date_at_utc_midnight(criteria.to_date) + timedelta(days=1)
-        where_clauses = ["r.paid_at >= :fd_start AND r.paid_at < :td_end"]
+        where_clauses = ["COALESCE(r.paid_at, r.created_at) >= :fd_start AND COALESCE(r.paid_at, r.created_at) < :td_end"]
         params: dict = {"fd_start": fd_start, "td_end": td_end, "limit": criteria.limit}
 
         if criteria.payer_name_contains:
@@ -165,10 +165,10 @@ class ReceiptRepository(IReceiptRepository):
                 r.receipt_number,
                 r.payer_name,
                 r.payment_method,
-                r.paid_at
+                COALESCE(r.paid_at, r.created_at) as paid_at
             FROM receipts r
             WHERE {where_sql}
-            ORDER BY r.paid_at DESC
+            ORDER BY paid_at DESC
             LIMIT :limit
         """)
         rows = self._session.execute(stmt, params).all()

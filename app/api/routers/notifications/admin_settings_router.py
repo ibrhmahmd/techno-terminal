@@ -52,6 +52,7 @@ NOTIFICATION_DESCRIPTIONS = {
     "competition_team_registration": "Competition team registration",
     "competition_fee_payment": "Competition fee payment receipt",
     "competition_placement": "Competition placement announcement",
+    "admin_login_alert": "Admin login alert from new IP or device",
 }
 
 
