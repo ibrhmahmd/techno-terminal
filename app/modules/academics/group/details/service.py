@@ -361,6 +361,7 @@ class GroupDetailsService:
                     time_end=str(s.end_time)[:5] if s.end_time else "",
                     status=s.status,
                     is_extra_session=s.is_extra_session,
+                    notes=s.notes,
                     attendance=session_attendance,
                 ))
             

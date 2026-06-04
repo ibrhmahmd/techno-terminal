@@ -149,6 +149,7 @@ class AttendanceSessionDTO(BaseModel):
     time_end: str  # HH:MM
     status: str  # 'scheduled' | 'completed' | 'cancelled'
     is_extra_session: bool
+    notes: Optional[str] = None
     # Map of student_id -> attendance status for O(1) lookup
     attendance: dict[int, Optional[str]]  # student_id -> 'present'|'absent'|'excused'|'late'|None
 
