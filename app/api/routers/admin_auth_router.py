@@ -77,15 +77,15 @@ def update_user(
 @router.delete(
     "/users/{user_id}",
     response_model=ApiResponse[None],
-    summary="Deactivate user",
+    summary="Delete user permanently",
 )
-def deactivate_user(
+def delete_user(
     user_id: int,
     current_user: User = Depends(require_admin),
     auth_svc: AuthService = Depends(get_auth_service),
 ):
-    auth_svc.deactivate_user(user_id, current_user)
-    return ApiResponse(data=None, message="User deactivated.")
+    auth_svc.delete_user(user_id, current_user)
+    return ApiResponse(data=None, message="User deleted.")
 
 
 @router.post(

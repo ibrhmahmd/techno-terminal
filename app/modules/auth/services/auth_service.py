@@ -114,7 +114,7 @@ class AuthService:
                 role=role,
                 employee_id=employee_id,
                 is_active=False,
-                supabase_uid="",
+                supabase_uid=None,
                 invite_token=str(uuid.uuid4()),
                 invite_expires_at=utc_now() + timedelta(hours=24),
             )
@@ -233,9 +233,9 @@ class AuthService:
                 )
             return user
 
-    def deactivate_user(self, target_user_id: int, current_user: User) -> None:
+    def delete_user(self, target_user_id: int, current_user: User) -> None:
         if target_user_id == current_user.id:
-            raise BusinessRuleError("Cannot deactivate your own account.")
+            raise BusinessRuleError("Cannot delete your own account.")
         with get_session() as session:
             user = repo.get_user_by_id(session, target_user_id)
             if not user:
@@ -247,16 +247,16 @@ class AuthService:
                 admin = get_supabase_admin()
                 admin.auth.admin.delete_user(supabase_uid)
             except Exception:
-                logger.exception("Failed to delete Supabase user %s for deactivation", supabase_uid)
+                logger.exception("Failed to delete Supabase user %s", supabase_uid)
 
-        with get_session() as session:
-            repo.deactivate_user(session, target_user_id)
-            session.commit()
         self._audit.log_event(
-            event_type=AuditLogEventType.ACCOUNT_DEACTIVATED,
+            event_type=AuditLogEventType.ACCOUNT_DELETED,
             user_id=target_user_id,
-            details={"deactivated_by": current_user.id},
+            details={"deleted_by": current_user.id},
         )
+        with get_session() as session:
+            repo.delete_user(session, target_user_id)
+            session.commit()
 
     def link_employee_to_new_user(
         self, employee_id: int | None, username: str, raw_password: str, role: str

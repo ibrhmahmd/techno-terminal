@@ -25,7 +25,7 @@ class User(UserBase, table=True):
     __table_args__ = {"extend_existing": True}
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    supabase_uid: str = Field(unique=True)
+    supabase_uid: Optional[str] = Field(default=None, unique=True)
     last_login: Optional[datetime] = None
     created_at: Optional[datetime] = None
     invite_token: Optional[str] = Field(default=None, unique=True)

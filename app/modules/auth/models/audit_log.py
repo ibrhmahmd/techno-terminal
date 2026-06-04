@@ -17,6 +17,7 @@ class AuditLogEventType:
     INVITE_COMPLETED = "invite_completed"
     EMAIL_CHANGED = "email_changed"
     ROLE_CHANGED = "role_changed"
+    ACCOUNT_DELETED = "account_deleted"
 
 
 class AuditLog(SQLModel, table=True):

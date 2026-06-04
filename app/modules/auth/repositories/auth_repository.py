@@ -83,13 +83,11 @@ def update_user_role_status(
     return user
 
 
-def deactivate_user(session: Session, user_id: int) -> Optional[User]:
+def delete_user(session: Session, user_id: int) -> Optional[User]:
     user = session.get(User, user_id)
     if not user:
         return None
-    user.is_active = False
-    user.supabase_uid = ""
-    session.add(user)
+    session.delete(user)
     session.flush()
     return user
 

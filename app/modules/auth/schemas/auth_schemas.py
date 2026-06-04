@@ -55,7 +55,7 @@ class UserAdminDTO(SQLModel):
 
     id: int
     username: str
-    supabase_uid: str
+    supabase_uid: Optional[str] = None
     role: str
     is_active: bool = True
     employee_id: Optional[int] = None
