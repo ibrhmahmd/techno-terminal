@@ -27,7 +27,24 @@ class IActivityRepository(Protocol):
         description: str,
         metadata: Dict[str, Any],
         performed_by: Optional[int],
+        created_at: Optional[datetime] = None,
     ) -> StudentActivityLog: ...
+
+    def get_activity_log_by_id(self, activity_id: int) -> Optional[StudentActivityLog]: ...
+
+    def update_activity_log(
+        self,
+        activity_id: int,
+        activity_type: Optional[str] = None,
+        activity_subtype: Optional[str] = None,
+        reference_type: Optional[str] = None,
+        reference_id: Optional[int] = None,
+        description: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        created_at: Optional[datetime] = None,
+    ) -> StudentActivityLog: ...
+
+    def delete_activity_log(self, activity_id: int) -> None: ...
 
     def get_student_activity_timeline(
         self,

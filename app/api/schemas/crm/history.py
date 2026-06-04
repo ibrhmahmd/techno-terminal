@@ -33,12 +33,24 @@ class ReferenceType(str, Enum):
 
 class ActivityLogRequest(BaseModel):
     """Request to log a manual activity."""
-    activity_type: ActivityType
+    activity_type: str
     activity_subtype: Optional[str] = Field(None, max_length=50)
     reference_type: Optional[ReferenceType] = None
     reference_id: Optional[int] = None
     description: str
     metadata: Optional[Dict[str, Any]] = None
+    created_at: Optional[datetime] = None
+
+
+class ActivityLogUpdateRequest(BaseModel):
+    """Request to update a manual activity."""
+    activity_type: Optional[str] = None
+    activity_subtype: Optional[str] = Field(None, max_length=50)
+    reference_type: Optional[ReferenceType] = None
+    reference_id: Optional[int] = None
+    description: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+    created_at: Optional[datetime] = None
 
 
 class EnrollmentHistoryEntry(BaseModel):

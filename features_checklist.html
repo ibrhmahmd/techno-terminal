@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Techno Terminal – Features Checklist</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;font-size:10.5pt;color:#111;background:#fff;padding:18px 24px}
+h1{font-size:18pt;text-align:center;color:#0f172a;margin-bottom:3px}
+.meta{text-align:center;font-size:9pt;color:#64748b;margin-bottom:14px}
+hr{border:none;border-top:1.5px solid #e2e8f0;margin:10px 0}
+h2{font-size:12pt;background:#0f172a;color:#fff;padding:5px 10px;margin:16px 0 6px;border-radius:3px;page-break-after:avoid}
+h3{font-size:10.5pt;color:#0f172a;border-left:3px solid #0ea5e9;padding-left:7px;margin:10px 0 4px;page-break-after:avoid}
+.item{display:flex;align-items:flex-start;gap:6px;margin:2.5px 0 2.5px 8px;line-height:1.45}
+.item input{margin-top:1px;flex-shrink:0;width:11px;height:11px;accent-color:#0ea5e9}
+.sub{display:flex;align-items:flex-start;gap:6px;margin:2px 0 2px 26px;font-size:9.5pt;color:#334155}
+.sub input{margin-top:1px;flex-shrink:0;width:10px;height:10px}
+.no-break{page-break-inside:avoid}
+@media print{
+  body{padding:10mm 12mm;font-size:10pt}
+  h2{page-break-before:auto}
+  @page{margin:12mm;size:A4}
+}
+</style>
+</head>
+<body>
+
+<h1>Techno Terminal</h1>
+<p class="meta">Application Features Checklist &mdash; Client Verification &mdash; <script>document.write(new Date().toLocaleDateString('en-GB',{year:'numeric',month:'long',day:'numeric'}))</script></p>
+<hr>
+
+<!-- ══════════════════════════════════════════ -->
+<h2>1. Authentication &amp; Security</h2>
+
+<div class="no-break">
+<h3>Sign In Page</h3>
+<div class="item"><input type="checkbox"> Email and password login form</div>
+<div class="item"><input type="checkbox"> Show/hide password toggle</div>
+<div class="item"><input type="checkbox"> Form validation (empty fields, format errors)</div>
+<div class="item"><input type="checkbox"> Deactivated account error message</div>
+<div class="item"><input type="checkbox"> "Forgot Password?" navigation link</div>
+<div class="item"><input type="checkbox"> "Register" navigation link</div>
+</div>
+
+<div class="no-break">
+<h3>Registration Page</h3>
+<div class="item"><input type="checkbox"> Full Name, Email, Phone inputs</div>
+<div class="item"><input type="checkbox"> Password and Confirm Password with match validation</div>
+<div class="item"><input type="checkbox"> Redirect to login on success</div>
+</div>
+
+<div class="no-break">
+<h3>Forgot Password Page</h3>
+<div class="item"><input type="checkbox"> Email input to trigger reset link</div>
+<div class="item"><input type="checkbox"> Confirmation success message</div>
+</div>
+
+<div class="no-break">
+<h3>Reset Password Page</h3>
+<div class="item"><input type="checkbox"> Token validation from URL</div>
+<div class="item"><input type="checkbox"> New password and confirm password inputs</div>
+<div class="item"><input type="checkbox"> Redirect to login on success</div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<h2>2. Main Dashboard</h2>
+
+<div class="no-break">
+<h3>Quick Actions Panel</h3>
+<div class="item"><input type="checkbox"> "Enroll Student" quick link</div>
+<div class="item"><input type="checkbox"> "Search Directory" quick link</div>
+<div class="item"><input type="checkbox"> "Create Receipt" quick link</div>
+<div class="item"><input type="checkbox"> Today's total session count display</div>
+</div>
+
+<div class="no-break">
+<h3>Day Selector Bar</h3>
+<div class="item"><input type="checkbox"> 7-day horizontal calendar bar</div>
+<div class="item"><input type="checkbox"> Highlights selected date</div>
+<div class="item"><input type="checkbox"> Filters session list by selected date</div>
+</div>
+
+<div class="no-break">
+<h3>Instructor Selector Bar</h3>
+<div class="item"><input type="checkbox"> Horizontal bar of instructors scheduled for the day</div>
+<div class="item"><input type="checkbox"> Filters session list by selected instructor</div>
+<div class="item"><input type="checkbox"> "All Instructors" reset option</div>
+</div>
+
+<div class="no-break">
+<h3>Desktop Session Cards &amp; Attendance Sheet</h3>
+<div class="item"><input type="checkbox"> Groups scheduled for the selected day are listed</div>
+<div class="item"><input type="checkbox"> Displays: group name, course, instructor, time, level/session progress</div>
+<div class="item"><input type="checkbox"> Expandable student roster with attendance checkboxes</div>
+<div class="item"><input type="checkbox"> Real-time attendance save (Present / Absent)</div>
+</div>
+
+<div class="no-break">
+<h3>Mobile Dashboard</h3>
+<div class="item"><input type="checkbox"> Bottom navigation bar replaces sidebar on mobile</div>
+<div class="item"><input type="checkbox"> Mobile-optimized day and instructor selectors</div>
+<div class="item"><input type="checkbox"> Compact mobile group cards</div>
+<div class="item"><input type="checkbox"> "Check Attendance" button opens bottom-sheet attendance drawer</div>
+<div class="item"><input type="checkbox"> Floating Action Button (FAB) for quick actions</div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<h2>3. CRM &amp; Directory</h2>
+
+<div class="no-break">
+<h3>Directory Tabs</h3>
+<div class="item"><input type="checkbox"> Students tab</div>
+<div class="item"><input type="checkbox"> Parents tab</div>
+<div class="item"><input type="checkbox"> Waiting List tab</div>
+<div class="item"><input type="checkbox"> Advanced Search tab (multi-variable filters)</div>
+</div>
+
+<div class="no-break">
+<h3>Global Actions &amp; Filters</h3>
+<div class="item"><input type="checkbox"> Main search bar (name, phone, email)</div>
+<div class="item"><input type="checkbox"> A–Z Alphabet slider filter bar</div>
+<div class="item"><input type="checkbox"> Group-by dropdown (Grade, School, etc.)</div>
+<div class="item"><input type="checkbox"> Add Student button &amp; modal</div>
+<div class="sub"><input type="checkbox"> Inputs: Name, Date of Birth, Gender, School, Grade, Notes</div>
+<div class="sub"><input type="checkbox"> Parent search and link selector</div>
+<div class="item"><input type="checkbox"> Add Parent button &amp; modal</div>
+<div class="sub"><input type="checkbox"> Inputs: Name, Phone Primary, Phone Secondary, WhatsApp, Email, Address, Relationship</div>
+<div class="item"><input type="checkbox"> Trash bin toggle (show soft-deleted records)</div>
+<div class="item"><input type="checkbox"> Restore soft-deleted record</div>
+<div class="item"><input type="checkbox"> Permanently delete record</div>
+</div>
+
+<div class="no-break">
+<h3>Student Detail Page</h3>
+<div class="item"><input type="checkbox"> Identity header card (name, status badge, grade, school, registration date)</div>
+<div class="item"><input type="checkbox"> Parent/guardian card with link, edit, and unlink options</div>
+<div class="item"><input type="checkbox"> Siblings connection panel</div>
+<div class="item"><input type="checkbox"> Active enrollments overview (course, level, group, price, discount)</div>
+<div class="item"><input type="checkbox"> Quick links to modify or drop enrollment</div>
+<div class="item"><input type="checkbox"> Competitions &amp; teams tracker with placement ranks</div>
+<div class="item"><input type="checkbox"> Invoices &amp; payment history grid (balance, paid, outstanding)</div>
+<div class="item"><input type="checkbox"> Activity / audit log timeline</div>
+</div>
+
+<div class="no-break">
+<h3>Parent Detail Page</h3>
+<div class="item"><input type="checkbox"> Contact details card (phones, email, WhatsApp, address)</div>
+<div class="item"><input type="checkbox"> Connected children list with navigation links</div>
+<div class="item"><input type="checkbox"> "Add Child" quick association button</div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<h2>4. Academic Course Catalog</h2>
+
+<div class="no-break">
+<h3>Course Index Page</h3>
+<div class="item"><input type="checkbox"> Table and Card view toggle</div>
+<div class="item"><input type="checkbox"> Search bar (title, category)</div>
+<div class="item"><input type="checkbox"> Pagination (10 / 20 / 50 per page)</div>
+<div class="item"><input type="checkbox"> Column sorting (ID, Title, Category, Price, Sessions)</div>
+<div class="item"><input type="checkbox"> Create Course modal</div>
+<div class="sub"><input type="checkbox"> Inputs: Title, Category, Price per Level, Sessions per Level, Description, Status</div>
+<div class="item"><input type="checkbox"> Edit Course modal (pre-filled)</div>
+<div class="item"><input type="checkbox"> Delete Course dialog (blocked if active groups exist)</div>
+</div>
+
+<div class="no-break">
+<h3>Course Detail Page</h3>
+<div class="item"><input type="checkbox"> Stats strip (groups count, enrolled students, attendance rate)</div>
+<div class="item"><input type="checkbox"> Details tab (duration, fees, status, description)</div>
+<div class="item"><input type="checkbox"> Groups tab (lists groups with name, instructor, level, capacity, status)</div>
+<div class="item"><input type="checkbox"> Navigate to group detail from list</div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<h2>5. Academic Groups &amp; Rosters</h2>
+
+<div class="no-break">
+<h3>Groups Index Page</h3>
+<div class="item"><input type="checkbox"> Table and Card view toggle</div>
+<div class="item"><input type="checkbox"> Search bar (group name)</div>
+<div class="item"><input type="checkbox"> Group By selector (Day / Instructor / Course / Status)</div>
+<div class="item"><input type="checkbox"> Advanced filter panel</div>
+<div class="sub"><input type="checkbox"> Multiselect: Course, Instructor, Day, Level, Status</div>
+<div class="item"><input type="checkbox"> Active filter tags with remove buttons and Clear All</div>
+<div class="item"><input type="checkbox"> Pagination (10 / 20 / 50 / 100 per page)</div>
+<div class="item"><input type="checkbox"> Create Group modal</div>
+<div class="sub"><input type="checkbox"> Inputs: Name, Course, Instructor, Capacity, Start Date, Schedule (Day / Start / End time)</div>
+<div class="item"><input type="checkbox"> Edit Group modal (updates schedule, instructor, capacity)</div>
+</div>
+
+<div class="no-break">
+<h3>Group Detail Page</h3>
+<div class="item"><input type="checkbox"> Group header (status badge, instructor, course, capacity, active level)</div>
+<div class="item"><input type="checkbox"> Edit Group action</div>
+<div class="item"><input type="checkbox"> Archive / Unarchive Group action</div>
+<div class="item"><input type="checkbox"> Delete Group action</div>
+<div class="item"><input type="checkbox"> Level Up button (instant progression to next level)</div>
+<div class="item"><input type="checkbox"> Progress Level dialog (advanced: change name, instructor, course, price override)</div>
+<div class="item"><input type="checkbox"> Notes field with auto-save</div>
+</div>
+
+<div class="no-break">
+<h3>Levels &amp; Sessions Tab</h3>
+<div class="item"><input type="checkbox"> All historical levels listed</div>
+<div class="item"><input type="checkbox"> Session attendance log per level (number, date, time, rate)</div>
+<div class="item"><input type="checkbox"> Level payments overview (due vs paid vs outstanding per student)</div>
+<div class="item"><input type="checkbox"> Add student to roster (combobox search)</div>
+<div class="item"><input type="checkbox"> Remove student from roster (blocked if payment exists)</div>
+<div class="item"><input type="checkbox"> Collect payment for student in roster</div>
+<div class="sub"><input type="checkbox"> Amount input (supports partial payments)</div>
+<div class="sub"><input type="checkbox"> Optional parent link search</div>
+<div class="sub"><input type="checkbox"> Updates balance, logs invoice, emails receipt</div>
+<div class="item"><input type="checkbox"> Payment status badges: Paid / Partial / Pending</div>
+</div>
+
+<div class="no-break">
+<h3>History Tab</h3>
+<div class="item"><input type="checkbox"> Chronological log of roster additions, drops, and graduations</div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<h2>6. Enrollments Management</h2>
+
+<div class="no-break">
+<h3>New Enrollment Panel</h3>
+<div class="item"><input type="checkbox"> Student selector (searchable combobox)</div>
+<div class="item"><input type="checkbox"> Course selector</div>
+<div class="item"><input type="checkbox"> Academic Level selector</div>
+<div class="item"><input type="checkbox"> Group selector (filtered by course/level with open seats)</div>
+<div class="item"><input type="checkbox"> Discount input (flat EGP or percentage)</div>
+<div class="item"><input type="checkbox"> Pricing breakdown (standard price → discount → final amount)</div>
+<div class="item"><input type="checkbox"> Payment method selector (Cash / Card / Installment)</div>
+<div class="item"><input type="checkbox"> Submit: creates enrollment, assigns to group, generates invoice</div>
+</div>
+
+<div class="no-break">
+<h3>Modify Enrollment Panel</h3>
+<div class="item"><input type="checkbox"> Select existing student enrollment</div>
+<div class="item"><input type="checkbox"> Adjust discount (flat or percentage)</div>
+<div class="item"><input type="checkbox"> Override price field</div>
+<div class="item"><input type="checkbox"> Live billing breakdown (original, paid, new due, remaining)</div>
+<div class="item"><input type="checkbox"> Notes / reason text input (saved in audit log)</div>
+<div class="item"><input type="checkbox"> Blocks save if result is negative balance</div>
+<div class="item"><input type="checkbox"> Auto-sends email update to parent</div>
+</div>
+
+<div class="no-break">
+<h3>Drop Enrollment Panel</h3>
+<div class="item"><input type="checkbox"> Select enrollment to drop</div>
+<div class="item"><input type="checkbox"> Option: forgive or keep outstanding balance</div>
+<div class="item"><input type="checkbox"> Drop date selector and reason text area</div>
+<div class="item"><input type="checkbox"> De-registers student from group and locks enrollment as "Dropped"</div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<h2>7. Financial Ledger</h2>
+
+<div class="no-break">
+<h3>Today's Receipts Tab</h3>
+<div class="item"><input type="checkbox"> Table of all receipts processed today</div>
+<div class="item"><input type="checkbox"> Columns: Receipt ID, Student, Parent, Amount, Method, Date/Time</div>
+<div class="item"><input type="checkbox"> View PDF receipt in new tab</div>
+</div>
+
+<div class="no-break">
+<h3>Create Receipt Tab</h3>
+<div class="item"><input type="checkbox"> Student selector (searchable)</div>
+<div class="item"><input type="checkbox"> Parent selector (auto-linked or searchable)</div>
+<div class="item"><input type="checkbox"> Lists student's enrollments with unpaid balances</div>
+<div class="item"><input type="checkbox"> Amount paid input (full or partial)</div>
+<div class="item"><input type="checkbox"> Payment method: Cash / Card / Bank Transfer / Instapay</div>
+<div class="item"><input type="checkbox"> Submit: updates balance, logs receipt, emails parent</div>
+</div>
+
+<div class="no-break">
+<h3>Unpaid Enrollments Tab</h3>
+<div class="item"><input type="checkbox"> All students with outstanding balances</div>
+<div class="item"><input type="checkbox"> Columns: Student, Parent contact, Course, Group, Total, Paid, Balance Due</div>
+<div class="item"><input type="checkbox"> "Collect Payment" button (pre-fills Create Receipt)</div>
+</div>
+
+<div class="no-break">
+<h3>Refunds Tab</h3>
+<div class="item"><input type="checkbox"> Refund records panel</div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<h2>8. Competitions &amp; Projects</h2>
+
+<div class="no-break">
+<h3>Competitions Index Page</h3>
+<div class="item"><input type="checkbox"> Table and Card view toggle</div>
+<div class="item"><input type="checkbox"> Search by competition title</div>
+<div class="item"><input type="checkbox"> Add Competition modal (Name, Location, Fee, Date, Description, Status)</div>
+<div class="item"><input type="checkbox"> Edit Competition modal</div>
+<div class="item"><input type="checkbox"> Delete confirmation (blocked if teams are registered)</div>
+</div>
+
+<div class="no-break">
+<h3>Competition Detail Page</h3>
+<div class="item"><input type="checkbox"> Header: title, location, date, fee, total teams/participants</div>
+<div class="item"><input type="checkbox"> About tab (description, location details)</div>
+<div class="item"><input type="checkbox"> Categories tab</div>
+<div class="sub"><input type="checkbox"> Add subcategory/division form</div>
+<div class="sub"><input type="checkbox"> Teams listed per subcategory</div>
+<div class="sub"><input type="checkbox"> Register Team button (name, coach, subcategory, participants, fee)</div>
+<div class="item"><input type="checkbox"> Teams tab (list with coach, category, participant count, payment state)</div>
+<div class="item"><input type="checkbox"> Pay fee modal from teams list</div>
+<div class="item"><input type="checkbox"> Placement ranking form (rank number + label)</div>
+</div>
+
+<div class="no-break">
+<h3>Team Detail Page</h3>
+<div class="item"><input type="checkbox"> Team header (name, placement badge, coach, category)</div>
+<div class="item"><input type="checkbox"> Edit team details</div>
+<div class="item"><input type="checkbox"> Delete team (blocked if payments exist)</div>
+<div class="item"><input type="checkbox"> Project panel (project name and description)</div>
+<div class="item"><input type="checkbox"> Member roster (Due / Paid / Remaining / Status badge per student)</div>
+<div class="item"><input type="checkbox"> Add member (combobox search)</div>
+<div class="item"><input type="checkbox"> Remove member (blocked if payment exists)</div>
+<div class="item"><input type="checkbox"> Collect member payment (amount, parent, updates invoice + emails receipt)</div>
+<div class="item"><input type="checkbox"> Set placement rank and label</div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<h2>9. Staff &amp; HR Management</h2>
+
+<div class="no-break">
+<h3>Staff Index Page</h3>
+<div class="item"><input type="checkbox"> Search bar (staff name)</div>
+<div class="item"><input type="checkbox"> Add Employee modal (Name, Title, Type, Phone, Email, Salary, Hire Date, Status)</div>
+<div class="item"><input type="checkbox"> Edit Employee modal</div>
+<div class="item"><input type="checkbox"> Employee profile card (details, role, contact, status)</div>
+<div class="item"><input type="checkbox"> Link system account modal (Email, Password, Role assignment)</div>
+<div class="item"><input type="checkbox"> Pagination for staff list</div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<h2>10. Global Settings</h2>
+
+<div class="no-break">
+<h3>Profile Tab</h3>
+<div class="item"><input type="checkbox"> Edit personal details (Name, Phone)</div>
+<div class="item"><input type="checkbox"> MFA status display and setup</div>
+</div>
+
+<div class="no-break">
+<h3>Active Sessions Tab</h3>
+<div class="item"><input type="checkbox"> List of all active login sessions (device, browser, OS, IP)</div>
+<div class="item"><input type="checkbox"> Sign out other devices button</div>
+</div>
+
+<div class="no-break">
+<h3>User Accounts Tab (Admin only)</h3>
+<div class="item"><input type="checkbox"> Table of all system user accounts (name, email, role, status)</div>
+<div class="item"><input type="checkbox"> Invite User dialog (email + role selection, sends invite)</div>
+<div class="item"><input type="checkbox"> Soft-deactivate user toggle</div>
+<div class="item"><input type="checkbox"> Permanently delete user account</div>
+</div>
+
+<div class="no-break">
+<h3>System Audit Log (System Admin only)</h3>
+<div class="item"><input type="checkbox"> Login history (successful + failed, with IP and browser)</div>
+<div class="item"><input type="checkbox"> System change log (password updates, deactivations)</div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<h2>11. Notifications &amp; Messaging</h2>
+
+<div class="no-break">
+<h3>Automated Alerts</h3>
+<div class="item"><input type="checkbox"> Configuration for payment alerts, enrollment warnings, progress reports</div>
+</div>
+
+<div class="no-break">
+<h3>Dispatch Logs</h3>
+<div class="item"><input type="checkbox"> Table of notifications sent (recipient, type, status, time)</div>
+<div class="item"><input type="checkbox"> Resend notification button</div>
+</div>
+
+<div class="no-break">
+<h3>Bulk Message Dispatcher</h3>
+<div class="item"><input type="checkbox"> Target audience filter (all, by course, by group)</div>
+<div class="item"><input type="checkbox"> Message composer with variable placeholders ({{student_name}}, etc.)</div>
+<div class="item"><input type="checkbox"> WhatsApp and Email dispatch toggles</div>
+<div class="item"><input type="checkbox"> Dispatch progress monitor (sent count, success rate)</div>
+</div>
+
+<hr>
+<p style="text-align:center;font-size:8.5pt;color:#94a3b8;margin-top:10px">
+  Techno Terminal — STEM Education Center Management System &mdash; Confidential Client Document
+</p>
+
+</body>
+</html>

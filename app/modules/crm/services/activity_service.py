@@ -171,6 +171,71 @@ class StudentActivityService:
             performed_by=dto.performed_by,
         )
 
+    def log_activity(
+        self,
+        student_id: int,
+        activity_type: str,
+        activity_subtype: Optional[str],
+        reference_type: Optional[str],
+        reference_id: Optional[int],
+        description: str,
+        metadata: Optional[Dict[str, Any]],
+        performed_by: Optional[int],
+        created_at: Optional[datetime] = None,
+    ) -> StudentActivityLog:
+        """Manually log a student activity."""
+        return self._uow.activities.create_activity_log(
+            student_id=student_id,
+            activity_type=activity_type,
+            activity_subtype=activity_subtype,
+            reference_type=reference_type,
+            reference_id=reference_id,
+            description=description,
+            metadata=metadata or {},
+            performed_by=performed_by,
+            created_at=created_at,
+        )
+
+    def update_activity(
+        self,
+        student_id: int,
+        activity_id: int,
+        activity_type: Optional[str] = None,
+        activity_subtype: Optional[str] = None,
+        reference_type: Optional[str] = None,
+        reference_id: Optional[int] = None,
+        description: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        created_at: Optional[datetime] = None,
+    ) -> StudentActivityLog:
+        """Update a student activity log."""
+        log = self._uow.activities.get_activity_log_by_id(activity_id)
+        if not log:
+            raise ValueError(f"Activity log with ID {activity_id} not found")
+        if log.student_id != student_id:
+            raise ValueError(f"Activity log does not belong to student {student_id}")
+
+        return self._uow.activities.update_activity_log(
+            activity_id=activity_id,
+            activity_type=activity_type,
+            activity_subtype=activity_subtype,
+            reference_type=reference_type,
+            reference_id=reference_id,
+            description=description,
+            metadata=metadata,
+            created_at=created_at,
+        )
+
+    def delete_activity(self, student_id: int, activity_id: int) -> None:
+        """Delete a student activity log."""
+        log = self._uow.activities.get_activity_log_by_id(activity_id)
+        if not log:
+            raise ValueError(f"Activity log with ID {activity_id} not found")
+        if log.student_id != student_id:
+            raise ValueError(f"Activity log does not belong to student {student_id}")
+
+        self._uow.activities.delete_activity_log(activity_id)
+
     # ── Query Methods ───────────────────────────────────────────────────
 
     def get_student_timeline(

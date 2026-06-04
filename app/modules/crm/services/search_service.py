@@ -245,41 +245,9 @@ class SearchService:
         if filters.max_age is not None:
             min_dob = date(today.year - filters.max_age - 1, today.month, today.day) + timedelta(days=1)
 
-        # Build course filter condition
-        course_filter_sql = ""
-        if filters.course_ids:
-            course_ids_str = ",".join(str(c) for c in filters.course_ids)
-            course_filter_sql = f"AND se.course_ids && ARRAY[{course_ids_str}]::integer[]"
-
-        # Build instructor filter condition
-        instructor_filter_sql = ""
-        if filters.instructor_name:
-            instructor_filter_sql = "AND ae.instructor_name ILIKE :instructor_pattern"
-
-        # Build group day filter condition
-        day_filter_sql = ""
-        if filters.group_default_day:
-            days_str = ",".join(f"'{d}'" for d in filters.group_default_day)
-            day_filter_sql = f"AND ae.default_day = ANY(ARRAY[{days_str}])"
-
-        # Build unpaid balance filter
-        balance_filter_sql = ""
-        if filters.has_unpaid_balance is not None:
-            if filters.has_unpaid_balance:
-                balance_filter_sql = "AND COALESCE(se.total_due, 0) > 0"
-            else:
-                balance_filter_sql = "AND COALESCE(se.total_due, 0) = 0"
-
-        # Build enrollment count filter
-        enrollment_count_sql = ""
-        if filters.min_enrollments is not None:
-            enrollment_count_sql += " AND COALESCE(se.enrollment_count, 0) >= :min_enrollments"
-        if filters.max_enrollments is not None:
-            enrollment_count_sql += " AND COALESCE(se.enrollment_count, 0) <= :max_enrollments"
-
-        # Build main query with CTEs
-        sql = text(f"""
-            WITH student_enrollments AS (
+        # Build CTEs dynamically
+        ctes = [
+            """student_enrollments AS (
                 SELECT 
                     e.student_id,
                     COUNT(*) as enrollment_count,
@@ -288,8 +256,8 @@ class SearchService:
                 FROM enrollments e
                 LEFT JOIN groups g ON g.id = e.group_id
                 GROUP BY e.student_id
-            ),
-            active_enrollment_details AS (
+            )""",
+            """active_enrollment_details AS (
                 SELECT DISTINCT ON (e.student_id)
                     e.student_id,
                     g.id as group_id,
@@ -302,7 +270,35 @@ class SearchService:
                 LEFT JOIN employees emp ON emp.id = g.instructor_id
                 WHERE e.status = 'active'
                 ORDER BY e.student_id, e.id DESC
+            )"""
+        ]
+
+        has_activity_filter = (
+            filters.min_activity_count is not None
+            or filters.max_activity_count is not None
+            or filters.activity_types
+            or filters.activity_date_from
+            or filters.activity_date_to
+        )
+        if has_activity_filter:
+            ctes.append(
+                """student_activity_counts AS (
+                    SELECT 
+                        student_id,
+                        COUNT(*) as activity_count
+                    FROM student_activity_log
+                    WHERE 1=1
+                      AND (:has_activity_types = FALSE OR activity_type = ANY(:activity_types))
+                      AND (:activity_date_from IS NULL OR created_at >= :activity_date_from)
+                      AND (:activity_date_to IS NULL OR created_at <= :activity_date_to)
+                    GROUP BY student_id
+                )"""
             )
+
+        cte_sql = "WITH " + ",\n".join(ctes)
+
+        # Build Select and Joins
+        select_sql = """
             SELECT 
                 s.id,
                 s.full_name,
@@ -321,34 +317,107 @@ class SearchService:
             FROM students s
             LEFT JOIN student_enrollments se ON se.student_id = s.id
             LEFT JOIN active_enrollment_details ae ON ae.student_id = s.id
-            WHERE s.deleted_at IS NULL
-              AND (:min_age IS NULL OR s.date_of_birth <= :max_dob)
-              AND (:max_age IS NULL OR s.date_of_birth >= :min_dob)
-              AND (:statuses_empty OR s.status::text = ANY(:statuses))
-              AND (:genders_empty OR s.gender::text = ANY(:genders))
-              {instructor_filter_sql}
-              {day_filter_sql}
-              {course_filter_sql}
-              {balance_filter_sql}
-              {enrollment_count_sql}
-            ORDER BY s.id
-        """)
+        """
+        if has_activity_filter:
+            select_sql += "            LEFT JOIN student_activity_counts sac ON sac.student_id = s.id\n"
+
+        # Build WHERE clauses dynamically
+        where_clauses = ["s.deleted_at IS NULL"]
+        if filters.min_age is not None:
+            where_clauses.append("s.date_of_birth <= :max_dob")
+        if filters.max_age is not None:
+            where_clauses.append("s.date_of_birth >= :min_dob")
+        if filters.status:
+            where_clauses.append("s.status::text = ANY(:statuses)")
+        if filters.gender:
+            where_clauses.append("s.gender::text = ANY(:genders)")
+        if filters.instructor_name:
+            where_clauses.append("ae.instructor_name ILIKE :instructor_pattern")
+        if filters.group_default_day:
+            days_str = ",".join(f"'{d}'" for d in filters.group_default_day)
+            where_clauses.append(f"ae.default_day = ANY(ARRAY[{days_str}])")
+        if filters.has_unpaid_balance is not None:
+            if filters.has_unpaid_balance:
+                where_clauses.append("COALESCE(se.total_due, 0) > 0")
+            else:
+                where_clauses.append("COALESCE(se.total_due, 0) = 0")
+        if filters.min_enrollments is not None:
+            where_clauses.append("COALESCE(se.enrollment_count, 0) >= :min_enrollments")
+        if filters.max_enrollments is not None:
+            where_clauses.append("COALESCE(se.enrollment_count, 0) <= :max_enrollments")
+
+        # Course inclusion with optional date range
+        if filters.course_ids or filters.course_enrollment_date_from or filters.course_enrollment_date_to:
+            where_clauses.append("""EXISTS (
+                SELECT 1 
+                FROM enrollments e_filter
+                JOIN groups g_filter ON g_filter.id = e_filter.group_id
+                WHERE e_filter.student_id = s.id
+                  AND (:has_course_ids = FALSE OR g_filter.course_id = ANY(:course_ids))
+                  AND (:course_enrollment_date_from IS NULL OR COALESCE(e_filter.enrolled_at, e_filter.created_at) >= :course_enrollment_date_from)
+                  AND (:course_enrollment_date_to IS NULL OR COALESCE(e_filter.enrolled_at, e_filter.created_at) <= :course_enrollment_date_to)
+            )""")
+
+        # Course exclusion
+        if filters.exclude_course_ids:
+            where_clauses.append("""NOT EXISTS (
+                SELECT 1 
+                FROM enrollments e_exc
+                JOIN groups g_exc ON g_exc.id = e_exc.group_id
+                WHERE e_exc.student_id = s.id
+                  AND g_exc.course_id = ANY(:exclude_course_ids)
+            )""")
+
+        # Activity count bounds
+        if filters.min_activity_count is not None:
+            where_clauses.append("COALESCE(sac.activity_count, 0) >= :min_activity_count")
+        if filters.max_activity_count is not None:
+            where_clauses.append("COALESCE(sac.activity_count, 0) <= :max_activity_count")
+
+        # Activity search term
+        if filters.activity_search_term:
+            where_clauses.append("""EXISTS (
+                SELECT 1 
+                FROM student_activity_log al_search
+                WHERE al_search.student_id = s.id
+                  AND (
+                      al_search.description ILIKE :activity_pattern 
+                      OR al_search.meta::text ILIKE :activity_pattern
+                      OR al_search.activity_type ILIKE :activity_pattern
+                      OR al_search.activity_subtype ILIKE :activity_pattern
+                  )
+            )""")
+
+        where_sql = " AND ".join(where_clauses)
+        sql = text(f"{cte_sql}\n{select_sql}\nWHERE {where_sql}\nORDER BY s.id")
 
         params = {
             "min_age": filters.min_age,
             "max_dob": max_dob,
             "max_age": filters.max_age,
             "min_dob": min_dob,
-            "statuses_empty": not filters.status,
             "statuses": filters.status or [],
-            "genders_empty": not filters.gender,
             "genders": filters.gender or [],
             "min_enrollments": filters.min_enrollments,
             "max_enrollments": filters.max_enrollments,
+            "has_course_ids": bool(filters.course_ids),
+            "course_ids": filters.course_ids or [],
+            "course_enrollment_date_from": filters.course_enrollment_date_from,
+            "course_enrollment_date_to": filters.course_enrollment_date_to,
+            "exclude_course_ids": filters.exclude_course_ids or [],
+            "has_activity_types": bool(filters.activity_types),
+            "activity_types": filters.activity_types or [],
+            "activity_date_from": filters.activity_date_from,
+            "activity_date_to": filters.activity_date_to,
+            "min_activity_count": filters.min_activity_count,
+            "max_activity_count": filters.max_activity_count,
         }
 
         if filters.instructor_name:
             params["instructor_pattern"] = f"%{filters.instructor_name}%"
+
+        if filters.activity_search_term:
+            params["activity_pattern"] = f"%{filters.activity_search_term}%"
 
         result = session.exec(sql, params=params)
 

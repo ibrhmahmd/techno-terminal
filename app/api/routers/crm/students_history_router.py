@@ -13,6 +13,7 @@ from app.api.dependencies import require_any, require_admin, get_student_activit
 from app.api.schemas.common import ApiResponse, PaginatedResponse
 from app.api.schemas.crm.history import (
     ActivityLogRequest,
+    ActivityLogUpdateRequest,
     EnrollmentHistoryEntry,
     StatusHistoryEntry,
     CompetitionHistoryEntry,
@@ -255,7 +256,8 @@ def log_manual_activity(
         reference_id=request.reference_id,
         description=request.description,
         metadata=request.metadata,
-        performed_by=current_user.id
+        performed_by=current_user.id,
+        created_at=request.created_at
     )
     
     return ApiResponse(
@@ -267,6 +269,66 @@ def log_manual_activity(
             created_at=activity.created_at.isoformat() if activity.created_at else None
         ),
         message="Activity logged successfully"
+    )
+
+
+# Update a manual activity log entry (admin only).
+@router.patch(
+    "/students/{student_id}/log-activity/{activity_id}",
+    response_model=ApiResponse[ManualActivityResponseDTO],
+    summary="Update manual activity log",
+    description="Update a manual activity log entry (admin only)."
+)
+def update_manual_activity(
+    student_id: int,
+    activity_id: int,
+    request: ActivityLogUpdateRequest,
+    current_user: User = Depends(require_admin),
+    svc: StudentActivityService = Depends(get_student_activity_service),
+):
+    """Update a manual activity log entry."""
+    activity = svc.update_activity(
+        student_id=student_id,
+        activity_id=activity_id,
+        activity_type=request.activity_type,
+        activity_subtype=request.activity_subtype,
+        reference_type=request.reference_type,
+        reference_id=request.reference_id,
+        description=request.description,
+        metadata=request.metadata,
+        created_at=request.created_at
+    )
+    
+    return ApiResponse(
+        data=ManualActivityResponseDTO(
+            activity_id=activity.id,
+            student_id=activity.student_id,
+            activity_type=activity.activity_type,
+            description=activity.description or "",
+            created_at=activity.created_at.isoformat() if activity.created_at else None
+        ),
+        message="Activity updated successfully"
+    )
+
+
+# Delete a manual activity log entry (admin only).
+@router.delete(
+    "/students/{student_id}/log-activity/{activity_id}",
+    response_model=ApiResponse[None],
+    summary="Delete manual activity log",
+    description="Delete a manual activity log entry (admin only)."
+)
+def delete_manual_activity(
+    student_id: int,
+    activity_id: int,
+    current_user: User = Depends(require_admin),
+    svc: StudentActivityService = Depends(get_student_activity_service),
+):
+    """Delete a manual activity log entry."""
+    svc.delete_activity(student_id=student_id, activity_id=activity_id)
+    return ApiResponse(
+        data=None,
+        message="Activity deleted successfully"
     )
 
 

@@ -36,6 +36,7 @@ class ActivityRepository(IActivityRepository):
         description: str,
         metadata: Dict[str, Any],
         performed_by: Optional[int],
+        created_at: Optional[datetime] = None,
     ) -> StudentActivityLog:
         """Create a new activity log entry."""
         log = StudentActivityLog(
@@ -47,11 +48,79 @@ class ActivityRepository(IActivityRepository):
             description=description,
             meta=metadata,
             performed_by=performed_by,
-            created_at=datetime.utcnow(),
+            created_at=created_at or datetime.utcnow(),
         )
         self._session.add(log)
         self._session.flush()
         return log
+
+    def get_activity_log_by_id(self, activity_id: int) -> Optional[StudentActivityLog]:
+        """Retrieve a single activity log entry by ID."""
+        sql = """
+            SELECT id, student_id, activity_type, activity_subtype,
+                   reference_type, reference_id, description, meta,
+                   performed_by, created_at
+            FROM student_activity_log
+            WHERE id = :activity_id
+        """
+        result = self._session.exec(text(sql), params={"activity_id": activity_id}).first()
+        if not result:
+            return None
+        return StudentActivityLog(
+            id=result.id,
+            student_id=result.student_id,
+            activity_type=result.activity_type,
+            activity_subtype=result.activity_subtype,
+            reference_type=result.reference_type,
+            reference_id=result.reference_id,
+            description=result.description,
+            meta=result.meta,
+            performed_by=result.performed_by,
+            created_at=result.created_at,
+        )
+
+    def update_activity_log(
+        self,
+        activity_id: int,
+        activity_type: Optional[str] = None,
+        activity_subtype: Optional[str] = None,
+        reference_type: Optional[str] = None,
+        reference_id: Optional[int] = None,
+        description: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        created_at: Optional[datetime] = None,
+    ) -> StudentActivityLog:
+        """Update fields of an activity log entry."""
+        # Retrieve the existing ORM entity so we can update it
+        log = self._session.get(StudentActivityLog, activity_id)
+        if not log:
+            raise ValueError(f"Activity log with ID {activity_id} not found")
+
+        if activity_type is not None:
+            log.activity_type = activity_type
+        if activity_subtype is not None:
+            log.activity_subtype = activity_subtype
+        if reference_type is not None:
+            log.reference_type = reference_type
+        if reference_id is not None:
+            log.reference_id = reference_id
+        if description is not None:
+            log.description = description
+        if metadata is not None:
+            log.meta = metadata
+        if created_at is not None:
+            log.created_at = created_at
+
+        self._session.add(log)
+        self._session.flush()
+        return log
+
+    def delete_activity_log(self, activity_id: int) -> None:
+        """Delete an activity log entry by ID."""
+        log = self._session.get(StudentActivityLog, activity_id)
+        if log:
+            self._session.delete(log)
+            self._session.flush()
 
     def get_student_activity_timeline(
         self,
