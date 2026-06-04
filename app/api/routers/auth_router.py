@@ -89,9 +89,9 @@ def login(
     user_agent = request.headers.get("user-agent", "Unknown")
     
     alert_reason = None
-    if user.last_login_at is None:
+    if user.last_login is None:
         alert_reason = "First time this user has ever logged in."
-    elif user.last_login_at.date() < date.today():
+    elif user.last_login.date() < date.today():
         alert_reason = "First login of the day for this user."
     else:
         # Check against last audit log
