@@ -113,7 +113,7 @@ def login(
     if alert_reason:
         notif_svc.notify_admin_login(
             username=user.username,
-            email=user.email,
+            email=res.user.email,
             role=user.role,
             ip_address=ip_address,
             user_agent=user_agent,

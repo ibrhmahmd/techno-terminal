@@ -145,5 +145,5 @@ Commands in `.opencode/command/`. All feature work validates against `.specify/m
 - **Docker**: `docker build -t techno-terminal .` (note: references missing `alembic/` directory).
 
 <!-- SPECKIT START -->
-Active plan: `specs/021-groups-directory-audit/plan.md`
+Active plan: `specs/023-system-contract/plan.md`
 <!-- SPECKIT END -->
