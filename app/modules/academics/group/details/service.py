@@ -449,6 +449,7 @@ class GroupDetailsService:
                         payment_method=p["payment_method"],
                         status=p["status"],
                         receipt_number=p["receipt_number"],
+                        receipt_id=p.get("receipt_id"),
                         transaction_type=p["transaction_type"],
                     )
                     for p in level_payments

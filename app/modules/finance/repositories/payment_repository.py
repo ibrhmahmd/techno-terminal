@@ -438,6 +438,7 @@ class PaymentRepository(IPaymentRepository):
         stmt = text("""
             SELECT 
                 p.id AS payment_id,
+                p.receipt_id,
                 p.student_id,
                 s.full_name AS student_name,
                 p.enrollment_id,

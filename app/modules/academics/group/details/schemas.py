@@ -182,6 +182,7 @@ class PaymentInLevelDTO(BaseModel):
     payment_method: str  # 'cash' | 'card' | 'bank_transfer' | 'wallet'
     status: str  # 'completed' | 'pending' | 'failed' | 'refunded'
     receipt_number: Optional[str] = None
+    receipt_id: Optional[int] = None
     transaction_type: str  # 'payment' | 'refund' | 'adjustment'
 
 
