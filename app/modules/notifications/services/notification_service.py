@@ -110,6 +110,52 @@ class NotificationService:
         # Simple implementation - delegates to report service's bulk handling
         return self.report.send_bulk(parent_ids, template_name, extra_vars, background_tasks)
 
+    # ── Auth Alerts ───────────────────────────────────────────────────────
+
+    def notify_admin_login(
+        self,
+        username: str,
+        email: str,
+        role: str,
+        ip_address: str,
+        user_agent: str,
+        alert_reason: str,
+        background_tasks: BackgroundTasks,
+    ) -> None:
+        """Sends an admin_login_alert to all active administrators."""
+        template = self._repo.get_template_by_name("admin_login_alert")
+        if not template:
+            logger.warning("Notification template 'admin_login_alert' not found. Skipping.")
+            return
+
+        variables = {
+            "username": username,
+            "email": email,
+            "role": role,
+            "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "ip_address": ip_address or "Unknown",
+            "user_agent": user_agent or "Unknown",
+            "alert_reason": alert_reason,
+        }
+
+        # Resolve admins using base notification service's logic
+        recipients = self.report._resolve_notification_recipients(
+            recipient_type="ADMIN",
+            recipient_id=0,
+            fallback_email=True
+        )
+
+        for recipient_id, email_address in recipients:
+            background_tasks.add_task(
+                self.report._dispatch,
+                template=template,
+                channel="EMAIL",
+                recipient_type="ADMIN",
+                recipient_id=recipient_id,
+                contact=email_address,
+                variables=variables,
+            )
+
     # ── Template Testing ──────────────────────────────────────────────────
 
     def test_template(self, template_id: int) -> "TemplateTestResultDTO":

@@ -18,3 +18,6 @@ class DailyReportRequest(BaseModel):
             if not re.match(pattern, email):
                 raise ValueError(f"Invalid email: {email}")
         return v
+
+WeeklyReportRequest = DailyReportRequest
+MonthlyReportRequest = DailyReportRequest

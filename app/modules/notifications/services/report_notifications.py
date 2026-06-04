@@ -84,7 +84,7 @@ class ReportNotificationService(BaseNotificationService):
                 variables, attachments=attachments
             )
     
-    async def send_weekly_report(self) -> None:
+    async def send_weekly_report(self, target_date: Optional[date] = None) -> None:
         """Weekly business summary to all admins."""
         template = self._get_template_by_name("weekly_report")
         if not template or not template.is_active:
@@ -94,7 +94,7 @@ class ReportNotificationService(BaseNotificationService):
         # Get notification recipients (fallback handled automatically by base service)
         recipients = self._resolve_notification_recipients("weekly_report")
         
-        today = date.today()
+        today = target_date or date.today()
         week_start = today - timedelta(days=today.weekday())
         week_end = today
         
@@ -118,7 +118,7 @@ class ReportNotificationService(BaseNotificationService):
         for email, recipient_id, recipient_type in recipients:
             await self._dispatch(template, "EMAIL", recipient_type, recipient_id, email, variables)
 
-    async def send_monthly_report(self) -> None:
+    async def send_monthly_report(self, target_date: Optional[date] = None) -> None:
         """Monthly business summary to all admins."""
         template = self._get_template_by_name("monthly_report")
         if not template or not template.is_active:
@@ -128,7 +128,7 @@ class ReportNotificationService(BaseNotificationService):
         # Get notification recipients (fallback handled automatically by base service)
         recipients = self._resolve_notification_recipients("monthly_report")
 
-        today = date.today()
+        today = target_date or date.today()
         month_start = today.replace(day=1)
 
         aggregates = self._fetch_monthly_aggregates(month_start, today)
