@@ -14,6 +14,8 @@ from app.modules.enrollments.models.enrollment_models import Enrollment
 from app.modules.enrollments.core.schemas import (
     EnrollStudentInput,
     TransferStudentInput,
+    UpdateEnrollmentInput,
+    UpdateEnrollmentResult,
     EnrollmentDTO,
     EnrollmentCoreResult,
 )
@@ -119,6 +121,105 @@ class EnrollmentCoreService:
         except IntegrityError:
             raise ConflictError(f"'{student.full_name}' was just enrolled in this group by another request. Please refresh and try again.")
 
+    def update_enrollment(
+        self,
+        enrollment_id: int,
+        data: UpdateEnrollmentInput,
+        performed_by: Optional[int] = None,
+        background_tasks: Optional[BackgroundTasks] = None,
+    ) -> UpdateEnrollmentResult:
+        with get_session() as session:
+            enrollment = repo.get_enrollment(session, enrollment_id)
+            if not enrollment:
+                raise NotFoundError(f"Enrollment {enrollment_id} not found.")
+            if enrollment.status in ("dropped", "transferred"):
+                raise BusinessRuleError("Cannot edit dropped or transferred enrollments.")
+            
+            updates = {}
+            if "amount_due" in data.model_fields_set:
+                if data.amount_due is not None and data.amount_due < 0:
+                    raise BusinessRuleError("Amount due cannot be negative.")
+                updates["amount_due"] = data.amount_due
+                
+            if "discount_applied" in data.model_fields_set:
+                if data.discount_applied is not None and data.discount_applied < 0:
+                    raise BusinessRuleError("Discount applied cannot be negative.")
+                updates["discount_applied"] = data.discount_applied
+                
+            if "notes" in data.model_fields_set:
+                updates["notes"] = data.notes
+
+            if not updates:
+                return UpdateEnrollmentResult(enrollment=EnrollmentDTO.model_validate(enrollment))
+
+            warnings = []
+            
+            # Check for financial conflicts if financial fields are changing
+            if "amount_due" in updates or "discount_applied" in updates:
+                from app.modules.finance.models.payment import Payment
+                from sqlmodel import select
+                payment = session.exec(select(Payment).where(Payment.enrollment_id == enrollment_id)).first()
+                if payment:
+                    warnings.append("Note: Payments already exist for this enrollment. Verify if adjustments are needed.")
+
+            # Audit logging
+            metadata = dict(enrollment.enrollment_metadata) if enrollment.enrollment_metadata else {}
+            edit_history = metadata.get("edit_history", [])
+            
+            changes = {}
+            changes_summary_parts = []
+            
+            def format_field_name(f: str) -> str:
+                return f.replace("_", " ").title()
+                
+            for field, new_val in updates.items():
+                old_val = getattr(enrollment, field)
+                if old_val != new_val:
+                    changes[field] = {"old": old_val, "new": new_val}
+                    old_display = f"{old_val} EGP" if "amount" in field or "discount" in field else old_val
+                    new_display = f"{new_val} EGP" if "amount" in field or "discount" in field else new_val
+                    changes_summary_parts.append(f"• {format_field_name(field)}: {old_display} ➔ {new_display}")
+            
+            if changes:
+                edit_entry = {
+                    "timestamp": utc_now().isoformat(),
+                    "performed_by": performed_by,
+                    "changes": changes
+                }
+                edit_history.append(edit_entry)
+                metadata["edit_history"] = edit_history
+                updates["enrollment_metadata"] = metadata
+                
+                updated = repo.update_enrollment_fields(session, enrollment_id, updates)
+                
+                if self._activity_svc:
+                    from app.modules.crm.interfaces.dtos.log_enrollment_change_dto import LogEnrollmentChangeDTO
+                    self._activity_svc.log_enrollment_change(
+                        LogEnrollmentChangeDTO(
+                            student_id=updated.student_id,
+                            enrollment_id=updated.id,
+                            action="financials_updated",
+                            changes_summary="\n".join(changes_summary_parts),
+                            performed_by=performed_by,
+                        )
+                    )
+
+                session.commit()
+                session.refresh(updated)
+                
+                if ("amount_due" in changes or "discount_applied" in changes) and self._notification_svc and background_tasks:
+                    self._notification_svc.enrollment.notify_enrollment_updated(
+                        student_id=updated.student_id,
+                        enrollment_id=updated.id,
+                        group_id=updated.group_id,
+                        changes_summary="<br>".join(changes_summary_parts),
+                        performed_by=performed_by,
+                        background_tasks=background_tasks,
+                    )
+                return UpdateEnrollmentResult(enrollment=EnrollmentDTO.model_validate(updated), warnings=warnings)
+
+            return UpdateEnrollmentResult(enrollment=EnrollmentDTO.model_validate(enrollment))
+
     def apply_sibling_discount(
         self, enrollment_id: int, discount_amount: float = 50.0
     ) -> EnrollmentDTO:
@@ -218,6 +319,7 @@ class EnrollmentCoreService:
                         student_id=enrollment.student_id,
                         enrollment_id=enrollment.id,
                         action="dropped",
+                        changes_summary=reason,
                         performed_by=performed_by,
                     )
                 )

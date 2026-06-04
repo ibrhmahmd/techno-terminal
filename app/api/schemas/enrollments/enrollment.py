@@ -19,6 +19,9 @@ class EnrollmentPublic(BaseModel):
     id: int
     student_id: int
     group_id: int
+    group_name: Optional[str] = None
+    course_name: Optional[str] = None
+    instructor_name: Optional[str] = None
     level_number: int
     status: str
     amount_due: Optional[float] = None

@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, Query, BackgroundTasks
 from app.api.schemas.common import ApiResponse
 from app.api.schemas.enrollments.enrollment import EnrollmentPublic, StudentEnrollmentSummaryPublic
 from app.api.dependencies import require_admin, require_any, get_enrollment_service, get_enrollment_directory_service
-from app.modules.enrollments.core.schemas import EnrollStudentInput, TransferStudentInput
+from app.modules.enrollments.core.schemas import EnrollStudentInput, TransferStudentInput, UpdateEnrollmentInput
 from app.modules.auth import User
 from app.modules.enrollments.core.service import EnrollmentCoreService as EnrollmentService
 from app.modules.enrollments.directory.service import EnrollmentDirectoryService
@@ -43,6 +43,32 @@ def enroll_student(
     if result.capacity_exceeded:
         msg += " WARNING: Group capacity exceeded."
         
+    return ApiResponse(
+        data=EnrollmentPublic.model_validate(result.enrollment),
+        message=msg
+    )
+
+
+@router.patch(
+    "/enrollments/{enrollment_id}",
+    response_model=ApiResponse[EnrollmentPublic],
+    summary="Update enrollment details",
+)
+def update_enrollment(
+    enrollment_id: int,
+    body: UpdateEnrollmentInput,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(require_admin),
+    svc: EnrollmentService = Depends(get_enrollment_service),
+):
+    result = svc.update_enrollment(
+        enrollment_id, body,
+        performed_by=current_user.id,
+        background_tasks=background_tasks,
+    )
+    msg = "Enrollment updated successfully."
+    if result.warnings:
+        msg += " " + " ".join(result.warnings)
     return ApiResponse(
         data=EnrollmentPublic.model_validate(result.enrollment),
         message=msg

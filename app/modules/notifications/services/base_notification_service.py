@@ -250,24 +250,40 @@ class BaseNotificationService:
         # Build entity info section if available
         entity_info = ""
         if context.entity_id:
-            entity_info = f"- Entity ID: {context.entity_id}\n"
+            entity_info += f'<p style="margin: 0 0 8px 0; font-size: 14px;"><span style="color: #64748b; display: inline-block; width: 140px;">Entity ID</span> <strong>{context.entity_id}</strong></p>'
         if context.entity_description:
-            entity_info += f"- Entity Description: {context.entity_description}\n"
+            entity_info += f'<p style="margin: 0 0 8px 0; font-size: 14px;"><span style="color: #64748b; display: inline-block; width: 140px;">Entity Description</span> <strong>{context.entity_description}</strong></p>'
         
-        body = f"""NOTIFICATION FALLBACK ALERT
-
-A notification fallback was triggered due to empty or invalid recipient configuration.
-
-Details:
-- Notification Type: {context.notification_type}
-{entity_info}- Intended Recipients: {context.intended_recipients_count}
-- Fallback Email: {FALLBACK_EMAIL}
-- Timestamp: {datetime.now(timezone.utc).isoformat()}
-
-ACTION REQUIRED:
-Please check the notification_additional_recipients table configuration.
-Add valid email recipients to ensure notifications are delivered properly.
-        """
+        body = f"""<html>
+<body style="background-color: #f8f9ff; font-family: 'Inter', -apple-system, sans-serif; padding: 20px; color: #0b1c30;">
+  <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 12px 40px rgba(11,28,48,0.06); border: 1px solid rgba(198,198,205,0.15);">
+    <div style="background-color: #e11d48; padding: 24px; text-align: center;">
+      <h1 style="color: #ffffff; margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 24px; letter-spacing: -0.02em;">Techno Kids Diagnostics</h1>
+    </div>
+    <div style="padding: 32px;">
+      <h2 style="margin-top: 0; font-size: 20px; font-weight: 600; color: #e11d48;">Notification Fallback Activated</h2>
+      <p style="line-height: 1.6;">A notification fallback was triggered because no valid active recipients were found for this event type.</p>
+      
+      <div style="background-color: #fff1f2; border-left: 4px solid #e11d48; padding: 16px; border-radius: 4px; margin: 24px 0;">
+        <p style="margin: 0 0 12px 0; font-size: 14px; font-weight: 600; color: #e11d48;">Event Details</p>
+        <p style="margin: 0 0 8px 0; font-size: 14px;"><span style="color: #64748b; display: inline-block; width: 140px;">Notification Type</span> <strong>{context.notification_type}</strong></p>
+        {entity_info}
+        <p style="margin: 0 0 8px 0; font-size: 14px;"><span style="color: #64748b; display: inline-block; width: 140px;">Intended Recipients</span> <strong>{context.intended_recipients_count}</strong></p>
+        <p style="margin: 0 0 8px 0; font-size: 14px;"><span style="color: #64748b; display: inline-block; width: 140px;">Fallback Email</span> <strong>{FALLBACK_EMAIL}</strong></p>
+        <p style="margin: 0; font-size: 14px;"><span style="color: #64748b; display: inline-block; width: 140px;">Timestamp (UTC)</span> <strong>{datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")}</strong></p>
+      </div>
+      
+      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 16px; border-radius: 4px; margin-top: 24px;">
+        <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #0f172a;">Action Required</p>
+        <p style="margin: 0; font-size: 14px; line-height: 1.5; color: #475569;">Please verify your <code style="background: #e2e8f0; padding: 2px 4px; border-radius: 4px;">notification_additional_recipients</code> configuration. Ensure emails are correct and marked as active.</p>
+      </div>
+    </div>
+    <div style="background-color: #f8f9ff; border-top: 1px solid rgba(198,198,205,0.15); padding: 24px; text-align: center;">
+      <p style="color: #64748b; font-size: 12px; margin: 0;">&copy; Techno Kids Operations</p>
+    </div>
+  </div>
+</body>
+</html>"""
         
         try:
             # Send alert email to fallback address

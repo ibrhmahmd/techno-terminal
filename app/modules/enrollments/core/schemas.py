@@ -19,9 +19,23 @@ class TransferStudentInput(BaseModel):
     created_by: Optional[int] = None
 
 
+class UpdateEnrollmentInput(BaseModel):
+    amount_due: Optional[float] = None
+    discount_applied: Optional[float] = None
+    notes: Optional[str] = None
+
+
+class UpdateEnrollmentResult(BaseModel):
+    enrollment: "EnrollmentDTO"
+    warnings: list[str] = []
+
+
 class EnrollmentDTO(EnrollmentBase):
     model_config = ConfigDict(from_attributes=True)
     id: int
+    group_name: Optional[str] = None
+    course_name: Optional[str] = None
+    instructor_name: Optional[str] = None
     enrolled_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

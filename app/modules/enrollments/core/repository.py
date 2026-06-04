@@ -46,3 +46,15 @@ def update_discount(
         apply_update_audit(enrollment)
         session.add(enrollment)
     return enrollment
+
+
+def update_enrollment_fields(
+    session: Session, enrollment_id: int, updates: dict
+) -> Enrollment | None:
+    enrollment = session.get(Enrollment, enrollment_id)
+    if enrollment:
+        for field, value in updates.items():
+            setattr(enrollment, field, value)
+        apply_update_audit(enrollment)
+        session.add(enrollment)
+    return enrollment

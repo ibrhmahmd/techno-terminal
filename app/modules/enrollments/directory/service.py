@@ -17,6 +17,22 @@ class EnrollmentDirectoryService:
             result = []
             for enrollment in enrollments:
                 dto = EnrollmentDTO.model_validate(enrollment)
+                
+                # Fetch group, course, and instructor names
+                group = session.get(Group, enrollment.group_id)
+                if group:
+                    dto.group_name = group.name
+                    if group.course_id:
+                        from app.modules.academics.models.course_models import Course
+                        course = session.get(Course, group.course_id)
+                        if course:
+                            dto.course_name = course.name
+                    if group.instructor_id:
+                        from app.modules.hr.models.employee_models import Employee
+                        instructor = session.get(Employee, group.instructor_id)
+                        if instructor:
+                            dto.instructor_name = instructor.full_name
+
                 pay_repo = PaymentRepository(session)
                 balance_info = pay_repo.get_enrollment_balance(enrollment.id)
                 if balance_info:

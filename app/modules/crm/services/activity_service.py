@@ -100,6 +100,7 @@ class StudentActivityService:
                 "action": dto.action,
                 "old_group_id": dto.old_group_id,
                 "new_group_id": dto.new_group_id,
+                "changes_summary": dto.changes_summary,
             },
             performed_by=dto.performed_by,
         )
