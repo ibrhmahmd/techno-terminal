@@ -27,6 +27,14 @@ class PeriodReportAggregateDTO(BaseModel):
     attendance_rate: float = 0.0
     new_enrollments: int = 0
     active_students: int = 0
+    total_sessions: int = 0
+    debtor_count: int = 0
+    total_debt: float = 0.0
+    dropped_enrollments: int = 0
+    top_groups: str = ""
+    revenue_by_course: str = ""
+    top_courses: str = ""
+    revenue_breakdown: str = ""
 
 
 logger = logging.getLogger(__name__)
@@ -95,9 +103,15 @@ class ReportNotificationService(BaseNotificationService):
         variables = {
             "week_start": week_start.strftime("%Y-%m-%d"),
             "week_end": week_end.strftime("%Y-%m-%d"),
-            "total_revenue": f"{aggregates.total_revenue:.2f}",
+            "total_revenue": f"{aggregates.total_revenue:,.2f}",
             "new_students": aggregates.new_students,
             "attendance_rate": f"{aggregates.attendance_rate:.1f}",
+            "new_enrollments": aggregates.new_enrollments,
+            "total_sessions": aggregates.total_sessions,
+            "debtor_count": aggregates.debtor_count,
+            "total_debt": f"{aggregates.total_debt:,.2f}",
+            "top_groups": aggregates.top_groups,
+            "revenue_by_course": aggregates.revenue_by_course,
         }
 
         # Send to all enabled recipients (admins + additional recipients)
@@ -121,9 +135,17 @@ class ReportNotificationService(BaseNotificationService):
 
         variables = {
             "month": today.strftime("%B %Y"),
-            "total_revenue": f"{aggregates.total_revenue:.2f}",
+            "total_revenue": f"{aggregates.total_revenue:,.2f}",
             "new_enrollments": aggregates.new_enrollments,
             "active_students": aggregates.active_students,
+            "total_sessions": aggregates.total_sessions,
+            "attendance_rate": f"{aggregates.attendance_rate:.1f}",
+            "new_students": aggregates.new_students,
+            "dropped_enrollments": aggregates.dropped_enrollments,
+            "debtor_count": aggregates.debtor_count,
+            "total_debt": f"{aggregates.total_debt:,.2f}",
+            "top_courses": aggregates.top_courses,
+            "revenue_breakdown": aggregates.revenue_breakdown,
         }
         
         # Send to all enabled recipients (admins + additional recipients)
@@ -215,7 +237,7 @@ class ReportNotificationService(BaseNotificationService):
         def _row_class(idx: int) -> str:
             return 'row-even' if idx % 2 == 0 else 'row-odd'
 
-        # ── Session-3 Unpaid Students Section ────────────────────────────
+        # ── Session-3 Unpaid Students Section (Yesterday) ────────────────
         debtors_section = ""
         if aggregates.today_unpaid_attendees:
             rows = ""
@@ -229,7 +251,7 @@ class ReportNotificationService(BaseNotificationService):
                 )
             debtors_section = f"""
             <div class="section-default" style="background: #f8f9ff; padding: 20px 32px;">
-                <h3 class="section-title" style="font-family: 'Space Grotesk', Arial, sans-serif; font-size: 15px; font-weight: 600; color: #0b1c30; margin: 0 0 8px 0;">Unpaid Students (Session 3)</h3>
+                <h3 class="section-title" style="font-family: 'Space Grotesk', Arial, sans-serif; font-size: 15px; font-weight: 600; color: #0b1c30; margin: 0 0 8px 0;">Session 3 Alert — Yesterday</h3>
                 <table class="data-table" style="margin-top: 8px; width: 100%; border-collapse: collapse; font-size: 12px;">
                     <tr class="header-row"><td style="padding: 8px 10px; color: #fff; font-weight: 600;">Student</td><td style="padding: 8px 10px; color: #fff; font-weight: 600;">Group</td><td style="padding: 8px 10px; color: #fff; font-weight: 600; text-align: right;">Amount</td></tr>
                     {rows}
@@ -238,8 +260,35 @@ class ReportNotificationService(BaseNotificationService):
         else:
             debtors_section = """
             <div class="section-default" style="background: #f8f9ff; padding: 20px 32px;">
-                <h3 class="section-title" style="font-family: 'Space Grotesk', Arial, sans-serif; font-size: 15px; font-weight: 600; color: #0b1c30; margin: 0 0 8px 0;">Unpaid Students (Session 3)</h3>
-                <p class="empty-state" style="color: #9ca3af; font-style: italic; font-size: 13px; text-align: center; padding: 16px; background: #ffffff;">No unpaid students in today's session 3 groups.</p>
+                <h3 class="section-title" style="font-family: 'Space Grotesk', Arial, sans-serif; font-size: 15px; font-weight: 600; color: #0b1c30; margin: 0 0 8px 0;">Session 3 Alert — Yesterday</h3>
+                <p class="empty-state" style="color: #9ca3af; font-style: italic; font-size: 13px; text-align: center; padding: 16px; background: #ffffff;">No unpaid students in yesterday's session 3 groups.</p>
+            </div>"""
+
+        # ── Cumulative Unpaid Students (3+ Sessions) ────────────────────
+        cumulative_debtors_section = ""
+        if aggregates.cumulative_unpaid_debtors:
+            rows = ""
+            for i, u in enumerate(aggregates.cumulative_unpaid_debtors):
+                rows += (
+                    f'<tr class="{_row_class(i)}">'
+                    f'<td style="padding: 6px 10px;">{u.student_name}</td>'
+                    f'<td style="padding: 6px 10px;">{u.group_name}</td>'
+                    f'<td style="padding: 6px 10px; text-align: right;">{u.amount_owed:,.2f} EGP</td>'
+                    f'</tr>'
+                )
+            cumulative_debtors_section = f"""
+            <div class="section-white" style="background: #ffffff; padding: 20px 32px;">
+                <h3 class="section-title" style="font-family: 'Space Grotesk', Arial, sans-serif; font-size: 15px; font-weight: 600; color: #9a3412; margin: 0 0 8px 0;">Ongoing Debtors (3+ Sessions Attended)</h3>
+                <table class="data-table" style="margin-top: 8px; width: 100%; border-collapse: collapse; font-size: 12px;">
+                    <tr class="header-row"><td style="padding: 8px 10px; background-color: #b45309; color: #fff; font-weight: 600;">Student</td><td style="padding: 8px 10px; background-color: #b45309; color: #fff; font-weight: 600;">Group</td><td style="padding: 8px 10px; background-color: #b45309; color: #fff; font-weight: 600; text-align: right;">Amount Owed</td></tr>
+                    {rows}
+                </table>
+            </div>"""
+        else:
+            cumulative_debtors_section = """
+            <div class="section-white" style="background: #ffffff; padding: 20px 32px;">
+                <h3 class="section-title" style="font-family: 'Space Grotesk', Arial, sans-serif; font-size: 15px; font-weight: 600; color: #9a3412; margin: 0 0 8px 0;">Ongoing Debtors (3+ Sessions Attended)</h3>
+                <p class="empty-state" style="color: #9ca3af; font-style: italic; font-size: 13px; text-align: center; padding: 16px; background: #f8f9ff;">No students with 3+ sessions currently have unpaid balances.</p>
             </div>"""
 
         # ── Tomorrow Preview Section ──────────────────────────────────────
@@ -436,6 +485,7 @@ class ReportNotificationService(BaseNotificationService):
             "instructor_summary": instructor_summary_html,
             "payments_by_type": "",
             "debtors_section": debtors_section,
+            "cumulative_debtors_section": cumulative_debtors_section,
             "tomorrow_preview_section": tomorrow_preview_section,
         }
 
@@ -448,12 +498,19 @@ class ReportNotificationService(BaseNotificationService):
             repo = ReportsRepository(session)
             aggregates = repo.get_daily_aggregates(target_date)
 
-            # Fetch session-3 unpaid attendees (CS notification target)
+            # Fetch session-3 unpaid attendees (yesterday alert)
             try:
                 aggregates.today_unpaid_attendees = repo.fetch_session3_unpaid(target_date)
             except Exception as e:
                 logger.warning(f"Could not fetch session-3 unpaid attendees: {e}")
                 aggregates.today_unpaid_attendees = []
+
+            # Fetch cumulative 3+ sessions unpaid attendees
+            try:
+                aggregates.cumulative_unpaid_debtors = repo.fetch_cumulative_unpaid(target_date)
+            except Exception as e:
+                logger.warning(f"Could not fetch cumulative unpaid attendees: {e}")
+                aggregates.cumulative_unpaid_debtors = []
 
             # Fetch tomorrow preview via repo
             try:
@@ -464,86 +521,167 @@ class ReportNotificationService(BaseNotificationService):
             return aggregates
     
     def _fetch_weekly_aggregates(self, week_start: date, week_end: date) -> PeriodReportAggregateDTO:
-        """Fetch weekly metrics."""
-        total_revenue = Decimal("0.00")
-        new_students = 0
-        attendance_rate = 0.0
-
+        """Fetch enriched weekly metrics."""
+        from app.db.connection import get_session
+        from sqlalchemy import text
+        
+        dto = PeriodReportAggregateDTO()
+        
         try:
-            from app.modules.analytics.services.financial_service import FinancialAnalyticsService
-            fin_svc = FinancialAnalyticsService()
-            revenue_data = fin_svc.get_revenue_by_date(week_start, week_end)
-            total_revenue = sum(r.net_revenue for r in revenue_data)
-        except Exception as e:
-            logger.warning(f"Could not fetch weekly revenue: {e}")
-
-        try:
-            from app.db.connection import get_session
-            from sqlmodel import select, func
-            from app.modules.enrollments.models.enrollment_models import Enrollment
             with get_session() as session:
-                stmt = select(func.count()).select_from(Enrollment).where(
-                    Enrollment.enrolled_at >= week_start,
-                    Enrollment.enrolled_at <= week_end,
-                )
-                new_students = session.exec(stmt).one() or 0
-        except Exception as e:
-            logger.warning(f"Could not fetch weekly new students: {e}")
+                # Basic metrics
+                res = session.execute(text("""
+                    SELECT 
+                        COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type IN ('payment','charge')), 0) - COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type = 'refund'), 0) AS total_revenue,
+                        (SELECT COUNT(*) FROM enrollments WHERE DATE(COALESCE(enrolled_at, created_at)) BETWEEN :start AND :end) AS new_enrollments,
+                        (SELECT COUNT(*) FROM sessions WHERE session_date BETWEEN :start AND :end AND status = 'completed') AS total_sessions,
+                        (SELECT COUNT(DISTINCT student_id) FROM v_enrollment_balance WHERE balance < 0) AS debtor_count,
+                        (SELECT COALESCE(SUM(-balance), 0) FROM v_enrollment_balance WHERE balance < 0) AS total_debt
+                    FROM receipts r
+                    JOIN payments p ON p.receipt_id = r.id
+                    WHERE DATE(COALESCE(r.paid_at, r.created_at)) BETWEEN :start AND :end
+                """), {"start": week_start, "end": week_end}).one()
+                
+                dto.total_revenue = Decimal(str(res.total_revenue))
+                dto.new_enrollments = res.new_enrollments
+                dto.total_sessions = res.total_sessions
+                dto.debtor_count = res.debtor_count
+                dto.total_debt = float(res.total_debt)
 
-        try:
-            from app.modules.analytics.services.bi_service import BIAnalyticsService
-            bi_svc = BIAnalyticsService()
-            retention_data = bi_svc.get_retention_metrics()
-            if retention_data:
-                total_active = sum(r.active_count for r in retention_data)
-                total_all = sum(r.total_enrollments for r in retention_data)
-                attendance_rate = (total_active / total_all * 100) if total_all > 0 else 0.0
-        except Exception as e:
-            logger.warning(f"Could not fetch weekly attendance rate: {e}")
+                # Top groups
+                top_groups_rows = session.execute(text("""
+                    SELECT g.name AS group_name, COALESCE(SUM(p.amount), 0) AS revenue
+                    FROM groups g
+                    JOIN enrollments e ON e.group_id = g.id
+                    JOIN payments p ON p.enrollment_id = e.id
+                    JOIN receipts r ON p.receipt_id = r.id
+                    WHERE DATE(COALESCE(r.paid_at, r.created_at)) BETWEEN :start AND :end
+                      AND p.transaction_type IN ('payment','charge')
+                    GROUP BY g.id, g.name
+                    ORDER BY revenue DESC LIMIT 5
+                """), {"start": week_start, "end": week_end}).all()
+                
+                if top_groups_rows:
+                    tr = "".join(f'<tr><td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;">{r.group_name}</td><td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;text-align:right;">{r.revenue:,.2f}</td></tr>' for r in top_groups_rows)
+                    dto.top_groups = f'<table style="width:100%;font-size:12px;border-collapse:collapse;"><tr><th style="padding:4px 8px;text-align:left;background:#f8f9ff;">Group</th><th style="padding:4px 8px;text-align:right;background:#f8f9ff;">Revenue (EGP)</th></tr>{tr}</table>'
+                else:
+                    dto.top_groups = "<p style='font-size:12px;color:#64748b;'>No revenue generated this week.</p>"
 
-        return PeriodReportAggregateDTO(
-            total_revenue=total_revenue,
-            new_students=new_students,
-            attendance_rate=attendance_rate,
-        )
+                # Revenue by course
+                course_rows = session.execute(text("""
+                    SELECT c.name AS course_name, COALESCE(SUM(p.amount), 0) AS revenue
+                    FROM courses c
+                    JOIN groups g ON g.course_id = c.id
+                    JOIN enrollments e ON e.group_id = g.id
+                    JOIN payments p ON p.enrollment_id = e.id
+                    JOIN receipts r ON p.receipt_id = r.id
+                    WHERE DATE(COALESCE(r.paid_at, r.created_at)) BETWEEN :start AND :end
+                      AND p.transaction_type IN ('payment','charge')
+                    GROUP BY c.id, c.name
+                    ORDER BY revenue DESC
+                """), {"start": week_start, "end": week_end}).all()
+                
+                if course_rows:
+                    tr = "".join(f'<tr><td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;">{r.course_name}</td><td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;text-align:right;">{r.revenue:,.2f}</td></tr>' for r in course_rows)
+                    dto.revenue_by_course = f'<table style="width:100%;font-size:12px;border-collapse:collapse;"><tr><th style="padding:4px 8px;text-align:left;background:#f8f9ff;">Course</th><th style="padding:4px 8px;text-align:right;background:#f8f9ff;">Revenue (EGP)</th></tr>{tr}</table>'
+                else:
+                    dto.revenue_by_course = "<p style='font-size:12px;color:#64748b;'>No revenue generated this week.</p>"
+
+                # Attendance rate
+                from app.modules.analytics.services.bi_service import BIAnalyticsService
+                bi_svc = BIAnalyticsService()
+                retention_data = bi_svc.get_retention_metrics()
+                if retention_data:
+                    total_active = sum(r.active_count for r in retention_data)
+                    total_all = sum(r.total_enrollments for r in retention_data)
+                    dto.attendance_rate = (total_active / total_all * 100) if total_all > 0 else 0.0
+                    dto.active_students = total_active
+        except Exception as e:
+            logger.warning(f"Could not fetch weekly aggregates: {e}")
+
+        return dto
     
     def _fetch_monthly_aggregates(self, month_start: date, month_end: date) -> PeriodReportAggregateDTO:
-        """Fetch monthly metrics."""
-        total_revenue = Decimal("0.00")
-        new_enrollments = 0
-        active_students = 0
+        """Fetch enriched monthly metrics."""
+        from app.db.connection import get_session
+        from sqlalchemy import text
+        
+        dto = PeriodReportAggregateDTO()
 
         try:
-            from app.modules.analytics.services.financial_service import FinancialAnalyticsService
-            fin_svc = FinancialAnalyticsService()
-            revenue_data = fin_svc.get_revenue_by_date(month_start, month_end)
-            total_revenue = sum(r.net_revenue for r in revenue_data)
-        except Exception as e:
-            logger.warning(f"Could not fetch monthly revenue: {e}")
-
-        try:
-            from app.db.connection import get_session
-            from sqlmodel import select, func
-            from app.modules.enrollments.models.enrollment_models import Enrollment
             with get_session() as session:
-                new_stmt = select(func.count()).select_from(Enrollment).where(
-                    Enrollment.enrolled_at >= month_start,
-                    Enrollment.enrolled_at <= month_end,
-                )
-                new_enrollments = session.exec(new_stmt).one() or 0
+                # Basic metrics
+                res = session.execute(text("""
+                    SELECT 
+                        COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type IN ('payment','charge')), 0) - COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type = 'refund'), 0) AS total_revenue,
+                        (SELECT COUNT(*) FROM enrollments WHERE DATE(COALESCE(enrolled_at, created_at)) BETWEEN :start AND :end) AS new_enrollments,
+                        (SELECT COUNT(*) FROM sessions WHERE session_date BETWEEN :start AND :end AND status = 'completed') AS total_sessions,
+                        (SELECT COUNT(DISTINCT student_id) FROM v_enrollment_balance WHERE balance < 0) AS debtor_count,
+                        (SELECT COALESCE(SUM(-balance), 0) FROM v_enrollment_balance WHERE balance < 0) AS total_debt,
+                        (SELECT COUNT(*) FROM enrollments WHERE status = 'dropped' AND DATE(updated_at) BETWEEN :start AND :end) AS dropped_enrollments,
+                        (SELECT COUNT(DISTINCT student_id) FROM enrollments WHERE DATE(COALESCE(enrolled_at, created_at)) BETWEEN :start AND :end AND student_id NOT IN (SELECT student_id FROM enrollments WHERE DATE(COALESCE(enrolled_at, created_at)) < :start)) AS new_students,
+                        (SELECT COUNT(*) FROM enrollments WHERE status = 'active') AS active_students
+                    FROM receipts r
+                    JOIN payments p ON p.receipt_id = r.id
+                    WHERE DATE(COALESCE(r.paid_at, r.created_at)) BETWEEN :start AND :end
+                """), {"start": month_start, "end": month_end}).one()
+                
+                dto.total_revenue = Decimal(str(res.total_revenue))
+                dto.new_enrollments = res.new_enrollments
+                dto.total_sessions = res.total_sessions
+                dto.debtor_count = res.debtor_count
+                dto.total_debt = float(res.total_debt)
+                dto.dropped_enrollments = res.dropped_enrollments
+                dto.new_students = res.new_students
+                dto.active_students = res.active_students
 
-                active_stmt = select(func.count()).select_from(Enrollment).where(
-                    Enrollment.status == "active"
-                )
-                active_students = session.exec(active_stmt).one() or 0
+                # Top courses
+                course_rows = session.execute(text("""
+                    SELECT c.name AS course_name, COUNT(e.id) AS enrollment_count
+                    FROM courses c
+                    JOIN groups g ON g.course_id = c.id
+                    JOIN enrollments e ON e.group_id = g.id
+                    WHERE DATE(COALESCE(e.enrolled_at, e.created_at)) BETWEEN :start AND :end
+                    GROUP BY c.id, c.name
+                    ORDER BY enrollment_count DESC LIMIT 5
+                """), {"start": month_start, "end": month_end}).all()
+                
+                if course_rows:
+                    tr = "".join(f'<tr><td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;">{r.course_name}</td><td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;text-align:right;">{r.enrollment_count}</td></tr>' for r in course_rows)
+                    dto.top_courses = f'<table style="width:100%;font-size:12px;border-collapse:collapse;"><tr><th style="padding:4px 8px;text-align:left;background:#f8f9ff;">Course</th><th style="padding:4px 8px;text-align:right;background:#f8f9ff;">New Enrollments</th></tr>{tr}</table>'
+                else:
+                    dto.top_courses = "<p style='font-size:12px;color:#64748b;'>No new enrollments this month.</p>"
+
+                # Revenue breakdown by type
+                type_rows = session.execute(text("""
+                    SELECT p.payment_type, COALESCE(SUM(p.amount), 0) AS revenue
+                    FROM payments p
+                    JOIN receipts r ON p.receipt_id = r.id
+                    WHERE DATE(COALESCE(r.paid_at, r.created_at)) BETWEEN :start AND :end
+                      AND p.transaction_type IN ('payment','charge')
+                    GROUP BY p.payment_type
+                    ORDER BY revenue DESC
+                """), {"start": month_start, "end": month_end}).all()
+                
+                if type_rows:
+                    tr = "".join(f'<tr><td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;text-transform:capitalize;">{r.payment_type}</td><td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;text-align:right;">{r.revenue:,.2f}</td></tr>' for r in type_rows)
+                    dto.revenue_breakdown = f'<table style="width:100%;font-size:12px;border-collapse:collapse;"><tr><th style="padding:4px 8px;text-align:left;background:#f8f9ff;">Type</th><th style="padding:4px 8px;text-align:right;background:#f8f9ff;">Revenue (EGP)</th></tr>{tr}</table>'
+                else:
+                    dto.revenue_breakdown = "<p style='font-size:12px;color:#64748b;'>No revenue generated this month.</p>"
+
+                # Attendance rate
+                from app.modules.analytics.services.bi_service import BIAnalyticsService
+                bi_svc = BIAnalyticsService()
+                retention_data = bi_svc.get_retention_metrics()
+                if retention_data:
+                    total_active = sum(r.active_count for r in retention_data)
+                    total_all = sum(r.total_enrollments for r in retention_data)
+                    dto.attendance_rate = (total_active / total_all * 100) if total_all > 0 else 0.0
+
         except Exception as e:
-            logger.warning(f"Could not fetch monthly enrollment stats: {e}")
+            logger.warning(f"Could not fetch monthly aggregates: {e}")
 
-        return PeriodReportAggregateDTO(
-            total_revenue=total_revenue,
-            new_enrollments=new_enrollments,
-            active_students=active_students,
-        )
+        return dto
     
     # ── Bulk Marketing (now sends to all admins via email) ──────────────
     

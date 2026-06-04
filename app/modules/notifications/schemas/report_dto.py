@@ -80,6 +80,9 @@ class DailyReportAggregateDTO(BaseModel):
     session_details: list[SessionDetailItem] = []
     payments_by_type: list[PaymentTypeGroup] = []
     instructor_summary: list[InstructorSummaryItem] = []
+    
+    # Cumulative Debtors (3+ sessions attended)
+    cumulative_unpaid_debtors: list[UnpaidAttendeeItem] = []
     total_outstanding_debt: float = 0.0
     debtor_count: int = 0
     top_debtors: list[TopDebtorItem] = []

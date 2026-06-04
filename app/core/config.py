@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     # Notifications Configuration
     fallback_email: str = "ibrahim.ahmd.net@gmail.com"
     scheduler_enabled: bool = True
-    daily_report_hour: int = 20
+    daily_report_hour: int = 8
     daily_report_minute: int = 0
 
     # Logging Configuration

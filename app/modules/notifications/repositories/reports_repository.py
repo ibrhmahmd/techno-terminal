@@ -278,6 +278,46 @@ class ReportsRepository:
             logger.warning(f"Could not fetch session-3 unpaid attendees: {e}")
             return []
 
+    def fetch_cumulative_unpaid(self, as_of_date: date) -> list[UnpaidAttendeeItem]:
+        """All active enrollments with 3+ attended sessions and a negative balance."""
+        try:
+            stmt = text("""
+                SELECT DISTINCT
+                    st.full_name AS student_name,
+                    COALESCE(g.name, '') AS group_name,
+                    COALESCE(co.name, '') AS course_name,
+                    -vb.balance AS amount_owed
+                FROM enrollments e
+                JOIN students st ON e.student_id = st.id
+                JOIN groups g ON e.group_id = g.id
+                LEFT JOIN courses co ON g.course_id = co.id
+                JOIN v_enrollment_balance vb ON vb.enrollment_id = e.id
+                JOIN attendance a ON a.student_id = st.id
+                JOIN sessions s ON a.session_id = s.id
+                    AND s.group_id = e.group_id
+                    AND s.level_number = e.level_number
+                    AND s.session_date <= :as_of_date
+                WHERE e.status = 'active'
+                  AND a.status = 'present'
+                  AND vb.balance < 0
+                GROUP BY st.id, st.full_name, g.name, co.name, vb.balance, e.id
+                HAVING COUNT(a.id) >= 3
+                ORDER BY amount_owed DESC
+            """)
+            rows = self._session.execute(stmt, {"as_of_date": as_of_date}).all()
+            return [
+                UnpaidAttendeeItem(
+                    student_name=row.student_name,
+                    group_name=row.group_name,
+                    amount_owed=float(row.amount_owed),
+                    payment_status="not_paid",
+                )
+                for row in rows
+            ]
+        except SQLAlchemyError as e:
+            logger.warning(f"Could not fetch cumulative unpaid attendees: {e}")
+            return []
+
     def fetch_tomorrow_preview(self, today: date) -> TomorrowPreviewDTO:
         """Sessions scheduled for tomorrow with unpaid attendee alerts."""
         tomorrow = today + timedelta(days=1)

@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 from typing import Callable
 import zoneinfo
@@ -42,7 +42,8 @@ async def start_report_scheduler(make_service: Callable[[], NotificationService]
                     svc = make_service()
                     try:
                         if last_daily != today:
-                            await svc.send_daily_report()
+                            yesterday = today - timedelta(days=1)
+                            await svc.send_daily_report(target_date=yesterday)
                             last_daily = today
 
                         if now.weekday() == 0 and last_weekly != today:
