@@ -44,11 +44,24 @@ def get_logs(
     status: Optional[str] = Query(None),
     channel: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
+    recipient_type: Optional[str] = Query(None),
     _user: User = Depends(require_admin),
     svc: NotificationService = Depends(get_notification_service)
 ):
-    logs = svc.get_logs(limit=limit, offset=offset, status=status, channel=channel, search=search)
-    total = svc.count_logs(status=status, channel=channel, search=search)
+    logs = svc.get_logs(
+        limit=limit,
+        offset=offset,
+        status=status,
+        channel=channel,
+        search=search,
+        recipient_type=recipient_type
+    )
+    total = svc.count_logs(
+        status=status,
+        channel=channel,
+        search=search,
+        recipient_type=recipient_type
+    )
     return PaginatedResponse(
         data=[NotificationLogDTO.model_validate(log) for log in logs],
         total=total,
