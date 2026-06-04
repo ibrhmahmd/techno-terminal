@@ -3,14 +3,19 @@ Lazy Supabase client factories. Avoid creating the admin client at import time
 so modules like hr_service can be imported without SUPABASE_SERVICE_ROLE_KEY set.
 """
 from functools import lru_cache
-from supabase import Client, create_client
+import httpx
+from supabase import Client, create_client, ClientOptions
 
 from app.core.config import settings
 
 
 @lru_cache(maxsize=1)
 def get_supabase_anon() -> Client:
-    return create_client(settings.supabase_url, settings.supabase_anon_key)
+    return create_client(
+        settings.supabase_url, 
+        settings.supabase_anon_key,
+        options=ClientOptions(httpx_client=httpx.Client(trust_env=False))
+    )
 
 
 def get_supabase_admin() -> Client:
@@ -24,4 +29,8 @@ def get_supabase_admin() -> Client:
             "SUPABASE_SERVICE_ROLE_KEY is not set. Required for admin Supabase operations "
             "(staff provisioning, password reset, seeding)."
         )
-    return create_client(settings.supabase_url, key)
+    return create_client(
+        settings.supabase_url, 
+        key,
+        options=ClientOptions(httpx_client=httpx.Client(trust_env=False))
+    )
