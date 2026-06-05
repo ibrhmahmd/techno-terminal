@@ -61,15 +61,26 @@ class BalanceService(IBalanceService):
         - Enrollment counts (total and unpaid)
         - Full list of enrollment balances (enrollments field)
         """
+        from app.modules.competitions.models.team_models import TeamMember
+        from sqlmodel import select
+
         enrollments = self._uow.payments.get_student_balances(student_id)
         
-        total_amount_due = sum(e.amount_due for e in enrollments)
-        total_discounts = sum(e.discount_applied for e in enrollments)
-        total_paid = sum(e.amount_paid for e in enrollments)
-        net_balance = sum(e.remaining_balance for e in enrollments)
+        team_memberships = self._uow._session.exec(
+            select(TeamMember).where(TeamMember.student_id == student_id)
+        ).all()
         
-        # Count unpaid (remaining_balance < 0 means debt)
-        unpaid_count = sum(1 for e in enrollments if e.remaining_balance < 0)
+        competition_amount_due = float(sum(m.amount_due for m in team_memberships))
+        competition_paid = float(sum(m.amount_paid for m in team_memberships))
+        competition_remaining = float(sum((m.amount_paid - m.amount_due) for m in team_memberships))
+
+        total_amount_due = sum(e.amount_due for e in enrollments) + competition_amount_due
+        total_discounts = sum(e.discount_applied for e in enrollments)
+        total_paid = sum(e.amount_paid for e in enrollments) + competition_paid
+        net_balance = sum(e.remaining_balance for e in enrollments) + competition_remaining
+        
+        # Count unpaid (remaining_balance < 0 means debt; amount_due > amount_paid means competition debt)
+        unpaid_count = sum(1 for e in enrollments if e.remaining_balance < 0) + sum(1 for m in team_memberships if m.amount_due > m.amount_paid)
         
         return StudentBalanceSummaryDTO(
             student_id=student_id,

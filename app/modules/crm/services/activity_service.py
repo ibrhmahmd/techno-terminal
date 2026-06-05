@@ -107,6 +107,14 @@ class StudentActivityService:
 
     def log_payment(self, dto: LogPaymentDTO) -> StudentActivityLog:
         """Log payment activity."""
+        base_meta = {
+            "payment_id": dto.payment_id,
+            "amount": str(dto.amount),
+            "payment_type": dto.payment_type,
+        }
+        if dto.metadata:
+            base_meta.update(dto.metadata)
+
         return self._uow.activities.create_activity_log(
             student_id=dto.student_id,
             activity_type="payment",
@@ -114,11 +122,7 @@ class StudentActivityService:
             reference_type="payment",
             reference_id=dto.payment_id,
             description=f"Payment of {dto.amount} received",
-            metadata={
-                "payment_id": dto.payment_id,
-                "amount": str(dto.amount),
-                "payment_type": dto.payment_type,
-            },
+            metadata=base_meta,
             performed_by=dto.performed_by,
         )
 

@@ -236,7 +236,7 @@ def list_student_memberships_enriched(
     stmt = (
         select(TeamMember, Team, Competition)
         .join(Team, TeamMember.team_id == Team.id)
-        .join(Competition, TeamMember.team_id == Competition.id, isouter=True)
+        .join(Competition, Team.competition_id == Competition.id, isouter=True)
         .where(TeamMember.student_id == student_id)
     )
     rows = list(db.exec(stmt).all())

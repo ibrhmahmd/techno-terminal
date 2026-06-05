@@ -309,14 +309,14 @@ class ActivityRepository(IActivityRepository):
             SELECT 
                 al.id,
                 al.student_id,
-                (al.meta->>'competition_id')::int as competition_id,
+                COALESCE((al.meta->>'competition_id')::int, 0) as competition_id,
                 al.meta->>'competition_name' as competition_name,
                 (al.meta->>'team_id')::int as team_id,
                 al.meta->>'team_name' as team_name,
                 COALESCE(al.meta->>'participation_type', al.activity_subtype) as participation_type,
                 (al.meta->>'registration_date')::timestamp as registration_date,
-                (al.meta->>'subscription_amount')::decimal as subscription_amount,
-                (al.meta->>'subscription_paid')::boolean as subscription_paid,
+                COALESCE((al.meta->>'subscription_amount')::decimal, (al.meta->>'amount')::decimal) as subscription_amount,
+                COALESCE((al.meta->>'subscription_paid')::boolean, TRUE) as subscription_paid,
                 (al.meta->>'payment_id')::int as payment_id,
                 (al.meta->>'result_position')::int as result_position,
                 al.meta->>'result_notes' as result_notes,
@@ -326,7 +326,7 @@ class ActivityRepository(IActivityRepository):
             FROM student_activity_log al
             LEFT JOIN users u ON u.id = al.performed_by
             WHERE al.student_id = :student_id
-              AND al.activity_type = 'competition'
+              AND (al.activity_type = 'competition' OR (al.activity_type = 'payment' AND al.activity_subtype = 'competition_fee'))
             ORDER BY al.created_at DESC
             LIMIT :limit OFFSET :offset
         """
@@ -362,7 +362,7 @@ class ActivityRepository(IActivityRepository):
             SELECT COUNT(*) 
             FROM student_activity_log 
             WHERE student_id = :student_id 
-              AND activity_type = 'competition'
+              AND (activity_type = 'competition' OR (activity_type = 'payment' AND activity_subtype = 'competition_fee'))
         """
         count_result = self._session.exec(text(count_sql), params={"student_id": student_id})
         total = count_result.scalar() or 0

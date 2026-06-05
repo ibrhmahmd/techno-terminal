@@ -197,19 +197,27 @@ class StudentRepository(IStudentRepository):
     def get_student_balance_summary(self, student_id: int) -> StudentBalanceSummaryDTO:
         """
         Get total due, total discounts, total paid, net balance, enrollment count and unpaid enrollments
-        for a specific student based on their active and completed enrollments.
+        for a specific student based on their active and completed enrollments and competition memberships.
         """
         from app.modules.enrollments.models.enrollment_models import Enrollment
         from app.modules.finance import Payment
+        from app.modules.competitions.models.team_models import TeamMember
+        
         enrollments = self._session.exec(
             select(Enrollment)
             .where(Enrollment.student_id == student_id)
             .where(Enrollment.status.in_(['active', 'completed']))
         ).all()
+        
+        team_memberships = self._session.exec(
+            select(TeamMember).where(TeamMember.student_id == student_id)
+        ).all()
+        
         total_due = Decimal('0.00')
         total_discounts = Decimal('0.00')
         total_paid = Decimal('0.00')
         unpaid_count = 0
+        
         for enrollment in enrollments:
             due = Decimal(str(enrollment.amount_due or 0))
             discount = Decimal(str(enrollment.discount_applied or 0))
@@ -224,6 +232,15 @@ class StudentRepository(IStudentRepository):
             total_paid += paid
             if (due - discount - paid) > 0:
                 unpaid_count += 1
+                
+        for member in team_memberships:
+            due = Decimal(str(member.amount_due or 0))
+            paid = Decimal(str(member.amount_paid or 0))
+            total_due += due
+            total_paid += paid
+            if (due - paid) > 0:
+                unpaid_count += 1
+                
         net_balance = float(total_paid - (total_due - total_discounts))
         return StudentBalanceSummaryDTO(
             total_due=float(total_due),

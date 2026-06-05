@@ -16,3 +16,4 @@ class LogPaymentDTO:
     amount: Decimal
     payment_type: str
     performed_by: Optional[int] = None
+    metadata: Optional[dict] = None

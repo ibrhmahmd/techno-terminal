@@ -153,10 +153,16 @@ class TeamService:
                 project_description=cmd.project_description,
             )
 
-            # Add members with per-student fee from input (default 0 if not specified)
+            # Add members with per-student fee from input (default to competition fee if not specified)
             members_added = 0
             for sid in student_ids:
-                amount_due = cmd.student_fees.get(sid, 0.0) if cmd.student_fees else 0.0
+                amount_due = None
+                if cmd.student_fees and sid in cmd.student_fees:
+                    amount_due = cmd.student_fees[sid]
+                
+                if amount_due is None:
+                    amount_due = float(comp.fee_per_student or 0.0)
+
                 # Skip duplicates gracefully
                 existing = team_repo.get_team_member(db, team.id, sid)
                 if not existing:
@@ -275,6 +281,23 @@ class TeamService:
     ) -> None:
         """Log payment activity for competition fee."""
         try:
+            # Query TeamMember and Team to get team_id and competition_id
+            from app.modules.competitions.models.team_models import TeamMember, Team
+            from sqlmodel import select
+
+            team_member = db.exec(
+                select(TeamMember).where(TeamMember.student_id == student_id)
+            ).first()
+            
+            team_id = team_member.team_id if team_member else None
+            competition_id = None
+            team_name = None
+            if team_member:
+                team_obj = db.get(Team, team_member.team_id)
+                if team_obj:
+                    competition_id = team_obj.competition_id
+                    team_name = team_obj.team_name
+
             uow = StudentUnitOfWork(db)
             activity_svc = StudentActivityService(uow)
 
@@ -285,6 +308,12 @@ class TeamService:
                     amount=Decimal(str(amount)),
                     payment_type="competition_fee",
                     performed_by=current_user_id,
+                    metadata={
+                        "competition_id": competition_id,
+                        "competition_name": competition_name,
+                        "team_id": team_id,
+                        "team_name": team_name,
+                    }
                 )
             )
             uow.commit()
@@ -536,7 +565,7 @@ class TeamService:
         self,
         team_id: int,
         student_id: int,
-        amount_due: float = 0.0,
+        amount_due: Optional[float] = None,
         current_user_id: Optional[int] = None,
         background_tasks: Optional[BackgroundTasks] = None,
     ) -> AddTeamMemberResultWithWarningDTO:
@@ -565,6 +594,10 @@ class TeamService:
             existing = team_repo.get_team_member(db, team_id, student_id)
             if existing:
                 raise ConflictError("Student is already a member of this team.")
+
+            if amount_due is None:
+                comp = comp_repo.get_competition(db, team.competition_id)
+                amount_due = float(comp.fee_per_student or 0.0)
 
             m = team_repo.add_team_member(db, team_id, student_id, amount_due=amount_due)
 

@@ -51,6 +51,7 @@ class StudentCrudService:
             gender=command_dto.student_data.gender,
             phone=command_dto.student_data.phone,
             notes=command_dto.student_data.notes,
+            status=command_dto.student_data.status,
         )
         apply_create_audit(student, user_id=command_dto.created_by_user_id)
         
@@ -66,10 +67,8 @@ class StudentCrudService:
                 relationship=command_dto.relationship,
                 is_primary=True,
             )
-        
-        self._uow.commit()
 
-        # Log registration activity
+        # Log registration activity (before commit, part of the same transaction)
         if self._activity_svc:
             from app.modules.crm.interfaces.dtos.log_registration_dto import LogRegistrationDTO
             self._activity_svc.log_registration(
@@ -79,6 +78,8 @@ class StudentCrudService:
                     performed_by=getattr(command_dto, 'created_by', None),
                 )
             )
+
+        self._uow.commit()
 
         # Get siblings for discount calculation
         siblings = self.find_siblings(created_student.id)

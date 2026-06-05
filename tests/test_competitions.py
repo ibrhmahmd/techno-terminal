@@ -13,6 +13,31 @@ from datetime import date
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def auto_override_auth(app):
+    from app.api.dependencies import get_current_user
+    from app.modules.auth.models.auth_models import User
+    from fastapi import Request, HTTPException
+
+    mock_user = User(
+        id=1,
+        username="test_admin",
+        role="admin",
+        supabase_uid="test-admin-001",
+        is_active=True,
+    )
+
+    async def _mock_get_current_user(request: Request):
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        return mock_user
+
+    app.dependency_overrides[get_current_user] = _mock_get_current_user
+    yield
+    app.dependency_overrides.pop(get_current_user, None)
+
+
 class TestCompetitionsRead:
     """Tests for GET /competitions endpoints."""
     

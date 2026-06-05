@@ -69,7 +69,7 @@ class RegisterTeamInput(BaseModel):
 class AddTeamMemberInput(BaseModel):
     """Input for adding a member to an existing team."""
     student_id: int
-    amount_due: float = 0.0  # Fee amount due for this member
+    amount_due: Optional[float] = None  # Fee amount due for this member
 
 
 class PayCompetitionFeeInput(BaseModel):
