@@ -186,9 +186,20 @@ class BaseNotificationService:
                 )
                 try:
                     import asyncio
-                    task = asyncio.create_task(self._send_fallback_alert(context))
-                    self._background_tasks.add(task)
-                    task.add_done_callback(self._background_tasks.discard)
+                    try:
+                        loop = asyncio.get_running_loop()
+                    except RuntimeError:
+                        loop = None
+                        
+                    if loop is None:
+                        # Running in a sync thread (e.g., FastAPI dependency/route threadpool)
+                        # We can safely use asyncio.run to create a new loop and execute
+                        asyncio.run(self._send_fallback_alert(context))
+                    else:
+                        # Running in an async context, safe to create_task
+                        task = loop.create_task(self._send_fallback_alert(context))
+                        self._background_tasks.add(task)
+                        task.add_done_callback(self._background_tasks.discard)
                 except Exception as alert_error:
                     logger.error(f"Failed to send fallback alert: {alert_error}")
             else:

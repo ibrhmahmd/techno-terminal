@@ -10,7 +10,7 @@ Refactored to split 777-line monolith into focused modules:
 - report_notifications.py (scheduled reports)
 """
 import logging
-from datetime import datetime
+from datetime import datetime, date
 from typing import Optional
 from fastapi import BackgroundTasks
 
@@ -106,17 +106,17 @@ class NotificationService:
 
     # ── Scheduled Reports (delegate to self.report) ─────────────────────
 
-    async def send_daily_report(self) -> None:
+    async def send_daily_report(self, target_date: Optional[date] = None) -> None:
         """Daily business summary to DAILY subscribers."""
-        await self.report.send_daily_report()
+        await self.report.send_daily_report(target_date)
 
-    async def send_weekly_report(self) -> None:
+    async def send_weekly_report(self, target_date: Optional[date] = None) -> None:
         """Weekly business summary to WEEKLY subscribers."""
-        await self.report.send_weekly_report()
+        await self.report.send_weekly_report(target_date)
 
-    async def send_monthly_report(self) -> None:
+    async def send_monthly_report(self, target_date: Optional[date] = None) -> None:
         """Monthly business summary to MONTHLY subscribers."""
-        await self.report.send_monthly_report()
+        await self.report.send_monthly_report(target_date)
 
     # ── Bulk Marketing (kept here for now - simple delegation) ────────────
     # TODO: Move to BulkNotificationService if needed
