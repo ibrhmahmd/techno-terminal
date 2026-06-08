@@ -196,6 +196,60 @@ Closest equivalents exist at `GET /academics/groups/filter` (with `q` param) and
 | J | Session Integrity | 3 | Service returns all levels, test expects one |
 | | **Total** | **77** | |
 
+## Plan Scope
+
+**In scope:** Test file changes only — deletion of deprecated tests, updating drifted assertions, fixing test infrastructure (auth fixtures, mocks).
+
+**Out of scope:** Application code changes — HR phone validation fix (A), attendance session existence check (G1), instructor query investigation (I4). Code bugs tracked separately.
+
+**Total tests in scope:** ~66 (21 delete + 33 update + 12 infra fix) of 77 total failures
+
+## Clarifications
+
+### Session 2026-06-08
+- **Q1:** What criteria define a "non-logical/deprecated" test? → **A:** Three criteria: (B) test references non-existent endpoint → delete, (C) response shape/status drift → update test to match implementation, (E) implementation intentionally changed/test stale → update or delete old test.
+- **Q2:** What scope for deletion? → **A:** Flexible per situation — (A) individual methods for isolated bad tests, (B) entire test class if all methods are deprecated, (C) entire test file if no valid tests remain.
+- **Q3:** Should plan include code fixes for real bugs? → **A:** No — tests only. Code fixes (HR phone, session check) are separate work.
+- **Q4:** Full scope of plan? → **A:** Full cleanup — delete deprecated tests + update drifted assertions + fix test infrastructure (auth, mocks).
+
+## Classification Framework
+
+| Disposition | Criterion | Action |
+|---|---|---|
+| **Delete test** | Test references non-existent endpoint (never implemented or removed) | Remove test method/class |
+| **Update test** | Endpoint exists but returns different response shape, field names, or status code | Align test assertions with current implementation |
+| **Update or delete** | Implementation intentionally changed (migration, refactor), test wasn't updated | Update test to match new behavior, or delete if test concept is obsolete |
+| **Fix code** | Test correctly identifies a real bug in the implementation | Fix the application code |
+| **Fix test infra** | Test fails due to test environment issue (e.g., real Supabase JWT rejected) | Fix auth fixture/test setup |
+
+## Failure Disposition Mapping
+
+| Category | Count | Disposition | Action |
+|---|---|---|---|
+| A — HR Phone Pattern | 12 | **Fix code** | Add `mode='before'` to `clean_phone` validators |
+| B1 — Missing endpoints (search, by-type, by-course) | 5 | **Delete test** | Remove test methods for non-existent endpoints |
+| B2 — 422 validation mismatches | 4 | **Update test** | Align request bodies with current schema |
+| B3 — Auth (real Supabase JWT) | 2 | **Fix test infra** | Use `override_auth` fixture |
+| B4 — Delete message mismatch | 1 | **Update test** | Accept "deactivated" wording |
+| C1 — Lifecycle 422s | 9 | **Update test** | Align request params with current routes |
+| C2 — 404/200 mismatches | 2 | **Update test** | Accept current status codes |
+| C3 — Auth (real Supabase JWT) | 1 | **Fix test infra** | Use `override_auth` fixture |
+| D — Dashboard path mismatch | 9 | **Delete test** | Endpoint never existed at that path |
+| E — Group roster not in analytics | 7 | **Delete test** | No standalone roster endpoint in analytics |
+| F — Competition fee auth | 3 | **Fix test infra** | Use `override_auth` fixture |
+| F — Competition fee structure | 1 | **Update test** | Align field names with DTO |
+| G1 — Missing session check | 1 | **Fix code** | Add existence check to `get_session_roster_with_attendance` |
+| G2 — Auth (real Supabase JWT) | 2 | **Fix test infra** | Use `override_auth` fixture |
+| G3 — 422 validation | 3 | **Update test** | Align request bodies with current schema |
+| G4 — Session not in test DB | 2 | **Update test** | Use proper session fixture |
+| H — Competition team fee | 2 | **Fix test infra** | Likely auth + body validation |
+| I1 — Template body mismatch | 7 | **Update test** | Match current template body |
+| I2 — Variables count | 1 | **Update test** | Accept 9 variables (migration 059) |
+| I3 — Email sending | 2 | **Fix test infra** | Fix mock/configuration |
+| I4 — Instructor query | 1 | **Fix code or update test** | Investigate aggregate query behavior |
+| J1 — All levels returned | 1 | **Update test** | Accept intentional behavior (frontend needs all levels) |
+| J2 — Lifecycle assertions | 2 | **Update test** | Align with current lifecycle service |
+
 ## Cross-Cutting Themes
 
 1. **Real Supabase JWT** — ~25% of failures root-caused by real Supabase JWT rejection. Tests using `system_admin_headers` (not mock auth) hit real Supabase which returns 403 → mapped to 401. Fix: use `override_auth` fixture or mock tokens.
