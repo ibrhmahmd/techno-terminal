@@ -12,11 +12,11 @@ from datetime import date
 class TestCompetitionFeeSummary:
     """GET /analytics/competitions/fee-summary - require_admin auth"""
 
-    def test_competition_fee_summary_success(self, client, admin_headers):
+    def test_competition_fee_summary_success(self, client, mock_admin_headers, override_auth):
         """Test getting competition fee summary with all competitions."""
         response = client.get(
             "/api/v1/analytics/competitions/fee-summary",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200
@@ -24,11 +24,11 @@ class TestCompetitionFeeSummary:
         assert data["success"] is True
         assert isinstance(data["data"], list)
 
-    def test_competition_fee_summary_structure(self, client, admin_headers):
+    def test_competition_fee_summary_structure(self, client, mock_admin_headers, override_auth):
         """Test fee summary includes participation and fee data."""
         response = client.get(
             "/api/v1/analytics/competitions/fee-summary",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200
@@ -42,11 +42,11 @@ class TestCompetitionFeeSummary:
                 "participant_count", "team_count", "entry_fee", "total_collected"
             ])
 
-    def test_competition_fee_summary_empty(self, client, admin_headers):
+    def test_competition_fee_summary_empty(self, client, mock_admin_headers, override_auth):
         """Test fee summary when no competitions exist."""
         response = client.get(
             "/api/v1/analytics/competitions/fee-summary",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200

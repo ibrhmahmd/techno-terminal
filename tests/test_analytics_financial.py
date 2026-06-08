@@ -17,14 +17,14 @@ from datetime import date, timedelta
 class TestRevenueByDate:
     """GET /analytics/finance/revenue-by-date - require_admin auth"""
 
-    def test_revenue_by_date_success(self, client, admin_headers):
+    def test_revenue_by_date_success(self, client, mock_admin_headers, override_auth):
         """Test getting revenue breakdown by date with valid range."""
         start_date = (date.today() - timedelta(days=30)).isoformat()
         end_date = date.today().isoformat()
 
         response = client.get(
             f"/api/v1/analytics/finance/revenue-by-date?start={start_date}&end={end_date}",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200
@@ -32,32 +32,32 @@ class TestRevenueByDate:
         assert data["success"] is True
         assert isinstance(data["data"], list)
 
-    def test_revenue_by_date_missing_start(self, client, admin_headers):
+    def test_revenue_by_date_missing_start(self, client, mock_admin_headers, override_auth):
         """Test getting revenue without start date returns 422."""
         end_date = date.today().isoformat()
         response = client.get(
             f"/api/v1/analytics/finance/revenue-by-date?end={end_date}",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         assert response.status_code == 422
 
-    def test_revenue_by_date_missing_end(self, client, admin_headers):
+    def test_revenue_by_date_missing_end(self, client, mock_admin_headers, override_auth):
         """Test getting revenue without end date returns 422."""
         start_date = (date.today() - timedelta(days=30)).isoformat()
         response = client.get(
             f"/api/v1/analytics/finance/revenue-by-date?start={start_date}",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         assert response.status_code == 422
 
-    def test_revenue_by_date_invalid_range(self, client, admin_headers):
+    def test_revenue_by_date_invalid_range(self, client, mock_admin_headers, override_auth):
         """Test getting revenue with end date before start date."""
         start_date = date.today().isoformat()
         end_date = (date.today() - timedelta(days=30)).isoformat()
 
         response = client.get(
             f"/api/v1/analytics/finance/revenue-by-date?start={start_date}&end={end_date}",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         # May return 200 with empty data or 422 depending on validation
         assert response.status_code in [200, 422]
@@ -76,14 +76,14 @@ class TestRevenueByDate:
 class TestRevenueByMethod:
     """GET /analytics/finance/revenue-by-method - require_admin auth"""
 
-    def test_revenue_by_method_success(self, client, admin_headers):
+    def test_revenue_by_method_success(self, client, mock_admin_headers, override_auth):
         """Test getting revenue breakdown by payment method."""
         start_date = (date.today() - timedelta(days=30)).isoformat()
         end_date = date.today().isoformat()
 
         response = client.get(
             f"/api/v1/analytics/finance/revenue-by-method?start={start_date}&end={end_date}",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200
@@ -91,22 +91,22 @@ class TestRevenueByMethod:
         assert data["success"] is True
         assert isinstance(data["data"], list)
 
-    def test_revenue_by_method_missing_params(self, client, admin_headers):
+    def test_revenue_by_method_missing_params(self, client, mock_admin_headers, override_auth):
         """Test getting revenue by method without required params returns 422."""
         response = client.get(
             "/api/v1/analytics/finance/revenue-by-method",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         assert response.status_code == 422
 
-    def test_revenue_by_method_grouping(self, client, admin_headers):
+    def test_revenue_by_method_grouping(self, client, mock_admin_headers, override_auth):
         """Test revenue is properly grouped by payment method."""
         start_date = (date.today() - timedelta(days=30)).isoformat()
         end_date = date.today().isoformat()
 
         response = client.get(
             f"/api/v1/analytics/finance/revenue-by-method?start={start_date}&end={end_date}",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200
@@ -130,11 +130,11 @@ class TestRevenueByMethod:
 class TestOutstandingByGroup:
     """GET /analytics/finance/outstanding-by-group - require_admin auth"""
 
-    def test_outstanding_by_group_success(self, client, admin_headers):
+    def test_outstanding_by_group_success(self, client, mock_admin_headers, override_auth):
         """Test getting outstanding balances grouped by academic group."""
         response = client.get(
             "/api/v1/analytics/finance/outstanding-by-group",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200
@@ -142,11 +142,11 @@ class TestOutstandingByGroup:
         assert data["success"] is True
         assert isinstance(data["data"], list)
 
-    def test_outstanding_by_group_empty(self, client, admin_headers):
+    def test_outstanding_by_group_empty(self, client, mock_admin_headers, override_auth):
         """Test outstanding by group when no outstanding balances."""
         response = client.get(
             "/api/v1/analytics/finance/outstanding-by-group",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200
@@ -155,11 +155,11 @@ class TestOutstandingByGroup:
         # Should return list (may be empty)
         assert isinstance(data["data"], list)
 
-    def test_outstanding_by_group_structure(self, client, admin_headers):
+    def test_outstanding_by_group_structure(self, client, mock_admin_headers, override_auth):
         """Test outstanding data includes group and balance info."""
         response = client.get(
             "/api/v1/analytics/finance/outstanding-by-group",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200
@@ -178,11 +178,11 @@ class TestOutstandingByGroup:
 class TestTopDebtors:
     """GET /analytics/finance/top-debtors - require_admin auth"""
 
-    def test_top_debtors_default_limit(self, client, admin_headers):
+    def test_top_debtors_default_limit(self, client, mock_admin_headers, override_auth):
         """Test getting top debtors with default limit (15)."""
         response = client.get(
             "/api/v1/analytics/finance/top-debtors",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200
@@ -192,11 +192,11 @@ class TestTopDebtors:
         # Should not exceed default limit
         assert len(data["data"]) <= 15
 
-    def test_top_debtors_custom_limit(self, client, admin_headers):
+    def test_top_debtors_custom_limit(self, client, mock_admin_headers, override_auth):
         """Test getting top debtors with custom limit."""
         response = client.get(
             "/api/v1/analytics/finance/top-debtors?limit=5",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200
@@ -204,43 +204,43 @@ class TestTopDebtors:
         assert data["success"] is True
         assert len(data["data"]) <= 5
 
-    def test_top_debtors_limit_boundary(self, client, admin_headers):
+    def test_top_debtors_limit_boundary(self, client, mock_admin_headers, override_auth):
         """Test top debtors at limit boundaries (1 and 100)."""
         # Test minimum
         response_min = client.get(
             "/api/v1/analytics/finance/top-debtors?limit=1",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         assert response_min.status_code == 200
 
         # Test maximum
         response_max = client.get(
             "/api/v1/analytics/finance/top-debtors?limit=100",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         assert response_max.status_code == 200
 
-    def test_top_debtors_invalid_limit(self, client, admin_headers):
+    def test_top_debtors_invalid_limit(self, client, mock_admin_headers, override_auth):
         """Test limit parameter outside valid range (1-100) returns 422."""
         # Test below minimum
         response_low = client.get(
             "/api/v1/analytics/finance/top-debtors?limit=0",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         assert response_low.status_code == 422
 
         # Test above maximum
         response_high = client.get(
             "/api/v1/analytics/finance/top-debtors?limit=101",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         assert response_high.status_code == 422
 
-    def test_top_debtors_structure(self, client, admin_headers):
+    def test_top_debtors_structure(self, client, mock_admin_headers, override_auth):
         """Test debtor data includes student and balance info."""
         response = client.get(
             "/api/v1/analytics/finance/top-debtors",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200
@@ -259,11 +259,11 @@ class TestTopDebtors:
 class TestRevenueMetrics:
     """GET /analytics/finance/revenue-metrics - require_admin auth"""
 
-    def test_revenue_metrics_success(self, client, admin_headers):
+    def test_revenue_metrics_success(self, client, mock_admin_headers, override_auth):
         """Test getting extended revenue metrics with default 6 months."""
         response = client.get(
             "/api/v1/analytics/finance/revenue-metrics",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200
@@ -271,11 +271,11 @@ class TestRevenueMetrics:
         assert data["success"] is True
         assert "data" in data
 
-    def test_revenue_metrics_default_months(self, client, admin_headers):
+    def test_revenue_metrics_default_months(self, client, mock_admin_headers, override_auth):
         """Test default months parameter is 6."""
         response = client.get(
             "/api/v1/analytics/finance/revenue-metrics",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200
@@ -284,38 +284,38 @@ class TestRevenueMetrics:
         if isinstance(data["data"], dict) and "monthly_breakdown" in data["data"]:
             assert len(data["data"]["monthly_breakdown"]) <= 6
 
-    def test_revenue_metrics_custom_months(self, client, admin_headers):
+    def test_revenue_metrics_custom_months(self, client, mock_admin_headers, override_auth):
         """Test custom months parameter (1-24 range)."""
         response = client.get(
             "/api/v1/analytics/finance/revenue-metrics?months=12",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
 
-    def test_revenue_metrics_invalid_months(self, client, admin_headers):
+    def test_revenue_metrics_invalid_months(self, client, mock_admin_headers, override_auth):
         """Test months parameter outside valid range (1-24) returns 422."""
         # Test below minimum
         response_low = client.get(
             "/api/v1/analytics/finance/revenue-metrics?months=0",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         assert response_low.status_code == 422
 
         # Test above maximum
         response_high = client.get(
             "/api/v1/analytics/finance/revenue-metrics?months=25",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         assert response_high.status_code == 422
 
-    def test_revenue_metrics_trend_analysis(self, client, admin_headers):
+    def test_revenue_metrics_trend_analysis(self, client, mock_admin_headers, override_auth):
         """Test revenue metrics includes trend analysis data."""
         response = client.get(
             "/api/v1/analytics/finance/revenue-metrics",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200
@@ -334,11 +334,11 @@ class TestRevenueMetrics:
 class TestRevenueForecast:
     """GET /analytics/finance/revenue-forecast - require_admin auth"""
 
-    def test_revenue_forecast_success(self, client, admin_headers):
+    def test_revenue_forecast_success(self, client, mock_admin_headers, override_auth):
         """Test getting revenue forecast with default 3 months ahead."""
         response = client.get(
             "/api/v1/analytics/finance/revenue-forecast",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200
@@ -346,11 +346,11 @@ class TestRevenueForecast:
         assert data["success"] is True
         assert isinstance(data["data"], list)
 
-    def test_revenue_forecast_default_months(self, client, admin_headers):
+    def test_revenue_forecast_default_months(self, client, mock_admin_headers, override_auth):
         """Test default months_ahead parameter is 3."""
         response = client.get(
             "/api/v1/analytics/finance/revenue-forecast",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200
@@ -358,11 +358,11 @@ class TestRevenueForecast:
         # Should return ~3 months of forecasts
         assert len(data["data"]) <= 3
 
-    def test_revenue_forecast_custom_months(self, client, admin_headers):
+    def test_revenue_forecast_custom_months(self, client, mock_admin_headers, override_auth):
         """Test custom months_ahead parameter (1-12 range)."""
         response = client.get(
             "/api/v1/analytics/finance/revenue-forecast?months_ahead=6",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200
@@ -370,27 +370,27 @@ class TestRevenueForecast:
         assert data["success"] is True
         assert len(data["data"]) <= 6
 
-    def test_revenue_forecast_invalid_months(self, client, admin_headers):
+    def test_revenue_forecast_invalid_months(self, client, mock_admin_headers, override_auth):
         """Test months_ahead parameter outside valid range (1-12) returns 422."""
         # Test below minimum
         response_low = client.get(
             "/api/v1/analytics/finance/revenue-forecast?months_ahead=0",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         assert response_low.status_code == 422
 
         # Test above maximum
         response_high = client.get(
             "/api/v1/analytics/finance/revenue-forecast?months_ahead=13",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         assert response_high.status_code == 422
 
-    def test_revenue_forecast_structure(self, client, admin_headers):
+    def test_revenue_forecast_structure(self, client, mock_admin_headers, override_auth):
         """Test forecast data includes month and projected revenue."""
         response = client.get(
             "/api/v1/analytics/finance/revenue-forecast",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200

@@ -17,11 +17,11 @@ from datetime import date, timedelta
 class TestDashboardSummary:
     """GET /analytics/dashboard/summary - require_admin auth"""
 
-    def test_dashboard_summary_success(self, client, admin_headers):
+    def test_dashboard_summary_success(self, client, mock_admin_headers, override_auth):
         """Test getting dashboard summary with active enrollments and session count."""
         response = client.get(
             "/api/v1/analytics/dashboard/summary",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200
@@ -54,11 +54,11 @@ class TestDashboardSummary:
 class TestUnpaidAttendees:
     """GET /analytics/academics/unpaid-attendees - require_admin auth"""
 
-    def test_unpaid_attendees_success(self, client, admin_headers):
+    def test_unpaid_attendees_success(self, client, mock_admin_headers, override_auth):
         """Test getting unpaid attendees without date filter."""
         response = client.get(
             "/api/v1/analytics/academics/unpaid-attendees",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200
@@ -66,12 +66,12 @@ class TestUnpaidAttendees:
         assert data["success"] is True
         assert isinstance(data["data"], list)
 
-    def test_unpaid_attendees_with_target_date(self, client, admin_headers):
+    def test_unpaid_attendees_with_target_date(self, client, mock_admin_headers, override_auth):
         """Test getting unpaid attendees with specific target date."""
         today = date.today().isoformat()
         response = client.get(
             f"/api/v1/analytics/academics/unpaid-attendees?target_date={today}",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200
@@ -96,7 +96,7 @@ class TestUnpaidAttendees:
 class TestGroupRoster:
     """GET /analytics/academics/groups/{group_id}/roster - require_admin auth"""
 
-    def test_group_roster_success(self, client, admin_headers, db_session):
+    def test_group_roster_success(self, client, mock_admin_headers, override_auth, db_session):
         """Test getting group roster with valid group and level."""
         from tests.utils.db_helpers import create_test_course, create_test_group
 
@@ -105,7 +105,7 @@ class TestGroupRoster:
 
         response = client.get(
             f"/api/v1/analytics/academics/groups/{group.id}/roster?level_number=1",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200
@@ -113,19 +113,19 @@ class TestGroupRoster:
         assert data["success"] is True
         assert isinstance(data["data"], list)
 
-    def test_group_roster_missing_level(self, client, admin_headers):
+    def test_group_roster_missing_level(self, client, mock_admin_headers, override_auth):
         """Test getting group roster without required level_number returns 422."""
         response = client.get(
             "/api/v1/analytics/academics/groups/1/roster",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         assert response.status_code == 422
 
-    def test_group_roster_not_found(self, client, admin_headers):
+    def test_group_roster_not_found(self, client, mock_admin_headers, override_auth):
         """Test getting roster for non-existent group returns 404 or empty list."""
         response = client.get(
             "/api/v1/analytics/academics/groups/99999/roster?level_number=1",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         # May return 200 with empty list or 404 depending on implementation
         assert response.status_code in [200, 404]
@@ -134,11 +134,11 @@ class TestGroupRoster:
             assert data["success"] is True
             assert isinstance(data["data"], list)
 
-    def test_group_roster_invalid_level(self, client, admin_headers):
+    def test_group_roster_invalid_level(self, client, mock_admin_headers, override_auth):
         """Test getting roster with invalid level_number returns 422."""
         response = client.get(
             "/api/v1/analytics/academics/groups/1/roster?level_number=0",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         assert response.status_code == 422
 
@@ -153,7 +153,7 @@ class TestGroupRoster:
 class TestAttendanceHeatmap:
     """GET /analytics/academics/groups/{group_id}/heatmap - require_admin auth"""
 
-    def test_attendance_heatmap_success(self, client, admin_headers, db_session):
+    def test_attendance_heatmap_success(self, client, mock_admin_headers, override_auth, db_session):
         """Test getting attendance heatmap with valid group and level."""
         from tests.utils.db_helpers import create_test_course, create_test_group
 
@@ -162,7 +162,7 @@ class TestAttendanceHeatmap:
 
         response = client.get(
             f"/api/v1/analytics/academics/groups/{group.id}/heatmap?level_number=1",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200
@@ -170,30 +170,30 @@ class TestAttendanceHeatmap:
         assert data["success"] is True
         assert isinstance(data["data"], list)
 
-    def test_attendance_heatmap_missing_level(self, client, admin_headers):
+    def test_attendance_heatmap_missing_level(self, client, mock_admin_headers, override_auth):
         """Test getting heatmap without required level_number returns 422."""
         response = client.get(
             "/api/v1/analytics/academics/groups/1/heatmap",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         assert response.status_code == 422
 
-    def test_attendance_heatmap_not_found(self, client, admin_headers):
+    def test_attendance_heatmap_not_found(self, client, mock_admin_headers, override_auth):
         """Test getting heatmap for non-existent group returns 404 or empty list."""
         response = client.get(
             "/api/v1/analytics/academics/groups/99999/heatmap?level_number=1",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         assert response.status_code in [200, 404]
         if response.status_code == 200:
             data = response.json()
             assert isinstance(data["data"], list)
 
-    def test_attendance_heatmap_invalid_level(self, client, admin_headers):
+    def test_attendance_heatmap_invalid_level(self, client, mock_admin_headers, override_auth):
         """Test getting heatmap with invalid level_number returns 422."""
         response = client.get(
             "/api/v1/analytics/academics/groups/1/heatmap?level_number=0",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         assert response.status_code == 422
 
@@ -208,11 +208,11 @@ class TestAttendanceHeatmap:
 class TestStudentProgress:
     """GET /analytics/academics/student-progress - require_admin auth"""
 
-    def test_student_progress_all(self, client, admin_headers):
+    def test_student_progress_all(self, client, mock_admin_headers, override_auth):
         """Test getting student progress without filters."""
         response = client.get(
             "/api/v1/analytics/academics/student-progress",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200
@@ -220,7 +220,7 @@ class TestStudentProgress:
         assert data["success"] is True
         assert isinstance(data["data"], list)
 
-    def test_student_progress_by_student_id(self, client, admin_headers, db_session):
+    def test_student_progress_by_student_id(self, client, mock_admin_headers, override_auth, db_session):
         """Test getting student progress filtered by student_id."""
         from tests.utils.db_helpers import create_test_student
 
@@ -228,7 +228,7 @@ class TestStudentProgress:
 
         response = client.get(
             f"/api/v1/analytics/academics/student-progress?student_id={student.id}",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200
@@ -236,7 +236,7 @@ class TestStudentProgress:
         assert data["success"] is True
         assert isinstance(data["data"], list)
 
-    def test_student_progress_by_group_id(self, client, admin_headers, db_session):
+    def test_student_progress_by_group_id(self, client, mock_admin_headers, override_auth, db_session):
         """Test getting student progress filtered by group_id."""
         from tests.utils.db_helpers import create_test_course, create_test_group
 
@@ -245,7 +245,7 @@ class TestStudentProgress:
 
         response = client.get(
             f"/api/v1/analytics/academics/student-progress?group_id={group.id}",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200
@@ -253,7 +253,7 @@ class TestStudentProgress:
         assert data["success"] is True
         assert isinstance(data["data"], list)
 
-    def test_student_progress_by_both_filters(self, client, admin_headers, db_session):
+    def test_student_progress_by_both_filters(self, client, mock_admin_headers, override_auth, db_session):
         """Test getting student progress with both student_id and group_id filters."""
         from tests.utils.db_helpers import create_test_course, create_test_group, create_test_student
 
@@ -263,18 +263,18 @@ class TestStudentProgress:
 
         response = client.get(
             f"/api/v1/analytics/academics/student-progress?student_id={student.id}&group_id={group.id}",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
 
-    def test_student_progress_not_found_student(self, client, admin_headers):
+    def test_student_progress_not_found_student(self, client, mock_admin_headers, override_auth):
         """Test getting progress for non-existent student returns empty list."""
         response = client.get(
             "/api/v1/analytics/academics/student-progress?student_id=99999",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200
@@ -292,11 +292,11 @@ class TestStudentProgress:
 class TestCourseCompletion:
     """GET /analytics/academics/course-completion - require_admin auth"""
 
-    def test_course_completion_success(self, client, admin_headers):
+    def test_course_completion_success(self, client, mock_admin_headers, override_auth):
         """Test getting course completion rates."""
         response = client.get(
             "/api/v1/analytics/academics/course-completion",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200
@@ -304,11 +304,11 @@ class TestCourseCompletion:
         assert data["success"] is True
         assert isinstance(data["data"], list)
 
-    def test_course_completion_empty(self, client, admin_headers):
+    def test_course_completion_empty(self, client, mock_admin_headers, override_auth):
         """Test course completion when no completion data exists."""
         response = client.get(
             "/api/v1/analytics/academics/course-completion",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200

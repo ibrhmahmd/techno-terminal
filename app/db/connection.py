@@ -25,7 +25,7 @@ def get_engine():
                         "keepalives_idle": 30,
                         "keepalives_interval": 10,
                         "keepalives_count": 5,
-                        "sslmode": "require",
+                        "sslmode": "prefer",
                         "options": "-c statement_timeout=30000",
                     },
                 )

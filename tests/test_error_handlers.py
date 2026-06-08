@@ -42,14 +42,14 @@ class TestErrorResponseStructure:
         assert data["success"] is False
         assert "error" in data
     
-    def test_404_not_found(self, client, admin_headers):
+    def test_404_not_found(self, client, mock_admin_headers, override_auth):
         """
         Non-existent endpoint returns standardized 404.
         Note: May return 401 if token is expired.
         """
         response = client.get(
             "/api/v1/crm/students/99999",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         
         # If token expired, that's acceptable for test
@@ -62,14 +62,14 @@ class TestErrorResponseStructure:
         assert data["error"] == "NotFoundError"
         assert "message" in data
     
-    def test_422_validation_error(self, client, admin_headers):
+    def test_422_validation_error(self, client, mock_admin_headers, override_auth):
         """
         POST /crm/students with invalid data returns 422.
         Note: May return 401 if token is expired.
         """
         response = client.post(
             "/api/v1/crm/students",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json={"full_name": ""}  # Missing required fields
         )
         
@@ -81,7 +81,7 @@ class TestErrorResponseStructure:
         data = response.json()
         assert data["success"] is False
     
-    def test_405_method_not_allowed(self, client, admin_headers):
+    def test_405_method_not_allowed(self, client, mock_admin_headers, override_auth):
         """
         DELETE on GET-only endpoint returns 405.
         
@@ -89,7 +89,7 @@ class TestErrorResponseStructure:
         """
         response = client.delete(
             "/api/v1/crm/students",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         
         # May be 405 or 404 depending on router setup

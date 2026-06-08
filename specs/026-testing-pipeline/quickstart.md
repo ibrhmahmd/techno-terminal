@@ -22,6 +22,9 @@ psql -U postgres -d techno -f db/schema.sql
 foreach ($f in (Get-ChildItem db/migrations/*.sql | Sort-Object Name)) {
     psql -U postgres -d techno -f $f.FullName
 }
+
+# Verify schema reproducibility
+python scripts/verify_test_db.py
 ```
 
 ### Option B: Docker

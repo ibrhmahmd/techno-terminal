@@ -11,12 +11,12 @@ import pytest
 class TestDashboardDailyOverview:
     """Test suite for GET /api/v1/dashboard/daily-overview"""
 
-    def test_dashboard_overview_success(self, client, admin_headers):
+    def test_dashboard_overview_success(self, client, mock_admin_headers, override_auth):
         """Test successful dashboard overview retrieval."""
         target_date = date.today().isoformat()
         response = client.get(
             f"/api/v1/dashboard/daily-overview?date={target_date}",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         assert response.status_code == 200
         data = response.json()
@@ -33,35 +33,35 @@ class TestDashboardDailyOverview:
         assert "scheduled_groups" in result
         assert "summary" in result
 
-    def test_dashboard_overview_with_attendance(self, client, admin_headers):
+    def test_dashboard_overview_with_attendance(self, client, mock_admin_headers, override_auth):
         """Test dashboard with include_attendance=true."""
         target_date = date.today().isoformat()
         response = client.get(
             f"/api/v1/dashboard/daily-overview?date={target_date}&include_attendance=true",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
 
-    def test_dashboard_overview_without_attendance(self, client, admin_headers):
+    def test_dashboard_overview_without_attendance(self, client, mock_admin_headers, override_auth):
         """Test dashboard with include_attendance=false."""
         target_date = date.today().isoformat()
         response = client.get(
             f"/api/v1/dashboard/daily-overview?date={target_date}&include_attendance=false",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
 
-    def test_dashboard_overview_empty_date(self, client, admin_headers):
+    def test_dashboard_overview_empty_date(self, client, mock_admin_headers, override_auth):
         """Test dashboard with date that has no sessions."""
         # Use a date far in the future
         future_date = (date.today() + timedelta(days=365)).isoformat()
         response = client.get(
             f"/api/v1/dashboard/daily-overview?date={future_date}",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         assert response.status_code == 200
         data = response.json()
@@ -69,19 +69,19 @@ class TestDashboardDailyOverview:
         assert data["data"]["scheduled_groups"] == []
         assert data["data"]["summary"]["total_groups_today"] == 0
 
-    def test_dashboard_overview_missing_date(self, client, admin_headers):
+    def test_dashboard_overview_missing_date(self, client, mock_admin_headers, override_auth):
         """Test dashboard without required date parameter."""
         response = client.get(
             "/api/v1/dashboard/daily-overview",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         assert response.status_code == 422  # Validation error
 
-    def test_dashboard_overview_invalid_date_format(self, client, admin_headers):
+    def test_dashboard_overview_invalid_date_format(self, client, mock_admin_headers, override_auth):
         """Test dashboard with invalid date format."""
         response = client.get(
             "/api/v1/dashboard/daily-overview?date=invalid-date",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         assert response.status_code == 422  # Validation error
 
@@ -104,12 +104,12 @@ class TestDashboardDailyOverview:
         # This test documents the expected behavior
         assert response.status_code in [200, 403]
 
-    def test_dashboard_response_lookup_table_pattern(self, client, admin_headers):
+    def test_dashboard_response_lookup_table_pattern(self, client, mock_admin_headers, override_auth):
         """Verify lookup table pattern is used correctly."""
         target_date = date.today().isoformat()
         response = client.get(
             f"/api/v1/dashboard/daily-overview?date={target_date}",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         assert response.status_code == 200
         data = response.json()["data"]
@@ -123,12 +123,12 @@ class TestDashboardDailyOverview:
         # Scheduled groups should be a list
         assert isinstance(data["scheduled_groups"], list)
 
-    def test_dashboard_summary_structure(self, client, admin_headers):
+    def test_dashboard_summary_structure(self, client, mock_admin_headers, override_auth):
         """Verify summary has correct structure."""
         target_date = date.today().isoformat()
         response = client.get(
             f"/api/v1/dashboard/daily-overview?date={target_date}",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         assert response.status_code == 200
         summary = response.json()["data"]["summary"]

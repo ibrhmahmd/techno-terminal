@@ -24,9 +24,10 @@ Optional PDF/receipt settings in `app/core/config.py`.
 | Dev server | `python run_api.py` |
 | Prod server | `uvicorn app.api.main:app --host 0.0.0.0 --port 8000` |
 | Single test | `pytest tests/test_crm.py::test_student_list -v` |
-| All tests | `pytest tests/ -v` |
+| All tests (local) | `pytest tests/ -v` (auto-loads `.env.test` via `config.py:106`) |
 | Coverage | `pytest tests/ -v --cov=app --cov-report=term-missing` |
 | DB init | `psql "$DATABASE_URL" -f db/schema.sql` |
+| Schema verify | `python scripts/verify_test_db.py` |
 | Get test JWT | `python scripts/get_test_jwt.py` |
 | Pool tests | `python test_connection_exhaustion.py --uow` |
 
@@ -97,8 +98,12 @@ Defined at `dependencies.py:213` and `dependencies.py:410`. Python uses the last
 ### Test Isolation
 `db_session` fixture uses `get_session()` context manager — rollback only happens if the test raises. Successful tests simply close without explicit rollback; uncommitted mutations are lost on session close. 23 test files total.
 
-### No CI / Linter / Formatter
-No GitHub Actions, pre-commit, ruff, flake8, or black. Review/lint manually.
+### CI Pipeline
+`.github/workflows/ci.yml` runs on every push/PR:
+- **Backend**: Ubuntu, PostgreSQL 15 service, Python 3.10, applies `db/schema.sql`, runs `pytest tests/ -v --cov=app --cov-report=term-missing`.
+- **Frontend**: Checks out `techno_terminal_UI`, Node 18, `npm ci`, `npm run build`.
+- External services (Supabase, Twilio, Gmail) use mock-safe dummy values — no production credentials.
+- **Schema reproducibility**: `python scripts/verify_test_db.py` verifies `db/schema.sql` applies cleanly.
 
 ### Dead Code Discipline
 Before any refactoring, grep for callers of every method. Delete dead code immediately — never migrate it into a new structure. Zero tolerance for commented-out code, deprecated shims, or superseded subset methods.

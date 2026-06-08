@@ -18,11 +18,11 @@ import time
 class TestEmployeesRead:
     """GET /hr/employees and /hr/employees/{id}"""
 
-    def test_list_employees_success(self, client, admin_headers):
+    def test_list_employees_success(self, client, mock_admin_headers, override_auth):
         """GET /hr/employees returns list of employees."""
         response = client.get(
             "/api/v1/hr/employees",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200
@@ -46,15 +46,15 @@ class TestEmployeesRead:
         )
         assert response.status_code in [200, 403, 401]
 
-    def test_get_employee_success(self, client, admin_headers):
+    def test_get_employee_success(self, client, mock_admin_headers, override_auth):
         """GET /hr/employees/{id} returns employee details."""
         # First list to get an existing employee
-        list_response = client.get("/api/v1/hr/employees", headers=admin_headers)
+        list_response = client.get("/api/v1/hr/employees", headers=mock_admin_headers)
         if list_response.status_code == 200 and list_response.json()["data"]:
             employee_id = list_response.json()["data"][0]["id"]
             response = client.get(
                 f"/api/v1/hr/employees/{employee_id}",
-                headers=admin_headers
+                headers=mock_admin_headers
             )
             assert response.status_code == 200
             data = response.json()
@@ -68,11 +68,11 @@ class TestEmployeesRead:
             assert "contract_percentage" in data["data"]
             assert "national_id" in data["data"]
 
-    def test_get_employee_not_found(self, client, admin_headers):
+    def test_get_employee_not_found(self, client, mock_admin_headers, override_auth):
         """GET /hr/employees/{id} for non-existent ID returns 404."""
         response = client.get(
             "/api/v1/hr/employees/99999",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         assert response.status_code == 404
 
@@ -104,11 +104,11 @@ class TestEmployeesCreate:
             **overrides
         }
 
-    def test_create_employee_success(self, client, admin_headers):
+    def test_create_employee_success(self, client, mock_admin_headers, override_auth):
         """POST /hr/employees creates a new employee with valid data."""
         response = client.post(
             "/api/v1/hr/employees",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=self._generate_unique_employee_data()
         )
 
@@ -121,99 +121,99 @@ class TestEmployeesCreate:
             assert "data" in data
             assert data["data"]["full_name"] is not None
 
-    def test_create_employee_missing_full_name(self, client, admin_headers):
+    def test_create_employee_missing_full_name(self, client, mock_admin_headers, override_auth):
         """POST /hr/employees without full_name returns 422."""
         data = self._generate_unique_employee_data()
         del data["full_name"]
         response = client.post(
             "/api/v1/hr/employees",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=data
         )
         assert response.status_code == 422
 
-    def test_create_employee_missing_phone(self, client, admin_headers):
+    def test_create_employee_missing_phone(self, client, mock_admin_headers, override_auth):
         """POST /hr/employees without phone returns 422."""
         data = self._generate_unique_employee_data()
         del data["phone"]
         response = client.post(
             "/api/v1/hr/employees",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=data
         )
         assert response.status_code == 422
 
-    def test_create_employee_missing_national_id(self, client, admin_headers):
+    def test_create_employee_missing_national_id(self, client, mock_admin_headers, override_auth):
         """POST /hr/employees without national_id returns 422."""
         data = self._generate_unique_employee_data()
         del data["national_id"]
         response = client.post(
             "/api/v1/hr/employees",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=data
         )
         assert response.status_code == 422
 
-    def test_create_employee_missing_university(self, client, admin_headers):
+    def test_create_employee_missing_university(self, client, mock_admin_headers, override_auth):
         """POST /hr/employees without university returns 422."""
         data = self._generate_unique_employee_data()
         del data["university"]
         response = client.post(
             "/api/v1/hr/employees",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=data
         )
         assert response.status_code == 422
 
-    def test_create_employee_missing_major(self, client, admin_headers):
+    def test_create_employee_missing_major(self, client, mock_admin_headers, override_auth):
         """POST /hr/employees without major returns 422."""
         data = self._generate_unique_employee_data()
         del data["major"]
         response = client.post(
             "/api/v1/hr/employees",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=data
         )
         assert response.status_code == 422
 
-    def test_create_employee_empty_full_name(self, client, admin_headers):
+    def test_create_employee_empty_full_name(self, client, mock_admin_headers, override_auth):
         """POST /hr/employees with empty full_name - API may accept or reject."""
         response = client.post(
             "/api/v1/hr/employees",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=self._generate_unique_employee_data(full_name="")
         )
         # API currently accepts empty full_name (201) or may reject (422/409)
         assert response.status_code in [201, 422, 409]
 
     @pytest.mark.skip(reason="API doesn't handle Pydantic validation for employment_type - raises 500 error")
-    def test_create_employee_invalid_employment_type(self, client, admin_headers):
+    def test_create_employee_invalid_employment_type(self, client, mock_admin_headers, override_auth):
         """POST /hr/employees with invalid employment_type returns 500 (unhandled validation)."""
         response = client.post(
             "/api/v1/hr/employees",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=self._generate_unique_employee_data(employment_type="invalid_type")
         )
         # Pydantic validation raises 500 error before API can return 422
         assert response.status_code in [422, 409, 500]
 
-    def test_create_employee_invalid_phone_format(self, client, admin_headers):
+    def test_create_employee_invalid_phone_format(self, client, mock_admin_headers, override_auth):
         """POST /hr/employees with invalid phone format may return 422."""
         response = client.post(
             "/api/v1/hr/employees",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=self._generate_unique_employee_data(phone="invalid-phone")
         )
         # API may accept or reject depending on validation strictness
         assert response.status_code in [201, 422, 409]
 
-    def test_create_employee_duplicate_national_id(self, client, admin_headers):
+    def test_create_employee_duplicate_national_id(self, client, mock_admin_headers, override_auth):
         """POST /hr/employees with duplicate national_id returns 409."""
         # First create an employee
         data = self._generate_unique_employee_data()
         first_response = client.post(
             "/api/v1/hr/employees",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=data
         )
 
@@ -226,7 +226,7 @@ class TestEmployeesCreate:
             )
             second_response = client.post(
                 "/api/v1/hr/employees",
-                headers=admin_headers,
+                headers=mock_admin_headers,
                 json=duplicate_data
             )
             assert second_response.status_code == 409
@@ -262,10 +262,10 @@ class TestEmployeesUpdate:
             **overrides
         }
 
-    def test_update_employee_success(self, client, admin_headers):
+    def test_update_employee_success(self, client, mock_admin_headers, override_auth):
         """PUT /hr/employees/{id} updates an existing employee."""
         # First list to get an existing employee or create one
-        list_response = client.get("/api/v1/hr/employees", headers=admin_headers)
+        list_response = client.get("/api/v1/hr/employees", headers=mock_admin_headers)
 
         if list_response.status_code == 200 and list_response.json()["data"]:
             employee_id = list_response.json()["data"][0]["id"]
@@ -274,7 +274,7 @@ class TestEmployeesUpdate:
             create_data = self._generate_unique_employee_data()
             create_response = client.post(
                 "/api/v1/hr/employees",
-                headers=admin_headers,
+                headers=mock_admin_headers,
                 json=create_data
             )
             if create_response.status_code == 201:
@@ -285,7 +285,7 @@ class TestEmployeesUpdate:
 
         response = client.put(
             f"/api/v1/hr/employees/{employee_id}",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=self._generate_unique_employee_data(
                 full_name="Updated Employee Name",
                 job_title="Senior Engineer",
@@ -300,19 +300,19 @@ class TestEmployeesUpdate:
             assert data["success"] is True
             assert data["data"]["full_name"] == "Updated Employee Name"
 
-    def test_update_employee_not_found(self, client, admin_headers):
+    def test_update_employee_not_found(self, client, mock_admin_headers, override_auth):
         """PUT /hr/employees/{id} for non-existent ID returns 404."""
         response = client.put(
             "/api/v1/hr/employees/99999",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=self._generate_unique_employee_data()
         )
         assert response.status_code in [404, 422, 409]
 
-    def test_update_employee_invalid_data(self, client, admin_headers):
+    def test_update_employee_invalid_data(self, client, mock_admin_headers, override_auth):
         """PUT /hr/employees/{id} with invalid data returns 422."""
         # First get or create an employee
-        list_response = client.get("/api/v1/hr/employees", headers=admin_headers)
+        list_response = client.get("/api/v1/hr/employees", headers=mock_admin_headers)
 
         if list_response.status_code == 200 and list_response.json()["data"]:
             employee_id = list_response.json()["data"][0]["id"]
@@ -320,7 +320,7 @@ class TestEmployeesUpdate:
             create_data = self._generate_unique_employee_data()
             create_response = client.post(
                 "/api/v1/hr/employees",
-                headers=admin_headers,
+                headers=mock_admin_headers,
                 json=create_data
             )
             if create_response.status_code == 201:
@@ -335,7 +335,7 @@ class TestEmployeesUpdate:
 
         response = client.put(
             f"/api/v1/hr/employees/{employee_id}",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=update_data
         )
 
@@ -353,14 +353,14 @@ class TestEmployeesUpdate:
 class TestStaffAccounts:
     """Tests for /hr/staff-accounts endpoints."""
     
-    def test_list_staff_accounts_success(self, client, admin_headers):
+    def test_list_staff_accounts_success(self, client, mock_admin_headers, override_auth):
         """
         GET /hr/staff-accounts returns staff accounts.
         Requires admin role.
         """
         response = client.get(
             "/api/v1/hr/staff-accounts",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         
         assert response.status_code == 200
@@ -368,11 +368,11 @@ class TestStaffAccounts:
         assert data["success"] is True
         assert isinstance(data["data"], list)
     
-    def test_list_staff_accounts_structure(self, client, admin_headers):
+    def test_list_staff_accounts_structure(self, client, mock_admin_headers, override_auth):
         """GET /hr/staff-accounts returns properly structured data."""
         response = client.get(
             "/api/v1/hr/staff-accounts",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         if response.status_code == 200:
@@ -393,11 +393,11 @@ class TestStaffAccounts:
 class TestHRAttendance:
     """POST /hr/attendance/log"""
 
-    def test_log_attendance_success(self, client, admin_headers):
+    def test_log_attendance_success(self, client, mock_admin_headers, override_auth):
         """POST /hr/attendance/log logs attendance (stub)."""
         response = client.post(
             "/api/v1/hr/attendance/log",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json={
                 "employee_id": 1,
                 "status": "check_in",
@@ -413,11 +413,11 @@ class TestHRAttendance:
         assert data["data"]["status"] == "check_in"
         assert "logged_at" in data["data"]
 
-    def test_log_attendance_check_out(self, client, admin_headers):
+    def test_log_attendance_check_out(self, client, mock_admin_headers, override_auth):
         """POST /hr/attendance/log with check_out status."""
         response = client.post(
             "/api/v1/hr/attendance/log",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json={
                 "employee_id": 1,
                 "status": "check_out"
@@ -429,11 +429,11 @@ class TestHRAttendance:
         assert data["success"] is True
         assert data["data"]["status"] == "check_out"
 
-    def test_log_attendance_invalid_employee_id(self, client, admin_headers):
+    def test_log_attendance_invalid_employee_id(self, client, mock_admin_headers, override_auth):
         """POST /hr/attendance/log with invalid employee_id returns 422."""
         response = client.post(
             "/api/v1/hr/attendance/log",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json={
                 "employee_id": "not-an-int",
                 "status": "check_in"
@@ -442,11 +442,11 @@ class TestHRAttendance:
 
         assert response.status_code == 422
 
-    def test_log_attendance_missing_status(self, client, admin_headers):
+    def test_log_attendance_missing_status(self, client, mock_admin_headers, override_auth):
         """POST /hr/attendance/log without status may return 422."""
         response = client.post(
             "/api/v1/hr/attendance/log",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json={
                 "employee_id": 1
             }
@@ -487,39 +487,39 @@ class TestEmployeesEdgeCases:
             **overrides
         }
 
-    def test_create_employee_boundary_salary(self, client, admin_headers):
+    def test_create_employee_boundary_salary(self, client, mock_admin_headers, override_auth):
         """POST /hr/employees with zero salary."""
         response = client.post(
             "/api/v1/hr/employees",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=self._generate_unique_employee_data(monthly_salary=0)
         )
         assert response.status_code in [201, 422, 409]
 
-    def test_create_employee_very_long_name(self, client, admin_headers):
+    def test_create_employee_very_long_name(self, client, mock_admin_headers, override_auth):
         """POST /hr/employees with very long name."""
         response = client.post(
             "/api/v1/hr/employees",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=self._generate_unique_employee_data(full_name="A" * 200)
         )
         assert response.status_code in [201, 422, 409]
 
-    def test_create_employee_invalid_email(self, client, admin_headers):
+    def test_create_employee_invalid_email(self, client, mock_admin_headers, override_auth):
         """POST /hr/employees with invalid email format."""
         response = client.post(
             "/api/v1/hr/employees",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=self._generate_unique_employee_data(email="not-an-email")
         )
         assert response.status_code in [201, 422, 409]
 
-    def test_create_employee_employment_types(self, client, admin_headers):
+    def test_create_employee_employment_types(self, client, mock_admin_headers, override_auth):
         """POST /hr/employees with valid employment types."""
         for emp_type in ["full_time", "part_time", "contract"]:
             response = client.post(
                 "/api/v1/hr/employees",
-                headers=admin_headers,
+                headers=mock_admin_headers,
                 json=self._generate_unique_employee_data(employment_type=emp_type)
             )
             # Should accept valid types or fail with conflict
@@ -529,7 +529,7 @@ class TestEmployeesEdgeCases:
 class TestHRAuth:
     """Authentication tests for all HR endpoints."""
     
-    def test_all_hr_endpoints_require_admin(self, client, admin_headers):
+    def test_all_hr_endpoints_require_admin(self, client, mock_admin_headers, override_auth):
         """
         Verify all HR endpoints require admin authentication.
         """
@@ -555,10 +555,10 @@ class TestHRAuth:
             
             # With admin auth should not be 401 (may be 404 if resource doesn't exist)
             if method == "GET":
-                with_auth = client.get(endpoint, headers=admin_headers)
+                with_auth = client.get(endpoint, headers=mock_admin_headers)
             elif method == "POST":
-                with_auth = client.post(endpoint, headers=admin_headers, json={"employee_id": 1, "status": "check_in"} if "attendance" in endpoint else {"full_name": "Test", "job_title": "Tester"})
+                with_auth = client.post(endpoint, headers=mock_admin_headers, json={"employee_id": 1, "status": "check_in"} if "attendance" in endpoint else {"full_name": "Test", "job_title": "Tester"})
             elif method == "PUT":
-                with_auth = client.put(endpoint, headers=admin_headers, json={"full_name": "Test", "job_title": "Tester"})
+                with_auth = client.put(endpoint, headers=mock_admin_headers, json={"full_name": "Test", "job_title": "Tester"})
             
             assert with_auth.status_code != 401, f"{endpoint} should accept admin auth"

@@ -27,8 +27,8 @@ def _make_mock_supabase_user(uid="mock-supabase-uid"):
 class TestAuthMe:
     """Tests for GET /api/v1/auth/me endpoint."""
 
-    def test_auth_me_success_with_admin(self, client, admin_headers):
-        response = client.get("/api/v1/auth/me", headers=admin_headers)
+    def test_auth_me_success_with_admin(self, client, mock_admin_headers, override_auth):
+        response = client.get("/api/v1/auth/me", headers=mock_admin_headers)
 
         assert response.status_code == 200
         data = response.json()

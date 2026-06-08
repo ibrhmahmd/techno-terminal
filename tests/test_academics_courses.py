@@ -14,7 +14,7 @@ import uuid
 class TestCoursesRead:
     """GET endpoints - require_any auth"""
 
-    def test_list_courses_success(self, client, admin_headers, db_session):
+    def test_list_courses_success(self, client, mock_admin_headers, override_auth, db_session):
         """Test listing courses returns paginated results."""
         # Create test courses with unique names
         from tests.utils.db_helpers import create_test_course
@@ -22,7 +22,7 @@ class TestCoursesRead:
         course1 = create_test_course(db_session, name=f"Python Basics {unique_id}", category="software")
         course2 = create_test_course(db_session, name=f"Robotics 101 {unique_id}", category="hardware")
 
-        response = client.get("/api/v1/academics/courses", headers=admin_headers)
+        response = client.get("/api/v1/academics/courses", headers=mock_admin_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -40,7 +40,7 @@ class TestCoursesRead:
 
         assert response.status_code == 401
 
-    def test_list_courses_pagination(self, client, admin_headers, db_session):
+    def test_list_courses_pagination(self, client, mock_admin_headers, override_auth, db_session):
         """Test pagination parameters work correctly."""
         from tests.utils.db_helpers import create_test_course
         # Create multiple courses with unique names
@@ -49,13 +49,13 @@ class TestCoursesRead:
             create_test_course(db_session, name=f"Pagination Course {unique_id}-{i}", category="software")
 
         # Test with limit
-        response = client.get("/api/v1/academics/courses?limit=2", headers=admin_headers)
+        response = client.get("/api/v1/academics/courses?limit=2", headers=mock_admin_headers)
         assert response.status_code == 200
         data = response.json()
         assert len(data["data"]) <= 2
 
         # Test with skip
-        response = client.get("/api/v1/academics/courses?skip=1&limit=2", headers=admin_headers)
+        response = client.get("/api/v1/academics/courses?skip=1&limit=2", headers=mock_admin_headers)
         assert response.status_code == 200
         data = response.json()
         assert len(data["data"]) <= 2
@@ -65,7 +65,7 @@ class TestCoursesRead:
 class TestCoursesWrite:
     """POST/PATCH - require_admin auth"""
 
-    def test_create_course_success(self, client, admin_headers):
+    def test_create_course_success(self, client, mock_admin_headers, override_auth):
         """Test creating a course with valid data."""
         unique_id = str(uuid.uuid4())[:8]
         payload = {
@@ -77,7 +77,7 @@ class TestCoursesWrite:
 
         response = client.post(
             "/api/v1/academics/courses",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=payload
         )
 
@@ -89,7 +89,7 @@ class TestCoursesWrite:
         assert data["data"]["category"] == payload["category"]
         assert data["message"] == "Course created successfully."
 
-    def test_create_course_validation_error(self, client, admin_headers):
+    def test_create_course_validation_error(self, client, mock_admin_headers, override_auth):
         """Test creating a course with invalid data fails validation."""
         payload = {
             "name": "",  # Empty name should fail
@@ -99,7 +99,7 @@ class TestCoursesWrite:
 
         response = client.post(
             "/api/v1/academics/courses",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=payload
         )
 
@@ -128,7 +128,7 @@ class TestCoursesWrite:
         # Mock token may fail validation (401) or be rejected for insufficient permissions (403)
         assert response.status_code in [401, 403]
 
-    def test_update_course_success(self, client, admin_headers, db_session):
+    def test_update_course_success(self, client, mock_admin_headers, override_auth, db_session):
         """Test updating a course with valid data."""
         from tests.utils.db_helpers import create_test_course
         unique_id = str(uuid.uuid4())[:8]
@@ -138,7 +138,7 @@ class TestCoursesWrite:
 
         response = client.patch(
             f"/api/v1/academics/courses/{course.id}",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=payload
         )
 
@@ -148,13 +148,13 @@ class TestCoursesWrite:
         assert data["data"]["name"] == payload["name"]
         assert data["data"]["price_per_level"] == payload["price_per_level"]
 
-    def test_update_course_not_found(self, client, admin_headers):
+    def test_update_course_not_found(self, client, mock_admin_headers, override_auth):
         """Test updating a non-existent course returns 404."""
         payload = {"name": "Updated Name"}
 
         response = client.patch(
             "/api/v1/academics/courses/99999",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=payload
         )
 
@@ -175,7 +175,7 @@ class TestCoursesWrite:
 
         assert response.status_code == 401
 
-    def test_update_course_validation_error(self, client, admin_headers, db_session):
+    def test_update_course_validation_error(self, client, mock_admin_headers, override_auth, db_session):
         """Test updating a course with invalid data fails validation."""
         from tests.utils.db_helpers import create_test_course
         unique_id = str(uuid.uuid4())[:8]
@@ -185,7 +185,7 @@ class TestCoursesWrite:
 
         response = client.patch(
             f"/api/v1/academics/courses/{course.id}",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=payload
         )
 
@@ -195,9 +195,9 @@ class TestCoursesWrite:
 class TestCoursesEdgeCases:
     """Edge cases and boundary conditions"""
 
-    def test_list_courses_empty_database(self, client, admin_headers):
+    def test_list_courses_empty_database(self, client, mock_admin_headers, override_auth):
         """Test listing courses returns valid response structure."""
-        response = client.get("/api/v1/academics/courses", headers=admin_headers)
+        response = client.get("/api/v1/academics/courses", headers=mock_admin_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -206,7 +206,7 @@ class TestCoursesEdgeCases:
         assert isinstance(data["data"], list)
         # Note: Database may have existing courses, just verify structure
 
-    def test_create_course_boundary_price(self, client, admin_headers):
+    def test_create_course_boundary_price(self, client, mock_admin_headers, override_auth):
         """Test creating a course with boundary price values."""
         unique_id = str(uuid.uuid4())[:8]
         payload = {
@@ -217,7 +217,7 @@ class TestCoursesEdgeCases:
 
         response = client.post(
             "/api/v1/academics/courses",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=payload
         )
 
@@ -226,7 +226,7 @@ class TestCoursesEdgeCases:
         if response.status_code == 201:
             assert response.json()["data"]["price_per_level"] == 0.0
 
-    def test_create_course_long_name(self, client, admin_headers):
+    def test_create_course_long_name(self, client, mock_admin_headers, override_auth):
         """Test creating a course with very long name."""
         payload = {
             "name": "A" * 200,  # Very long name
@@ -235,14 +235,14 @@ class TestCoursesEdgeCases:
 
         response = client.post(
             "/api/v1/academics/courses",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=payload
         )
 
         # Should either succeed or fail with validation error
         assert response.status_code in [201, 422]
 
-    def test_update_course_no_changes(self, client, admin_headers, db_session):
+    def test_update_course_no_changes(self, client, mock_admin_headers, override_auth, db_session):
         """Test updating a course with empty payload."""
         from tests.utils.db_helpers import create_test_course
         unique_id = str(uuid.uuid4())[:8]
@@ -251,7 +251,7 @@ class TestCoursesEdgeCases:
 
         response = client.patch(
             f"/api/v1/academics/courses/{course.id}",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json={}
         )
 

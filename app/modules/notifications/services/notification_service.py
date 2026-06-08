@@ -14,7 +14,7 @@ from datetime import datetime, date
 from typing import Optional
 from fastapi import BackgroundTasks
 
-from app.modules.notifications.interfaces.i_notification_repository import INotificationRepository
+from app.modules.notifications.interfaces.i_notification_repository import NotificationRepositoryInterface
 from app.modules.notifications.services.enrollment_notifications import EnrollmentNotificationService
 from app.modules.notifications.services.payment_notifications import PaymentNotificationService
 from app.modules.notifications.services.report_notifications import ReportNotificationService
@@ -39,7 +39,7 @@ class NotificationService:
         await service.report.send_daily_report()
     """
 
-    def __init__(self, repo: INotificationRepository):
+    def __init__(self, repo: NotificationRepositoryInterface):
         self._repo = repo
         # Delegate to specialized services
         self.enrollment = EnrollmentNotificationService(repo)

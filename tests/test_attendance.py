@@ -18,7 +18,7 @@ from datetime import date, time
 class TestAttendanceRead:
     """GET /attendance/session/{session_id} - require_admin auth"""
 
-    def test_get_session_attendance_success(self, client, admin_headers, db_session):
+    def test_get_session_attendance_success(self, client, mock_admin_headers, override_auth, db_session):
         """Test getting session roster with attendance status."""
         from tests.utils.db_helpers import create_test_course, create_test_group, create_test_student
         from app.modules.enrollments.models.enrollment_models import Enrollment
@@ -52,7 +52,7 @@ class TestAttendanceRead:
 
         response = client.get(
             f"/api/v1/attendance/session/{session.id}",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200
@@ -60,11 +60,11 @@ class TestAttendanceRead:
         assert data["success"] is True
         assert isinstance(data["data"], list)
 
-    def test_get_session_attendance_not_found(self, client, admin_headers):
+    def test_get_session_attendance_not_found(self, client, mock_admin_headers, override_auth):
         """Test getting attendance for non-existent session returns 404."""
         response = client.get(
             "/api/v1/attendance/session/99999",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         assert response.status_code == 404
 
@@ -86,7 +86,7 @@ class TestAttendanceRead:
 class TestAttendanceMark:
     """POST /attendance/session/{session_id}/mark - require_admin auth"""
 
-    def test_mark_attendance_success(self, client, admin_headers, db_session):
+    def test_mark_attendance_success(self, client, mock_admin_headers, override_auth, db_session):
         """Test marking attendance with valid entries."""
         from tests.utils.db_helpers import create_test_course, create_test_group, create_test_student
         from app.modules.academics.models import CourseSession
@@ -118,7 +118,7 @@ class TestAttendanceMark:
 
         response = client.post(
             f"/api/v1/attendance/session/{session.id}/mark",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=payload
         )
 
@@ -127,19 +127,19 @@ class TestAttendanceMark:
         assert data["success"] is True
         assert data["data"]["marked"] == 2
 
-    def test_mark_attendance_validation_empty_entries(self, client, admin_headers):
+    def test_mark_attendance_validation_empty_entries(self, client, mock_admin_headers, override_auth):
         """Test marking attendance with empty entries fails validation."""
         payload = {"entries": []}
 
         response = client.post(
             "/api/v1/attendance/session/1/mark",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=payload
         )
 
         assert response.status_code == 422
 
-    def test_mark_attendance_validation_duplicate_students(self, client, admin_headers):
+    def test_mark_attendance_validation_duplicate_students(self, client, mock_admin_headers, override_auth):
         """Test marking attendance with duplicate student IDs fails validation."""
         payload = {
             "entries": [
@@ -150,7 +150,7 @@ class TestAttendanceMark:
 
         response = client.post(
             "/api/v1/attendance/session/1/mark",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=payload
         )
 
@@ -158,7 +158,7 @@ class TestAttendanceMark:
         # Note: The duplicate validation error may not include 'duplicate' in response
         # depending on how Pydantic/FastAPI serializes the ValueError
 
-    def test_mark_attendance_validation_invalid_status(self, client, admin_headers):
+    def test_mark_attendance_validation_invalid_status(self, client, mock_admin_headers, override_auth):
         """Test marking attendance with invalid status fails validation."""
         payload = {
             "entries": [
@@ -168,13 +168,13 @@ class TestAttendanceMark:
 
         response = client.post(
             "/api/v1/attendance/session/1/mark",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=payload
         )
 
         assert response.status_code == 422
 
-    def test_mark_attendance_validation_negative_student_id(self, client, admin_headers):
+    def test_mark_attendance_validation_negative_student_id(self, client, mock_admin_headers, override_auth):
         """Test marking attendance with negative student_id fails validation."""
         payload = {
             "entries": [
@@ -184,13 +184,13 @@ class TestAttendanceMark:
 
         response = client.post(
             "/api/v1/attendance/session/1/mark",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=payload
         )
 
         assert response.status_code == 422
 
-    def test_mark_attendance_not_found_session(self, client, admin_headers):
+    def test_mark_attendance_not_found_session(self, client, mock_admin_headers, override_auth):
         """Test marking attendance for non-existent session returns 404."""
         payload = {
             "entries": [
@@ -200,7 +200,7 @@ class TestAttendanceMark:
 
         response = client.post(
             "/api/v1/attendance/session/99999/mark",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=payload
         )
 
@@ -238,7 +238,7 @@ class TestAttendanceMark:
         # system_admin may be treated as admin (200) or forbidden (403)
         assert response.status_code in [200, 403]
 
-    def test_mark_attendance_all_valid_statuses(self, client, admin_headers, db_session):
+    def test_mark_attendance_all_valid_statuses(self, client, mock_admin_headers, override_auth, db_session):
         """Test marking attendance with all valid status values."""
         from tests.utils.db_helpers import create_test_course, create_test_group, create_test_student
         from app.modules.academics.models import CourseSession
@@ -272,7 +272,7 @@ class TestAttendanceMark:
 
         response = client.post(
             f"/api/v1/attendance/session/{session.id}/mark",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=payload
         )
 
@@ -284,7 +284,7 @@ class TestAttendanceMark:
 class TestAttendanceEdgeCases:
     """Edge cases and boundary conditions"""
 
-    def test_mark_attendance_nonexistent_student(self, client, admin_headers, db_session):
+    def test_mark_attendance_nonexistent_student(self, client, mock_admin_headers, override_auth, db_session):
         """Test marking attendance for non-existent student returns in skipped list."""
         from tests.utils.db_helpers import create_test_course, create_test_group
         from app.modules.academics.models import CourseSession
@@ -313,7 +313,7 @@ class TestAttendanceEdgeCases:
 
         response = client.post(
             f"/api/v1/attendance/session/{session.id}/mark",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=payload
         )
 
@@ -321,7 +321,7 @@ class TestAttendanceEdgeCases:
         data = response.json()
         assert 99999 in data["data"]["skipped"]
 
-    def test_mark_attendance_idempotent_update(self, client, admin_headers, db_session):
+    def test_mark_attendance_idempotent_update(self, client, mock_admin_headers, override_auth, db_session):
         """Test marking attendance is idempotent - same student can be updated."""
         from tests.utils.db_helpers import create_test_course, create_test_group, create_test_student
         from app.modules.academics.models import CourseSession
@@ -346,7 +346,7 @@ class TestAttendanceEdgeCases:
         payload1 = {"entries": [{"student_id": student.id, "status": "present"}]}
         response1 = client.post(
             f"/api/v1/attendance/session/{session.id}/mark",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=payload1
         )
         assert response1.status_code == 200
@@ -354,17 +354,17 @@ class TestAttendanceEdgeCases:
         payload2 = {"entries": [{"student_id": student.id, "status": "absent"}]}
         response2 = client.post(
             f"/api/v1/attendance/session/{session.id}/mark",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=payload2
         )
         assert response2.status_code == 200
 
-    def test_mark_attendance_missing_fields(self, client, admin_headers):
+    def test_mark_attendance_missing_fields(self, client, mock_admin_headers, override_auth):
         """Test marking attendance with missing required fields fails validation."""
         payload_missing_status = {"entries": [{"student_id": 1}]}
         response = client.post(
             "/api/v1/attendance/session/1/mark",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=payload_missing_status
         )
         assert response.status_code == 422
@@ -372,12 +372,12 @@ class TestAttendanceEdgeCases:
         payload_missing_id = {"entries": [{"status": "present"}]}
         response = client.post(
             "/api/v1/attendance/session/1/mark",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=payload_missing_id
         )
         assert response.status_code == 422
 
-    def test_mark_attendance_large_batch(self, client, admin_headers, db_session):
+    def test_mark_attendance_large_batch(self, client, mock_admin_headers, override_auth, db_session):
         """Test marking attendance for many students at once."""
         from tests.utils.db_helpers import create_test_course, create_test_group, create_test_student
         from app.modules.academics.models import CourseSession
@@ -407,7 +407,7 @@ class TestAttendanceEdgeCases:
 
         response = client.post(
             f"/api/v1/attendance/session/{session.id}/mark",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=payload
         )
 
@@ -419,7 +419,7 @@ class TestAttendanceEdgeCases:
 class TestAttendanceValidationExtended:
     """Extended validation tests for attendance marking."""
 
-    def test_mark_attendance_zero_student_id(self, client, admin_headers):
+    def test_mark_attendance_zero_student_id(self, client, mock_admin_headers, override_auth):
         """Test marking attendance with student_id=0 fails gt=0 validation."""
         payload = {
             "entries": [
@@ -429,13 +429,13 @@ class TestAttendanceValidationExtended:
 
         response = client.post(
             "/api/v1/attendance/session/1/mark",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=payload
         )
 
         assert response.status_code == 422
 
-    def test_mark_attendance_max_int_student_id(self, client, admin_headers):
+    def test_mark_attendance_max_int_student_id(self, client, mock_admin_headers, override_auth):
         """Test marking attendance with very large student_id."""
         payload = {
             "entries": [
@@ -445,14 +445,14 @@ class TestAttendanceValidationExtended:
 
         response = client.post(
             "/api/v1/attendance/session/1/mark",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=payload
         )
 
         # Should be accepted (200) or skipped (200 with student in skipped list)
         assert response.status_code in [200, 422]
 
-    def test_mark_attendance_empty_string_status(self, client, admin_headers):
+    def test_mark_attendance_empty_string_status(self, client, mock_admin_headers, override_auth):
         """Test marking attendance with empty status string."""
         payload = {
             "entries": [
@@ -462,17 +462,17 @@ class TestAttendanceValidationExtended:
 
         response = client.post(
             "/api/v1/attendance/session/1/mark",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=payload
         )
 
         assert response.status_code == 422
 
-    def test_get_session_attendance_invalid_session_id_format(self, client, admin_headers):
+    def test_get_session_attendance_invalid_session_id_format(self, client, mock_admin_headers, override_auth):
         """Test getting attendance with non-numeric session_id returns 422."""
         response = client.get(
             "/api/v1/attendance/session/abc",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 422
@@ -481,7 +481,7 @@ class TestAttendanceValidationExtended:
 class TestAttendanceBusinessLogic:
     """Business logic edge cases for attendance operations."""
 
-    def test_mark_attendance_student_not_in_group(self, client, admin_headers, db_session):
+    def test_mark_attendance_student_not_in_group(self, client, mock_admin_headers, override_auth, db_session):
         """Test marking attendance for student not enrolled in session's group - should skip."""
         from tests.utils.db_helpers import create_test_course, create_test_group, create_test_student
         from app.modules.academics.models import CourseSession
@@ -512,7 +512,7 @@ class TestAttendanceBusinessLogic:
 
         response = client.post(
             f"/api/v1/attendance/session/{session.id}/mark",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=payload
         )
 
@@ -521,7 +521,7 @@ class TestAttendanceBusinessLogic:
         assert student.id in data["data"]["skipped"]
         assert data["data"]["marked"] == 0
 
-    def test_mark_attendance_student_wrong_level(self, client, admin_headers, db_session):
+    def test_mark_attendance_student_wrong_level(self, client, mock_admin_headers, override_auth, db_session):
         """Test marking attendance for student enrolled at wrong level - should skip."""
         from tests.utils.db_helpers import create_test_course, create_test_group, create_test_student
         from app.modules.enrollments.models.enrollment_models import Enrollment
@@ -563,7 +563,7 @@ class TestAttendanceBusinessLogic:
 
         response = client.post(
             f"/api/v1/attendance/session/{session.id}/mark",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=payload
         )
 
@@ -571,7 +571,7 @@ class TestAttendanceBusinessLogic:
         data = response.json()
         assert student.id in data["data"]["skipped"]
 
-    def test_mark_attendance_response_structure(self, client, admin_headers, db_session):
+    def test_mark_attendance_response_structure(self, client, mock_admin_headers, override_auth, db_session):
         """Test that mark attendance response matches MarkAttendanceResponseDTO exactly."""
         from tests.utils.db_helpers import create_test_course, create_test_group, create_test_student
         from app.modules.enrollments.models.enrollment_models import Enrollment
@@ -611,7 +611,7 @@ class TestAttendanceBusinessLogic:
 
         response = client.post(
             f"/api/v1/attendance/session/{session.id}/mark",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=payload
         )
 
@@ -625,7 +625,7 @@ class TestAttendanceBusinessLogic:
         assert isinstance(data["data"]["marked"], int)
         assert isinstance(data["data"]["skipped"], list)
 
-    def test_get_session_attendance_response_structure(self, client, admin_headers, db_session):
+    def test_get_session_attendance_response_structure(self, client, mock_admin_headers, override_auth, db_session):
         """Test that get session attendance response matches SessionAttendanceRowDTO."""
         from tests.utils.db_helpers import create_test_course, create_test_group, create_test_student
         from app.modules.enrollments.models.enrollment_models import Enrollment
@@ -659,7 +659,7 @@ class TestAttendanceBusinessLogic:
 
         response = client.get(
             f"/api/v1/attendance/session/{session.id}",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
 
         assert response.status_code == 200
@@ -672,7 +672,7 @@ class TestAttendanceBusinessLogic:
 class TestAttendanceIntegration:
     """Integration tests for full attendance workflows."""
 
-    def test_full_attendance_workflow(self, client, admin_headers, db_session):
+    def test_full_attendance_workflow(self, client, mock_admin_headers, override_auth, db_session):
         """Test complete workflow: create session, get roster, mark attendance, verify."""
         from tests.utils.db_helpers import create_test_course, create_test_group, create_test_student
         from app.modules.enrollments.models.enrollment_models import Enrollment
@@ -713,7 +713,7 @@ class TestAttendanceIntegration:
         # Step 1: Get initial roster (should be empty or have enrollments)
         response1 = client.get(
             f"/api/v1/attendance/session/{session.id}",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         assert response1.status_code == 200
 
@@ -726,7 +726,7 @@ class TestAttendanceIntegration:
         }
         response2 = client.post(
             f"/api/v1/attendance/session/{session.id}/mark",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json=payload
         )
         assert response2.status_code == 200
@@ -736,11 +736,11 @@ class TestAttendanceIntegration:
         # Step 3: Get roster again (should now have attendance records)
         response3 = client.get(
             f"/api/v1/attendance/session/{session.id}",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         assert response3.status_code == 200
 
-    def test_mark_attendance_multiple_sessions_same_student(self, client, admin_headers, db_session):
+    def test_mark_attendance_multiple_sessions_same_student(self, client, mock_admin_headers, override_auth, db_session):
         """Test marking attendance for same student across multiple sessions."""
         from tests.utils.db_helpers import create_test_course, create_test_group, create_test_student
         from app.modules.enrollments.models.enrollment_models import Enrollment
@@ -787,7 +787,7 @@ class TestAttendanceIntegration:
         # Mark attendance in session 1
         response1 = client.post(
             f"/api/v1/attendance/session/{session1.id}/mark",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json={"entries": [{"student_id": student.id, "status": "present"}]}
         )
         assert response1.status_code == 200
@@ -795,7 +795,7 @@ class TestAttendanceIntegration:
         # Mark attendance in session 2
         response2 = client.post(
             f"/api/v1/attendance/session/{session2.id}/mark",
-            headers=admin_headers,
+            headers=mock_admin_headers,
             json={"entries": [{"student_id": student.id, "status": "absent"}]}
         )
         assert response2.status_code == 200

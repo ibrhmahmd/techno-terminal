@@ -72,26 +72,34 @@ def system_admin_headers(system_admin_token):
 
 
 @pytest.fixture
-def override_auth(app):
+def override_auth(app, db_session):
     """
     Override the get_current_user dependency to bypass real Supabase JWT validation.
+    Also creates the mock user in DB to satisfy FK constraints.
     
     Use this fixture in tests that don't need real Supabase auth.
     Combine with mock_admin_headers or system_admin_headers for token-passing tests.
     """
     from app.api.dependencies import get_current_user
-    from app.modules.auth.models.auth_models import User
+    from app.modules.auth.models.auth_models import User as UserModel
+    from sqlmodel import select
 
-    mock_user = User(
-        id=1,
-        username="test_admin",
-        role="admin",
-        supabase_uid="test-admin-001",
-        is_active=True,
-    )
+    user = db_session.exec(
+        select(UserModel).where(UserModel.supabase_uid == "test-admin-001")
+    ).first()
+    if user is None:
+        user = UserModel(
+            username="test_admin",
+            role="admin",
+            supabase_uid="test-admin-001",
+            is_active=True,
+        )
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
 
     async def _mock_get_current_user():
-        return mock_user
+        return user
 
     app.dependency_overrides[get_current_user] = _mock_get_current_user
     yield
@@ -99,24 +107,32 @@ def override_auth(app):
 
 
 @pytest.fixture
-def override_system_admin_auth(app):
+def override_system_admin_auth(app, db_session):
     """
     Override get_current_user with a system_admin user.
     Use with system_admin_headers for token-passing tests.
+    Also creates the mock user in DB to satisfy FK constraints.
     """
     from app.api.dependencies import get_current_user
-    from app.modules.auth.models.auth_models import User
+    from app.modules.auth.models.auth_models import User as UserModel
+    from sqlmodel import select
 
-    mock_user = User(
-        id=1,
-        username="test_sysadmin",
-        role="system_admin",
-        supabase_uid="test-sysadmin-001",
-        is_active=True,
-    )
+    user = db_session.exec(
+        select(UserModel).where(UserModel.supabase_uid == "test-sysadmin-001")
+    ).first()
+    if user is None:
+        user = UserModel(
+            username="test_sysadmin",
+            role="system_admin",
+            supabase_uid="test-sysadmin-001",
+            is_active=True,
+        )
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
 
     async def _mock_get_current_user():
-        return mock_user
+        return user
 
     app.dependency_overrides[get_current_user] = _mock_get_current_user
     yield

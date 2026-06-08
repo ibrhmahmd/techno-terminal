@@ -18,7 +18,7 @@ from app.modules.notifications.models.notification_log import NotificationLog
 
 
 class NotificationRepository:
-    """Concrete implementation of INotificationRepository."""
+    """Concrete implementation of NotificationRepositoryInterface."""
 
     def __init__(self, session: Session) -> None:
         self._session = session

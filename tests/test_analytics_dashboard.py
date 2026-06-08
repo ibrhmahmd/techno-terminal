@@ -21,14 +21,14 @@ from datetime import date, timedelta
 class TestDashboardSummary:
     """Tests for GET /analytics/dashboard/summary — core dashboard metric."""
     
-    def test_dashboard_summary_success(self, client, admin_headers):
+    def test_dashboard_summary_success(self, client, mock_admin_headers, override_auth):
         """
         GET /analytics/dashboard/summary returns active enrollments and session count.
         Requires admin role.
         """
         response = client.get(
             "/api/v1/analytics/dashboard/summary",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         
         assert response.status_code == 200
@@ -62,14 +62,14 @@ class TestDashboardSummary:
 class TestUnpaidAttendees:
     """Tests for GET /analytics/academics/unpaid-attendees."""
     
-    def test_unpaid_attendees_success(self, client, admin_headers):
+    def test_unpaid_attendees_success(self, client, mock_admin_headers, override_auth):
         """
         GET /analytics/academics/unpaid-attendees returns students with unpaid balances.
         Requires admin role.
         """
         response = client.get(
             "/api/v1/analytics/academics/unpaid-attendees",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         
         assert response.status_code == 200
@@ -78,7 +78,7 @@ class TestUnpaidAttendees:
         assert "data" in data
         assert isinstance(data["data"], list)
     
-    def test_unpaid_attendees_with_date(self, client, admin_headers):
+    def test_unpaid_attendees_with_date(self, client, mock_admin_headers, override_auth):
         """
         GET /analytics/academics/unpaid-attendees?target_date=YYYY-MM-DD
         Returns unpaid attendees for specific date.
@@ -87,7 +87,7 @@ class TestUnpaidAttendees:
         
         response = client.get(
             f"/api/v1/analytics/academics/unpaid-attendees?target_date={today}",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         
         assert response.status_code == 200
@@ -106,7 +106,7 @@ class TestUnpaidAttendees:
 class TestRevenueByDate:
     """Tests for GET /analytics/finance/revenue-by-date."""
     
-    def test_revenue_by_date_success(self, client, admin_headers):
+    def test_revenue_by_date_success(self, client, mock_admin_headers, override_auth):
         """
         GET /analytics/finance/revenue-by-date returns daily revenue totals.
         Requires date range parameters.
@@ -116,7 +116,7 @@ class TestRevenueByDate:
         
         response = client.get(
             f"/api/v1/analytics/finance/revenue-by-date?start={start_date}&end={end_date}",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         
         assert response.status_code == 200
@@ -125,13 +125,13 @@ class TestRevenueByDate:
         assert "data" in data
         assert isinstance(data["data"], list)
     
-    def test_revenue_by_date_missing_params(self, client, admin_headers):
+    def test_revenue_by_date_missing_params(self, client, mock_admin_headers, override_auth):
         """
         GET /analytics/finance/revenue-by-date without required dates returns 422.
         """
         response = client.get(
             "/api/v1/analytics/finance/revenue-by-date",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         
         # Should fail validation (422) or return error
@@ -148,13 +148,13 @@ class TestRevenueByDate:
 class TestTopDebtors:
     """Tests for GET /analytics/finance/top-debtors."""
     
-    def test_top_debtors_default_limit(self, client, admin_headers):
+    def test_top_debtors_default_limit(self, client, mock_admin_headers, override_auth):
         """
         GET /analytics/finance/top-debtors returns top debtors with default limit.
         """
         response = client.get(
             "/api/v1/analytics/finance/top-debtors",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         
         assert response.status_code == 200
@@ -166,13 +166,13 @@ class TestTopDebtors:
         # Should return up to 15 by default
         assert len(data["data"]) <= 15
     
-    def test_top_debtors_custom_limit(self, client, admin_headers):
+    def test_top_debtors_custom_limit(self, client, mock_admin_headers, override_auth):
         """
         GET /analytics/finance/top-debtors?limit=N returns N debtors.
         """
         response = client.get(
             "/api/v1/analytics/finance/top-debtors?limit=5",
-            headers=admin_headers
+            headers=mock_admin_headers
         )
         
         assert response.status_code == 200
@@ -192,7 +192,7 @@ class TestTopDebtors:
 class TestDashboardAuth:
     """Authentication tests for all dashboard endpoints."""
     
-    def test_all_dashboard_endpoints_require_admin(self, client, admin_headers):
+    def test_all_dashboard_endpoints_require_admin(self, client, mock_admin_headers, override_auth):
         """
         Verify all dashboard endpoints require admin authentication.
         """
@@ -209,5 +209,5 @@ class TestDashboardAuth:
             assert no_auth_response.status_code == 401, f"{endpoint} should require auth"
             
             # Test with admin auth (should not be 401)
-            admin_response = client.get(endpoint, headers=admin_headers)
+            admin_response = client.get(endpoint, headers=mock_admin_headers)
             assert admin_response.status_code != 401, f"{endpoint} should accept admin token"
