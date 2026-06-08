@@ -30,6 +30,15 @@ class StudentRepository(IStudentRepository):
             return None
         return student
 
+    def get_by_name_and_dob(self, full_name: str, dob: datetime) -> Optional[Student]:
+        """Find an active (non-deleted) student by exact name (case-insensitive) and date of birth."""
+        stmt = select(Student).where(
+            func.lower(Student.full_name) == func.lower(full_name),
+            Student.date_of_birth == dob,
+            Student.deleted_at.is_(None)
+        )
+        return self._session.exec(stmt).first()
+
     def get_all(self, skip: int, limit: int, include_deleted: bool = False) -> list[Student]:
         """Get all students with optional inclusion of soft-deleted records."""
         stmt = select(Student)
@@ -145,12 +154,58 @@ class StudentRepository(IStudentRepository):
         Permanently deletes a student and all related data.
         Admin-only operation - cannot be undone.
         """
+        from sqlalchemy import text
         student = self._session.get(Student, student_id)
         if not student:
             return False
+        
+        # 1. Delete student_activity_log records
+        self._session.execute(
+            text("DELETE FROM student_activity_log WHERE student_id = :student_id"),
+            {"student_id": student_id}
+        )
+        
+        # 2. Delete team_members records
+        self._session.execute(
+            text("DELETE FROM team_members WHERE student_id = :student_id"),
+            {"student_id": student_id}
+        )
+        
+        # 3. Delete attendance records
+        self._session.execute(
+            text("DELETE FROM attendance WHERE student_id = :student_id"),
+            {"student_id": student_id}
+        )
+        
+        # 4. Delete payments records
+        self._session.execute(
+            text("DELETE FROM payments WHERE student_id = :student_id"),
+            {"student_id": student_id}
+        )
+        
+        # 5. Delete enrollment_level_history records
+        self._session.execute(
+            text("DELETE FROM enrollment_level_history WHERE student_id = :student_id"),
+            {"student_id": student_id}
+        )
+        
+        # 6. Delete enrollments records
+        self._session.execute(
+            text("DELETE FROM enrollments WHERE student_id = :student_id"),
+            {"student_id": student_id}
+        )
+        
+        # 7. Delete student_parents junction records
+        self._session.execute(
+            text("DELETE FROM student_parents WHERE student_id = :student_id"),
+            {"student_id": student_id}
+        )
+        
+        # 8. Delete the student
         self._session.delete(student)
         self._session.flush()
         return True
+
 
     def get_with_parent(self, student_id: int) -> Optional[tuple[Student, Optional[Parent]]]:
         student = self._session.get(Student, student_id)
@@ -343,40 +398,6 @@ class StudentRepository(IStudentRepository):
         stmt = select(StudentParent).where(StudentParent.student_id == student_id)
         return list(self._session.exec(stmt).all())
 
-    def log_status_change(
-        self,
-        student_id: int,
-        previous_status: Optional[str],
-        new_status: str,
-        changed_by_user_id: Optional[int] = None,
-        notes: Optional[str] = None,
-        action: Optional[str] = None,
-        new_priority: Optional[int] = None,
-    ) -> None:
-        """Log a status change in the history table."""
-        # For now, just log to a simple table or skip if table doesn't exist
-        # This will be implemented when the migration is applied
-        # The status_history table was created in migration 021
-        try:
-            from sqlalchemy import text
-            query = text("""
-                INSERT INTO student_status_history 
-                (student_id, previous_status, new_status, changed_by_user_id, notes, created_at)
-                VALUES (:student_id, :previous_status, :new_status, :changed_by_user_id, :notes, NOW())
-            """)
-            self._session.exec(
-                query,
-                params={
-                    "student_id": student_id,
-                    "previous_status": previous_status,
-                    "new_status": new_status,
-                    "changed_by_user_id": changed_by_user_id,
-                    "notes": notes,
-                }
-            )
-        except Exception:
-            # If the table doesn't exist yet, silently skip
-            pass
 
     def get_by_status(self, status: StudentStatus) -> list[Student]:
         """Get all students with a specific status."""

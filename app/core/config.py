@@ -100,4 +100,8 @@ def configure_logging(settings: Settings) -> None:
     )
 
 # Instantiate identically so it acts as a global singleton 
-settings = Settings()
+import os
+import sys
+
+_env_file = ".env.test" if ("pytest" in sys.modules or "PYTEST_CURRENT_TEST" in os.environ or os.environ.get("TESTING") == "true") else ".env"
+settings = Settings(_env_file=_env_file)

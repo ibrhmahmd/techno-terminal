@@ -9,12 +9,11 @@ from app.modules.notifications.models.notification_template import NotificationT
 from app.modules.notifications.models.notification_log import NotificationLog
 
 
-class INotificationRepository(Protocol):
+class NotificationRepositoryInterface(Protocol):
     """Data-access contract for the notification domain."""
 
     # ── Templates ────────────────────────────────────────────────────────────
     def get_template_by_name(self, name: str) -> Optional[NotificationTemplate]: ...
-    def get_template_by_code(self, code: str) -> Optional[NotificationTemplate]: ...
     def get_template_by_id(self, template_id: int) -> Optional[NotificationTemplate]: ...
     def get_all_templates(self) -> List[NotificationTemplate]: ...
     def create_template(

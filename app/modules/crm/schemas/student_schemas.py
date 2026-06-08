@@ -22,8 +22,7 @@ class RegisterStudentDTO(BaseModel):
     gender: Optional[str] = None  # 'male' | 'female'
     phone: Optional[str] = None
     notes: Optional[str] = None
-    # NEW: Optional status on registration (defaults to active)
-    status: Optional[str] = "active"
+    status: Optional[StudentStatus] = None
 
 
 class UpdateStudentDTO(BaseModel):

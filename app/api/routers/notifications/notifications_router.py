@@ -45,22 +45,40 @@ def get_logs(
     channel: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
     recipient_type: Optional[str] = Query(None),
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
+    template_id: Optional[int] = Query(None),
+    sort_by: str = Query("created_at"),
+    sort_order: str = Query("desc"),
     _user: User = Depends(require_admin),
     svc: NotificationService = Depends(get_notification_service)
 ):
+    # Convert date to datetime if provided
+    from datetime import datetime, time
+    start_dt = datetime.combine(start_date, time.min) if start_date else None
+    end_dt = datetime.combine(end_date, time.max) if end_date else None
+
     logs = svc.get_logs(
         limit=limit,
         offset=offset,
         status=status,
         channel=channel,
         search=search,
-        recipient_type=recipient_type
+        recipient_type=recipient_type,
+        start_date=start_dt,
+        end_date=end_dt,
+        template_id=template_id,
+        sort_by=sort_by,
+        sort_order=sort_order
     )
     total = svc.count_logs(
         status=status,
         channel=channel,
         search=search,
-        recipient_type=recipient_type
+        recipient_type=recipient_type,
+        start_date=start_dt,
+        end_date=end_dt,
+        template_id=template_id
     )
     return PaginatedResponse(
         data=[NotificationLogDTO.model_validate(log) for log in logs],

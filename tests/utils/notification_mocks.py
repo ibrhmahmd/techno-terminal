@@ -77,12 +77,6 @@ class MockNotificationRepository:
     def get_template_by_name(self, name: str) -> Optional[_MockTemplate]:
         return self.templates.get(name)
 
-    def get_template_by_code(self, code: str) -> Optional[_MockTemplate]:
-        for t in self.templates.values():
-            if getattr(t, "code", None) == code:
-                return t
-        return None
-
     def get_template_by_id(self, template_id: int) -> Optional[_MockTemplate]:
         for t in self.templates.values():
             if getattr(t, "id", None) == template_id:
@@ -111,19 +105,4 @@ class MockNotificationRepository:
                     log.sent_at = datetime.utcnow()
                 return
 
-    def update_log_retry(self, log_id: int, retry_count: int, next_retry_at=None):
-        for log in self.logs:
-            if log.id == log_id:
-                log.retry_count = retry_count
-                log.next_retry_at = next_retry_at
-                return
 
-    def get_logs_for_retry(self, limit=10):
-        return [log for log in self.logs if log.status == "FAILED" and log.retry_count < 3][:limit]
-
-    def get_logs_due_for_retry(self, limit=10):
-        now = datetime.utcnow()
-        return [
-            log for log in self.logs
-            if log.status == "RETRYING" and log.next_retry_at is not None and log.next_retry_at <= now
-        ][:limit]

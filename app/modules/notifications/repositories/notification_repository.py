@@ -132,6 +132,11 @@ class NotificationRepository:
         status: Optional[str] = None,
         channel: Optional[str] = None,
         search: Optional[str] = None,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        template_id: Optional[int] = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
         limit: int = 50,
         offset: int = 0,
     ) -> List[NotificationLog]:
@@ -144,12 +149,24 @@ class NotificationRepository:
             stmt = stmt.where(NotificationLog.status == status)
         if channel:
             stmt = stmt.where(NotificationLog.channel == channel)
+        if template_id is not None:
+            stmt = stmt.where(NotificationLog.template_id == template_id)
+        if start_date:
+            stmt = stmt.where(col(NotificationLog.created_at) >= start_date)
+        if end_date:
+            stmt = stmt.where(col(NotificationLog.created_at) <= end_date)
         if search:
             stmt = stmt.where(
                 (col(NotificationLog.recipient_contact).ilike(f"%{search}%")) |
                 (col(NotificationLog.subject).ilike(f"%{search}%"))
             )
-        stmt = stmt.order_by(col(NotificationLog.created_at).desc())
+            
+        sort_column = getattr(NotificationLog, sort_by, NotificationLog.created_at)
+        if sort_order.lower() == "asc":
+            stmt = stmt.order_by(sort_column.asc())
+        else:
+            stmt = stmt.order_by(sort_column.desc())
+            
         stmt = stmt.offset(offset).limit(limit)
         return list(self._session.exec(stmt).all())
 
@@ -160,6 +177,9 @@ class NotificationRepository:
         status: Optional[str] = None,
         channel: Optional[str] = None,
         search: Optional[str] = None,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        template_id: Optional[int] = None,
     ) -> int:
         from sqlalchemy import func
         stmt = select(func.count()).select_from(NotificationLog)
@@ -171,6 +191,12 @@ class NotificationRepository:
             stmt = stmt.where(NotificationLog.status == status)
         if channel:
             stmt = stmt.where(NotificationLog.channel == channel)
+        if template_id is not None:
+            stmt = stmt.where(NotificationLog.template_id == template_id)
+        if start_date:
+            stmt = stmt.where(col(NotificationLog.created_at) >= start_date)
+        if end_date:
+            stmt = stmt.where(col(NotificationLog.created_at) <= end_date)
         if search:
             stmt = stmt.where(
                 (col(NotificationLog.recipient_contact).ilike(f"%{search}%")) |

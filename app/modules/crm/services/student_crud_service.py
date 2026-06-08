@@ -11,7 +11,7 @@ from app.modules.crm.schemas.student_schemas import UpdateStudentDTO, RegisterSt
 from app.modules.crm.repositories.unit_of_work import StudentUnitOfWork
 from app.modules.crm.services.activity_service import StudentActivityService
 from app.shared.audit_utils import apply_create_audit, apply_update_audit
-from app.shared.exceptions import NotFoundError
+from app.shared.exceptions import NotFoundError, ConflictError
 
 
 class StudentCrudService:
@@ -43,7 +43,22 @@ class StudentCrudService:
         dob = command_dto.student_data.date_of_birth
         if dob is not None and isinstance(dob, date) and not isinstance(dob, datetime):
             dob = date_at_utc_midnight(dob)
+
+        # Check for duplicate student (exact case-insensitive full_name + date_of_birth)
+        if dob is not None:
+            existing_student = self._uow.students.get_by_name_and_dob(
+                command_dto.student_data.full_name, dob
+            )
+            if existing_student:
+                raise ConflictError(
+                    f"Student with name '{command_dto.student_data.full_name}' and date of birth '{dob.date()}' already exists."
+                )
         
+        # Resolve initial status (default to waiting if not specified)
+        status = command_dto.student_data.status
+        if status is None:
+            status = StudentStatus.WAITING
+
         # Create student
         student = Student(
             full_name=command_dto.student_data.full_name,
@@ -51,7 +66,7 @@ class StudentCrudService:
             gender=command_dto.student_data.gender,
             phone=command_dto.student_data.phone,
             notes=command_dto.student_data.notes,
-            status=command_dto.student_data.status,
+            status=status,
         )
         apply_create_audit(student, user_id=command_dto.created_by_user_id)
         
@@ -75,7 +90,7 @@ class StudentCrudService:
                 LogRegistrationDTO(
                     student_id=created_student.id,
                     student_name=created_student.full_name,
-                    performed_by=getattr(command_dto, 'created_by', None),
+                    performed_by=command_dto.created_by_user_id,
                 )
             )
 
@@ -125,16 +140,7 @@ class StudentCrudService:
         student.status = new_status
 
         apply_update_audit(student)
-        
-        # Log status change
-        self._uow.students.log_status_change(
-            student_id=student_id,
-            previous_status=old_status.value if old_status else None,
-            new_status=new_status.value,
-            changed_by_user_id=changed_by_user_id,
-            notes=notes,
-        )
-        
+
         # Log status change activity
         if self._activity_svc:
             from app.modules.crm.interfaces.dtos.log_status_change_dto import LogStatusChangeDTO
@@ -203,14 +209,21 @@ class StudentCrudService:
         apply_update_audit(student)
         
         # Log priority change
-        self._uow.students.log_status_change(
-            student_id=student_id,
-            previous_status=student.status.value if student.status else None,
-            new_status=student.status.value if student.status else "waiting",
-            notes=f"Priority changed from {old_priority} to {priority}. {notes or ''}",
-            action="priority_change",
-            new_priority=priority,
-        )
+        if self._activity_svc:
+            self._activity_svc.log_activity(
+                student_id=student_id,
+                activity_type="status_change",
+                activity_subtype="priority_change",
+                reference_type="student",
+                reference_id=student_id,
+                description=f"Waiting priority changed from {old_priority} to {priority}",
+                metadata={
+                    "old_priority": old_priority,
+                    "new_priority": priority,
+                    "notes": notes,
+                },
+                performed_by=None,
+            )
         
         self._uow.commit()
         return student

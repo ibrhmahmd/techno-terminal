@@ -40,12 +40,9 @@ def get_settings_repo():
 
 NOTIFICATION_DESCRIPTIONS = {
     "enrollment_created": "New enrollment confirmation",
-    "enrollment_completed": "Enrollment completed successfully",
     "enrollment_dropped": "Student dropped from enrollment",
     "enrollment_transferred": "Student transferred between groups",
-    "level_progression": "Student progressed to next level",
     "payment_received": "Payment receipt confirmation",
-    "payment_reminder": "Payment due reminder",
     "daily_report": "Daily business summary report",
     "weekly_report": "Weekly business summary report",
     "monthly_report": "Monthly business summary report",

@@ -151,7 +151,20 @@ class BaseNotificationService:
 
         # Check if we need to trigger fallback
         if not recipients:
-            # Validate and use fallback email
+            # Only fall back if there's no explicit setting disabling this notification type.
+            # If the admin has settings rows but all are disabled, respect that choice.
+            try:
+                with self._new_session() as session:
+                    check = session.execute(
+                        text("SELECT 1 FROM admin_notification_settings WHERE notification_type = :t AND is_enabled = false"),
+                        {"t": notification_type},
+                    ).first()
+                    if check:
+                        logger.info("Notification type '%s' explicitly disabled — skipping fallback.", notification_type)
+                        return []
+            except Exception as e:
+                logger.error("Failed to check notification settings: %s", e)
+
             if self._is_valid_email(FALLBACK_EMAIL):
                 recipients.append((FALLBACK_EMAIL, FALLBACK_RECIPIENT_ID, "EMPLOYEE"))
 

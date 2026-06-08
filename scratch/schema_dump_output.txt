@@ -1,0 +1,700 @@
+=== ENUMS ===
+CREATE TYPE student_status AS ENUM ('active', 'waiting', 'inactive');
+
+=== TABLES ===
+
+TABLE: admin_notification_settings
+  id integer NOT NULL DEFAULT nextval('admin_notification_settings_id_seq'::regclass)
+  admin_id integer NULL 
+  notification_type character varying NOT NULL 
+  is_enabled boolean NULL DEFAULT true
+  channel character varying NULL DEFAULT 'EMAIL'::character varying
+  created_at timestamp without time zone NULL DEFAULT CURRENT_TIMESTAMP
+  updated_at timestamp without time zone NULL DEFAULT CURRENT_TIMESTAMP
+  CONSTRAINT admin_notification_settings_admin_id_fkey FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE CASCADE
+  CONSTRAINT admin_notification_settings_admin_id_notification_type_key UNIQUE (admin_id, notification_type)
+  CONSTRAINT admin_notification_settings_pkey PRIMARY KEY (id)
+
+TABLE: attendance
+  id integer NOT NULL DEFAULT nextval('attendance_id_seq'::regclass)
+  student_id integer NOT NULL 
+  session_id integer NOT NULL 
+  enrollment_id integer NOT NULL 
+  status text NOT NULL 
+  marked_by integer NULL 
+  marked_at timestamp with time zone NULL 
+  CONSTRAINT attendance_enrollment_id_fkey FOREIGN KEY (enrollment_id) REFERENCES enrollments(id) ON DELETE RESTRICT
+  CONSTRAINT attendance_marked_by_fkey FOREIGN KEY (marked_by) REFERENCES users(id) ON DELETE SET NULL
+  CONSTRAINT attendance_pkey PRIMARY KEY (id)
+  CONSTRAINT attendance_session_id_fkey FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE RESTRICT
+  CONSTRAINT attendance_status_check CHECK ((status = ANY (ARRAY['present'::text, 'absent'::text, 'cancelled'::text])))
+  CONSTRAINT attendance_student_id_fkey FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE RESTRICT
+  CONSTRAINT attendance_student_id_session_id_key UNIQUE (student_id, session_id)
+
+TABLE: audit_logs
+  id integer NOT NULL DEFAULT nextval('audit_logs_id_seq'::regclass)
+  user_id integer NULL 
+  event_type text NOT NULL 
+  ip_address text NULL 
+  user_agent text NULL 
+  details jsonb NULL 
+  created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP
+  CONSTRAINT audit_logs_pkey PRIMARY KEY (id)
+  CONSTRAINT audit_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+
+TABLE: competitions
+  id integer NOT NULL DEFAULT nextval('competitions_id_seq'::regclass)
+  name text NOT NULL 
+  edition text NULL 
+  competition_date date NULL 
+  location text NULL 
+  notes text NULL 
+  created_at timestamp with time zone NULL DEFAULT CURRENT_TIMESTAMP
+  fee_per_student numeric NULL DEFAULT 0.0
+  edition_year integer NOT NULL 
+  CONSTRAINT competitions_pkey PRIMARY KEY (id)
+  CONSTRAINT uq_competitions_name_edition_year UNIQUE (name, edition_year)
+
+TABLE: courses
+  id integer NOT NULL DEFAULT nextval('courses_id_seq'::regclass)
+  name text NOT NULL 
+  category text NULL 
+  price_per_level numeric NULL 
+  sessions_per_level integer NULL DEFAULT 5
+  description text NULL 
+  notes text NULL 
+  is_active boolean NULL DEFAULT true
+  created_at timestamp with time zone NULL DEFAULT CURRENT_TIMESTAMP
+  updated_at timestamp with time zone NULL DEFAULT CURRENT_TIMESTAMP
+  CONSTRAINT courses_category_check CHECK ((category = ANY (ARRAY['software'::text, 'hardware'::text, 'steam'::text, 'other'::text])))
+  CONSTRAINT courses_name_key UNIQUE (name)
+  CONSTRAINT courses_pkey PRIMARY KEY (id)
+  CONSTRAINT courses_price_per_level_check CHECK ((price_per_level > (0)::numeric))
+  CONSTRAINT courses_sessions_per_level_check CHECK ((sessions_per_level > 0))
+
+TABLE: employees
+  id integer NOT NULL DEFAULT nextval('employees_id_seq'::regclass)
+  full_name text NOT NULL 
+  phone text NOT NULL 
+  email text NULL 
+  national_id text NOT NULL 
+  university text NOT NULL 
+  major text NOT NULL 
+  is_graduate boolean NOT NULL DEFAULT false
+  job_title text NULL 
+  employment_type text NOT NULL 
+  monthly_salary numeric NULL 
+  contract_percentage numeric NULL 
+  is_active boolean NULL DEFAULT true
+  hired_at date NULL 
+  created_at timestamp with time zone NULL DEFAULT CURRENT_TIMESTAMP
+  updated_at timestamp with time zone NULL DEFAULT CURRENT_TIMESTAMP
+  metadata jsonb NULL DEFAULT '{}'::jsonb
+  user_id integer NULL 
+  CONSTRAINT employees_contract_pct_check CHECK ((((employment_type <> 'contract'::text) AND (contract_percentage IS NULL)) OR (employment_type = 'contract'::text)))
+  CONSTRAINT employees_employment_type_check CHECK ((employment_type = ANY (ARRAY['full_time'::text, 'part_time'::text, 'contract'::text])))
+  CONSTRAINT employees_pkey PRIMARY KEY (id)
+  CONSTRAINT fk_employees_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+  CONSTRAINT uq_employees_email UNIQUE (email)
+  CONSTRAINT uq_employees_national_id UNIQUE (national_id)
+  CONSTRAINT uq_employees_phone UNIQUE (phone)
+  CONSTRAINT uq_employees_user_id UNIQUE (user_id)
+
+TABLE: enrollment_level_history
+  id integer NOT NULL DEFAULT nextval('enrollment_level_history_id_seq'::regclass)
+  enrollment_id integer NOT NULL 
+  group_level_id integer NOT NULL 
+  student_id integer NOT NULL 
+  level_entered_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP
+  level_completed_at timestamp with time zone NULL 
+  status text NULL DEFAULT 'active'::text
+  notes text NULL 
+  created_at timestamp with time zone NULL DEFAULT CURRENT_TIMESTAMP
+  updated_at timestamp with time zone NULL DEFAULT CURRENT_TIMESTAMP
+  CONSTRAINT enrollment_level_history_enrollment_id_fkey FOREIGN KEY (enrollment_id) REFERENCES enrollments(id) ON DELETE CASCADE
+  CONSTRAINT enrollment_level_history_group_level_id_fkey FOREIGN KEY (group_level_id) REFERENCES group_levels(id) ON DELETE RESTRICT
+  CONSTRAINT enrollment_level_history_pkey PRIMARY KEY (id)
+  CONSTRAINT enrollment_level_history_status_check CHECK ((status = ANY (ARRAY['active'::text, 'completed'::text, 'dropped'::text])))
+  CONSTRAINT enrollment_level_history_student_id_fkey FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE RESTRICT
+
+TABLE: enrollments
+  id integer NOT NULL DEFAULT nextval('enrollments_id_seq'::regclass)
+  student_id integer NOT NULL 
+  group_id integer NOT NULL 
+  level_number integer NOT NULL 
+  enrolled_at date NULL 
+  amount_due numeric NULL 
+  discount_applied numeric NULL DEFAULT 0
+  status text NULL DEFAULT 'active'::text
+  transferred_from integer NULL 
+  notes text NULL 
+  created_by integer NULL 
+  created_at timestamp with time zone NULL DEFAULT CURRENT_TIMESTAMP
+  updated_at timestamp with time zone NULL DEFAULT CURRENT_TIMESTAMP
+  metadata jsonb NULL DEFAULT '{}'::jsonb
+  CONSTRAINT enrollments_amount_due_check CHECK ((amount_due >= (0)::numeric))
+  CONSTRAINT enrollments_created_by_fkey FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+  CONSTRAINT enrollments_discount_applied_check CHECK ((discount_applied >= (0)::numeric))
+  CONSTRAINT enrollments_group_id_fkey FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE RESTRICT
+  CONSTRAINT enrollments_pkey PRIMARY KEY (id)
+  CONSTRAINT enrollments_status_check CHECK ((status = ANY (ARRAY['active'::text, 'completed'::text, 'transferred'::text, 'dropped'::text])))
+  CONSTRAINT enrollments_student_id_fkey FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE RESTRICT
+  CONSTRAINT enrollments_transferred_from_fkey FOREIGN KEY (transferred_from) REFERENCES enrollments(id) ON DELETE SET NULL
+
+TABLE: group_course_history
+  id integer NOT NULL DEFAULT nextval('group_course_history_id_seq'::regclass)
+  group_id integer NOT NULL 
+  course_id integer NOT NULL 
+  assigned_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP
+  removed_at timestamp with time zone NULL 
+  assigned_by_user_id integer NULL 
+  removed_by_user_id integer NULL 
+  notes text NULL 
+  created_at timestamp with time zone NULL DEFAULT CURRENT_TIMESTAMP
+  CONSTRAINT group_course_history_assigned_by_user_id_fkey FOREIGN KEY (assigned_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+  CONSTRAINT group_course_history_course_id_fkey FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE RESTRICT
+  CONSTRAINT group_course_history_group_id_fkey FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE
+  CONSTRAINT group_course_history_pkey PRIMARY KEY (id)
+  CONSTRAINT group_course_history_removed_by_user_id_fkey FOREIGN KEY (removed_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+
+TABLE: group_levels
+  id integer NOT NULL DEFAULT nextval('group_levels_id_seq'::regclass)
+  group_id integer NOT NULL 
+  level_number integer NOT NULL 
+  course_id integer NOT NULL 
+  instructor_id integer NULL 
+  sessions_planned integer NOT NULL DEFAULT 5
+  price_override numeric NULL 
+  status text NULL DEFAULT 'active'::text
+  effective_from timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP
+  effective_to timestamp with time zone NULL 
+  created_by_user_id integer NULL 
+  notes text NULL 
+  created_at timestamp with time zone NULL DEFAULT CURRENT_TIMESTAMP
+  updated_at timestamp with time zone NULL DEFAULT CURRENT_TIMESTAMP
+  CONSTRAINT group_levels_course_id_fkey FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE RESTRICT
+  CONSTRAINT group_levels_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+  CONSTRAINT group_levels_group_id_fkey FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE
+  CONSTRAINT group_levels_group_id_level_number_key UNIQUE (group_id, level_number)
+  CONSTRAINT group_levels_instructor_id_fkey FOREIGN KEY (instructor_id) REFERENCES employees(id) ON DELETE SET NULL
+  CONSTRAINT group_levels_pkey PRIMARY KEY (id)
+  CONSTRAINT group_levels_status_check CHECK ((status = ANY (ARRAY['active'::text, 'completed'::text, 'cancelled'::text])))
+
+TABLE: groups
+  id integer NOT NULL DEFAULT nextval('groups_id_seq'::regclass)
+  name text NULL 
+  course_id integer NOT NULL 
+  instructor_id integer NULL 
+  level_number integer NULL DEFAULT 1
+  default_day text NULL 
+  default_time_start time without time zone NULL 
+  default_time_end time without time zone NULL 
+  max_capacity integer NULL 
+  status text NULL DEFAULT 'active'::text
+  started_at date NULL 
+  notes text NULL 
+  created_at timestamp with time zone NULL DEFAULT CURRENT_TIMESTAMP
+  updated_at timestamp with time zone NULL DEFAULT CURRENT_TIMESTAMP
+  metadata jsonb NULL DEFAULT '{}'::jsonb
+  CONSTRAINT groups_check CHECK (((default_time_start IS NULL) OR (default_time_end IS NULL) OR (default_time_start < default_time_end)))
+  CONSTRAINT groups_course_id_fkey FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE RESTRICT
+  CONSTRAINT groups_instructor_id_fkey FOREIGN KEY (instructor_id) REFERENCES employees(id) ON DELETE SET NULL
+  CONSTRAINT groups_level_number_check CHECK ((level_number > 0))
+  CONSTRAINT groups_max_capacity_check CHECK ((max_capacity > 0))
+  CONSTRAINT groups_pkey PRIMARY KEY (id)
+  CONSTRAINT groups_status_check CHECK ((status = ANY (ARRAY['active'::text, 'inactive'::text, 'completed'::text, 'archived'::text])))
+
+TABLE: notification_additional_recipients
+  id integer NOT NULL DEFAULT nextval('notification_additional_recipients_id_seq'::regclass)
+  admin_id integer NULL 
+  email character varying NOT NULL 
+  notification_types ARRAY NULL 
+  label character varying NULL 
+  is_active boolean NULL DEFAULT true
+  created_at timestamp without time zone NULL DEFAULT CURRENT_TIMESTAMP
+  updated_at timestamp without time zone NULL DEFAULT CURRENT_TIMESTAMP
+  CONSTRAINT notification_additional_recipients_admin_id_email_key UNIQUE (admin_id, email)
+  CONSTRAINT notification_additional_recipients_admin_id_fkey FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE CASCADE
+  CONSTRAINT notification_additional_recipients_pkey PRIMARY KEY (id)
+
+TABLE: notification_logs
+  id integer NOT NULL DEFAULT nextval('notification_logs_id_seq'::regclass)
+  template_id integer NULL 
+  channel text NOT NULL 
+  recipient_type text NOT NULL 
+  recipient_id integer NOT NULL 
+  recipient_contact text NOT NULL 
+  subject text NULL 
+  body text NOT NULL 
+  status text NOT NULL DEFAULT 'PENDING'::text
+  error_message text NULL 
+  sent_at timestamp with time zone NULL 
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+  retry_count integer NULL DEFAULT 0
+  next_retry_at timestamp without time zone NULL 
+  CONSTRAINT notification_logs_channel_check CHECK ((channel = ANY (ARRAY['WHATSAPP'::text, 'EMAIL'::text])))
+  CONSTRAINT notification_logs_pkey PRIMARY KEY (id)
+  CONSTRAINT notification_logs_recipient_type_check CHECK ((recipient_type = ANY (ARRAY['PARENT'::text, 'EMPLOYEE'::text, 'ADDITIONAL'::text])))
+  CONSTRAINT notification_logs_status_check CHECK ((status = ANY (ARRAY['PENDING'::text, 'SENT'::text, 'FAILED'::text])))
+  CONSTRAINT notification_logs_template_id_fkey FOREIGN KEY (template_id) REFERENCES notification_templates(id) ON DELETE SET NULL
+
+TABLE: notification_templates
+  id integer NOT NULL DEFAULT nextval('notification_templates_id_seq'::regclass)
+  name text NOT NULL 
+  channel text NOT NULL 
+  subject text NULL 
+  body text NOT NULL 
+  variables ARRAY NOT NULL DEFAULT '{}'::text[]
+  is_standard boolean NOT NULL DEFAULT false
+  is_active boolean NOT NULL DEFAULT true
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+  updated_at timestamp with time zone NULL 
+  CONSTRAINT notification_templates_channel_check CHECK ((channel = ANY (ARRAY['WHATSAPP'::text, 'EMAIL'::text])))
+  CONSTRAINT notification_templates_name_key UNIQUE (name)
+  CONSTRAINT notification_templates_pkey PRIMARY KEY (id)
+
+TABLE: parents
+  id integer NOT NULL DEFAULT nextval('parents_id_seq'::regclass)
+  full_name text NOT NULL 
+  phone_primary text NULL 
+  phone_secondary text NULL 
+  email text NULL 
+  relation text NULL 
+  notes text NULL 
+  created_at timestamp with time zone NULL DEFAULT CURRENT_TIMESTAMP
+  updated_at timestamp with time zone NULL DEFAULT CURRENT_TIMESTAMP
+  CONSTRAINT parents_pkey PRIMARY KEY (id)
+
+TABLE: payments
+  id integer NOT NULL DEFAULT nextval('payments_id_seq'::regclass)
+  receipt_id integer NOT NULL 
+  student_id integer NOT NULL 
+  enrollment_id integer NULL 
+  amount numeric NOT NULL 
+  transaction_type text NOT NULL 
+  payment_type text NULL 
+  discount_amount numeric NULL DEFAULT 0
+  notes text NULL 
+  created_at timestamp with time zone NULL DEFAULT CURRENT_TIMESTAMP
+  metadata jsonb NULL DEFAULT '{}'::jsonb
+  original_payment_id integer NULL 
+  deleted_at timestamp with time zone NULL 
+  deleted_by integer NULL 
+  team_member_id integer NULL 
+  CONSTRAINT payments_amount_check CHECK ((amount <> (0)::numeric))
+  CONSTRAINT payments_deleted_by_fkey FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL
+  CONSTRAINT payments_discount_amount_check CHECK ((discount_amount >= (0)::numeric))
+  CONSTRAINT payments_enrollment_id_fkey FOREIGN KEY (enrollment_id) REFERENCES enrollments(id) ON DELETE SET NULL
+  CONSTRAINT payments_original_payment_id_fkey FOREIGN KEY (original_payment_id) REFERENCES payments(id) ON DELETE SET NULL
+  CONSTRAINT payments_payment_type_check CHECK ((payment_type = ANY (ARRAY['course_level'::text, 'competition'::text, 'other'::text])))
+  CONSTRAINT payments_pkey PRIMARY KEY (id)
+  CONSTRAINT payments_receipt_id_fkey FOREIGN KEY (receipt_id) REFERENCES receipts(id) ON DELETE RESTRICT
+  CONSTRAINT payments_student_id_fkey FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE RESTRICT
+  CONSTRAINT payments_team_member_id_fkey FOREIGN KEY (team_member_id) REFERENCES team_members(id)
+  CONSTRAINT payments_transaction_type_check CHECK ((transaction_type = ANY (ARRAY['charge'::text, 'payment'::text, 'refund'::text])))
+
+TABLE: receipts
+  id integer NOT NULL DEFAULT nextval('receipts_id_seq'::regclass)
+  payer_name text NULL 
+  payment_method text NULL 
+  received_by integer NULL 
+  receipt_number text NULL 
+  notes text NULL 
+  paid_at timestamp with time zone NULL 
+  created_at timestamp with time zone NULL DEFAULT CURRENT_TIMESTAMP
+  receipt_template character varying NULL DEFAULT 'standard'::character varying
+  generation_metadata jsonb NULL 
+  CONSTRAINT receipts_payment_method_check CHECK ((payment_method = ANY (ARRAY['cash'::text, 'card'::text, 'transfer'::text, 'online'::text])))
+  CONSTRAINT receipts_pkey PRIMARY KEY (id)
+  CONSTRAINT receipts_receipt_number_key UNIQUE (receipt_number)
+  CONSTRAINT receipts_received_by_fkey FOREIGN KEY (received_by) REFERENCES users(id) ON DELETE SET NULL
+
+TABLE: sessions
+  id integer NOT NULL DEFAULT nextval('sessions_id_seq'::regclass)
+  group_id integer NOT NULL 
+  group_level_id integer NULL 
+  level_number integer NOT NULL 
+  session_number integer NOT NULL 
+  session_date date NOT NULL 
+  start_time time without time zone NULL 
+  end_time time without time zone NULL 
+  actual_instructor_id integer NULL 
+  is_substitute boolean NULL DEFAULT false
+  is_extra_session boolean NULL DEFAULT false
+  notes text NULL 
+  status text NULL DEFAULT 'scheduled'::text
+  created_at timestamp with time zone NULL DEFAULT CURRENT_TIMESTAMP
+  CONSTRAINT sessions_actual_instructor_id_fkey FOREIGN KEY (actual_instructor_id) REFERENCES employees(id) ON DELETE SET NULL
+  CONSTRAINT sessions_check CHECK (((start_time IS NULL) OR (end_time IS NULL) OR (start_time < end_time)))
+  CONSTRAINT sessions_group_id_fkey FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE RESTRICT
+  CONSTRAINT sessions_group_level_id_fkey FOREIGN KEY (group_level_id) REFERENCES group_levels(id) ON DELETE SET NULL
+  CONSTRAINT sessions_pkey PRIMARY KEY (id)
+  CONSTRAINT sessions_status_check CHECK ((status = ANY (ARRAY['scheduled'::text, 'completed'::text, 'cancelled'::text])))
+
+TABLE: student_activity_log
+  id bigint NOT NULL DEFAULT nextval('student_activity_log_id_seq'::regclass)
+  student_id integer NOT NULL 
+  activity_type character varying NOT NULL 
+  activity_subtype character varying NULL 
+  reference_type character varying NULL 
+  reference_id integer NULL 
+  description text NOT NULL 
+  metadata jsonb NULL 
+  performed_by integer NULL 
+  created_at timestamp with time zone NULL DEFAULT now()
+  meta jsonb NULL 
+  CONSTRAINT student_activity_log_performed_by_fkey FOREIGN KEY (performed_by) REFERENCES users(id) ON DELETE SET NULL
+  CONSTRAINT student_activity_log_pkey PRIMARY KEY (id)
+  CONSTRAINT student_activity_log_student_id_fkey FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+
+TABLE: student_parents
+  student_id integer NOT NULL 
+  parent_id integer NOT NULL 
+  relationship text NULL 
+  is_primary boolean NULL DEFAULT false
+  created_at timestamp with time zone NULL DEFAULT CURRENT_TIMESTAMP
+  CONSTRAINT student_parents_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES parents(id) ON DELETE CASCADE
+  CONSTRAINT student_parents_pkey PRIMARY KEY (student_id, parent_id)
+  CONSTRAINT student_parents_student_id_fkey FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+
+TABLE: students
+  id integer NOT NULL DEFAULT nextval('students_id_seq'::regclass)
+  full_name text NOT NULL 
+  date_of_birth date NULL 
+  gender text NULL 
+  phone text NULL 
+  notes text NULL 
+  created_by integer NULL 
+  created_at timestamp with time zone NULL DEFAULT CURRENT_TIMESTAMP
+  updated_at timestamp with time zone NULL DEFAULT CURRENT_TIMESTAMP
+  metadata jsonb NULL DEFAULT '{}'::jsonb
+  status USER-DEFINED NOT NULL DEFAULT 'active'::student_status
+  waiting_since timestamp without time zone NULL 
+  waiting_priority integer NULL 
+  waiting_notes text NULL 
+  deleted_at timestamp with time zone NULL 
+  deleted_by integer NULL 
+  CONSTRAINT students_created_by_fkey FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+  CONSTRAINT students_deleted_by_fkey FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL
+  CONSTRAINT students_gender_check CHECK ((gender = ANY (ARRAY['male'::text, 'female'::text])))
+  CONSTRAINT students_pkey PRIMARY KEY (id)
+
+TABLE: team_members
+  id integer NOT NULL DEFAULT nextval('team_members_id_seq'::regclass)
+  team_id integer NOT NULL 
+  student_id integer NOT NULL 
+  amount_due numeric NULL DEFAULT 0.00
+  amount_paid numeric NULL DEFAULT 0.00
+  CONSTRAINT team_members_pkey PRIMARY KEY (id)
+  CONSTRAINT team_members_student_id_fkey FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE RESTRICT
+  CONSTRAINT team_members_team_id_fkey FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
+  CONSTRAINT team_members_team_id_student_id_key UNIQUE (team_id, student_id)
+
+TABLE: teams
+  id integer NOT NULL DEFAULT nextval('teams_id_seq'::regclass)
+  category_id integer NULL 
+  group_id integer NULL 
+  team_name text NOT NULL 
+  coach_id integer NULL 
+  enrollment_fee_per_student numeric NULL 
+  is_deleted boolean NULL DEFAULT false
+  deleted_by_user_id integer NULL 
+  created_at timestamp with time zone NULL DEFAULT CURRENT_TIMESTAMP
+  metadata jsonb NULL DEFAULT '{}'::jsonb
+  competition_id integer NOT NULL 
+  category USER-DEFINED NOT NULL 
+  subcategory USER-DEFINED NULL 
+  placement_rank integer NULL 
+  placement_label character varying NULL 
+  notes text NULL 
+  project_name character varying NULL 
+  project_description text NULL 
+  CONSTRAINT teams_coach_id_fkey FOREIGN KEY (coach_id) REFERENCES employees(id) ON DELETE SET NULL
+  CONSTRAINT teams_competition_id_fkey FOREIGN KEY (competition_id) REFERENCES competitions(id)
+  CONSTRAINT teams_deleted_by_user_id_fkey FOREIGN KEY (deleted_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+  CONSTRAINT teams_enrollment_fee_per_student_check CHECK ((enrollment_fee_per_student > (0)::numeric))
+  CONSTRAINT teams_group_id_fkey FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE SET NULL
+  CONSTRAINT teams_pkey PRIMARY KEY (id)
+
+TABLE: users
+  id integer NOT NULL DEFAULT nextval('users_id_seq'::regclass)
+  username text NOT NULL 
+  supabase_uid text NULL 
+  employee_id integer NULL 
+  role text NOT NULL 
+  is_active boolean NULL DEFAULT true
+  last_login timestamp with time zone NULL 
+  created_at timestamp with time zone NULL DEFAULT CURRENT_TIMESTAMP
+  invite_token text NULL 
+  invite_expires_at timestamp with time zone NULL 
+  CONSTRAINT users_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE SET NULL
+  CONSTRAINT users_invite_token_key UNIQUE (invite_token)
+  CONSTRAINT users_pkey PRIMARY KEY (id)
+  CONSTRAINT users_role_check CHECK ((role = ANY (ARRAY['admin'::text, 'instructor'::text, 'system_admin'::text])))
+  CONSTRAINT users_supabase_uid_key UNIQUE (supabase_uid)
+  CONSTRAINT users_username_key UNIQUE (username)
+
+=== VIEWS ===
+
+VIEW: active_payments
+ SELECT id,
+    receipt_id,
+    student_id,
+    enrollment_id,
+    amount,
+    transaction_type,
+    payment_type,
+    discount_amount,
+    notes,
+    created_at,
+    metadata,
+    original_payment_id,
+    deleted_at,
+    deleted_by
+   FROM payments
+  WHERE (deleted_at IS NULL);
+
+VIEW: active_students
+ SELECT id,
+    full_name,
+    date_of_birth,
+    gender,
+    phone,
+    notes,
+    created_by,
+    created_at,
+    updated_at,
+    metadata,
+    status,
+    waiting_since,
+    waiting_priority,
+    waiting_notes,
+    deleted_at,
+    deleted_by
+   FROM students
+  WHERE (deleted_at IS NULL);
+
+VIEW: deleted_payments
+ SELECT id,
+    receipt_id,
+    student_id,
+    enrollment_id,
+    amount,
+    transaction_type,
+    payment_type,
+    discount_amount,
+    notes,
+    created_at,
+    metadata,
+    original_payment_id,
+    deleted_at,
+    deleted_by
+   FROM payments
+  WHERE (deleted_at IS NOT NULL);
+
+VIEW: deleted_students
+ SELECT id,
+    full_name,
+    date_of_birth,
+    gender,
+    phone,
+    notes,
+    created_by,
+    created_at,
+    updated_at,
+    metadata,
+    status,
+    waiting_since,
+    waiting_priority,
+    waiting_notes,
+    deleted_at,
+    deleted_by
+   FROM students
+  WHERE (deleted_at IS NOT NULL);
+
+VIEW: v_course_stats
+ SELECT c.id AS course_id,
+    c.name AS course_name,
+    count(DISTINCT g.id) AS total_groups,
+    count(DISTINCT
+        CASE
+            WHEN (g.status = 'active'::text) THEN g.id
+            ELSE NULL::integer
+        END) AS active_groups,
+    count(DISTINCT
+        CASE
+            WHEN (e.status = ANY (ARRAY['active'::text, 'completed'::text, 'dropped'::text])) THEN e.student_id
+            ELSE NULL::integer
+        END) AS total_students_ever,
+    count(DISTINCT
+        CASE
+            WHEN (e.status = 'active'::text) THEN e.student_id
+            ELSE NULL::integer
+        END) AS active_students
+   FROM ((courses c
+     LEFT JOIN groups g ON ((g.course_id = c.id)))
+     LEFT JOIN enrollments e ON ((e.group_id = g.id)))
+  WHERE (c.is_active = true)
+  GROUP BY c.id, c.name;
+
+VIEW: v_daily_collections
+ SELECT date(r.paid_at) AS collection_date,
+    r.payment_method,
+    count(*) AS transaction_count,
+    COALESCE(sum(p.amount) FILTER (WHERE (p.transaction_type = ANY (ARRAY['payment'::text, 'charge'::text]))), (0)::numeric) AS collected_amount,
+    COALESCE(sum(p.amount) FILTER (WHERE (p.transaction_type = 'refund'::text)), (0)::numeric) AS refunded_amount,
+    COALESCE(sum(p.discount_amount), (0)::numeric) AS total_discounts,
+    (COALESCE(sum(p.amount) FILTER (WHERE (p.transaction_type = ANY (ARRAY['payment'::text, 'charge'::text]))), (0)::numeric) - COALESCE(sum(p.amount) FILTER (WHERE (p.transaction_type = 'refund'::text)), (0)::numeric)) AS net_collection
+   FROM (receipts r
+     JOIN payments p ON (((p.receipt_id = r.id) AND (p.deleted_at IS NULL))))
+  WHERE (r.paid_at >= (CURRENT_DATE - '30 days'::interval))
+  GROUP BY (date(r.paid_at)), r.payment_method
+  ORDER BY (date(r.paid_at)) DESC, COALESCE(sum(p.amount) FILTER (WHERE (p.transaction_type = ANY (ARRAY['payment'::text, 'charge'::text]))), (0)::numeric) DESC;
+
+VIEW: v_enrollment_attendance
+ SELECT enrollment_id,
+    count(*) FILTER (WHERE (status = 'present'::text)) AS sessions_attended,
+    count(*) FILTER (WHERE (status = 'absent'::text)) AS sessions_missed,
+    count(*) FILTER (WHERE (status = 'cancelled'::text)) AS sessions_cancelled,
+    count(*) AS sessions_total
+   FROM attendance a
+  GROUP BY enrollment_id;
+
+VIEW: v_enrollment_balance
+ SELECT e.id AS enrollment_id,
+    e.student_id,
+    e.group_id,
+    e.level_number,
+    e.amount_due,
+    e.discount_applied,
+    (e.amount_due - COALESCE(e.discount_applied, (0)::numeric)) AS net_due,
+    (COALESCE(sum(p.amount) FILTER (WHERE (p.transaction_type = ANY (ARRAY['payment'::text, 'charge'::text]))), (0)::numeric) - COALESCE(sum(p.amount) FILTER (WHERE (p.transaction_type = 'refund'::text)), (0)::numeric)) AS total_paid,
+    GREATEST((((e.amount_due - COALESCE(e.discount_applied, (0)::numeric)) - COALESCE(sum(p.amount) FILTER (WHERE (p.transaction_type = ANY (ARRAY['payment'::text, 'charge'::text]))), (0)::numeric)) + COALESCE(sum(p.amount) FILTER (WHERE (p.transaction_type = 'refund'::text)), (0)::numeric)), (0)::numeric) AS amount_remaining,
+    (
+        CASE
+            WHEN (COALESCE(sum(p.amount) FILTER (WHERE (p.transaction_type = ANY (ARRAY['payment'::text, 'charge'::text]))), (0)::numeric) = (0)::numeric) THEN 'not_paid'::text
+            WHEN ((e.amount_due - COALESCE(e.discount_applied, (0)::numeric)) <= (COALESCE(sum(p.amount) FILTER (WHERE (p.transaction_type = ANY (ARRAY['payment'::text, 'charge'::text]))), (0)::numeric) - COALESCE(sum(p.amount) FILTER (WHERE (p.transaction_type = 'refund'::text)), (0)::numeric))) THEN 'paid'::text
+            ELSE 'partially_paid'::text
+        END)::character varying(20) AS payment_status,
+    ((COALESCE(sum(p.amount) FILTER (WHERE (p.transaction_type = ANY (ARRAY['payment'::text, 'charge'::text]))), (0)::numeric) - COALESCE(sum(p.amount) FILTER (WHERE (p.transaction_type = 'refund'::text)), (0)::numeric)) - (e.amount_due - COALESCE(e.discount_applied, (0)::numeric))) AS balance
+   FROM (enrollments e
+     LEFT JOIN payments p ON ((p.enrollment_id = e.id)))
+  GROUP BY e.id;
+
+VIEW: v_group_session_count
+ SELECT group_id,
+    level_number,
+    count(*) FILTER (WHERE (is_extra_session = false)) AS regular_sessions,
+    count(*) FILTER (WHERE (is_extra_session = true)) AS extra_sessions,
+    count(*) AS total_sessions
+   FROM sessions
+  GROUP BY group_id, level_number;
+
+VIEW: v_siblings
+ SELECT sp1.student_id,
+    s1.full_name AS student_name,
+    sp2.student_id AS sibling_id,
+    s2.full_name AS sibling_name,
+    p.id AS parent_id,
+    p.full_name AS parent_name
+   FROM ((((student_parents sp1
+     JOIN student_parents sp2 ON (((sp1.parent_id = sp2.parent_id) AND (sp1.student_id <> sp2.student_id))))
+     JOIN students s1 ON ((sp1.student_id = s1.id)))
+     JOIN students s2 ON ((sp2.student_id = s2.id)))
+     JOIN parents p ON ((sp1.parent_id = p.id)))
+  WHERE ((s1.deleted_at IS NULL) AND (s2.deleted_at IS NULL));
+
+VIEW: v_student_activity_timeline
+ SELECT sal.id AS activity_id,
+    sal.student_id,
+    s.full_name AS student_name,
+    sal.activity_type,
+    sal.activity_subtype,
+    sal.reference_type,
+    sal.reference_id,
+    sal.description,
+    sal.metadata,
+    sal.performed_by,
+    u.username AS performed_by_name,
+    sal.created_at,
+        CASE sal.activity_type
+            WHEN 'enrollment'::text THEN 'Enrollment Activity'::text
+            WHEN 'payment'::text THEN 'Payment Activity'::text
+            WHEN 'group_change'::text THEN 'Group Change'::text
+            WHEN 'competition'::text THEN 'Competition Activity'::text
+            WHEN 'status_change'::text THEN 'Status Change'::text
+            ELSE 'Other Activity'::text
+        END AS activity_category
+   FROM ((student_activity_log sal
+     JOIN students s ON ((sal.student_id = s.id)))
+     LEFT JOIN users u ON ((sal.performed_by = u.id)))
+  ORDER BY sal.created_at DESC;
+
+VIEW: v_students
+ SELECT s.id,
+    s.full_name,
+    s.date_of_birth,
+    (EXTRACT(year FROM age((s.date_of_birth)::timestamp with time zone)))::integer AS age,
+    s.gender,
+    s.phone AS student_phone,
+    s.notes,
+    s.status,
+    s.created_at,
+    s.updated_at,
+    s.metadata,
+    p.full_name AS primary_parent_name,
+    p.phone_primary AS primary_parent_phone,
+    p.email AS primary_parent_email
+   FROM ((students s
+     LEFT JOIN student_parents sp ON (((s.id = sp.student_id) AND (sp.is_primary = true))))
+     LEFT JOIN parents p ON ((sp.parent_id = p.id)))
+  WHERE (s.deleted_at IS NULL);
+
+VIEW: v_unpaid_enrollments
+ SELECT e.id AS enrollment_id,
+    e.student_id,
+    s.full_name AS student_name,
+    s.phone AS student_phone,
+    e.group_id,
+    g.name AS group_name,
+    c.name AS course_name,
+    e.level_number,
+    e.amount_due,
+    e.discount_applied,
+    (e.amount_due - COALESCE(e.discount_applied, (0)::numeric)) AS net_due,
+    COALESCE(vb.total_paid, (0)::numeric) AS total_paid,
+    GREATEST(((e.amount_due - COALESCE(e.discount_applied, (0)::numeric)) - COALESCE(vb.total_paid, (0)::numeric)), (0)::numeric) AS remaining_balance,
+    COALESCE(vb.balance, (e.amount_due - COALESCE(e.discount_applied, (0)::numeric))) AS balance,
+    COALESCE(vb.payment_status, 'not_paid'::character varying) AS payment_status,
+    e.status AS enrollment_status,
+    e.enrolled_at,
+    e.notes
+   FROM ((((enrollments e
+     JOIN students s ON ((s.id = e.student_id)))
+     JOIN groups g ON ((g.id = e.group_id)))
+     LEFT JOIN courses c ON ((c.id = g.course_id)))
+     LEFT JOIN v_enrollment_balance vb ON ((vb.enrollment_id = e.id)))
+  WHERE ((e.status = 'active'::text) AND (GREATEST(((e.amount_due - COALESCE(e.discount_applied, (0)::numeric)) - COALESCE(vb.total_paid, (0)::numeric)), (0)::numeric) > (0)::numeric))
+  ORDER BY GREATEST(((e.amount_due - COALESCE(e.discount_applied, (0)::numeric)) - COALESCE(vb.total_paid, (0)::numeric)), (0)::numeric) DESC;
+
+=== TRIGGERS ===
+TRIGGER: normalize_team_fields_trigger
+  CREATE TRIGGER normalize_team_fields_trigger BEFORE INSERT OR UPDATE ON public.teams FOR EACH ROW EXECUTE FUNCTION normalize_team_fields()
+TRIGGER: trg_courses_updated_at
+  CREATE TRIGGER trg_courses_updated_at BEFORE UPDATE ON public.courses FOR EACH ROW EXECUTE FUNCTION tf_set_updated_at()
+TRIGGER: trg_employees_updated_at
+  CREATE TRIGGER trg_employees_updated_at BEFORE UPDATE ON public.employees FOR EACH ROW EXECUTE FUNCTION tf_set_updated_at()
+TRIGGER: trg_enrollment_level_history_updated_at
+  CREATE TRIGGER trg_enrollment_level_history_updated_at BEFORE UPDATE ON public.enrollment_level_history FOR EACH ROW EXECUTE FUNCTION tf_set_updated_at()
+TRIGGER: trg_enrollments_updated_at
+  CREATE TRIGGER trg_enrollments_updated_at BEFORE UPDATE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION tf_set_updated_at()
+TRIGGER: trg_group_levels_updated_at
+  CREATE TRIGGER trg_group_levels_updated_at BEFORE UPDATE ON public.group_levels FOR EACH ROW EXECUTE FUNCTION tf_set_updated_at()
+TRIGGER: trg_groups_updated_at
+  CREATE TRIGGER trg_groups_updated_at BEFORE UPDATE ON public.groups FOR EACH ROW EXECUTE FUNCTION tf_set_updated_at()
+TRIGGER: trg_parents_updated_at
+  CREATE TRIGGER trg_parents_updated_at BEFORE UPDATE ON public.parents FOR EACH ROW EXECUTE FUNCTION tf_set_updated_at()
+TRIGGER: trg_students_updated_at
+  CREATE TRIGGER trg_students_updated_at BEFORE UPDATE ON public.students FOR EACH ROW EXECUTE FUNCTION tf_set_updated_at()
+TRIGGER: trg_update_waiting_since
+  CREATE TRIGGER trg_update_waiting_since BEFORE INSERT OR UPDATE ON public.students FOR EACH ROW EXECUTE FUNCTION update_waiting_since()

@@ -1,121 +1,59 @@
 -- =============================================================================
--- COMPETITIONS TABLES
--- Competition management and team participation
--- Dependencies: groups (04_tables_academics.sql), employees (02_tables_core.sql),
---               students (03_tables_crm.sql), payments (06_tables_finance.sql)
+-- COMPETITIONS TABLES (SYNCED FROM LIVE DB)
 -- =============================================================================
 
-DROP TABLE IF EXISTS group_competition_participation CASCADE;
 DROP TABLE IF EXISTS team_members CASCADE;
 DROP TABLE IF EXISTS teams CASCADE;
-DROP TABLE IF EXISTS competition_categories CASCADE;
 DROP TABLE IF EXISTS competitions CASCADE;
 
--- =============================================================================
--- COMPETITIONS
--- Competition definitions
--- =============================================================================
 CREATE TABLE competitions (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
     edition TEXT,
-    edition_year INTEGER,
     competition_date DATE,
     location TEXT,
-    fee_per_student DECIMAL(10, 2) CHECK (fee_per_student >= 0),
     notes TEXT,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMPTZ,
-    deleted_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+    fee_per_student NUMERIC DEFAULT 0.0,
+    edition_year INTEGER NOT NULL,
+    CONSTRAINT uq_competitions_name_edition_year UNIQUE (name, edition_year)
 );
 
-COMMENT ON TABLE competitions IS 'Competition definitions and details';
-COMMENT ON COLUMN competitions.edition IS 'Competition edition name/identifier';
-COMMENT ON COLUMN competitions.edition_year IS 'Year of the competition edition';
-COMMENT ON COLUMN competitions.fee_per_student IS 'Registration fee per participating student';
-COMMENT ON COLUMN competitions.deleted_at IS 'Soft delete timestamp';
-
--- =============================================================================
--- COMPETITION_CATEGORIES
--- Categories within a competition
--- =============================================================================
-CREATE TABLE competition_categories (
-    id SERIAL PRIMARY KEY,
-    competition_id INTEGER NOT NULL REFERENCES competitions(id) ON DELETE CASCADE,
-    category_name TEXT NOT NULL,
-    age_range_min INTEGER,
-    age_range_max INTEGER,
-    notes TEXT,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-
-COMMENT ON TABLE competition_categories IS 'Categories within a competition (age groups, skill levels)';
-COMMENT ON COLUMN competition_categories.age_range_min IS 'Minimum age for this category';
-COMMENT ON COLUMN competition_categories.age_range_max IS 'Maximum age for this category';
-
--- =============================================================================
--- TEAMS
--- Competition teams
--- =============================================================================
 CREATE TABLE teams (
     id SERIAL PRIMARY KEY,
-    category_id INTEGER NOT NULL REFERENCES competition_categories(id) ON DELETE CASCADE,
-    group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL,
+    category_id INTEGER,
+    group_id INTEGER,
     team_name TEXT NOT NULL,
-    category TEXT,
-    subcategory TEXT,
-    coach_id INTEGER REFERENCES employees(id) ON DELETE SET NULL,
-    notes TEXT,
+    coach_id INTEGER,
+    enrollment_fee_per_student NUMERIC,
+    is_deleted BOOLEAN DEFAULT false,
+    deleted_by_user_id INTEGER,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    metadata JSONB DEFAULT '{}',
-    deleted_at TIMESTAMPTZ,
-    deleted_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+    metadata JSONB DEFAULT '{}'::jsonb,
+    competition_id INTEGER NOT NULL,
+    category CITEXT NOT NULL,
+    subcategory CITEXT,
+    placement_rank INTEGER,
+    placement_label VARCHAR(100),
+    notes TEXT,
+    project_name VARCHAR(500),
+    project_description TEXT,
+    CONSTRAINT teams_coach_id_fkey FOREIGN KEY (coach_id) REFERENCES employees(id) ON DELETE SET NULL,
+    CONSTRAINT teams_competition_id_fkey FOREIGN KEY (competition_id) REFERENCES competitions(id),
+    CONSTRAINT teams_deleted_by_user_id_fkey FOREIGN KEY (deleted_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT teams_enrollment_fee_per_student_check CHECK ((enrollment_fee_per_student > (0)::numeric)),
+    CONSTRAINT teams_group_id_fkey FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE SET NULL
 );
 
-COMMENT ON TABLE teams IS 'Competition teams linked to categories and optionally to groups';
-COMMENT ON COLUMN teams.category IS 'Team category (normalized)';
-COMMENT ON COLUMN teams.subcategory IS 'Team subcategory (normalized)';
-COMMENT ON COLUMN teams.deleted_at IS 'Soft delete timestamp';
-
--- =============================================================================
--- TEAM_MEMBERS
--- Students assigned to competition teams
--- =============================================================================
 CREATE TABLE team_members (
     id SERIAL PRIMARY KEY,
-    team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
-    student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE RESTRICT,
-    member_share DECIMAL(10, 2) CHECK (member_share >= 0),
-    fee_paid BOOLEAN DEFAULT FALSE,
-    payment_id INTEGER REFERENCES payments(id) ON DELETE SET NULL,
-    joined_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    notes TEXT,
-    UNIQUE(team_id, student_id)
+    team_id INTEGER NOT NULL,
+    student_id INTEGER NOT NULL,
+    amount_due NUMERIC DEFAULT 0.00,
+    amount_paid NUMERIC DEFAULT 0.00,
+    CONSTRAINT team_members_student_id_fkey FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE RESTRICT,
+    CONSTRAINT team_members_team_id_fkey FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE,
+    CONSTRAINT team_members_team_id_student_id_key UNIQUE (team_id, student_id)
 );
 
-COMMENT ON TABLE team_members IS 'Students assigned to competition teams';
-COMMENT ON COLUMN team_members.member_share IS 'Snapshotted enrollment fee share at registration';
-COMMENT ON COLUMN team_members.fee_paid IS 'Whether the competition fee has been paid';
-COMMENT ON COLUMN team_members.payment_id IS 'Link to payment record if fee was paid';
-
--- =============================================================================
--- GROUP_COMPETITION_PARTICIPATION
--- Group-level competition participation tracking
--- =============================================================================
-CREATE TABLE group_competition_participation (
-    id SERIAL PRIMARY KEY,
-    group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
-    team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
-    competition_id INTEGER NOT NULL REFERENCES competitions(id) ON DELETE CASCADE,
-    is_active BOOLEAN DEFAULT TRUE,
-    enrolled_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    enrolled_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
-    notes TEXT,
-    UNIQUE(group_id, team_id, competition_id)
-);
-
-COMMENT ON TABLE group_competition_participation IS 'Group-level competition participation tracking';
-COMMENT ON COLUMN group_competition_participation.is_active IS 'Whether this participation is currently active';
+ALTER TABLE payments ADD CONSTRAINT payments_team_member_id_fkey FOREIGN KEY (team_member_id) REFERENCES team_members(id);

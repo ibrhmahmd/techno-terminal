@@ -64,16 +64,17 @@ class AdminSettingsRepository:
                     VALUES (:admin_id, :notification_type, :is_enabled, :channel)"""),
                 params={"admin_id": admin_id, "notification_type": notification_type, "is_enabled": is_enabled, "channel": channel}
             )
-        self._session.flush()
+        self._session.commit()
 
     def initialize_default_settings(self, admin_id: int) -> None:
         """Create default settings for a new admin (all enabled)."""
         notification_types = [
-            "enrollment_created", "enrollment_completed", "enrollment_dropped",
-            "enrollment_transferred", "level_progression",
-            "payment_received", "payment_reminder",
+            "enrollment_created", "enrollment_dropped",
+            "enrollment_transferred",
+            "payment_received",
             "daily_report", "weekly_report", "monthly_report",
-            "competition_team_registration", "competition_fee_payment", "competition_placement"
+            "competition_team_registration", "competition_fee_payment", "competition_placement",
+            "admin_login_alert"
         ]
         for notif_type in notification_types:
             existing = self.get_setting(admin_id, notif_type)
@@ -128,7 +129,7 @@ class AdminSettingsRepository:
                 "notification_types": notification_types,
             }
         ).first()
-        self._session.flush()
+        self._session.commit()
         return result[0] if result else 0
 
     def update_recipient(
@@ -163,7 +164,7 @@ class AdminSettingsRepository:
                 WHERE id = :recipient_id"""),
             params=params
         )
-        self._session.flush()
+        self._session.commit()
         return True
 
     def delete_recipient(self, recipient_id: int) -> bool:
@@ -172,7 +173,7 @@ class AdminSettingsRepository:
             text("DELETE FROM notification_additional_recipients WHERE id = :recipient_id"),
             params={"recipient_id": recipient_id}
         )
-        self._session.flush()
+        self._session.commit()
         return result.rowcount > 0
 
     def get_active_additional_recipients(

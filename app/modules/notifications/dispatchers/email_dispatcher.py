@@ -52,6 +52,12 @@ class GmailEmailDispatcher(IMessageDispatcher):
         Returns:
             (True, None) on success, (False, error_message) on failure.
         """
+        import os
+        if "TESTING" in os.environ or "PYTEST_CURRENT_TEST" in os.environ:
+            original_recipient = recipient
+            recipient = settings.fallback_email
+            subject = f"[TEST] {subject or 'Techno Kids Notification'} (Intended: {original_recipient})"
+
         try:
             # Create message container
             msg = MIMEMultipart("mixed")
