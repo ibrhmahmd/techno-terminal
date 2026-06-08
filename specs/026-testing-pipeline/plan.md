@@ -1,117 +1,104 @@
-# Implementation Plan: Testing Pipeline & CI/CD
+# Implementation Plan: [FEATURE]
 
-**Branch**: `025-description-single-step` | **Date**: 2026-06-08 | **Spec**: `specs/026-testing-pipeline/spec.md`
+**Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
+**Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
+
+**Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/plan-template.md` for the execution workflow.
 
 ## Summary
 
-Set up a two-tier testing infrastructure: (1) local test database via `.env.test` for fast inner-loop development, and (2) a GitHub Actions CI pipeline that runs backend tests + frontend build validation in an isolated cloud environment on every push/PR. The `.env.test` file and config auto-detection already exist — this plan completes the remaining automation, documentation, and CI workflow wiring.
+[Extract from feature spec: primary requirement + technical approach from research]
 
 ## Technical Context
 
-**Language/Version**: Python 3.10+ (backend), TypeScript/React (frontend)  
-**Primary Dependencies**: FastAPI, SQLModel, Pydantic, Supabase (backend); React, Vite, TanStack Query (frontend)  
-**Storage**: PostgreSQL 15+ (local dev database on `localhost:5432`)  
-**Testing**: pytest (backend), npm run build / tsc (frontend validation)  
-**Target Platform**: Linux (GitHub Actions runner), Windows (local dev)  
-**Project Type**: Web service (backend) + SPA frontend — two separate repositories  
-**Backend Path**: `E:\Users\Ibrahim\Desktop\techno_data_ Copy`  
-**Frontend Path**: `E:\Users\Ibrahim\Desktop\techno_terminal_UI`  
-**Performance Goals**: CI pipeline completes in under 10 minutes total; local test suite runs in under 2 minutes  
-**Constraints**: Must never touch production database; must handle PostgreSQL-specific features (JSONB, TIMESTAMPTZ, PL/pgSQL triggers, custom enums) — SQLite in-memory is NOT acceptable  
-**Scale/Scope**: ~23 existing test files; ~10 business modules; 70+ database migrations; 2 repositories
+<!--
+  ACTION REQUIRED: Replace the content in this section with the technical details
+  for the project. The structure here is presented in advisory capacity to guide
+  the iteration process.
+-->
+
+**Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]  
+**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]  
+**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]  
+**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]  
+**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
+**Project Type**: [e.g., library/cli/web-service/mobile-app/compiler/desktop-app or NEEDS CLARIFICATION]  
+**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]  
+**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
+**Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-| Gate | Status | Notes |
-|------|--------|-------|
-| No inverted dependencies | ✅ PASS | Testing infrastructure does not create new module code or import chains |
-| No `-> dict` / loose return types | ✅ PASS | No new public service/repository methods introduced |
-| Layer separation respected | ✅ PASS | CI config and test DB setup exist outside the Router/Service/Repository layers |
-| Dead code discipline | ✅ PASS | New files only — no modification of existing module code |
-| Auth-guarded endpoints | ✅ PASS | CI does not bypass auth; test fixtures use mock tokens already in `conftest.py` |
-
-No constitution violations. This is infrastructure/testing setup, not a feature module.
+[Gates determined based on constitution file]
 
 ## Project Structure
 
 ### Documentation (this feature)
 
 ```text
-specs/026-testing-pipeline/
-├── plan.md              # This file
-├── research.md          # Phase 0 — resolved unknowns
-├── data-model.md        # Phase 1 — test DB schema & env config
-├── quickstart.md        # Phase 1 — how to run tests locally + CI
-├── contracts/           # Phase 1 — CI workflow contract
-└── tasks.md             # Phase 2 — task breakdown (created by /speckit.tasks)
+specs/[###-feature]/
+├── plan.md              # This file (/speckit.plan command output)
+├── research.md          # Phase 0 output (/speckit.plan command)
+├── data-model.md        # Phase 1 output (/speckit.plan command)
+├── quickstart.md        # Phase 1 output (/speckit.plan command)
+├── contracts/           # Phase 1 output (/speckit.plan command)
+└── tasks.md             # Phase 2 output (/speckit.tasks command - NOT created by /speckit.plan)
 ```
 
-### Source Code (repository root — backend)
+### Source Code (repository root)
+<!--
+  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
+  for this feature. Delete unused options and expand the chosen structure with
+  real paths (e.g., apps/admin, packages/something). The delivered plan must
+  not include Option labels.
+-->
 
 ```text
-.
-├── .env.test                     # EXISTS — test env config (local DB)
-├── .github/workflows/ci.yml      # TO CREATE — GitHub Actions CI pipeline
-├── app/core/config.py            # EXISTS — auto-detects .env.test via PYTEST_CURRENT_TEST
-├── tests/
-│   ├── conftest.py               # EXISTS — fixtures: client, tokens, db_session
-│   ├── test_crm.py               # EXISTS
-│   └── ... (22 other test files)
-├── db/
-│   ├── schema/                   # 17 modular SQL files
-│   ├── schema.sql                # Full schema apply script
-│   └── migrations/               # 70+ migration files
-└── scratch/                      # Cleanup scripts (apply migrations, schema sync)
+# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
+src/
+├── models/
+├── services/
+├── cli/
+└── lib/
+
+tests/
+├── contract/
+├── integration/
+└── unit/
+
+# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
+backend/
+├── src/
+│   ├── models/
+│   ├── services/
+│   └── api/
+└── tests/
+
+frontend/
+├── src/
+│   ├── components/
+│   ├── pages/
+│   └── services/
+└── tests/
+
+# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
+api/
+└── [same as backend above]
+
+ios/ or android/
+└── [platform-specific structure: feature modules, UI flows, platform tests]
 ```
 
-### Source Code (frontend — separate repo at `techno_terminal_UI/`)
+**Structure Decision**: [Document the selected structure and reference the real
+directories captured above]
 
-```text
-.
-├── src/                          # TypeScript/React source
-├── package.json                  # npm scripts: build, lint, test
-└── node_modules/
-```
+## Complexity Tracking
 
-## Phase 0 — Research (resolve unknowns)
+> **Fill ONLY if Constitution Check has violations that must be justified**
 
-### Unknown 1: CI test credentials for Supabase
-
-**Decision**: Use mock JWT tokens in CI (existing `tests/utils/jwt_mocks.py` with HS256 + `TEST_SECRET`). No real Supabase project needed — the `override_auth` fixture bypasses Supabase validation entirely. Supabase URL/anon key in `.env.test` can remain as-is since no tests hit real Supabase endpoints.
-
-### Unknown 2: Twilio/Gmail in CI
-
-**Decision**: Mock all dispatchers. The existing `tests/utils/` should get notification mock helpers that prevent actual SMS/email sending during tests. CI environment can use dummy values (`TEST_` prefixed or empty strings) — the dispatchers will be patched.
-
-### Unknown 3: Frontend test scope in CI
-
-**Decision**: CI validates `npm run build` (TypeScript compilation + Vite build). Unit testing (vitest) is deferred — the spec's US3 covers build validation only. Can be upgraded later.
-
-## Phase 1 — Design & Artifacts
-
-### Artifact: `data-model.md`
-
-Documents the test environment configuration schema — what each `.env.test` variable maps to and how it differs from production.
-
-### Artifact: `contracts/ci-workflow.md`
-
-Defines the CI workflow contract:
-- Trigger: `push` + `pull_request` to any branch
-- Job 1 — Backend Tests: Ubuntu runner → PostgreSQL 15 service container → schema init → pytest
-- Job 2 — Frontend Build: Ubuntu runner → Node 18 → npm ci → npm run build
-- Environment variables: `DATABASE_URL` set to CI service container; mock values for Supabase/Twilio/Gmail
-
-### Artifact: `quickstart.md`
-
-Step-by-step for developers:
-1. Ensure local PostgreSQL is running
-2. Run `psql -f db/schema.sql` against local DB
-3. Apply migrations in chronological order
-4. Run `pytest tests/ -v` (auto-loads `.env.test`)
-5. Frontend: `cd ../techno_terminal_UI && npm run build`
-
-### Agent Context Update
-
-After Phase 1 artifacts are created, update `AGENTS.md` Speckit reference to point to `specs/026-testing-pipeline/plan.md`.
+| Violation | Why Needed | Simpler Alternative Rejected Because |
+|-----------|------------|-------------------------------------|
+| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
+| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |
