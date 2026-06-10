@@ -46,6 +46,7 @@ jobs:
       - name: Seed database
         run: python scripts/ci_seed_database.py
         env:
+          PYTHONPATH: .
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techno_test
           SUPABASE_URL: https://test.supabase.co
           SUPABASE_ANON_KEY: test-key
