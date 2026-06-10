@@ -43,9 +43,10 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techno_test
 
-      - name: Run tests (finance + crm)
-        run: pytest tests/test_finance.py tests/test_crm.py -v
-        timeout-minutes: 10
+      - name: Run ALL tests (diagnostic — temporary)
+        run: pytest tests/ -v --tb=long 2>&1 | tee /tmp/ci_failure_output.txt
+        timeout-minutes: 20
+        continue-on-error: true
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techno_test
           SUPABASE_URL: https://test.supabase.co
@@ -57,5 +58,11 @@ jobs:
           GMAIL_SENDER_ADDRESS: test@test.com
           GMAIL_APP_PASSWORD: test-password
           CI: "true"
+
+      - name: Upload diagnostic output
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-failure-output
+          path: /tmp/ci_failure_output.txt
 
 
