@@ -19,8 +19,41 @@ MIN_PASSWORD_LENGTH: int = 12
 
 # ── Finance ───────────────────────────────────────────────────────────────────
 
-PaymentMethod: TypeAlias = Literal["cash", "card", "transfer", "online"]
-PAYMENT_METHODS: list[PaymentMethod] = ["cash", "card", "transfer", "online"]
+PaymentMethod: TypeAlias = Literal[
+    "cash", "card", "transfer", "online",
+    "ewallet", "instapay", "other",
+]
+PAYMENT_METHODS: list[PaymentMethod] = [
+    "cash", "card", "transfer", "online",
+    "ewallet", "instapay", "other",
+]
+
+# Mapping from any frontend input format (icon names, display labels, lowercase labels)
+# to canonical backend storage values — case-insensitive, validated before storage.
+PAYMENT_METHOD_MAP: dict[str, str] = {
+    # Cash variants
+    "cash": "cash",
+    "payments": "cash",
+    # Card (keep existing)
+    "card": "card",
+    # Transfer (keep existing)
+    "transfer": "transfer",
+    # Online (keep existing)
+    "online": "online",
+    # E-Wallet variants
+    "ewallet": "ewallet",
+    "e_wallet": "ewallet",
+    "e-wallet": "ewallet",
+    "account_balance_wallet": "ewallet",
+    # instaPay variants
+    "instapay": "instapay",
+    "insta_pay": "instapay",
+    "insta-pay": "instapay",
+    "bolt": "instapay",
+    # Other variants
+    "other": "other",
+    "more_horiz": "other",
+}
 
 TransactionType: TypeAlias = Literal["charge", "payment", "refund"]
 PaymentType: TypeAlias = Literal["course_level", "competition", "other"]

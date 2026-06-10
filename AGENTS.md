@@ -119,5 +119,5 @@ Before any refactoring, grep for callers of every method. Delete dead code immed
 - **Health**: `/health`, `/kaithhealthcheck`.
 
 <!-- SPECKIT START -->
-Active plan: `specs/028-student-status-registration/plan.md`
+Active plan: `specs/029-payment-method-mapping/plan.md`
 <!-- SPECKIT END -->

@@ -6,7 +6,9 @@ Public-facing Receipt DTOs.
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+from app.shared.constants import PaymentMethod, PAYMENT_METHOD_MAP
 from app.modules.finance import ReceiptLineInput
 
 
@@ -88,10 +90,26 @@ class ReceiptLineRequest(BaseModel):
 
 class CreateReceiptRequest(BaseModel):
     payer_name: Optional[str] = None
-    method: str = "cash"
+    method: PaymentMethod = "cash"
     notes: Optional[str] = None
     allow_credit: bool = True
     lines: list[ReceiptLineInput]
+
+    @field_validator("method", mode="before")
+    @classmethod
+    def normalize_payment_method(cls, v: str) -> str:
+        """
+        Normalize any frontend payment method format to canonical backend value.
+
+        Accepts icon names ("bolt"), display labels ("instaPay"), lowercase
+        labels, or coded values. If the value is in PAYMENT_METHOD_MAP,
+        return the canonical form. If not, return as-is so Pydantic's Literal
+        validation produces a clean 422 error.
+        """
+        if not isinstance(v, str):
+            return v
+        canonical = PAYMENT_METHOD_MAP.get(v.lower())
+        return canonical if canonical is not None else v
 
 
 class IssueRefundRequest(BaseModel):

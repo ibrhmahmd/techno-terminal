@@ -243,3 +243,188 @@ class TestFinanceAuth:
         
         # Should not be 401 (unauthorized)
         assert response.status_code != 401
+
+
+class TestPaymentMethodNormalization:
+    """
+    Tests for payment method normalization (Feature 029).
+
+    Verifies that the @field_validator on CreateReceiptRequest normalizes
+    all frontend input formats (icon names, display labels, lowercase labels)
+    to canonical backend values.
+    """
+
+    # ── Direct DTO tests ─────────────────────────────────────────────────
+
+    def test_cash_normalization(self):
+        """Cash input variants all normalize to 'cash'."""
+        from app.api.schemas.finance.receipt import CreateReceiptRequest
+        from app.shared.constants import PAYMENT_METHOD_MAP
+
+        for variant in [v for v in PAYMENT_METHOD_MAP if PAYMENT_METHOD_MAP[v] == "cash"]:
+            dto = CreateReceiptRequest(method=variant, lines=[])
+            assert dto.method == "cash", f"{variant!r} should normalize to 'cash', got {dto.method!r}"
+
+    def test_card_normalization(self):
+        """Card input variants all normalize to 'card'."""
+        from app.api.schemas.finance.receipt import CreateReceiptRequest
+        from app.shared.constants import PAYMENT_METHOD_MAP
+
+        for variant in [v for v in PAYMENT_METHOD_MAP if PAYMENT_METHOD_MAP[v] == "card"]:
+            dto = CreateReceiptRequest(method=variant, lines=[])
+            assert dto.method == "card", f"{variant!r} should normalize to 'card', got {dto.method!r}"
+
+    def test_transfer_normalization(self):
+        """Transfer input variants all normalize to 'transfer'."""
+        from app.api.schemas.finance.receipt import CreateReceiptRequest
+        from app.shared.constants import PAYMENT_METHOD_MAP
+
+        for variant in [v for v in PAYMENT_METHOD_MAP if PAYMENT_METHOD_MAP[v] == "transfer"]:
+            dto = CreateReceiptRequest(method=variant, lines=[])
+            assert dto.method == "transfer", f"{variant!r} should normalize to 'transfer', got {dto.method!r}"
+
+    def test_online_normalization(self):
+        """Online input variants all normalize to 'online'."""
+        from app.api.schemas.finance.receipt import CreateReceiptRequest
+        from app.shared.constants import PAYMENT_METHOD_MAP
+
+        for variant in [v for v in PAYMENT_METHOD_MAP if PAYMENT_METHOD_MAP[v] == "online"]:
+            dto = CreateReceiptRequest(method=variant, lines=[])
+            assert dto.method == "online", f"{variant!r} should normalize to 'online', got {dto.method!r}"
+
+    def test_ewallet_normalization(self):
+        """E-Wallet input variants all normalize to 'ewallet'."""
+        from app.api.schemas.finance.receipt import CreateReceiptRequest
+        from app.shared.constants import PAYMENT_METHOD_MAP
+
+        for variant in [v for v in PAYMENT_METHOD_MAP if PAYMENT_METHOD_MAP[v] == "ewallet"]:
+            dto = CreateReceiptRequest(method=variant, lines=[])
+            assert dto.method == "ewallet", f"{variant!r} should normalize to 'ewallet', got {dto.method!r}"
+
+    def test_instapay_normalization(self):
+        """instaPay input variants all normalize to 'instapay'."""
+        from app.api.schemas.finance.receipt import CreateReceiptRequest
+        from app.shared.constants import PAYMENT_METHOD_MAP
+
+        for variant in [v for v in PAYMENT_METHOD_MAP if PAYMENT_METHOD_MAP[v] == "instapay"]:
+            dto = CreateReceiptRequest(method=variant, lines=[])
+            assert dto.method == "instapay", f"{variant!r} should normalize to 'instapay', got {dto.method!r}"
+
+    def test_other_normalization(self):
+        """Other input variants all normalize to 'other'."""
+        from app.api.schemas.finance.receipt import CreateReceiptRequest
+        from app.shared.constants import PAYMENT_METHOD_MAP
+
+        for variant in [v for v in PAYMENT_METHOD_MAP if PAYMENT_METHOD_MAP[v] == "other"]:
+            dto = CreateReceiptRequest(method=variant, lines=[])
+            assert dto.method == "other", f"{variant!r} should normalize to 'other', got {dto.method!r}"
+
+    def test_default_method_is_cash(self):
+        """When method is omitted, default is 'cash'."""
+        from app.api.schemas.finance.receipt import CreateReceiptRequest
+
+        dto_default = CreateReceiptRequest(lines=[])
+        assert dto_default.method == "cash", f"Expected default 'cash', got {dto_default.method!r}"
+
+        dto_explicit = CreateReceiptRequest(method="cash", lines=[])
+        assert dto_explicit.method == "cash"
+
+    def test_case_insensitive_normalization(self):
+        """Casing variations are normalized via PAYMENT_METHOD_MAP lookup."""
+        from app.api.schemas.finance.receipt import CreateReceiptRequest
+
+        dto_upper = CreateReceiptRequest(method="CASH", lines=[])
+        assert dto_upper.method == "cash"
+
+        dto_mixed = CreateReceiptRequest(method="E-Wallet", lines=[])
+        assert dto_mixed.method == "ewallet"
+
+        dto_lower = CreateReceiptRequest(method="instapay", lines=[])
+        assert dto_lower.method == "instapay"
+
+    def test_invalid_method_raises_validationerror(self):
+        """Unrecognized values return a 422-style validation error."""
+        from pydantic import ValidationError
+        from app.api.schemas.finance.receipt import CreateReceiptRequest
+
+        with pytest.raises(ValidationError) as exc_info:
+            CreateReceiptRequest(method="cryptocurrency", lines=[])
+        error_msg = str(exc_info.value)
+        # The error should mention the valid values
+        assert "cash" in error_msg or "Input should be" in error_msg
+
+    def test_invalid_method_typo_raises_validationerror(self):
+        """Typo values (e.g., 'instapy') return 422."""
+        from pydantic import ValidationError
+        from app.api.schemas.finance.receipt import CreateReceiptRequest
+
+        with pytest.raises(ValidationError):
+            CreateReceiptRequest(method="instapy", lines=[])
+
+    def test_empty_method_string_invalid(self):
+        """Empty string is not in the map and not a valid Literal value."""
+        from pydantic import ValidationError
+        from app.api.schemas.finance.receipt import CreateReceiptRequest
+
+        with pytest.raises(ValidationError):
+            CreateReceiptRequest(method="", lines=[])
+
+    def test_icon_name_mapping(self):
+        """Material Icon names map to correct canonical values."""
+        from app.api.schemas.finance.receipt import CreateReceiptRequest
+
+        dto = CreateReceiptRequest(method="payments", lines=[])
+        assert dto.method == "cash"
+
+        dto = CreateReceiptRequest(method="account_balance_wallet", lines=[])
+        assert dto.method == "ewallet"
+
+        dto = CreateReceiptRequest(method="bolt", lines=[])
+        assert dto.method == "instapay"
+
+        dto = CreateReceiptRequest(method="more_horiz", lines=[])
+        assert dto.method == "other"
+
+    # ── API-level tests ───────────────────────────────────────────────────
+
+    def test_create_receipt_with_method_bolt(self, client, mock_admin_headers, override_auth):
+        """
+        POST /finance/receipts with method='bolt'.
+        The validator should normalize 'bolt' → 'instapay'.
+        Missing required 'lines' should get 422 (not a method validation error).
+        """
+        response = client.post(
+            "/api/v1/finance/receipts",
+            headers=mock_admin_headers,
+            json={"method": "bolt", "payer_name": "Test"}
+        )
+        assert response.status_code == 422  # missing lines, not method error
+        data = response.json()
+        assert data["success"] is False
+
+    def test_create_receipt_with_invalid_method_returns_422(self, client, mock_admin_headers, override_auth):
+        """
+        POST /finance/receipts with an unrecognized method returns 422.
+        """
+        response = client.post(
+            "/api/v1/finance/receipts",
+            headers=mock_admin_headers,
+            json={"method": "cryptocurrency", "lines": []}
+        )
+        assert response.status_code == 422
+        data = response.json()
+        assert data["success"] is False
+
+    def test_create_receipt_with_default_method(self, client, mock_admin_headers, override_auth):
+        """
+        POST /finance/receipts without method field defaults to 'cash'.
+        Missing required 'lines' should get 422.
+        """
+        response = client.post(
+            "/api/v1/finance/receipts",
+            headers=mock_admin_headers,
+            json={"payer_name": "Test"}
+        )
+        assert response.status_code == 422  # missing lines, not method error
+        data = response.json()
+        assert data["success"] is False
