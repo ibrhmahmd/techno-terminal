@@ -39,7 +39,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
 
       - name: Apply schema
-        run: psql "$DATABASE_URL" -f db/schema.sql
+        run: cd db && psql "$DATABASE_URL" -f schema.sql
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techno_test
 
