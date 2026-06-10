@@ -44,7 +44,7 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techno_test
 
       - name: Run tests (finance + crm)
-        run: pytest tests/test_finance.py tests/test_crm.py -v --cov=app --cov-report=term-missing
+        run: pytest tests/test_finance.py tests/test_crm.py -v
         timeout-minutes: 10
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techno_test
