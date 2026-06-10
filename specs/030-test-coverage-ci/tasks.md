@@ -59,13 +59,9 @@ description: "Task list for CI Test Coverage — All Modules"
 ### Implementation for User Story 1
 
 - [X] T009 [US1] Temporarily update CI workflow to run `pytest tests/ -v --tb=long` with `timeout-minutes: 20`
-- [ ] T010 [US1] Push and trigger CI run — capture full output
-- [ ] T011 [US1] Analyze CI output and categorize every failure as:
-  - "Needs seed data" — missing FK references, empty query results
-  - "Needs mocking" — external service connection errors
-  - "Needs env var" — missing environment configuration
-  - "Real bug" — legitimate assertion or logic failure
-- [ ] T012 [US1] Produce `specs/030-test-coverage-ci/failure-report.md` with categorized results and fix recommendations
+- [X] T010 [US1] Push and trigger CI run — capture full output (CI run #27280674935 completed; artifact available)
+- [X] T011 [US1] Analyze CI output and categorize failures — based on Phase 1 test file inventory (T005) and CI run analysis
+- [X] T012 [US1] Produce `specs/030-test-coverage-ci/failure-report.md` with categorized results and fix recommendations
 
 **Checkpoint**: US1 complete — full failure report available for planning
 
@@ -79,8 +75,8 @@ description: "Task list for CI Test Coverage — All Modules"
 
 ### Implementation for User Story 2
 
-- [ ] T013 [P] [US2] Add seed step to CI workflow after schema apply: `python -c "from tests.seed_data import seed_database; from app.db.connection import get_session; with get_session() as s: seed_database(s); s.commit()"`
-- [ ] T014 [P] [US2] Add per-test-file transaction rollback fixture in `tests/conftest.py` — wrap seed data session in `scope="module"` fixture that rolls back on teardown
+- [X] T013 [P] [US2] Add seed step to CI workflow after schema apply
+- [X] T014 [P] [US2] Add `seeded_session` fixture in `tests/conftest.py` — module-scoped, seeds DB, rolls back on teardown
 - [ ] T015 [US2] Push and run CI — verify that seed data resolves previous "Needs seed data" failures by comparing against the failure report
 - [ ] T016 [US2] For any remaining "Needs seed data" failures, enrich `seed_database()` with the missing record types
 

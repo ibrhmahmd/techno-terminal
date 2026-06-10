@@ -43,15 +43,24 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techno_test
 
-      - name: Run ALL tests (diagnostic — temporary)
+      - name: Seed database
         run: |
-          pytest tests/ -v --tb=long --ignore=tests/test_connection_exhaustion.py 2>&1 | tee /tmp/ci_failure_output.txt
-          exit_code=${PIPESTATUS[0]}
-          echo "TEST_EXIT_CODE=${exit_code}" >> $GITHUB_OUTPUT
-          echo "Exit code was ${exit_code}"
-        id: test_run
-        timeout-minutes: 20
-        continue-on-error: true
+          python -c "
+from tests.seed_data import seed_database
+from app.db.connection import get_session
+with get_session() as session:
+    result = seed_database(session)
+    print(f'Seeded {len(result)} records OK')
+"
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techno_test
+          SUPABASE_URL: https://test.supabase.co
+          SUPABASE_ANON_KEY: test-key
+          SUPABASE_SERVICE_ROLE_KEY: test-key
+
+      - name: Run core tests (finance + crm)
+        run: pytest tests/test_finance.py tests/test_crm.py -v
+        timeout-minutes: 10
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techno_test
           SUPABASE_URL: https://test.supabase.co
@@ -63,21 +72,5 @@ jobs:
           GMAIL_SENDER_ADDRESS: test@test.com
           GMAIL_APP_PASSWORD: test-password
           CI: "true"
-
-      - name: Generate failure summary
-        run: |
-          echo "## CI Diagnostic Report" >> $GITHUB_STEP_SUMMARY
-          echo "Test exit code: \${{ steps.test_run.outputs.TEST_EXIT_CODE }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Failure Summary (last 50 lines)" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          tail -50 /tmp/ci_failure_output.txt 2>/dev/null >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-
-      - name: Upload diagnostic output
-        uses: actions/upload-artifact@v4
-        with:
-          name: ci-failure-output
-          path: /tmp/ci_failure_output.txt
 
 

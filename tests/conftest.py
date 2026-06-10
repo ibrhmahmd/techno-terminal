@@ -139,6 +139,26 @@ def override_system_admin_auth(app, db_session):
     app.dependency_overrides.pop(get_current_user, None)
 
 
+@pytest.fixture(scope="module")
+def seeded_session():
+    """
+    Module-scoped database session pre-seeded with minimum viable records.
+    Seeds on first access, rolls back all changes when the module completes.
+    
+    Use this in test files that need database records (courses, students, etc.)
+    but don't care about specific seed state. 
+    
+    The rollback on teardown ensures zero side effects between modules.
+    """
+    from app.db.connection import get_session
+    from tests.seed_data import seed_database
+    
+    with get_session() as session:
+        seed_database(session)
+        yield session
+        session.rollback()
+
+
 @pytest.fixture
 def db_session():
     """
