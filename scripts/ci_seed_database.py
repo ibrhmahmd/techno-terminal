@@ -4,6 +4,14 @@ scripts/ci_seed_database.py
 Simple script for CI: applies seed data and prints summary.
 """
 
+import os
+import sys
+
+# Ensure project root is in PYTHONPATH
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 from tests.seed_data import seed_database
 from app.db.connection import get_session
 
