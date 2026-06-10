@@ -117,6 +117,250 @@ class TestStudentsCreate:
         assert data["success"] is False
         assert data["error"] == "ValidationError"
 
+    # ── Bug reproduction tests: Student Status Registration ──────────────
+    # These tests reproduce the reported bug where POST /crm/students
+    # with status="waiting" or case variations fails with an error.
+    # After the fix (field_validator lowercasing), all should pass with 201.
+
+    def test_create_student_with_waiting_status_lowercase(self, client, mock_admin_headers, override_auth):
+        """POST with status='waiting' (lowercase) must succeed with 201."""
+        import uuid
+        unique_name = f"Waiting Student Lower {uuid.uuid4().hex[:8]}"
+
+        response = client.post(
+            "/api/v1/crm/students",
+            headers=mock_admin_headers,
+            json={
+                "student_data": {
+                    "full_name": unique_name,
+                    "date_of_birth": "2010-06-01",
+                    "gender": "male",
+                    "phone": "+201000000011",
+                    "status": "waiting",
+                },
+                "parent_id": None,
+                "relationship": None,
+                "created_by_user_id": None,
+            },
+        )
+
+        assert response.status_code == 201, f"Expected 201, got {response.status_code}: {response.text}"
+        data = response.json()
+        assert data["success"] is True
+        assert data["data"]["status"] == "waiting"
+
+    def test_create_student_with_waiting_status_capitalized(self, client, mock_admin_headers, override_auth):
+        """POST with status='Waiting' (capitalized) must succeed with 201 after fix."""
+        import uuid
+        unique_name = f"Waiting Student Cap {uuid.uuid4().hex[:8]}"
+
+        response = client.post(
+            "/api/v1/crm/students",
+            headers=mock_admin_headers,
+            json={
+                "student_data": {
+                    "full_name": unique_name,
+                    "date_of_birth": "2010-06-01",
+                    "gender": "female",
+                    "phone": "+201000000012",
+                    "status": "Waiting",
+                },
+                "parent_id": None,
+                "relationship": None,
+                "created_by_user_id": None,
+            },
+        )
+
+        assert response.status_code == 201, f"Expected 201, got {response.status_code}: {response.text}"
+        data = response.json()
+        assert data["data"]["status"] == "waiting"
+
+    def test_create_student_with_waiting_status_uppercase(self, client, mock_admin_headers, override_auth):
+        """POST with status='WAITING' (uppercase) must succeed with 201 after fix."""
+        import uuid
+        unique_name = f"Waiting Student UP {uuid.uuid4().hex[:8]}"
+
+        response = client.post(
+            "/api/v1/crm/students",
+            headers=mock_admin_headers,
+            json={
+                "student_data": {
+                    "full_name": unique_name,
+                    "date_of_birth": "2010-06-01",
+                    "gender": "male",
+                    "phone": "+201000000013",
+                    "status": "WAITING",
+                },
+                "parent_id": None,
+                "relationship": None,
+                "created_by_user_id": None,
+            },
+        )
+
+        assert response.status_code == 201, f"Expected 201, got {response.status_code}: {response.text}"
+        data = response.json()
+        assert data["data"]["status"] == "waiting"
+
+    def test_create_student_defaults_to_waiting(self, client, mock_admin_headers, override_auth):
+        """POST without status field must create student with status='waiting'."""
+        import uuid
+        unique_name = f"Default Status {uuid.uuid4().hex[:8]}"
+
+        response = client.post(
+            "/api/v1/crm/students",
+            headers=mock_admin_headers,
+            json={
+                "student_data": {
+                    "full_name": unique_name,
+                    "date_of_birth": "2010-06-01",
+                    "gender": "female",
+                    "phone": "+201000000014",
+                    # status field omitted — should default to waiting
+                },
+                "parent_id": None,
+                "relationship": None,
+                "created_by_user_id": None,
+            },
+        )
+
+        assert response.status_code == 201, f"Expected 201, got {response.status_code}: {response.text}"
+        data = response.json()
+        assert data["data"]["status"] == "waiting"
+
+    def test_create_student_explicit_null_status(self, client, mock_admin_headers, override_auth):
+        """POST with status=null must create student with status='waiting'."""
+        import uuid
+        unique_name = f"Null Status {uuid.uuid4().hex[:8]}"
+
+        response = client.post(
+            "/api/v1/crm/students",
+            headers=mock_admin_headers,
+            json={
+                "student_data": {
+                    "full_name": unique_name,
+                    "date_of_birth": "2010-06-01",
+                    "gender": "male",
+                    "phone": "+201000000015",
+                    "status": None,
+                },
+                "parent_id": None,
+                "relationship": None,
+                "created_by_user_id": None,
+            },
+        )
+
+        assert response.status_code == 201, f"Expected 201, got {response.status_code}: {response.text}"
+        data = response.json()
+        assert data["data"]["status"] == "waiting"
+
+    def test_create_student_with_active_status(self, client, mock_admin_headers, override_auth):
+        """POST with status='active' must succeed with status='active'."""
+        import uuid
+        unique_name = f"Active Student {uuid.uuid4().hex[:8]}"
+
+        response = client.post(
+            "/api/v1/crm/students",
+            headers=mock_admin_headers,
+            json={
+                "student_data": {
+                    "full_name": unique_name,
+                    "date_of_birth": "2010-06-01",
+                    "gender": "female",
+                    "phone": "+201000000016",
+                    "status": "active",
+                },
+                "parent_id": None,
+                "relationship": None,
+                "created_by_user_id": None,
+            },
+        )
+
+        assert response.status_code == 201, f"Expected 201, got {response.status_code}: {response.text}"
+        data = response.json()
+        assert data["success"] is True
+        assert data["data"]["status"] == "active"
+
+    def test_create_student_with_inactive_status(self, client, mock_admin_headers, override_auth):
+        """POST with status='inactive' must succeed with status='inactive'."""
+        import uuid
+        unique_name = f"Inactive Student {uuid.uuid4().hex[:8]}"
+
+        response = client.post(
+            "/api/v1/crm/students",
+            headers=mock_admin_headers,
+            json={
+                "student_data": {
+                    "full_name": unique_name,
+                    "date_of_birth": "2010-06-01",
+                    "gender": "male",
+                    "phone": "+201000000017",
+                    "status": "inactive",
+                },
+                "parent_id": None,
+                "relationship": None,
+                "created_by_user_id": None,
+            },
+        )
+
+        assert response.status_code == 201, f"Expected 201, got {response.status_code}: {response.text}"
+        data = response.json()
+        assert data["success"] is True
+        assert data["data"]["status"] == "inactive"
+
+    def test_create_student_invalid_status_returns_422(self, client, mock_admin_headers, override_auth):
+        """POST with an invalid status value must return 422 with a clear error."""
+        import uuid
+        unique_name = f"Invalid Status {uuid.uuid4().hex[:8]}"
+
+        response = client.post(
+            "/api/v1/crm/students",
+            headers=mock_admin_headers,
+            json={
+                "student_data": {
+                    "full_name": unique_name,
+                    "date_of_birth": "2010-06-01",
+                    "gender": "female",
+                    "phone": "+201000000018",
+                    "status": "invalid_value",
+                },
+                "parent_id": None,
+                "relationship": None,
+                "created_by_user_id": None,
+            },
+        )
+
+        assert response.status_code == 422, f"Expected 422, got {response.status_code}: {response.text}"
+        data = response.json()
+        assert data["success"] is False
+        assert data["error"] == "ValidationError"
+
+    def test_create_student_empty_status_returns_422(self, client, mock_admin_headers, override_auth):
+        """POST with status='' (empty string) must return 422."""
+        import uuid
+        unique_name = f"Empty Status {uuid.uuid4().hex[:8]}"
+
+        response = client.post(
+            "/api/v1/crm/students",
+            headers=mock_admin_headers,
+            json={
+                "student_data": {
+                    "full_name": unique_name,
+                    "date_of_birth": "2010-06-01",
+                    "gender": "male",
+                    "phone": "+201000000019",
+                    "status": "",
+                },
+                "parent_id": None,
+                "relationship": None,
+                "created_by_user_id": None,
+            },
+        )
+
+        assert response.status_code == 422, f"Expected 422, got {response.status_code}: {response.text}"
+        data = response.json()
+        assert data["success"] is False
+        assert data["error"] == "ValidationError"
+
 
 class TestParentsRead:
     """Tests for reading parent data."""

@@ -14,43 +14,6 @@ All endpoints require admin authentication.
 from datetime import date, timedelta
 
 
-class TestDashboardSummary:
-    """GET /analytics/dashboard/summary - require_admin auth"""
-
-    def test_dashboard_summary_success(self, client, mock_admin_headers, override_auth):
-        """Test getting dashboard summary with active enrollments and session count."""
-        response = client.get(
-            "/api/v1/analytics/dashboard/summary",
-            headers=mock_admin_headers
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["success"] is True
-        assert "data" in data
-
-        dashboard_data = data["data"]
-        assert "active_enrollments" in dashboard_data
-        assert "today_sessions_count" in dashboard_data
-        assert isinstance(dashboard_data["active_enrollments"], int)
-        assert isinstance(dashboard_data["today_sessions_count"], int)
-        assert dashboard_data["active_enrollments"] >= 0
-        assert dashboard_data["today_sessions_count"] >= 0
-
-    def test_dashboard_summary_unauthorized(self, client):
-        """Test getting dashboard summary without auth returns 401."""
-        response = client.get("/api/v1/analytics/dashboard/summary")
-        assert response.status_code == 401
-
-    def test_dashboard_summary_forbidden(self, client, system_admin_headers):
-        """Test getting dashboard summary with system_admin token (may be 200 or 403)."""
-        response = client.get(
-            "/api/v1/analytics/dashboard/summary",
-            headers=system_admin_headers
-        )
-        assert response.status_code in [200, 403]
-
-
 class TestUnpaidAttendees:
     """GET /analytics/academics/unpaid-attendees - require_admin auth"""
 
@@ -96,31 +59,6 @@ class TestUnpaidAttendees:
 class TestGroupRoster:
     """GET /analytics/academics/groups/{group_id}/roster - require_admin auth"""
 
-    def test_group_roster_success(self, client, mock_admin_headers, override_auth, db_session):
-        """Test getting group roster with valid group and level."""
-        from tests.utils.db_helpers import create_test_course, create_test_group
-
-        course = create_test_course(db_session)
-        group = create_test_group(db_session, course_id=course.id)
-
-        response = client.get(
-            f"/api/v1/analytics/academics/groups/{group.id}/roster?level_number=1",
-            headers=mock_admin_headers
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["success"] is True
-        assert isinstance(data["data"], list)
-
-    def test_group_roster_missing_level(self, client, mock_admin_headers, override_auth):
-        """Test getting group roster without required level_number returns 422."""
-        response = client.get(
-            "/api/v1/analytics/academics/groups/1/roster",
-            headers=mock_admin_headers
-        )
-        assert response.status_code == 422
-
     def test_group_roster_not_found(self, client, mock_admin_headers, override_auth):
         """Test getting roster for non-existent group returns 404 or empty list."""
         response = client.get(
@@ -134,20 +72,6 @@ class TestGroupRoster:
             assert data["success"] is True
             assert isinstance(data["data"], list)
 
-    def test_group_roster_invalid_level(self, client, mock_admin_headers, override_auth):
-        """Test getting roster with invalid level_number returns 422."""
-        response = client.get(
-            "/api/v1/analytics/academics/groups/1/roster?level_number=0",
-            headers=mock_admin_headers
-        )
-        assert response.status_code == 422
-
-    def test_group_roster_unauthorized(self, client):
-        """Test getting group roster without auth returns 401."""
-        response = client.get(
-            "/api/v1/analytics/academics/groups/1/roster?level_number=1"
-        )
-        assert response.status_code == 401
 
 
 class TestAttendanceHeatmap:

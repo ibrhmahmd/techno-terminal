@@ -1,0 +1,21 @@
+{
+  "integration": "pi",
+  "version": "0.8.8.dev0",
+  "installed_at": "2026-06-10T10:24:17.046294+00:00",
+  "files": {
+    ".pi/prompts/speckit.analyze.md": "54ea6975091a0d6eb3d400fcdef612384d12f00616c44da42bac45280348a75a",
+    ".pi/prompts/speckit.checklist.md": "8f728204995db7d6231c918b18e579c49e621fb87e988861f0b295010d26acc9",
+    ".pi/prompts/speckit.clarify.md": "dcc28f006f9d02f6a427c117e656efee9755e40e1d82782e2f3cdff37763e974",
+    ".pi/prompts/speckit.constitution.md": "8e5b637285c99fe1b06d32d261aa5c95947021e63b44bb5c56a302e35d7c8d7f",
+    ".pi/prompts/speckit.git.commit.md": "f3a29687f1732f3da809c3d0139462c35a7b391ccdae4df264958d495ac8603f",
+    ".pi/prompts/speckit.git.feature.md": "87d91d2cea73b43b45a54863b5407d2c653f489c29f7b8f6d630ab5a311521b2",
+    ".pi/prompts/speckit.git.initialize.md": "161d147d7d505c7c81caf5365551902528d26e8a08296a6fecd242d3a8eb1d7b",
+    ".pi/prompts/speckit.git.remote.md": "48614f6f723c0cc34e1b4053104777e6cd05d00d0927f74b830984bd52447055",
+    ".pi/prompts/speckit.git.validate.md": "05f1fba5d96c990e94fd2d24be062a77f12d8c7832b8511d0dbcd4b92de0532c",
+    ".pi/prompts/speckit.implement.md": "148643a6dfe48ac0209763d8f72bc8b586fd8ee5cd7296241c7fa882b83d437f",
+    ".pi/prompts/speckit.plan.md": "79b44dec0f07c20322f74f8d1d8bb09206dd3f68d70d37ba6881a362dc225744",
+    ".pi/prompts/speckit.specify.md": "087dadbb71caf518f6f1e3eba8de416bea323212a82ecbf31404eb79d903cd19",
+    ".pi/prompts/speckit.tasks.md": "795b6f69f3a4639cb9504b2b25ceab2bceff72eb2ccf17dbf070fdd32e3bd548",
+    ".pi/prompts/speckit.taskstoissues.md": "e6860cd3c6da8361073370ff0a0172e2fbdc5e636284f8d5b7059de2d41dab92"
+  }
+}

@@ -22,7 +22,7 @@ description: "Task list for 027 test failure analysis cleanup"
 
 **Purpose:** Capture baseline, verify environment
 
-- [ ] T001 Run baseline test suite and save output: `python -m pytest tests/ -v --tb=short 2>&1 | Out-File specs/027-test-failure-analysis/baseline.txt`
+- [X] T001 Run baseline test suite and save output: **94 failed, 358 passed, 8 skipped, 2 errors** (baseline.txt)
 
 ---
 
@@ -30,7 +30,7 @@ description: "Task list for 027 test failure analysis cleanup"
 
 **Purpose:** Unblock all INFRA_FIX auth-related tasks by creating the required fixture
 
-- [ ] T002 Add `override_system_admin_auth` fixture to `tests/conftest.py` — returns system admin `User` via `override_auth` pattern
+- [X] T002 Add `override_system_admin_auth` fixture to `tests/conftest.py` — **already exists** (line 110) — no action needed
 
 ---
 
@@ -40,10 +40,10 @@ description: "Task list for 027 test failure analysis cleanup"
 
 **Independent Test:** Run each affected file — deleted methods should no longer appear in test collection; remaining tests should still exist.
 
-- [ ] T003 [P] Delete 5 test methods from `tests/test_academics_groups.py`: `TestGroupsRead.test_search_groups_success`, `test_search_groups_short_query`, `test_list_groups_by_type_success`, `test_list_groups_by_course_success`, `TestGroupsEdgeCases.test_search_groups_no_results`
-- [ ] T004 [P] Delete 3 test methods from `tests/test_analytics_dashboard.py`: `TestDashboardSummary.test_dashboard_summary_success`, `test_dashboard_summary_requires_admin`, `TestDashboardAuth.test_all_dashboard_endpoints_require_admin`
-- [ ] T005 [P] Delete 4 test methods from `tests/test_analytics.py`: `TestAnalyticsDashboard.test_dashboard_summary_success`, `test_dashboard_summary_requires_admin`, `TestAcademicAnalytics.test_group_roster_success`, `test_group_roster_missing_level`
-- [ ] T006 [P] Delete 7 test methods from `tests/test_analytics_academic.py`: `TestDashboardSummary` (3 methods), `TestGroupRoster` (4 methods — `test_group_roster_success`, `test_group_roster_missing_level`, `test_group_roster_invalid_level`, `test_group_roster_unauthorized`)
+- [X] T003 [P] Delete 5 test methods from `tests/test_academics_groups.py`: `TestGroupsRead.test_search_groups_success`, `test_search_groups_short_query`, `test_list_groups_by_type_success`, `test_list_groups_by_course_success`, `TestGroupsEdgeCases.test_search_groups_no_results`
+- [X] T004 [P] Delete 3 test methods from `tests/test_analytics_dashboard.py`: `TestDashboardSummary.test_dashboard_summary_success`, `test_dashboard_summary_requires_admin`, `TestDashboardAuth.test_all_dashboard_endpoints_require_admin`
+- [X] T005 [P] Delete 4 test methods from `tests/test_analytics.py`: `TestAnalyticsDashboard.test_dashboard_summary_success`, `test_dashboard_summary_requires_admin`, `TestAcademicAnalytics.test_group_roster_success`, `test_group_roster_missing_level`
+- [X] T006 [P] Delete 7 test methods from `tests/test_analytics_academic.py`: `TestDashboardSummary` (3 methods), `TestGroupRoster` (4 methods — `test_group_roster_success`, `test_group_roster_missing_level`, `test_group_roster_invalid_level`, `test_group_roster_unauthorized`)
 
 **Checkpoint:** 19 deleted tests should no longer be collected by pytest. Run `python -m pytest tests/test_analytics_dashboard.py tests/test_analytics.py tests/test_analytics_academic.py tests/test_academics_groups.py --tb=short -v 2>&1 | Select-String "FAILED"` — only non-deleted failures should remain.
 
@@ -55,12 +55,12 @@ description: "Task list for 027 test failure analysis cleanup"
 
 **Independent Test:** Each file should progress from 401/connection errors to the expected test outcome (may still fail due to assertion drift — acceptable at this stage).
 
-- [ ] T007 [P] Add `override_auth` fixture to `TestGroupsWrite` in `tests/test_academics_groups.py` — both `test_create_group_success` and `test_create_group_non_admin` need the fixture as parameter
-- [ ] T008 [P] Add `override_auth` fixture to `test_add_extra_session_non_admin` in `tests/test_academics_sessions.py`
-- [ ] T009 [P] Add `override_system_admin_auth` fixture to `TestCompetitionFeeSummary` in `tests/test_analytics_competition.py` — 3 methods need it: `test_competition_fee_summary_success`, `test_competition_fee_summary_structure`, `test_competition_fee_summary_empty`
-- [ ] T010 [P] Add `override_auth` fixture to `test_get_session_attendance_forbidden` and `test_mark_attendance_forbidden` in `tests/test_attendance.py`
-- [ ] T011 [P] Fix auth fixture in `TestTeamRegistrationFeeInput` class in `tests/test_competitions.py` — resolve `auto_override_auth` fixture conflict (currently has autouse `auto_override_auth`, the issue may be a different fixture conflict)
-- [ ] T012 [P] Fix mock injection for `test_send_daily_report_sends_email` and `test_send_daily_report_with_pdf_attachment` in `tests/test_notifications.py` — service interface changed, update `MockNotificationRepository` or mock setup
+- [X] T007 [P] Add `override_auth` fixture to `TestGroupsWrite` in `tests/test_academics_groups.py` — both `test_create_group_success` and `test_create_group_non_admin` need the fixture as parameter
+- [X] T008 [P] Add `override_auth` fixture to `test_add_extra_session_non_admin` in `tests/test_academics_sessions.py`
+- [X] T009 [P] Add `override_system_admin_auth` fixture to `TestCompetitionFeeSummary` in `tests/test_analytics_competition.py` — 3 methods need it: `test_competition_fee_summary_success`, `test_competition_fee_summary_structure`, `test_competition_fee_summary_empty`
+- [X] T010 [P] Add `override_auth` fixture to `test_get_session_attendance_forbidden` and `test_mark_attendance_forbidden` in `tests/test_attendance.py`
+- [ ] T011 [P] Fix auth fixture in `TestTeamRegistrationFeeInput` class in `tests/test_competitions.py` — **code bug (`Student.is_active`), auth already working**
+- [X] T012 [P] Fix mock injection for `test_send_daily_report_sends_email` and `test_send_daily_report_with_pdf_attachment` in `tests/test_notifications.py` — **fixed async mark (`@pytest.mark.asyncio`→`anyio`)**
 
 **Checkpoint:** Run `python -m pytest tests/test_academics_groups.py tests/test_academics_sessions.py tests/test_analytics_competition.py tests/test_attendance.py tests/test_notifications.py tests/test_competitions.py --tb=short -v 2>&1 | Select-String "FAILED"` — auth-related 401 failures should be gone. Remaining failures should be assertion/validation issues (handled in Phase 5).
 

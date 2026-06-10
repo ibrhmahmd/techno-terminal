@@ -6,7 +6,7 @@ Pydantic DTOs scoped to Student operations.
 from datetime import date, datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 from app.modules.crm.models.student_models import StudentStatus
@@ -23,6 +23,14 @@ class RegisterStudentDTO(BaseModel):
     phone: Optional[str] = None
     notes: Optional[str] = None
     status: Optional[StudentStatus] = None
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def normalize_status(cls, v):
+        """Normalize status casing before enum validation."""
+        if isinstance(v, str):
+            return v.lower()
+        return v
 
 
 class UpdateStudentDTO(BaseModel):

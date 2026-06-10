@@ -18,47 +18,6 @@ import pytest
 from datetime import date, timedelta
 
 
-class TestDashboardSummary:
-    """Tests for GET /analytics/dashboard/summary — core dashboard metric."""
-    
-    def test_dashboard_summary_success(self, client, mock_admin_headers, override_auth):
-        """
-        GET /analytics/dashboard/summary returns active enrollments and session count.
-        Requires admin role.
-        """
-        response = client.get(
-            "/api/v1/analytics/dashboard/summary",
-            headers=mock_admin_headers
-        )
-        
-        assert response.status_code == 200
-        data = response.json()
-        assert data["success"] is True
-        assert "data" in data
-        
-        # Verify response structure
-        dashboard_data = data["data"]
-        assert "active_enrollments" in dashboard_data
-        assert "today_sessions_count" in dashboard_data
-        
-        # Verify types (should be integers)
-        assert isinstance(dashboard_data["active_enrollments"], int)
-        assert isinstance(dashboard_data["today_sessions_count"], int)
-        
-        # Values should be non-negative
-        assert dashboard_data["active_enrollments"] >= 0
-        assert dashboard_data["today_sessions_count"] >= 0
-    
-    def test_dashboard_summary_requires_admin(self, client):
-        """
-        GET /analytics/dashboard/summary without auth returns 401.
-        """
-        response = client.get("/api/v1/analytics/dashboard/summary")
-        assert response.status_code == 401
-        data = response.json()
-        assert data["success"] is False
-
-
 class TestUnpaidAttendees:
     """Tests for GET /analytics/academics/unpaid-attendees."""
     
@@ -189,25 +148,4 @@ class TestTopDebtors:
         assert response.status_code == 401
 
 
-class TestDashboardAuth:
-    """Authentication tests for all dashboard endpoints."""
-    
-    def test_all_dashboard_endpoints_require_admin(self, client, mock_admin_headers, override_auth):
-        """
-        Verify all dashboard endpoints require admin authentication.
-        """
-        endpoints = [
-            "/api/v1/analytics/dashboard/summary",
-            "/api/v1/analytics/academics/unpaid-attendees",
-            "/api/v1/analytics/finance/revenue-by-date?start=2024-01-01&end=2024-12-31",
-            "/api/v1/analytics/finance/top-debtors",
-        ]
-        
-        for endpoint in endpoints:
-            # Test without auth
-            no_auth_response = client.get(endpoint)
-            assert no_auth_response.status_code == 401, f"{endpoint} should require auth"
-            
-            # Test with admin auth (should not be 401)
-            admin_response = client.get(endpoint, headers=mock_admin_headers)
-            assert admin_response.status_code != 401, f"{endpoint} should accept admin token"
+

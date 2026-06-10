@@ -222,6 +222,7 @@ def get_notification_service() -> Generator["NotificationService", None, None]:
 
     with get_session() as session:
         yield NotificationService(NotificationRepository(session))
+        session.commit()
 
 def get_enrollment_service(
     session: Session = Depends(get_db),

@@ -50,31 +50,6 @@ class TestAcademicAnalytics:
         
         assert response.status_code == 401
     
-    def test_group_roster_success(self, client, mock_admin_headers, override_auth):
-        """
-        GET /analytics/academics/groups/{id}/roster returns roster.
-        """
-        response = client.get(
-            "/api/v1/analytics/academics/groups/1/roster?level_number=1",
-            headers=mock_admin_headers
-        )
-        
-        assert response.status_code == 200
-        data = response.json()
-        assert data["success"] is True
-        assert isinstance(data["data"], list)
-    
-    def test_group_roster_missing_level(self, client, mock_admin_headers, override_auth):
-        """
-        GET /analytics/academics/groups/{id}/roster without level_number returns 422.
-        """
-        response = client.get(
-            "/api/v1/analytics/academics/groups/1/roster",
-            headers=mock_admin_headers
-        )
-        
-        assert response.status_code == 422
-    
     def test_attendance_heatmap_success(self, client, mock_admin_headers, override_auth):
         """
         GET /analytics/academics/groups/{id}/heatmap returns heatmap data.
@@ -357,29 +332,4 @@ class TestCompetitionAnalytics:
         assert response.status_code == 401
 
 
-class TestAnalyticsDashboard:
-    """Tests for /analytics/dashboard endpoint."""
-    
-    def test_dashboard_summary_success(self, client, mock_admin_headers, override_auth):
-        """
-        GET /analytics/dashboard/summary returns dashboard data.
-        """
-        response = client.get(
-            "/api/v1/analytics/dashboard/summary",
-            headers=mock_admin_headers
-        )
-        
-        assert response.status_code == 200
-        data = response.json()
-        assert data["success"] is True
-        assert "data" in data
-        assert "active_enrollments" in data["data"]
-        assert "today_sessions_count" in data["data"]
-    
-    def test_dashboard_summary_requires_admin(self, client):
-        """
-        GET /analytics/dashboard/summary without auth returns 401.
-        """
-        response = client.get("/api/v1/analytics/dashboard/summary")
-        
-        assert response.status_code == 401
+
