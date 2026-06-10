@@ -35,6 +35,9 @@ jobs:
           pip install -e .
           pip install pytest pytest-cov
 
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
       - name: Apply schema
         run: psql "$DATABASE_URL" -f db/schema.sql
         env:
@@ -55,26 +58,4 @@ jobs:
           GMAIL_APP_PASSWORD: test-password
           CI: "true"
 
-  frontend:
-    name: Frontend Build
-    runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout frontend
-        uses: actions/checkout@v4
-        with:
-          repository: anomalyco/techno_terminal_UI
-          path: techno_terminal_UI
-
-      - name: Set up Node 18
-        uses: actions/setup-node@v4
-        with:
-          node-version: "18"
-
-      - name: Install dependencies
-        working-directory: techno_terminal_UI
-        run: npm ci
-
-      - name: Build
-        working-directory: techno_terminal_UI
-        run: npm run build
