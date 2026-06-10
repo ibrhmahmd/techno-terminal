@@ -40,7 +40,8 @@ class StudentFilterDTO(BaseModel):
     instructor_name: Optional[str] = Field(None, description="Partial instructor name search")
 
     # Payment filtering
-    has_unpaid_balance: Optional[bool] = Field(None, description="Filter by unpaid balance status")
+    has_any_outstanding_balance: Optional[bool] = Field(None, description="Filter by outstanding balance status across all enrollments")
+
 
     # Enrollment date filtering
     enrollment_date_from: Optional[date] = Field(None, description="Enrolled on or after this date")

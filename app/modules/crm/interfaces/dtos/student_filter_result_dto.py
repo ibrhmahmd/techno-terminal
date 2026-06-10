@@ -1,6 +1,4 @@
-"""
-StudentFilterResultDTO - Result of student filtering operation.
-"""
+from datetime import date
 from typing import List, Optional
 from pydantic import BaseModel
 
@@ -15,6 +13,7 @@ class StudentFilterItemDTO(BaseModel):
     status: str
     gender: Optional[str] = None
     phone: Optional[str] = None
+    date_of_birth: Optional[date] = None
 
     # Group info
     current_group_id: Optional[int] = None
@@ -26,11 +25,11 @@ class StudentFilterItemDTO(BaseModel):
     instructor_name: Optional[str] = None
 
     # Enrollment info
-    enrollment_count: int = 0
+    current_enrollment_count: int = 0
     enrolled_courses: List[int] = []
 
     # Balance info
-    unpaid_balance: Optional[float] = None
+    has_unpaid_balance: bool = False
 
 
 class StudentFilterResultDTO(BaseModel):

@@ -11,7 +11,7 @@ from datetime import date
 from fastapi import APIRouter, Depends, Query, HTTPException
 
 from app.api.schemas.common import ApiResponse, PaginatedResponse
-from app.api.schemas.crm.student import StudentPublic, StudentListItem
+from app.api.schemas.crm.student import StudentPublic, StudentListItem, StudentListingDTO
 from app.api.schemas.crm.parent import ParentPublic
 from app.api.schemas.crm.student_details import StudentWithDetails, SiblingInfo
 from app.modules.crm.interfaces.dtos import StudentGroupedResultDTO, StudentFilterDTO, StudentFilterResultDTO
@@ -39,6 +39,8 @@ from app.modules.crm.schemas import (
 )
 from app.modules.auth import User
 from app.shared.exceptions import NotFoundError
+from app.modules.crm.validators.student_validator import StudentValidator
+
 
 router = APIRouter(prefix="/crm", tags=["CRM — Students"])
 
@@ -74,7 +76,7 @@ def normalize_day_names(days: Optional[List[str]]) -> Optional[List[str]]:
 # List / search students
 @router.get(
     "/students",
-    response_model=PaginatedResponse[StudentListItem],
+    response_model=PaginatedResponse[StudentListingDTO],
     summary="List / search students",
 )
 def search_students(
@@ -91,8 +93,24 @@ def search_students(
         total = svc.count()
         results = svc.list_all(skip=skip, limit=limit)
 
+    mapped_data = []
+    for s in results:
+        mapped_data.append(
+            StudentListingDTO(
+                id=s.id,
+                full_name=s.full_name,
+                status=s.status,
+                phone=s.phone,
+                date_of_birth=s.date_of_birth,
+                age=StudentValidator.compute_age(s.date_of_birth),
+                gender=s.gender,
+                current_group_name=s.current_group_name,
+                has_unpaid_balance=s.has_unpaid_balance,
+            )
+        )
+
     return PaginatedResponse(
-        data=[StudentListItem.model_validate(s) for s in results],
+        data=mapped_data,
         total=total,
         skip=skip,
         limit=limit,
@@ -166,7 +184,7 @@ def filter_students(
     course_ids: Optional[List[str]] = Query(None, description="Course IDs to filter by"),
     group_default_day: Optional[List[str]] = Query(None, enum=DAY_OPTIONS, description="Group meeting days (e.g., 'Monday', 'Saturday')"),
     instructor_name: Optional[str] = Query(None, description="Partial instructor name search"),
-    has_unpaid_balance: Optional[bool] = Query(None, description="Filter by unpaid balance status"),
+    has_any_outstanding_balance: Optional[bool] = Query(None, description="Filter by outstanding balance status across all enrollments"),
     enrollment_date_from: Optional[date] = Query(None, description="Enrolled on or after this date (YYYY-MM-DD)"),
     enrollment_date_to: Optional[date] = Query(None, description="Enrolled on or before this date (YYYY-MM-DD)"),
     min_enrollments: Optional[int] = Query(None, ge=0, description="Minimum number of enrollments"),
@@ -184,7 +202,7 @@ def filter_students(
     limit: int = Query(50, ge=1, le=200, description="Maximum students to return"),
     current_user: User = Depends(require_any),
     svc: SearchService = Depends(get_student_search_service),
-):
+    ):
     filters = StudentFilterDTO(
         min_age=min_age,
         max_age=max_age,
@@ -193,7 +211,7 @@ def filter_students(
         course_ids=course_ids,
         group_default_day=normalize_day_names(group_default_day),
         instructor_name=instructor_name,
-        has_unpaid_balance=has_unpaid_balance,
+        has_any_outstanding_balance=has_any_outstanding_balance,
         enrollment_date_from=enrollment_date_from,
         enrollment_date_to=enrollment_date_to,
         min_enrollments=min_enrollments,

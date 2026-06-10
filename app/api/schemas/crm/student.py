@@ -10,7 +10,7 @@ not what services accept internally.
 from datetime import date, datetime
 from typing import Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class StudentPublic(BaseModel):
@@ -27,7 +27,7 @@ class StudentPublic(BaseModel):
     status: str  # active, waiting, inactive
     notes: Optional[str] = None
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
 
     @field_validator("date_of_birth", mode="before")
     @classmethod
@@ -52,4 +52,30 @@ class StudentListItem(BaseModel):
     current_group_id: Optional[int] = None
     current_group_name: Optional[str] = None
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
+
+
+class StudentListingDTO(BaseModel):
+    """
+    Unified student card representation returned by all listing endpoints.
+    All five GET /crm/students/* endpoints use this as their item type.
+    """
+    id: int
+    full_name: str
+    status: str  # active, waiting, inactive
+    phone: Optional[str] = None
+    date_of_birth: Optional[date] = None
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    current_group_name: Optional[str] = None
+    has_unpaid_balance: bool = False
+
+    model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("date_of_birth", mode="before")
+    @classmethod
+    def convert_datetime_to_date(cls, v):
+        if isinstance(v, datetime):
+            return v.date()
+        return v
+

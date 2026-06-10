@@ -18,3 +18,5 @@ class StudentSummaryDTO(BaseModel):
     current_group_id: Optional[int] = None
     current_group_name: Optional[str] = None
     date_of_birth: Optional[date] = None
+    has_unpaid_balance: bool = False
+

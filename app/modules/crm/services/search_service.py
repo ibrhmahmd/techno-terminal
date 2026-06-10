@@ -28,7 +28,7 @@ class SearchService:
     def __init__(self, uow: StudentUnitOfWork) -> None:
         self._uow = uow
     
-    def search(self, query: str) -> List[Student]:
+    def search(self, query: str) -> List[StudentSummaryDTO]:
         """Search students by name or phone using raw SQL."""
         if not query or len(query.strip()) < 2:
             return []
@@ -37,28 +37,103 @@ class SearchService:
         term = f"%{query.strip()}%"
         
         sql = text("""
-            SELECT * FROM students 
-            WHERE deleted_at IS NULL 
-            AND (full_name ILIKE :term OR phone ILIKE :term)
+            SELECT DISTINCT ON (s.id)
+                s.id,
+                s.full_name,
+                s.phone,
+                s.gender,
+                s.status,
+                s.date_of_birth,
+                g.id as current_group_id,
+                g.name as current_group_name,
+                EXISTS (
+                    SELECT 1 FROM v_unpaid_enrollments vue 
+                    WHERE vue.student_id = s.id
+                ) AS has_unpaid_balance
+            FROM students s
+            LEFT JOIN enrollments e ON e.student_id = s.id AND e.status = 'active'
+            LEFT JOIN groups g ON g.id = e.group_id
+            WHERE s.deleted_at IS NULL 
+              AND (s.full_name ILIKE :term OR s.phone ILIKE :term)
+            ORDER BY s.id, e.id DESC
             LIMIT 50
         """)
         
         result = session.exec(sql, params={"term": term})
-        return [Student.model_validate(row) for row in result.mappings()]
+        
+        students = []
+        for row in result.mappings():
+            status_val = row.status
+            if isinstance(status_val, str):
+                status_str = status_val
+            elif hasattr(status_val, 'value'):
+                status_str = status_val.value
+            else:
+                status_str = "inactive"
+
+            students.append(StudentSummaryDTO(
+                id=row.id,
+                full_name=row.full_name,
+                phone=row.phone,
+                gender=row.gender,
+                status=status_str,
+                current_group_id=row.current_group_id,
+                current_group_name=row.current_group_name,
+                date_of_birth=row.date_of_birth.date() if (row.date_of_birth and hasattr(row.date_of_birth, 'date')) else row.date_of_birth,
+                has_unpaid_balance=row.has_unpaid_balance or False
+            ))
+        return students
     
-    def list_all(self, skip: int = 0, limit: int = 200) -> List[Student]:
+    def list_all(self, skip: int = 0, limit: int = 200) -> List[StudentSummaryDTO]:
         """List all students with pagination using raw SQL."""
         session = self._uow._session
         
         sql = text("""
-            SELECT * FROM students 
-            WHERE deleted_at IS NULL 
-            ORDER BY id 
+            SELECT DISTINCT ON (s.id)
+                s.id,
+                s.full_name,
+                s.phone,
+                s.gender,
+                s.status,
+                s.date_of_birth,
+                g.id as current_group_id,
+                g.name as current_group_name,
+                EXISTS (
+                    SELECT 1 FROM v_unpaid_enrollments vue 
+                    WHERE vue.student_id = s.id
+                ) AS has_unpaid_balance
+            FROM students s
+            LEFT JOIN enrollments e ON e.student_id = s.id AND e.status = 'active'
+            LEFT JOIN groups g ON g.id = e.group_id
+            WHERE s.deleted_at IS NULL
+            ORDER BY s.id, e.id DESC
             OFFSET :skip LIMIT :limit
         """)
         
         result = session.exec(sql, params={"skip": skip, "limit": limit})
-        return [Student.model_validate(row) for row in result.mappings()]
+        
+        students = []
+        for row in result.mappings():
+            status_val = row.status
+            if isinstance(status_val, str):
+                status_str = status_val
+            elif hasattr(status_val, 'value'):
+                status_str = status_val.value
+            else:
+                status_str = "inactive"
+
+            students.append(StudentSummaryDTO(
+                id=row.id,
+                full_name=row.full_name,
+                phone=row.phone,
+                gender=row.gender,
+                status=status_str,
+                current_group_id=row.current_group_id,
+                current_group_name=row.current_group_name,
+                date_of_birth=row.date_of_birth.date() if (row.date_of_birth and hasattr(row.date_of_birth, 'date')) else row.date_of_birth,
+                has_unpaid_balance=row.has_unpaid_balance or False
+            ))
+        return students
     
     def list_all_enriched(self, include_inactive: bool = False) -> List[StudentSummaryDTO]:
         """List all students with enriched summary data using raw SQL with JOINs."""
@@ -250,7 +325,7 @@ class SearchService:
             """student_enrollments AS (
                 SELECT 
                     e.student_id,
-                    COUNT(*) as enrollment_count,
+                    COUNT(*) as current_enrollment_count,
                     ARRAY_AGG(DISTINCT g.course_id) FILTER (WHERE g.course_id IS NOT NULL) as course_ids,
                     SUM(COALESCE(e.amount_due, 0)) as total_due
                 FROM enrollments e
@@ -306,9 +381,9 @@ class SearchService:
                 s.gender,
                 s.phone,
                 s.date_of_birth,
-                COALESCE(se.enrollment_count, 0) as enrollment_count,
+                COALESCE(se.current_enrollment_count, 0) as current_enrollment_count,
                 COALESCE(se.course_ids, ARRAY[]::integer[]) as enrolled_courses,
-                COALESCE(se.total_due, 0) as unpaid_balance,
+                (COALESCE(se.total_due, 0) > 0) as has_unpaid_balance,
                 ae.group_id as current_group_id,
                 ae.group_name as current_group_name,
                 ae.default_day as group_default_day,
@@ -336,15 +411,15 @@ class SearchService:
         if filters.group_default_day:
             days_str = ",".join(f"'{d}'" for d in filters.group_default_day)
             where_clauses.append(f"ae.default_day = ANY(ARRAY[{days_str}])")
-        if filters.has_unpaid_balance is not None:
-            if filters.has_unpaid_balance:
+        if filters.has_any_outstanding_balance is not None:
+            if filters.has_any_outstanding_balance:
                 where_clauses.append("COALESCE(se.total_due, 0) > 0")
             else:
                 where_clauses.append("COALESCE(se.total_due, 0) = 0")
         if filters.min_enrollments is not None:
-            where_clauses.append("COALESCE(se.enrollment_count, 0) >= :min_enrollments")
+            where_clauses.append("COALESCE(se.current_enrollment_count, 0) >= :min_enrollments")
         if filters.max_enrollments is not None:
-            where_clauses.append("COALESCE(se.enrollment_count, 0) <= :max_enrollments")
+            where_clauses.append("COALESCE(se.current_enrollment_count, 0) <= :max_enrollments")
 
         # Course inclusion with optional date range
         if filters.course_ids or filters.course_enrollment_date_from or filters.course_enrollment_date_to:
@@ -435,14 +510,15 @@ class SearchService:
                 status=row.status,
                 gender=row.gender,
                 phone=row.phone,
+                date_of_birth=row.date_of_birth,
                 current_group_id=row.current_group_id,
                 current_group_name=row.current_group_name,
                 group_default_day=row.group_default_day,
                 instructor_id=row.instructor_id,
                 instructor_name=row.instructor_name,
-                enrollment_count=row.enrollment_count,
+                current_enrollment_count=row.current_enrollment_count,
                 enrolled_courses=enrolled_courses,
-                unpaid_balance=row.unpaid_balance if row.unpaid_balance > 0 else None,
+                has_unpaid_balance=bool(row.has_unpaid_balance),
             ))
 
         # Apply pagination

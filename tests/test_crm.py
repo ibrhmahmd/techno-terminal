@@ -22,7 +22,160 @@ class TestStudentsRead:
         assert "total" in data
         assert "skip" in data
         assert "limit" in data
-    
+
+    def test_list_students_enriched_fields(self, client, mock_admin_headers, override_auth, db_session):
+        from tests.utils.db_helpers import create_test_student, create_test_course, create_test_group, create_test_enrollment
+        from datetime import date
+        import uuid
+        
+        uniq_id = uuid.uuid4().hex[:8]
+        s_name = f"Enriched Student {uniq_id}"
+        c_name = f"Enriched Course {uniq_id}"
+        g_name = f"Enriched Group {uniq_id}"
+        
+        student = create_test_student(
+            db_session,
+            full_name=s_name,
+            birth_date="2015-05-15",
+            status="active",
+            gender="male",
+            phone="+201011111111"
+        )
+        
+        course = create_test_course(db_session, name=c_name)
+        group = create_test_group(db_session, course_id=course.id, name=g_name)
+        enrollment = create_test_enrollment(
+            db_session,
+            student_id=student.id,
+            group_id=group.id,
+            status="active",
+            amount_due=500.0
+        )
+        
+        response = client.get(
+            f"/api/v1/crm/students?q=Enriched+Student+{uniq_id}",
+            headers=mock_admin_headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        
+        student_data = next((s for s in data["data"] if s["id"] == student.id), None)
+        assert student_data is not None
+        assert student_data["full_name"] == s_name
+        assert student_data["date_of_birth"] == "2015-05-15"
+        
+        from app.modules.crm.validators.student_validator import StudentValidator
+        expected_age = StudentValidator.compute_age(date(2015, 5, 15))
+        assert student_data["age"] == expected_age
+        
+        assert student_data["current_group_name"] == g_name
+        assert student_data["has_unpaid_balance"] is True
+
+    def test_student_search_null_dob_age(self, client, mock_admin_headers, override_auth, db_session):
+        from tests.utils.db_helpers import create_test_student
+        import uuid
+        
+        uniq_id = uuid.uuid4().hex[:8]
+        s_name = f"Enriched Student Null DOB {uniq_id}"
+        
+        student = create_test_student(
+            db_session,
+            full_name=s_name,
+            birth_date=None,
+            status="active",
+            gender="male",
+            phone="+201011111112"
+        )
+        
+        response = client.get(
+            f"/api/v1/crm/students?q=Null+DOB+{uniq_id}",
+            headers=mock_admin_headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        
+        student_data = next((s for s in data["data"] if s["id"] == student.id), None)
+        assert student_data is not None
+        assert student_data["full_name"] == s_name
+        assert student_data["date_of_birth"] is None
+        assert student_data["age"] is None
+
+    def test_student_filter_unpaid_balance_rename(self, client, mock_admin_headers, override_auth, db_session):
+        from tests.utils.db_helpers import create_test_student, create_test_course, create_test_group, create_test_enrollment
+        import uuid
+        
+        uniq_id = uuid.uuid4().hex[:8]
+        s1_name = f"Filter S1 {uniq_id}"
+        s2_name = f"Filter S2 {uniq_id}"
+        
+        # Student 1: has unpaid balance
+        student1 = create_test_student(db_session, full_name=s1_name, birth_date="1990-01-01", phone="+201011111121")
+        course = create_test_course(db_session, name=f"Filter Course {uniq_id}")
+        group = create_test_group(db_session, course_id=course.id, name=f"Filter Group {uniq_id}")
+        create_test_enrollment(db_session, student_id=student1.id, group_id=group.id, status="active", amount_due=100.0)
+        
+        # Student 2: no unpaid balance
+        student2 = create_test_student(db_session, full_name=s2_name, birth_date="1990-01-02", phone="+201011111122")
+        
+        # 1. Filter by has_any_outstanding_balance = True
+        resp = client.get(
+            f"/api/v1/crm/students/filter?has_any_outstanding_balance=true&status=active&min_age=35&max_age=37",
+            headers=mock_admin_headers
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["success"] is True
+        students = data["data"]["students"]
+        
+        # Verify student1 is found, student2 is NOT found
+        s1_matches = [s for s in students if s["id"] == student1.id]
+        s2_matches = [s for s in students if s["id"] == student2.id]
+        
+        assert len(s1_matches) == 1
+        assert len(s2_matches) == 0
+        
+        # Verify student1 fields
+        s1_data = s1_matches[0]
+        assert s1_data["date_of_birth"] == "1990-01-01"
+        assert s1_data["has_unpaid_balance"] is True
+        assert s1_data["current_enrollment_count"] == 1
+        
+        # 2. Filter by has_any_outstanding_balance = False
+        resp_false = client.get(
+            f"/api/v1/crm/students/filter?has_any_outstanding_balance=false&status=active&min_age=35&max_age=37",
+            headers=mock_admin_headers
+        )
+        assert resp_false.status_code == 200
+        data_false = resp_false.json()
+        students_false = data_false["data"]["students"]
+        s1_matches_false = [s for s in students_false if s["id"] == student1.id]
+        s2_matches_false = [s for s in students_false if s["id"] == student2.id]
+        
+        assert len(s1_matches_false) == 0
+        assert len(s2_matches_false) == 1
+        
+        # Verify student2 fields
+        s2_data = s2_matches_false[0]
+        assert s2_data["date_of_birth"] == "1990-01-02"
+        assert s2_data["has_unpaid_balance"] is False
+        assert s2_data["current_enrollment_count"] == 0
+        
+        # 3. Filtering by old param has_unpaid_balance=true is ignored (doesn't filter by balance)
+        resp_old = client.get(
+            f"/api/v1/crm/students/filter?has_unpaid_balance=true&status=active&min_age=35&max_age=37",
+            headers=mock_admin_headers
+        )
+        assert resp_old.status_code == 200
+        data_old = resp_old.json()
+        students_old = data_old["data"]["students"]
+        # Both students should show up if the old param is ignored (as they are both active)
+        s1_matches_old = [s for s in students_old if s["id"] == student1.id]
+        s2_matches_old = [s for s in students_old if s["id"] == student2.id]
+        assert len(s1_matches_old) == 1
+        assert len(s2_matches_old) == 1
+
     def test_list_students_pagination(self, client, mock_admin_headers, override_auth):
         response1 = client.get(
             "/api/v1/crm/students?skip=0&limit=5",
