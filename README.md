@@ -51,7 +51,7 @@
 | **Database** | PostgreSQL 15+ | Relational data with complex views |
 | **Auth** | Supabase | JWT-based authentication & user management |
 | **Validation** | Pydantic v2 | Request/response DTOs |
-| **Testing** | pytest | 26 test modules, 160+ tests |
+| **Testing** | pytest | 26 test modules, 180+ tests |
 | **Container** | Docker | Deployment with Gunicorn + Uvicorn |
 
 ---
@@ -498,12 +498,14 @@ docker run -p 8000:8000 --env-file .env techno-terminal
 
 | Metric | Value |
 |--------|-------|
+| Metric | Value |
+|--------|-------|
 | Test Modules | 26 |
-| Total Tests | 160+ |
+| Total Tests | 180+ |
 | Endpoint Coverage | 94% |
 | Auth Tests | 6/6 |
-| CRM Tests | 9/9 |
-| Finance Tests | 8/8 |
+| CRM Tests | 26/26 |
+| Finance Tests | 24/24 |
 | Academics Tests | 14/14 |
 
 ---
@@ -519,3 +521,42 @@ docker run -p 8000:8000 --env-file .env techno-terminal
 | Phase 5 | ✅ Complete | Competitions & Teams |
 | Phase 6 | ✅ Complete | Analytics & Reporting |
 | Phase 7 | ✅ Complete | Notifications (WhatsApp, SMS, Email) |
+
+---
+
+## Recent Fixes
+
+### 029 — Payment Method Normalization (2026-06-10)
+
+Expanded the backend `PaymentMethod` type to accept E-Wallet, instaPay, and Other
+payment methods from the frontend. Added a normalization mapping that accepts any
+input format (icon names like `"bolt"`, display labels like `"instaPay"`, lowercase
+labels, or coded values) and maps them to canonical storage values.
+
+**Files changed**: `app/shared/constants.py`, `app/api/schemas/finance/receipt.py`
+**Tests added**: 16 (covering all 7 methods, icon names, casing, edge cases)
+
+| Method | Accepted Inputs | Stored As |
+|--------|----------------|-----------|
+| Cash | `"cash"`, `"Cash"`, `"payments"` | `"cash"` |
+| Card | `"card"`, `"Card"` | `"card"` |
+| Transfer | `"transfer"`, `"Transfer"` | `"transfer"` |
+| Online | `"online"`, `"Online"` | `"online"` |
+| E-Wallet | `"ewallet"`, `"E-Wallet"`, `"e-wallet"`, `"e_wallet"`, `"account_balance_wallet"` | `"ewallet"` |
+| instaPay | `"instapay"`, `"instaPay"`, `"insta_pay"`, `"insta-pay"`, `"bolt"` | `"instapay"` |
+| Other | `"other"`, `"Other"`, `"more_horiz"` | `"other"` |
+
+### 028 — Student Status Registration (2026-06-10)
+
+Fixed a case-sensitive enum bug where registering a student with status `"Waiting"`
+(or any non-lowercase casing) caused a 422 validation error. Added a
+`@field_validator` that normalizes status casing before enum validation.
+
+**Files changed**: `app/modules/crm/schemas/student_schemas.py`
+**Tests added**: 10 (covering lowercase, capitalized, uppercase, null, edge cases)
+
+| Status | Accepted Inputs |
+|--------|----------------|
+| Active | `"active"`, `"Active"`, `"ACTIVE"` |
+| Waiting | `"waiting"`, `"Waiting"`, `"WAITING"` |
+| Inactive | `"inactive"`, `"Inactive"`, `"INACTIVE"` |
