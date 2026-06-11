@@ -8,6 +8,7 @@ from datetime import datetime
 
 from app.modules.crm.models.activity_models import StudentActivityLog
 from app.modules.crm.interfaces.dtos import (
+    ActivitySummaryDTO,
     EnrollmentHistoryDTO,
     StatusHistoryDTO,
     CompetitionHistoryDTO,
@@ -74,4 +75,4 @@ class IActivityRepository(Protocol):
         limit: int = 100,
     ) -> List[StudentActivityLog]: ...
 
-    def get_activity_summary(self, student_id: int) -> Dict[str, Any]: ... #TODO remove Dict and write a typed DTO class
+    def get_activity_summary(self, student_id: int) -> ActivitySummaryDTO: ...

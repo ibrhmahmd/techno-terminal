@@ -3,11 +3,11 @@ StudentCrudService - Handles student CRUD operations and status management.
 Implements IStudentService protocol with automatic activity logging.
 """
 from datetime import date, datetime
-from typing import Optional, Tuple, List
+from typing import Optional, List
 
 from app.shared.datetime_utils import date_at_utc_midnight
 from app.modules.crm.models.student_models import Student, StudentStatus
-from app.modules.crm.schemas.student_schemas import UpdateStudentDTO, RegisterStudentCommandDTO
+from app.modules.crm.schemas.student_schemas import UpdateStudentDTO, RegisterStudentCommandDTO, RegisterStudentResultDTO, StudentSiblingDTO
 from app.modules.crm.repositories.unit_of_work import StudentUnitOfWork
 from app.modules.crm.services.activity_service import StudentActivityService
 from app.shared.audit_utils import apply_create_audit, apply_update_audit
@@ -28,7 +28,7 @@ class StudentCrudService:
     def register_student(
         self,
         command_dto: RegisterStudentCommandDTO,
-    ) -> Tuple[Student, List[dict]]: #TODO remove Dict and write a typed DTO class
+    ) -> RegisterStudentResultDTO:
         """
         Registers a student and links them to an existing parent as primary contact.
         Returns (student, siblings) so the UI can offer the sibling discount.
@@ -98,7 +98,7 @@ class StudentCrudService:
 
         # Get siblings for discount calculation
         siblings = self.find_siblings(created_student.id)
-        return created_student, siblings
+        return RegisterStudentResultDTO(student=created_student, siblings=siblings)
     
     def get_by_id(self, student_id: int) -> Optional[Student]:
         """Get a student by ID."""
@@ -252,7 +252,7 @@ class StudentCrudService:
 
         return True
     
-    def find_siblings(self, student_id: int) -> List[dict]:
+    def find_siblings(self, student_id: int) -> List[StudentSiblingDTO]:
         """Find siblings for a student (share same parent)."""
         # Get student's parents
         parent_links = list(self._uow.students.get_student_parents(student_id))
@@ -273,12 +273,13 @@ class StudentCrudService:
         for sid in sibling_ids:
             sib = self._uow.students.get_by_id(sid)
             if sib:
-                siblings.append({
-                    "id": sib.id,
-                    "full_name": sib.full_name,
-                    "date_of_birth": sib.date_of_birth,
-                })
-        
+                siblings.append(StudentSiblingDTO(
+                    id=sib.id,
+                    full_name=sib.full_name,
+                    date_of_birth=sib.date_of_birth,
+                    gender=sib.gender,
+                    status=str(sib.status) if sib.status else None,
+                ))
         return siblings
     
     def get_student_parents(self, student_id: int) -> list:

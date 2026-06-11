@@ -256,21 +256,36 @@ class StudentActivityService:
         )
         return [self._map_to_dto(log) for log in logs]
 
-    def get_recent_activities(self, days: int = 7) -> List[ActivityLogDTO]:
+    def get_recent_activities(self, days: int = 7, limit: int = 100) -> List[ActivityLogDTO]:
         """Get recent activities across all students."""
-        logs = self._uow.activities.get_recent_activities(days=days)
+        logs = self._uow.activities.get_recent_activities(days=days, limit=limit)
+        return [self._map_to_dto(log) for log in logs]
+
+    def search_activities(
+        self,
+        search_term: Optional[str] = None,
+        activity_types: Optional[List[str]] = None,
+        date_from: Optional[datetime] = None,
+        date_to: Optional[datetime] = None,
+        performed_by: Optional[int] = None,
+        student_id: Optional[int] = None,
+        limit: int = 50,
+    ) -> List[ActivityLogDTO]:
+        """Search activity logs with filters."""
+        logs = self._uow.activities.search_activities(
+            search_term=search_term,
+            activity_types=activity_types,
+            date_from=date_from,
+            date_to=date_to,
+            performed_by=performed_by,
+            student_id=student_id,
+            limit=limit,
+        )
         return [self._map_to_dto(log) for log in logs]
 
     def get_activity_summary(self, student_id: int) -> ActivitySummaryDTO:
         """Get activity summary for a student."""
-        summary = self._uow.activities.get_activity_summary(student_id)
-        return ActivitySummaryDTO(
-            student_id=student_id,
-            total_activities=summary["total_activities"],
-            activities_by_type=summary["activities_by_type"],
-            first_activity_date=summary["first_activity_date"],
-            last_activity_date=summary["last_activity_date"],
-        )
+        return self._uow.activities.get_activity_summary(student_id)
 
     def get_enrollment_history(
         self, student_id: int, limit: int = 50, offset: int = 0

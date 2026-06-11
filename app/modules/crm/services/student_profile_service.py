@@ -7,7 +7,7 @@ from typing import Optional, List
 from app.modules.crm.models.student_models import Student
 from app.modules.crm.repositories.unit_of_work import StudentUnitOfWork
 from app.modules.crm.validators.student_validator import StudentValidator
-from app.api.schemas.crm.student_details import (
+from app.modules.crm.schemas.student_details import (
     StudentWithDetails,
     ParentInfo,
     SiblingInfo,
@@ -60,7 +60,7 @@ class StudentProfileService:
             get_student_attendance_summary,
         )
 
-        return get_student_attendance_summary(self._uow._session, student_id)
+        return get_student_attendance_summary(self._uow.session, student_id)
 
     def get_student_details(self, student_id: int) -> StudentWithDetails:
         """
@@ -80,9 +80,9 @@ class StudentProfileService:
             primary_parent = ParentInfo(
                 id=parent.id,
                 full_name=parent.full_name,
-                phone=parent.phone,
+                phone_primary=parent.phone_primary,
                 email=parent.email,
-                relationship=None,  # Could be fetched from link if needed
+                relation=None,
             )
 
         # Get enrollments
@@ -202,4 +202,4 @@ class StudentProfileService:
         if not student:
             raise NotFoundError(f"Student {student_id} not found")
         
-        return self._uow.students.get_student_attendance_stats(student_id)
+        return self._uow.students.get_attendance_stats(student_id)

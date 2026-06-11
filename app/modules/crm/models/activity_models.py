@@ -72,28 +72,3 @@ class ActivityTimelineFilter(SQLModel):
     limit: int = 50
 
 
-class StudentActivitySummary(SQLModel):
-    """Summary of student activities."""
-    student_id: int
-    total_activities: int 
-    activities_by_type: dict[str, int]#TODO remove Dict and write a typed DTO class
-    first_activity_date: Optional[datetime] = None
-    last_activity_date: Optional[datetime] = None
-
-
-class EnrollmentTimelineEntry(SQLModel):
-    """Single entry in enrollment timeline."""
-    date: datetime
-    action: str
-    group_name: Optional[str] = None
-    level_number: Optional[int] = None
-    amount: Optional[float] = None
-    status: Optional[str] = None
-    notes: Optional[str] = None
-
-
-class StudentEnrollmentTimeline(SQLModel):
-    """Complete enrollment timeline for a student."""
-    student_id: int
-    student_name: str
-    timeline: List[EnrollmentTimelineEntry]

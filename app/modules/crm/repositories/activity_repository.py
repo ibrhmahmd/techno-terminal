@@ -14,6 +14,7 @@ from sqlalchemy import text
 from app.modules.crm.interfaces.iactivity_repository import IActivityRepository
 from app.modules.crm.models.activity_models import StudentActivityLog
 from app.modules.crm.interfaces.dtos import (
+    ActivitySummaryDTO,
     EnrollmentHistoryDTO,
     StatusHistoryDTO,
     CompetitionHistoryDTO,
@@ -436,7 +437,69 @@ class ActivityRepository(IActivityRepository):
             for row in result
         ]
 
-    def get_activity_summary(self, student_id: int) -> Dict[str, Any]: #TODO remove Dict and write a typed DTO class
+    def search_activities(
+        self,
+        search_term: Optional[str] = None,
+        activity_types: Optional[List[str]] = None,
+        date_from: Optional[datetime] = None,
+        date_to: Optional[datetime] = None,
+        performed_by: Optional[int] = None,
+        student_id: Optional[int] = None,
+        limit: int = 50,
+    ) -> List[StudentActivityLog]:
+        """Search activity logs with filters using raw SQL."""
+        conditions = []
+        params: Dict[str, Any] = {}
+
+        if search_term:
+            conditions.append("(description ILIKE :search_term OR meta::text ILIKE :search_term)")
+            params["search_term"] = f"%{search_term}%"
+        if activity_types:
+            conditions.append("activity_type = ANY(:activity_types)")
+            params["activity_types"] = activity_types
+        if date_from:
+            conditions.append("created_at >= :date_from")
+            params["date_from"] = date_from
+        if date_to:
+            conditions.append("created_at <= :date_to")
+            params["date_to"] = date_to
+        if performed_by is not None:
+            conditions.append("performed_by = :performed_by")
+            params["performed_by"] = performed_by
+        if student_id is not None:
+            conditions.append("student_id = :student_id")
+            params["student_id"] = student_id
+
+        where_clause = " AND ".join(conditions) if conditions else "TRUE"
+
+        sql = f"""
+            SELECT id, student_id, activity_type, activity_subtype,
+                   reference_type, reference_id, description, meta,
+                   performed_by, created_at
+            FROM student_activity_log
+            WHERE {where_clause}
+            ORDER BY created_at DESC
+            LIMIT :limit
+        """
+        params["limit"] = limit
+        result = self._session.exec(text(sql), params=params)
+        return [
+            StudentActivityLog(
+                id=row.id,
+                student_id=row.student_id,
+                activity_type=row.activity_type,
+                activity_subtype=row.activity_subtype,
+                reference_type=row.reference_type,
+                reference_id=row.reference_id,
+                description=row.description,
+                meta=row.meta,
+                performed_by=row.performed_by,
+                created_at=row.created_at,
+            )
+            for row in result
+        ]
+
+    def get_activity_summary(self, student_id: int) -> ActivitySummaryDTO:
         """Get activity summary statistics for a student using raw SQL."""
         # Total count
         count_sql = """
@@ -468,9 +531,10 @@ class ActivityRepository(IActivityRepository):
         first_activity = row[0] if row else None
         last_activity = row[1] if row else None
 
-        return {
-            "total_activities": total,
-            "activities_by_type": by_type,
-            "first_activity_date": first_activity,
-            "last_activity_date": last_activity,
-        }
+        return ActivitySummaryDTO(
+            student_id=student_id,
+            total_activities=total,
+            activities_by_type=by_type,
+            first_activity_date=first_activity,
+            last_activity_date=last_activity,
+        )

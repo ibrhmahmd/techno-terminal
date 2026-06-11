@@ -50,17 +50,6 @@ class ParentRepository(IParentRepository):
             select(func.count()).select_from(Parent)
         ).one()
 
-    def update(self, parent_id: int, data: dict) -> Optional[Parent]: #TODO remove Dict and write a typed DTO class
-        parent = self._session.get(Parent, parent_id)
-        if not parent:
-            return None
-        for key, value in data.items():
-            if hasattr(parent, key):
-                setattr(parent, key, value)
-        self._session.add(parent)
-        self._session.flush()
-        return parent
-
     def delete(self, parent_id: int) -> Optional[Parent]:
         parent = self._session.get(Parent, parent_id)
         if parent:

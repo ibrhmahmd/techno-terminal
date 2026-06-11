@@ -4,12 +4,12 @@ app/modules/crm/schemas/student_schemas.py
 Pydantic DTOs scoped to Student operations.
 """
 from datetime import date, datetime
-from typing import Optional
+from typing import Optional, List
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
-from app.modules.crm.models.student_models import StudentStatus
+from app.modules.crm.models.student_models import Student, StudentStatus
 
 
 class RegisterStudentDTO(BaseModel):
@@ -64,6 +64,7 @@ class SetWaitingPriorityDTO(BaseModel):
 
 
 class StudentResponseDTO(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     """Output DTO for student data including status."""
     id: int
     full_name: str
@@ -96,3 +97,18 @@ class RegisterStudentCommandDTO(BaseModel):
     parent_id: Optional[int] = None
     relationship: Optional[str] = None
     created_by_user_id: Optional[int] = None
+
+
+class StudentSiblingDTO(BaseModel):
+    """Typed sibling info returned by find_siblings()."""
+    id: int
+    full_name: str
+    date_of_birth: Optional[date] = None
+    gender: Optional[str] = None
+    status: Optional[str] = None
+
+
+class RegisterStudentResultDTO(BaseModel):
+    """Typed result from register_student()."""
+    student: Student
+    siblings: List[StudentSiblingDTO]
