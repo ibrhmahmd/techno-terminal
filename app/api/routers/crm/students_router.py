@@ -11,7 +11,7 @@ from datetime import date
 from fastapi import APIRouter, Depends, Query, HTTPException
 
 from app.api.schemas.common import ApiResponse, PaginatedResponse
-from app.api.schemas.crm.student import StudentPublic, StudentListItem, StudentListingDTO
+from app.api.schemas.crm.student import StudentPublic, StudentListingDTO, StudentDeletionResult, WaitingStudentDTO
 from app.api.schemas.crm.parent import ParentPublic
 from app.api.schemas.crm.student_details import StudentWithDetails, SiblingInfo
 from app.modules.crm.interfaces.dtos import StudentGroupedResultDTO, StudentFilterDTO, StudentFilterResultDTO
@@ -40,26 +40,10 @@ from app.modules.crm.schemas import (
 from app.modules.auth import User
 from app.shared.exceptions import NotFoundError
 from app.modules.crm.validators.student_validator import StudentValidator
+from app.modules.academics.constants import DAY_ABBREV_MAP
 
 
 router = APIRouter(prefix="/crm", tags=["CRM — Students"])
-
-# Day name constants for filtering
-DAY_OPTIONS = [
-    "Monday", "Tuesday", "Wednesday", "Thursday",
-    "Friday", "Saturday", "Sunday"
-]
-
-DAY_ABBREV_MAP = {
-    "mon": "Monday",
-    "tue": "Tuesday",
-    "wed": "Wednesday",
-    "thu": "Thursday",
-    "thurs": "Thursday",
-    "fri": "Friday",
-    "sat": "Saturday",
-    "sun": "Sunday"
-}
 
 
 def normalize_day_names(days: Optional[List[str]]) -> Optional[List[str]]:
@@ -135,10 +119,10 @@ def create_student(
     # Set created_by to current user if not provided or is 0
     if body.created_by_user_id is None or body.created_by_user_id == 0:
         body.created_by_user_id = _user.id
-    # register_student returns (student, siblings) — drop siblings here
-    student, _siblings = svc.register_student(body)
+    # register_student returns a RegisterStudentResultDTO — drop siblings here
+    result = svc.register_student(body)
     return ApiResponse(
-        data=StudentPublic.model_validate(student),
+        data=StudentPublic.model_validate(result.student),
         message="Student registered successfully.",
     )
 
@@ -182,7 +166,7 @@ def filter_students(
     status: Optional[List[str]] = Query(None, description="Student statuses to filter by"),
     gender: Optional[List[str]] = Query(None, description="Genders to filter by"),
     course_ids: Optional[List[str]] = Query(None, description="Course IDs to filter by"),
-    group_default_day: Optional[List[str]] = Query(None, enum=DAY_OPTIONS, description="Group meeting days (e.g., 'Monday', 'Saturday')"),
+    group_default_day: Optional[List[str]] = Query(None, enum=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], description="Group meeting days (e.g., 'Monday', 'Saturday')"),
     instructor_name: Optional[str] = Query(None, description="Partial instructor name search"),
     has_any_outstanding_balance: Optional[bool] = Query(None, description="Filter by outstanding balance status across all enrollments"),
     enrollment_date_from: Optional[date] = Query(None, description="Enrolled on or after this date (YYYY-MM-DD)"),
@@ -235,9 +219,9 @@ def filter_students(
 # Get waiting list
 @router.get(
     "/students/waiting-list",
-    response_model=ApiResponse[list[StudentResponseDTO]],
+    response_model=ApiResponse[list[WaitingStudentDTO]],
     summary="Get waiting list",
-    description="Retrieve students on the waiting list, ordered by priority and wait time."
+    description="Retrieve students on the waiting list, ordered by priority and wait time. Includes unified DTO fields plus waiting-specific fields."
 )
 def get_waiting_list(
     skip: int = Query(0, ge=0),
@@ -429,26 +413,6 @@ def set_waiting_priority(
         raise HTTPException(status_code=404, detail=f"Student {student_id} not found or not on waiting list")
 
 
-# Get student status history
-@router.get(
-    "/students/{student_id}/status-history",
-    response_model=ApiResponse[List[dict]], #TODO remove Dict and write a typed DTO class
-    summary="Get student status history",
-    description="Retrieve audit log of status changes for a student."
-)
-def get_student_status_history(
-    student_id: int,
-    current_user: User = Depends(require_admin),
-    svc: StudentCrudService = Depends(get_student_crud_service),
-):
-    try:
-        # This method doesn't exist yet - will need to be added to StudentCrudService
-        # For now, return empty list
-        return ApiResponse(data=[])
-    except NotFoundError:
-        raise HTTPException(status_code=404, detail=f"Student {student_id} not found")
-
-
 # Delete student by ID
 @router.delete(
     "/students/{student_id}",
@@ -528,7 +492,7 @@ def get_student_siblings(
 
 @router.delete(
     "/students/{student_id}/soft",
-    response_model=ApiResponse[dict], #TODO remove Dict and write a typed DTO class
+    response_model=ApiResponse[StudentDeletionResult],
     summary="Soft delete a student",
     description="Marks a student as deleted without removing from database. Student can be restored later."
 )
@@ -556,7 +520,7 @@ def soft_delete_student(
 
 @router.post(
     "/students/{student_id}/restore",
-    response_model=ApiResponse[dict], #TODO remove Dict and write a typed DTO class
+    response_model=ApiResponse[StudentDeletionResult],
     summary="Restore a soft-deleted student",
     description="Restores a previously soft-deleted student and their payments."
 )
@@ -581,7 +545,7 @@ def restore_student(
 
 @router.delete(
     "/students/{student_id}/hard",
-    response_model=ApiResponse[dict], #TODO remove Dict and write a typed DTO class
+    response_model=ApiResponse[StudentDeletionResult],
     summary="Permanently delete a student",
     description="Admin-only: Permanently removes a student and all related data. Cannot be undone."
 )
@@ -606,7 +570,7 @@ def hard_delete_student(
 
 @router.get(
     "/admin/deleted-students",
-    response_model=ApiResponse[List[StudentListItem]],
+    response_model=ApiResponse[List[StudentListingDTO]],
     summary="List deleted students (Admin)",
     description="Admin-only: List all soft-deleted students for recovery."
 )
@@ -619,7 +583,7 @@ def list_deleted_students(
     """List all soft-deleted students."""
     students = svc.list_deleted_students(limit=limit, offset=skip)
     return ApiResponse(
-        data=[StudentListItem.model_validate(s) for s in students]
+        data=[StudentListingDTO.model_validate(s) for s in students]
     )
 
 

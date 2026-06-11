@@ -5,7 +5,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from app.modules.crm.interfaces import IStudentRepository, StudentSummaryDTO, StudentBalanceSummaryDTO, AttendanceStatsDTO
-from app.api.schemas.crm.student_details import SiblingInfo
+from app.modules.crm.schemas.student_details import SiblingInfo
 from app.modules.crm.models import Student, StudentStatus, StudentParent, Parent
 from app.shared.audit_utils import apply_create_audit
 

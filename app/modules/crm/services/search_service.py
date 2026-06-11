@@ -10,9 +10,9 @@ from sqlalchemy import text
 
 from app.modules.crm.models.student_models import Student, StudentStatus
 from app.modules.crm.repositories.unit_of_work import StudentUnitOfWork
+from app.modules.crm.schemas.student_schemas import StudentStatusSummaryDTO
 from app.modules.crm.interfaces.dtos import (
     StudentSummaryDTO,
-    StudentStatusSummaryDTO,
     StudentGroupedResultDTO,
     StudentGroupBucketDTO,
     StudentFilterDTO,
@@ -20,6 +20,7 @@ from app.modules.crm.interfaces.dtos import (
     StudentFilterItemDTO,
 )
 from app.modules.crm.validators.student_validator import StudentValidator
+from app.modules.crm.schemas.waiting_list import WaitingListStudentDTO
 
 
 class SearchService:
@@ -33,7 +34,7 @@ class SearchService:
         if not query or len(query.strip()) < 2:
             return []
         
-        session = self._uow._session
+        session = self._uow.session
         term = f"%{query.strip()}%"
         
         sql = text("""
@@ -86,7 +87,7 @@ class SearchService:
     
     def list_all(self, skip: int = 0, limit: int = 200) -> List[StudentSummaryDTO]:
         """List all students with pagination using raw SQL."""
-        session = self._uow._session
+        session = self._uow.session
         
         sql = text("""
             SELECT DISTINCT ON (s.id)
@@ -135,9 +136,9 @@ class SearchService:
             ))
         return students
     
-    def list_all_enriched(self, include_inactive: bool = False) -> List[StudentSummaryDTO]:
+    def _list_all_enriched(self, include_inactive: bool = False) -> List[StudentSummaryDTO]:
         """List all students with enriched summary data using raw SQL with JOINs."""
-        session = self._uow._session
+        session = self._uow.session
         
         sql = text("""
             SELECT DISTINCT ON (s.id)
@@ -148,7 +149,11 @@ class SearchService:
                 s.status,
                 s.date_of_birth,
                 g.id as current_group_id,
-                g.name as current_group_name
+                g.name as current_group_name,
+                EXISTS (
+                    SELECT 1 FROM v_unpaid_enrollments vue 
+                    WHERE vue.student_id = s.id
+                ) AS has_unpaid_balance
             FROM students s
             LEFT JOIN enrollments e ON e.student_id = s.id AND e.status = 'active'
             LEFT JOIN groups g ON g.id = e.group_id
@@ -177,13 +182,14 @@ class SearchService:
                 status=status_str,
                 current_group_id=row.current_group_id,
                 current_group_name=row.current_group_name,
-                date_of_birth=row.date_of_birth.date() if hasattr(row.date_of_birth, 'date') else row.date_of_birth
+                date_of_birth=row.date_of_birth.date() if hasattr(row.date_of_birth, 'date') else row.date_of_birth,
+                has_unpaid_balance=row.has_unpaid_balance or False
             ))
         return students
     
     def count(self, active_only: bool = True) -> int:
         """Count total students using raw SQL."""
-        session = self._uow._session
+        session = self._uow.session
 
         sql = text("""
             SELECT COUNT(*) FROM students
@@ -196,7 +202,7 @@ class SearchService:
     
     def count_by_status(self, status: StudentStatus) -> int:
         """Count students by specific status using raw SQL."""
-        session = self._uow._session
+        session = self._uow.session
         
         status_value = status.value if hasattr(status, 'value') else str(status)
         
@@ -210,7 +216,7 @@ class SearchService:
     
     def get_by_status(self, status: StudentStatus) -> List[Student]:
         """Get all students with a specific status using raw SQL."""
-        session = self._uow._session
+        session = self._uow.session
         
         status_value = status.value if hasattr(status, 'value') else str(status)
         
@@ -223,18 +229,47 @@ class SearchService:
         result = session.exec(sql, params={"status": status_value})
         return [Student.model_validate(row) for row in result.mappings()]
     
-    def get_waiting_list(self) -> List[Student]:
-        """Get all students on the waiting list using raw SQL."""
-        session = self._uow._session
-        
+    def get_waiting_list(self) -> List[WaitingListStudentDTO]:
+        """Get all students on the waiting list with unpaid balance and age."""
+        session = self._uow.session
+
         sql = text("""
-            SELECT * FROM students 
-            WHERE status = 'waiting' AND deleted_at IS NULL
-            ORDER BY waiting_priority ASC NULLS LAST, waiting_since ASC
+            SELECT
+                s.id,
+                s.full_name,
+                s.phone,
+                s.gender,
+                s.status,
+                s.date_of_birth,
+                s.waiting_since,
+                s.waiting_priority,
+                s.waiting_notes,
+                EXISTS (
+                    SELECT 1 FROM v_enrollment_balance veb
+                    WHERE veb.student_id = s.id AND veb.amount_remaining > 0
+                ) AS has_unpaid_balance
+            FROM students s
+            WHERE s.status = 'waiting' AND s.deleted_at IS NULL
+            ORDER BY s.waiting_priority ASC NULLS LAST, s.waiting_since ASC
         """)
-        
+
         result = session.exec(sql)
-        return [Student.model_validate(row) for row in result.mappings()]
+        students = []
+        for row in result.mappings():
+            students.append(WaitingListStudentDTO(
+                id=row.id,
+                full_name=row.full_name,
+                phone=row.phone,
+                gender=row.gender,
+                status=str(row.status) if row.status else "waiting",
+                date_of_birth=row.date_of_birth,
+                age=StudentValidator.compute_age(row.date_of_birth),
+                has_unpaid_balance=row.has_unpaid_balance or False,
+                waiting_since=row.waiting_since,
+                waiting_priority=row.waiting_priority,
+                waiting_notes=row.waiting_notes,
+            ))
+        return students
     
     def get_status_summary(self) -> StudentStatusSummaryDTO:
         """Get summary counts by status."""
@@ -264,8 +299,25 @@ class SearchService:
             skip: Number of students to skip per group (pagination)
             limit: Max students per group (pagination)
         """
-        # Get all enriched student data
-        students = self._uow.students.get_all_enriched(include_inactive)
+        # Get all enriched student data (includes has_unpaid_balance)
+        students = self._list_all_enriched(include_inactive)
+
+        # Rebuild with age computed (can't mutate frozen DTOs)
+        enriched = []
+        for s in students:
+            enriched.append(StudentSummaryDTO(
+                id=s.id,
+                full_name=s.full_name,
+                phone=s.phone,
+                gender=s.gender,
+                status=s.status,
+                current_group_id=s.current_group_id,
+                current_group_name=s.current_group_name,
+                date_of_birth=s.date_of_birth,
+                has_unpaid_balance=s.has_unpaid_balance,
+                age=StudentValidator.compute_age(s.date_of_birth),
+            ))
+        students = enriched
 
         # Group by strategy
         buckets: dict[str, list[StudentSummaryDTO]] = defaultdict(list)
@@ -276,7 +328,7 @@ class SearchService:
             elif group_by == "gender":
                 key = student.gender or "unknown"
             elif group_by == "age_bucket":
-                age = StudentValidator.compute_age(student.date_of_birth)
+                age = student.age if student.age is not None else StudentValidator.compute_age(student.date_of_birth)
                 key = StudentValidator.classify_age_bracket(age)
             else:
                 key = "other"
@@ -309,7 +361,7 @@ class SearchService:
         """
         Filter students based on multiple criteria using optimized raw SQL with CTEs.
         """
-        session = self._uow._session
+        session = self._uow.session
 
         # Calculate date of birth bounds for age filtering
         today = date.today()

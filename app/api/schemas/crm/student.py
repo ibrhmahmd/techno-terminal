@@ -38,23 +38,6 @@ class StudentPublic(BaseModel):
         return v
 
 
-class StudentListItem(BaseModel):
-    """
-    Slim representation used in paginated list responses
-    GET /crm/students — avoids sending unnecessary data on large lists.
-    """
-
-    id: int
-    full_name: str
-    phone: Optional[str] = None
-    status: str  # active, waiting, inactive
-    notes: Optional[str] = None
-    current_group_id: Optional[int] = None
-    current_group_name: Optional[str] = None
-
-    model_config = ConfigDict(from_attributes=True)
-
-
 class StudentListingDTO(BaseModel):
     """
     Unified student card representation returned by all listing endpoints.
@@ -78,4 +61,17 @@ class StudentListingDTO(BaseModel):
         if isinstance(v, datetime):
             return v.date()
         return v
+
+
+class WaitingStudentDTO(StudentListingDTO):
+    """Student on the waiting list — unified fields plus waiting-specific extras."""
+    waiting_since: Optional[datetime] = None
+    waiting_priority: Optional[int] = None
+    waiting_notes: Optional[str] = None
+
+
+class StudentDeletionResult(BaseModel):
+    """Result of a soft/hard delete or restore operation."""
+    student_id: int
+    status: str  # soft_deleted, restored, permanently_deleted
 

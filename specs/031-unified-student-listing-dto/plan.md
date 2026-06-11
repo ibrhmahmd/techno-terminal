@@ -108,14 +108,17 @@ See [`data-model.md`](./data-model.md) and [`contracts/api-contracts.md`](./cont
 
 High-level task order:
 
-1. **Schema layer** — Add `StudentListingDTO` to `app/api/schemas/crm/student.py`
-2. **Service DTOs** — Update `StudentSummaryDTO`, `StudentFilterItemDTO`, `StudentFilterDTO`
-3. **Repository** — Update `get_all_enriched()` SQL to include `has_unpaid_balance`
-4. **Search service** — Update `list_all()`, `search()`, `get_waiting_list()`, `filter_students()`
-5. **Router** — Wire all 5 endpoints to use `StudentListingDTO`; rename query parameter
-6. **Dead code audit** — Check callers of `StudentListItem` and delete if unused
-7. **Tests** — Add/update test coverage per SC-003 through SC-006
+1. **Schema layer** — Add `StudentListingDTO` to `app/api/schemas/crm/student.py` — ✅ Done
+2. **Service DTOs** — Update `StudentSummaryDTO`, `StudentFilterItemDTO`, `StudentFilterDTO` — ✅ Done (Phase 3)
+3. **Repository** — Update `get_all_enriched()` SQL to include `has_unpaid_balance` — ✅ Done
+4. **Search service** — Update `list_all()`, `search()`, `get_waiting_list()`, `filter_students()` — ✅ Done (Phases 1, 3, 5)
+5. **Router** — Wire all 5 endpoints to use `StudentListingDTO`; rename query parameter — ✅ Done (Phases 2, 6)
+6. **Dead code audit** — Check callers of `StudentListItem` and delete if unused — ✅ Done (still used by deleted-students endpoint)
+7. **Tests** — Add/update test coverage per SC-003 through SC-006 — ✅ Done (74 passed, 3 xfailed, 1 xpassed)
 8. **Frontend coordination** — Notify frontend team of breaking changes (filter param rename, field renames)
+   - `has_unpaid_balance` query param → `has_any_outstanding_balance` for filter endpoint
+   - All 5 listing endpoints now return: `age`, `date_of_birth`, `gender`, `current_group_name`, `has_unpaid_balance`
+   - Waiting-list endpoint now returns full `StudentListingDTO` shape + `waiting_since`, `waiting_priority`, `waiting_notes`
 
 ---
 

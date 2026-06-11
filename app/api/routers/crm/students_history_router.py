@@ -345,7 +345,7 @@ def get_recent_activity(
     svc: StudentActivityService = Depends(get_student_activity_service),
 ):
     """Get recent activity feed for admin dashboard."""
-    activities = svc.get_recent_activity(limit)
+    activities = svc.get_recent_activities(days=7, limit=limit)
     
     return ApiResponse(
         data=[RecentActivityItemDTO(

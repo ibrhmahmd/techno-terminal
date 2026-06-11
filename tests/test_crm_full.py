@@ -310,7 +310,6 @@ class TestStudentStatus:
         for s in body["data"]:
             assert s["status"] == "active"
 
-    @pytest.mark.xfail(strict=False, reason="App bug: StudentStatusSummaryDTO unexpected keyword 'waiting'")
     def test_get_status_summary(self, client, mock_admin_headers, override_auth):
         resp = client.get(
             "/api/v1/crm/students/status-summary",
@@ -324,8 +323,8 @@ class TestStudentStatus:
         assert "inactive" in body["data"]
 
     def test_get_waiting_list(self, client, mock_admin_headers, override_auth, db_session):
-        create_test_student(db_session, status="waiting", full_name=_unique("WaitA"))
-        create_test_student(db_session, status="waiting", full_name=_unique("WaitB"))
+        s1 = create_test_student(db_session, status="waiting", full_name=_unique("WaitA"), birth_date="2010-06-15")
+        s2 = create_test_student(db_session, status="waiting", full_name=_unique("WaitB"), birth_date=None)
 
         resp = client.get(
             "/api/v1/crm/students/waiting-list",
@@ -336,6 +335,14 @@ class TestStudentStatus:
         assert body["success"] is True
         for s in body["data"]:
             assert s["status"] == "waiting"
+            assert "has_unpaid_balance" in s
+            assert isinstance(s["has_unpaid_balance"], bool)
+            assert "age" in s
+        # Student with DOB should have age computed; student without should have null age
+        s1_data = next(s for s in body["data"] if s["id"] == s1.id)
+        assert s1_data["age"] is not None
+        s2_data = next(s for s in body["data"] if s["id"] == s2.id)
+        assert s2_data["age"] is None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -345,7 +352,6 @@ class TestStudentStatus:
 class TestStudentDetails:
     """Detail, relationship, and admin endpoints."""
 
-    @pytest.mark.xfail(strict=False, reason="App bug: 'Parent' object has no attribute 'phone' (should be phone_primary)")
     def test_get_student_details_success(self, client, mock_admin_headers, override_auth, db_session):
         parent = create_test_parent(db_session)
         student = create_test_student(db_session, parent_id=parent.id)
@@ -416,16 +422,35 @@ class TestStudentDetails:
         assert student.id in deleted_ids
 
     def test_get_student_grouped(self, client, mock_admin_headers, override_auth, db_session):
-        create_test_student(db_session, status="active", full_name=_unique("GA"))
-        create_test_student(db_session, status="waiting", full_name=_unique("GW"))
+        from tests.utils.db_helpers import create_test_course, create_test_group, create_test_enrollment
+
+        s_active = create_test_student(db_session, status="active", full_name=_unique("GA"), birth_date="2015-03-10", gender="male")
+        s_waiting = create_test_student(db_session, status="waiting", full_name=_unique("GW"), birth_date=None)
+
+        # Give active student an enrollment with balance to test has_unpaid_balance
+        course = create_test_course(db_session, name=_unique("GCourse"))
+        group = create_test_group(db_session, course_id=course.id, name=_unique("GGroup"))
+        create_test_enrollment(db_session, student_id=s_active.id, group_id=group.id, status="active", amount_due=200.0)
 
         resp = client.get(
-            "/api/v1/crm/students/grouped?group_by=status",
+            "/api/v1/crm/students/grouped?group_by=status&limit=200",
             headers=mock_admin_headers,
         )
         assert resp.status_code == 200, resp.text
         body = resp.json()
-        assert "groups" in body["data"] or "active" in str(body["data"])
+        assert "groups" in body["data"]
+        # Check unified DTO fields on grouped students
+        for bucket in body["data"]["groups"]:
+            for student in bucket["students"]:
+                assert "has_unpaid_balance" in student
+                assert isinstance(student["has_unpaid_balance"], bool)
+                assert "age" in student
+        # Active student should have has_unpaid_balance true and age computed
+        active_bucket = next(b for b in body["data"]["groups"] if b["key"] == "active")
+        active_student = next(s for s in active_bucket["students"] if s["id"] == s_active.id)
+        assert active_student["has_unpaid_balance"] is True
+        assert active_student["age"] is not None
+        assert active_student["current_group_name"] is not None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -494,7 +519,7 @@ class TestParentCRUD:
 
     def test_create_parent_success(self, client, mock_admin_headers, override_auth):
         name = _unique("Parent")
-        phone = f"+20100{uuid.uuid4().hex[:6]}"
+        phone = f"+20100{uuid.uuid4().int % 10**8:08d}"
         resp = client.post(
             "/api/v1/crm/parents",
             headers=mock_admin_headers,
@@ -511,7 +536,8 @@ class TestParentCRUD:
         body = resp.json()
         assert body["success"] is True
         assert body["data"]["full_name"] == name
-        assert body["data"]["phone_primary"] == phone
+        # Phone is cleaned by RegisterParentInput validator (strips non-digits)
+        assert body["data"]["phone_primary"] == phone.lstrip("+")
 
     @pytest.mark.xfail(strict=False, reason="App bug: no empty-string validation on full_name/phone_primary")
     def test_create_parent_validation(self, client, mock_admin_headers, override_auth):
@@ -681,7 +707,6 @@ class TestHistoryEndpoints:
         assert resp.status_code == 200, resp.text
         assert resp.json()["success"] is True
 
-    @pytest.mark.xfail(strict=False, reason="App bug: StudentActivityService has no 'get_recent_activity' (only 'get_recent_activities')")
     def test_get_recent_activity(self, client, mock_admin_headers, override_auth):
         resp = client.get(
             "/api/v1/crm/history/recent?limit=5",
@@ -692,7 +717,6 @@ class TestHistoryEndpoints:
         assert body["success"] is True
         assert isinstance(body["data"], list)
 
-    @pytest.mark.xfail(strict=False, reason="App bug: StudentActivityService has no 'search_activities' method")
     def test_search_activities(self, client, mock_admin_headers, override_auth, db_session):
         student = create_test_student(db_session)
         client.post(
