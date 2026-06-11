@@ -93,59 +93,39 @@ VALUES ('absence_alert', 'WHATSAPP', 'Absence Notice: {{student_name}} missed {{
 ON CONFLICT (name) DO NOTHING;
 
 INSERT INTO notification_templates (name, channel, subject, body, variables, is_standard, is_active)
-VALUES ('payment_receipt', 'EMAIL', '{{student_name}} paid {{amount}} EGP for {{group_name}}', '<html>
-<body style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
-    <div style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 20px; border-radius: 8px 8px 0 0;">
-        <h2 style="color: white; margin: 0; font-size: 24px;">💳 Payment Received</h2>
+VALUES ('payment_receipt', 'EMAIL', 'Payment Recorded: {{student_name}} - {{amount}} EGP', '<html>
+<body style="background-color: #f8f9ff; font-family: ''Inter'', -apple-system, sans-serif; padding: 20px; color: #0b1c30;">
+  <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 12px 40px rgba(11,28,48,0.06); border: 1px solid rgba(198,198,205,0.15);">
+    <div style="background-color: #131b2e; padding: 24px; text-align: center;">
+      <h1 style="color: #ffffff; margin: 0; font-family: ''Space Grotesk'', sans-serif; font-size: 24px; letter-spacing: -0.02em;">Techno Kids &amp; Techno Future KFS</h1>
     </div>
-    
-    <div style="background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; border-top: none;">
-        <p style="color: #475569; font-size: 16px;">Dear <strong>{{parent_name}}</strong>,</p>
-        
-        <p style="color: #475569; font-size: 16px;">
-            We received payment from <strong style="color: #2563eb; font-size: 18px;">{{student_name}}</strong>:
-        </p>
-        
-        <table style="width: 100%; max-width: 500px; margin: 20px 0; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-            <tr style="background: #f1f5f9;">
-                <td style="padding: 12px 15px; border-bottom: 1px solid #e2e8f0; font-weight: bold; color: #64748b; width: 40%;">Amount</td>
-                <td style="padding: 12px 15px; border-bottom: 1px solid #e2e8f0; color: #059669; font-size: 18px; font-weight: bold;">{{amount}} EGP</td>
-            </tr>
-            <tr>
-                <td style="padding: 12px 15px; border-bottom: 1px solid #e2e8f0; font-weight: bold; color: #64748b;">Group</td>
-                <td style="padding: 12px 15px; border-bottom: 1px solid #e2e8f0; color: #334155;">{{group_name}}</td>
-            </tr>
-            <tr style="background: #f8fafc;">
-                <td style="padding: 12px 15px; border-bottom: 1px solid #e2e8f0; font-weight: bold; color: #64748b;">Instructor</td>
-                <td style="padding: 12px 15px; border-bottom: 1px solid #e2e8f0; color: #334155;">{{instructor_name}}</td>
-            </tr>
-            <tr>
-                <td style="padding: 12px 15px; border-bottom: 1px solid #e2e8f0; font-weight: bold; color: #64748b;">Payment Date</td>
-                <td style="padding: 12px 15px; border-bottom: 1px solid #e2e8f0; color: #334155;">{{payment_date}}</td>
-            </tr>
-            <tr style="background: #f8fafc;">
-                <td style="padding: 12px 15px; border-bottom: 1px solid #e2e8f0; font-weight: bold; color: #64748b;">Method</td>
-                <td style="padding: 12px 15px; border-bottom: 1px solid #e2e8f0; color: #334155;">{{payment_method}}</td>
-            </tr>
-            <tr>
-                <td style="padding: 12px 15px; font-weight: bold; color: #64748b;">Receipt #</td>
-                <td style="padding: 12px 15px; color: #334155; font-family: monospace;">{{receipt_number}}</td>
-            </tr>
-        </table>
-        
-        <div style="background: #dbeafe; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0; border-radius: 0 4px 4px 0;">
-            <p style="margin: 0; color: #1e40af; font-size: 14px;">
-                📎 <strong>PDF Receipt Attached:</strong> A detailed receipt is attached to this email for your records.
-            </p>
-        </div>
-        
-        <p style="color: #94a3b8; font-size: 12px; margin-top: 30px; text-align: center;">
-            Thank you for choosing Techno Kids!
-        </p>
+    <div style="padding: 32px;">
+      <h2 style="margin-top: 0; font-size: 20px; font-weight: 600;">Payment Recorded</h2>
+      <p style="line-height: 1.6;">Dear {{parent_name}},</p>
+      <p style="line-height: 1.6;">This is an administrative confirmation that a payment has been successfully recorded for <strong>{{student_name}}</strong>.</p>
+      
+      <div style="background-color: #eff4ff; border-left: 4px solid #006a61; padding: 16px; border-radius: 4px; margin: 24px 0;">
+        <p style="margin: 0 0 12px 0; font-size: 14px;"><span style="color: #64748b; display: inline-block; width: 120px;">Amount</span> <strong style="font-size: 16px; color: #006a61;">{{amount}} EGP</strong></p>
+        <p style="margin: 0 0 8px 0; font-size: 14px;"><span style="color: #64748b; display: inline-block; width: 120px;">Group</span> <strong>{{group_name}}</strong></p>
+        <p style="margin: 0 0 8px 0; font-size: 14px;"><span style="color: #64748b; display: inline-block; width: 120px;">Instructor</span> <strong>{{instructor_name}}</strong></p>
+        <p style="margin: 0 0 8px 0; font-size: 14px;"><span style="color: #64748b; display: inline-block; width: 120px;">Payment Date</span> <strong>{{payment_date}}</strong></p>
+        <p style="margin: 0 0 8px 0; font-size: 14px;"><span style="color: #64748b; display: inline-block; width: 120px;">Method</span> <strong>{{payment_method}}</strong></p>
+        <p style="margin: 0 0 8px 0; font-size: 14px;"><span style="color: #64748b; display: inline-block; width: 120px;">Receipt #</span> <strong style="font-family: monospace;">{{receipt_number}}</strong></p>
+      </div>
+      
+      <p style="line-height: 1.6; font-size: 14px; font-weight: 600; color: #0b1c30;">Attachment:</p>
+      <p style="line-height: 1.6; font-size: 14px;">A detailed PDF receipt is attached to this email for your financial records.</p>
     </div>
+    <div style="background-color: #f8f9ff; border-top: 1px solid rgba(198,198,205,0.15); padding: 24px; text-align: center;">
+      <p style="color: #64748b; font-size: 12px; margin: 0;">&copy; Techno Kids &amp; Techno Future KFS Administration</p>
+    </div>
+  </div>
 </body>
-</html>', ARRAY['parent_name', 'student_name', 'amount', 'receipt_number']::TEXT[], True, True)
-ON CONFLICT (name) DO NOTHING;
+</html>', ARRAY['parent_name', 'student_name', 'amount', 'group_name', 'instructor_name', 'payment_date', 'payment_method', 'receipt_number']::TEXT[], True, True)
+ON CONFLICT (name) DO UPDATE SET 
+    subject = EXCLUDED.subject,
+    body = EXCLUDED.body,
+    variables = EXCLUDED.variables;
 
 INSERT INTO notification_templates (name, channel, subject, body, variables, is_standard, is_active)
 VALUES ('competition_fee_payment', 'EMAIL', 'Competition Fee Payment - {{student_name}}', 'Competition Fee Payment Received
