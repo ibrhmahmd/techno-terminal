@@ -1,16 +1,10 @@
-"""
-app/modules/crm/interfaces/dtos/activity_log_dto.py
-─────────────────────────────────────────────────
-Activity Log DTO for immutable activity data transfer.
-"""
-from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional, Dict, Any
 
+from pydantic import BaseModel
 
-@dataclass(frozen=True)
-class ActivityLogDTO:
-    """Immutable DTO for activity log entries."""
+
+class ActivityLogDTO(BaseModel):
     id: int
     student_id: int
     activity_type: str
@@ -22,3 +16,5 @@ class ActivityLogDTO:
     performed_by: Optional[int]
     performed_by_name: Optional[str]
     created_at: datetime
+
+    model_config = {"frozen": True}

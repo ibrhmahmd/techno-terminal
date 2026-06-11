@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 class StudentFilterItemDTO(BaseModel):
     """A single student in filter results with enriched data."""
-    model_config = {"from_attributes": True}
+    model_config = {"from_attributes": True, "frozen": True}
 
     id: int
     full_name: str

@@ -1,14 +1,11 @@
-"""
-AttendanceStatsDTO - Attendance statistics for a student.
-"""
-from dataclasses import dataclass
+from pydantic import BaseModel
 
 
-@dataclass(frozen=True)
-class AttendanceStatsDTO:
-    """Attendance statistics across all enrollments."""
+class AttendanceStatsDTO(BaseModel):
     total_sessions: int
     attended: int
     absent: int
     cancelled: int
     attendance_rate: float
+
+    model_config = {"frozen": True}

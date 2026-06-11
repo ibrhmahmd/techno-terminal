@@ -1,15 +1,12 @@
-"""
-StudentBalanceSummaryDTO - Financial summary for a student.
-"""
-from dataclasses import dataclass
+from pydantic import BaseModel
 
 
-@dataclass(frozen=True)
-class StudentBalanceSummaryDTO:
-    """Balance summary across all enrollments."""
+class StudentBalanceSummaryDTO(BaseModel):
     total_due: float
     total_discounts: float
     total_paid: float
     net_balance: float
     enrollment_count: int
     unpaid_enrollments: int
+
+    model_config = {"frozen": True}

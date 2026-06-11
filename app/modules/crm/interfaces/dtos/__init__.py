@@ -1,7 +1,7 @@
 """
 CRM Module DTOs
 
-All DTOs are frozen dataclasses for immutability.
+All DTOs are frozen Pydantic BaseModels for immutability.
 Each DTO is defined in its own file with filename matching the class name in snake_case.
 """
 
@@ -9,7 +9,6 @@ from .student_summary_dto import StudentSummaryDTO
 from .student_grouped_result_dto import StudentGroupedResultDTO
 from .student_group_bucket_dto import StudentGroupBucketDTO
 from .student_balance_summary_dto import StudentBalanceSummaryDTO
-from .student_status_summary_dto import StudentStatusSummaryDTO
 from .attendance_stats_dto import AttendanceStatsDTO
 from .activity_log_dto import ActivityLogDTO
 from .timeline_filter_dto import TimelineFilterDTO
@@ -34,7 +33,6 @@ __all__ = [
     "StudentGroupedResultDTO",
     "StudentGroupBucketDTO",
     "StudentBalanceSummaryDTO",
-    "StudentStatusSummaryDTO",
     "AttendanceStatsDTO",
     "StudentFilterDTO",
     "StudentFilterResultDTO",

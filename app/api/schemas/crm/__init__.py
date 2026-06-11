@@ -1,7 +1,7 @@
 """
 app/api/schemas/crm/__init__.py
 """
-from .student import StudentPublic, StudentListItem
+from .student import StudentPublic, StudentListingDTO, WaitingStudentDTO, StudentDeletionResult
 from .parent import ParentPublic, ParentListItem
 from .student_details import (
     StudentWithDetails,
@@ -12,6 +12,7 @@ from .student_details import (
 )
 
 __all__ = [
-    "StudentPublic", "StudentListItem", "ParentPublic", "ParentListItem",
+    "StudentPublic", "StudentListingDTO", "WaitingStudentDTO", "StudentDeletionResult",
+    "ParentPublic", "ParentListItem",
     "StudentWithDetails", "SiblingInfo", "ParentInfo", "EnrollmentInfo", "StudentBalanceSummary"
 ]

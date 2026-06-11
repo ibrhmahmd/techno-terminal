@@ -12,7 +12,11 @@ from .student_schemas import (
     StudentResponseDTO,
     StudentStatusSummaryDTO,
     StudentStatus,
+    StudentSiblingDTO,
+    RegisterStudentResultDTO,
 )
+
+from .waiting_list import WaitingListStudentDTO
 
 
 __all__ = [
@@ -26,5 +30,7 @@ __all__ = [
     "StudentResponseDTO",
     "StudentStatusSummaryDTO",
     "StudentStatus",
-    "StatusHistoryEntryDTO",
+    "StudentSiblingDTO",
+    "RegisterStudentResultDTO",
+    "WaitingListStudentDTO",
 ]

@@ -41,6 +41,10 @@ class StudentUnitOfWork:
             self._session_cm.__exit__(exc_type, exc_val, exc_tb)
 
     @property
+    def session(self) -> Session:
+        return self._session
+
+    @property
     def students(self) -> StudentRepository:
         if self._students is None:
             self._students = StudentRepository(self._session)

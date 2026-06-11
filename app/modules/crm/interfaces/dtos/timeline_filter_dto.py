@@ -1,16 +1,10 @@
-"""
-app/modules/crm/interfaces/dtos/timeline_filter_dto.py
-──────────────────────────────────────────────────────
-Filter parameters for activity timeline queries.
-"""
-from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional, List
 
+from pydantic import BaseModel
 
-@dataclass(frozen=True)
-class TimelineFilterDTO:
-    """Immutable DTO for filtering activity timeline queries."""
+
+class TimelineFilterDTO(BaseModel):
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
     activity_types: Optional[List[str]] = None
@@ -19,3 +13,5 @@ class TimelineFilterDTO:
     reference_id: Optional[int] = None
     skip: int = 0
     limit: int = 100
+
+    model_config = {"frozen": True}
