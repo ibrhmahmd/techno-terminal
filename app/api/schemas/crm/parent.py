@@ -7,6 +7,8 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+from app.modules.crm.schemas.parent_schemas import RegisterParentInput, UpdateParentDTO
+
 
 class ParentPublic(BaseModel):
     """
@@ -34,30 +36,3 @@ class ParentListItem(BaseModel):
     phone_primary: str
 
     model_config = {"from_attributes": True}
-
-
-class ParentCreate(BaseModel):
-    """
-    Input for creating a new parent.
-    """
-
-    full_name: str
-    phone_primary: str
-    phone_secondary: Optional[str] = None
-    email: Optional[str] = None
-    relation: Optional[str] = None
-    notes: Optional[str] = None
-
-
-class ParentUpdate(BaseModel):
-    """
-    Input for updating an existing parent.
-    All fields are optional.
-    """
-
-    full_name: Optional[str] = None
-    phone_primary: Optional[str] = None
-    phone_secondary: Optional[str] = None
-    email: Optional[str] = None
-    relation: Optional[str] = None
-    notes: Optional[str] = None

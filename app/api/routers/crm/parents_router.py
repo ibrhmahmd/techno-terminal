@@ -10,9 +10,8 @@ from typing import List
 from fastapi import APIRouter, Depends, Query, HTTPException
 
 from app.api.schemas.common import ApiResponse, PaginatedResponse
-from app.api.schemas.crm.parent import ParentPublic, ParentListItem, ParentCreate, ParentUpdate
+from app.api.schemas.crm.parent import ParentPublic, ParentListItem, RegisterParentInput, UpdateParentDTO
 from app.api.dependencies import require_admin, require_any, get_parent_crud_service
-from app.modules.crm.schemas import RegisterParentInput, UpdateParentDTO
 from app.modules.auth import User
 from app.modules.crm.services.parent_crud_service import ParentCrudService
 from app.shared.exceptions import NotFoundError
@@ -75,7 +74,7 @@ def get_parent(
     description="Create a new parent record.",
 )
 def create_parent(
-    body: ParentCreate,
+    body: RegisterParentInput,
     current_user: User = Depends(require_admin),
     svc: ParentCrudService = Depends(get_parent_crud_service),
 ):
@@ -94,7 +93,7 @@ def create_parent(
 )
 def update_parent(
     parent_id: int,
-    body: ParentUpdate,
+    body: UpdateParentDTO,
     current_user: User = Depends(require_admin),
     svc: ParentCrudService = Depends(get_parent_crud_service),
 ):

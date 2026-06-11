@@ -6,7 +6,7 @@ from typing import List, Optional
 
 from app.modules.crm.models.parent_models import Parent
 from app.modules.crm.repositories.unit_of_work import StudentUnitOfWork
-from app.api.schemas.crm.parent import ParentCreate, ParentUpdate
+from app.modules.crm.schemas.parent_schemas import RegisterParentInput, UpdateParentDTO
 from app.shared.exceptions import NotFoundError
 
 
@@ -16,7 +16,7 @@ class ParentCrudService:
     def __init__(self, uow: StudentUnitOfWork) -> None:
         self._uow = uow
     
-    def create_parent(self, body: ParentCreate) -> Parent:
+    def create_parent(self, body: RegisterParentInput) -> Parent:
         """Create a new parent."""
         parent = Parent(
             full_name=body.full_name,
@@ -38,7 +38,7 @@ class ParentCrudService:
         """List all parents with pagination."""
         return self._uow.parents.list_all(skip=skip, limit=limit)
     
-    def update_parent(self, parent_id: int, body: ParentUpdate) -> Parent:
+    def update_parent(self, parent_id: int, body: UpdateParentDTO) -> Parent:
         """Update an existing parent."""
         parent = self._uow.parents.get_by_id(parent_id)
         if not parent:
