@@ -28,7 +28,7 @@ def seed_admin_account():
                     uid = auth_response.user.id
                 except Exception as e:
                     print(
-                        f"⚠️ Supabase identity creation failed (It might already exist in your Supabase project): {e}"
+                        f"WARNING: Supabase identity creation failed (It might already exist in your Supabase project): {e}"
                     )
                     
                     # Try to fetch existing user
@@ -44,9 +44,9 @@ def seed_admin_account():
                             break
                             
                     if not uid:
-                        print("❌ Could not find the existing admin user in Supabase. Returning.")
+                        print("ERROR: Could not find the existing admin user in Supabase. Returning.")
                         return
-                    print(f"✅ Found existing Supabase identity with UID {uid}. Proceeding with mapping.")
+                    print(f"SUCCESS: Found existing Supabase identity with UID {uid}. Proceeding with mapping.")
 
                 # Map the created Supabase identity to our local PostgreSQL database
                 new_admin = User(
@@ -58,15 +58,15 @@ def seed_admin_account():
                 session.add(new_admin)
                 session.commit()
                 print(
-                    f"✅ Default admin account securely mapped.\n"
+                    f"SUCCESS: Default admin account securely mapped.\n"
                     f"   Login Email: {admin_email}\n"
                     f"   Login Password: qwertyuiop12"
                 )
 
             except Exception as e:
-                print(f"❌ Failed to interface with Supabase during seeding: {e}")
+                print(f"ERROR: Failed to interface with Supabase during seeding: {e}")
         else:
-            print("✅ Admin account is already natively mapped. Skipping seeding.")
+            print("SUCCESS: Admin account is already natively mapped. Skipping seeding.")
 
 
 if __name__ == "__main__":

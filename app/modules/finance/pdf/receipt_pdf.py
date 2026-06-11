@@ -12,25 +12,23 @@ from fpdf import FPDF
 from app.core.config import settings
 
 
-# Precision Engine Design System Colors
+# Grayscale / B&W Printable Theme (Precision Engine mapping)
 class ReceiptColors:
-    """Color palette for Precision Engine receipt design."""
-    # Backgrounds
-    BACKGROUND = (255, 255, 255)  # #FFFFFF
-    HEADER_BG = (19, 27, 46)      # #131b2e - primary_container
-    ROW_EVEN = (248, 249, 255)    # #f8f9ff - surface
-    ROW_ODD = (255, 255, 255)     # #ffffff - surface_card
-    
-    # Accents
-    PRIMARY = (0, 106, 97)        # #006a61 - secondary (Success)
-    SECONDARY = (100, 116, 139)   # #64748b - gray for secondary text
-    TERTIARY = (118, 113, 255)    # #7671ff - tertiary_container
+    """Color palette for Precision Engine receipt design in B&W."""
+    BACKGROUND = (255, 255, 255)
+    HEADER_BG = (255, 255, 255)      # White header for B&W
+    ROW_EVEN = (245, 245, 245)       # Light gray
+    ROW_ODD = (255, 255, 255)        # White
+    TOTALS_BG = (235, 235, 235)      # Soft surface_container gray
     
     # Text
-    TEXT_PRIMARY = (11, 28, 48)   # #0b1c30
-    TEXT_SECONDARY = (100, 116, 139) # #64748b
-    TEXT_MUTED = (156, 163, 175)  # #9ca3af
-    BORDER = (198, 198, 205)      # #c6c6cd
+    TEXT_PRIMARY = (0, 0, 0)         # Pure black for contrast
+    TEXT_SECONDARY = (80, 80, 80)    # Dark gray
+    TEXT_MUTED = (150, 150, 150)     # Muted gray
+    
+    # Badges/Accents
+    BADGE_BG = (220, 220, 220)
+    BADGE_TEXT = (40, 40, 40)
 
 
 class ReceiptPDF(FPDF):
@@ -43,92 +41,148 @@ class ReceiptPDF(FPDF):
         super().__init__(orientation=orientation, unit=unit, format=format)
         self.colors = ReceiptColors()
         self.set_auto_page_break(auto=False)  # We handle pagination manually
-        self.set_font("helvetica", "", 10)
+        
+        # Typography Setup
+        self.font_h = "helvetica"  # Headings
+        self.font_b = "helvetica"  # Body
+        
+        font_dir = os.path.join("app", "assets", "fonts")
+        inter_r = os.path.join(font_dir, "Inter-Regular.ttf")
+        inter_b = os.path.join(font_dir, "Inter-Bold.ttf")
+        space_r = os.path.join(font_dir, "SpaceGrotesk-Regular.ttf")
+        space_b = os.path.join(font_dir, "SpaceGrotesk-Bold.ttf")
+        
+        if os.path.exists(inter_r) and os.path.exists(space_r):
+            self.add_font("Inter", "", inter_r, uni=True)
+            self.add_font("Inter", "B", inter_b, uni=True)
+            self.add_font("SpaceGrotesk", "", space_r, uni=True)
+            self.add_font("SpaceGrotesk", "B", space_b, uni=True)
+            self.font_h = "SpaceGrotesk"
+            self.font_b = "Inter"
+            
+        self.set_font(self.font_b, "", 10)
     
     def header(self):
         """PDF header with clean corporate styling."""
-        # Light gray header band
         self.set_fill_color(*self.colors.HEADER_BG)
         self.rect(0, 0, self.w, 35, style='F')
         
-        # Logo on the right
         if settings.pdf_logo_path and os.path.exists(settings.pdf_logo_path):
             try:
                 self.image(settings.pdf_logo_path, self.w - 45, 6, 30)
             except Exception:
-                pass  # Silently ignore logo errors
+                pass
         
-        # Company Name - left aligned
-        self.set_font("helvetica", "B", 14)
-        self.set_text_color(255, 255, 255)  # White text on dark header
+        self.set_font(self.font_h, "B", 16)
+        self.set_text_color(*self.colors.TEXT_PRIMARY)
         self.set_xy(10, 12)
         self.cell(0, 6, settings.receipt_company_name, ln=1, align="L")
         
-        # Company address if available
         if settings.receipt_company_address:
-            self.set_font("helvetica", "", 9)
-            self.set_text_color(200, 200, 200)  # Lighter gray for secondary
+            self.set_font(self.font_b, "", 9)
+            self.set_text_color(*self.colors.TEXT_SECONDARY)
             self.set_xy(10, 20)
             self.cell(0, 5, settings.receipt_company_address, ln=1, align="L")
         
-        # Reset to white background for rest of page
         self.set_fill_color(*self.colors.BACKGROUND)
         self.set_xy(10, 40)
     
     def add_receipt_meta(self, receipt_number: str, paid_at: Optional[datetime],
-                         payer_name: str, payment_method: Optional[str]):
+                         payer_name: str, payment_method: Optional[str],
+                         processed_by: str = "", location: str = "", device: str = "",
+                         transaction_ref: str = "", payment_time: str = "", balance_remaining: float = 0.0):
         """Add receipt metadata section with clean labels."""
-        self.set_font("helvetica", "B", 12)
-        self.set_text_color(*self.colors.PRIMARY)
+        self.set_font(self.font_h, "B", 14)
+        self.set_text_color(*self.colors.TEXT_PRIMARY)
 
-        # Receipt title - centered
         self.cell(0, 8, settings.receipt_receipt_label, ln=1, align="C")
         self.ln(2)
 
-        self.set_font("helvetica", "", 10)
+        self.set_font(self.font_b, "", 10)
         self.set_text_color(*self.colors.TEXT_SECONDARY)
 
-        # Receipt number (right aligned)
         self.cell(0, 6, f"Receipt #: {receipt_number or 'Draft'}", ln=1, align="R")
+        dt_str = paid_at.strftime("%Y-%m-%d") if paid_at else "N/A"
+        time_str = payment_time or (paid_at.strftime("%H:%M") if paid_at else "N/A")
+        self.cell(0, 6, f"Date: {dt_str} {time_str}", ln=1, align="R")
+        
+        if transaction_ref:
+            self.cell(0, 6, f"Ref: {transaction_ref}", ln=1, align="R")
+            
+        self.ln(4)
 
-        # Date (right aligned)
-        dt_str = paid_at.strftime("%Y-%m-%d %H:%M") if paid_at else "N/A"
-        self.cell(0, 6, f"Date: {dt_str}", ln=1, align="R")
-        self.ln(2)
-
-        # Payer info box
-        self.set_fill_color(*self.colors.HEADER_BG)
-        self.rect(10, self.get_y(), self.w - 20, 12, style='F')
-        self.set_xy(12, self.get_y() + 3)
-        self.set_font("helvetica", "", 10)
+        # Payer info & Location
+        self.set_xy(10, self.get_y())
+        self.set_font(self.font_b, "", 10)
         self.set_text_color(*self.colors.TEXT_SECONDARY)
         self.cell(20, 6, "Payer:", align="L")
-        self.set_font("helvetica", "B", 10)
+        self.set_font(self.font_b, "B", 10)
         self.set_text_color(*self.colors.TEXT_PRIMARY)
-        self.cell(0, 6, payer_name, align="L")
+        self.cell(70, 6, payer_name, align="L")
 
-        if payment_method:
-            self.set_xy(120, self.get_y())
-            self.set_font("helvetica", "", 10)
+        if location:
+            self.set_font(self.font_b, "", 10)
             self.set_text_color(*self.colors.TEXT_SECONDARY)
-            self.cell(25, 6, "Method:", align="L")
-            self.set_font("helvetica", "B", 10)
+            self.cell(20, 6, "Location:", align="L")
+            self.set_font(self.font_b, "B", 10)
             self.set_text_color(*self.colors.TEXT_PRIMARY)
-            self.cell(0, 6, payment_method.capitalize(), align="L")
+            self.cell(0, 6, location, align="L", ln=1)
+        else:
+            self.ln(6)
 
-        self.ln(12)
+        # Method & Processed By
+        if payment_method:
+            self.set_xy(10, self.get_y())
+            self.set_font(self.font_b, "", 10)
+            self.set_text_color(*self.colors.TEXT_SECONDARY)
+            self.cell(20, 6, "Method:", align="L")
+            self.set_font(self.font_b, "B", 10)
+            self.set_text_color(*self.colors.TEXT_PRIMARY)
+            self.cell(70, 6, payment_method.capitalize(), align="L")
+            
+        if processed_by:
+            self.set_font(self.font_b, "", 10)
+            self.set_text_color(*self.colors.TEXT_SECONDARY)
+            self.cell(25, 6, "Processed by:", align="L")
+            self.set_font(self.font_b, "B", 10)
+            self.set_text_color(*self.colors.TEXT_PRIMARY)
+            self.cell(0, 6, processed_by, align="L", ln=1)
+        else:
+            self.ln(6)
+            
+        if device or balance_remaining > 0:
+            self.set_xy(10, self.get_y())
+            if device:
+                self.set_font(self.font_b, "", 10)
+                self.set_text_color(*self.colors.TEXT_SECONDARY)
+                self.cell(20, 6, "Device:", align="L")
+                self.set_font(self.font_b, "B", 10)
+                self.set_text_color(*self.colors.TEXT_PRIMARY)
+                self.cell(70, 6, device, align="L")
+            else:
+                self.cell(90, 6, "", align="L")
+                
+            if balance_remaining > 0:
+                self.set_font(self.font_b, "", 10)
+                self.set_text_color(*self.colors.TEXT_SECONDARY)
+                self.cell(20, 6, "Balance:", align="L")
+                self.set_font(self.font_b, "B", 10)
+                self.set_text_color(*self.colors.TEXT_PRIMARY)
+                self.cell(0, 6, f"{balance_remaining:,.2f} EGP", align="L", ln=1)
+            else:
+                self.ln(6)
+
+        self.ln(8)
     
     def add_table_header(self):
         """Add table header with column titles."""
-        # Blue header background
         header_y = self.get_y()
-        self.set_fill_color(*self.colors.PRIMARY)
+        self.set_fill_color(*self.colors.TOTALS_BG)
         self.rect(10, header_y, self.w - 20, 8, style='F')
 
-        self.set_font("helvetica", "B", 9)
-        self.set_text_color(255, 255, 255)  # White text on blue
+        self.set_font(self.font_b, "B", 9)
+        self.set_text_color(*self.colors.TEXT_PRIMARY)
 
-        # Column headers: # | Student | Course/Group | Level | Amount
         self.set_xy(10, header_y + 2)
         self.cell(10, 5, "#", align="C")
         self.set_xy(20, header_y + 2)
@@ -147,70 +201,56 @@ class ReceiptPDF(FPDF):
                       is_partial: bool = False, remaining: float = 0.0, row_num: int = 0):
         """Add a table row with alternating background."""
         row_y = self.get_y()
-        row_height = 10 if is_partial else 7  # Taller for partial to show remaining
+        row_height = 10 if is_partial else 7
 
-        # Alternating background (light gray/white)
         if row_num % 2 == 0:
             self.set_fill_color(*self.colors.ROW_EVEN)
         else:
             self.set_fill_color(*self.colors.ROW_ODD)
         self.rect(10, row_y, self.w - 20, row_height, style='F')
 
-        self.set_font("helvetica", "", 9)
+        self.set_font(self.font_b, "", 9)
         self.set_text_color(*self.colors.TEXT_PRIMARY)
 
-        # Truncate long text
         student_display = student_name[:25] if len(student_name) > 25 else student_name
         course_display = course_group[:30] if len(course_group) > 30 else course_group
 
-        # Index
         self.set_xy(10, row_y + 2)
         self.cell(10, 5, str(index), align="C")
 
-        # Student name
         self.set_xy(20, row_y + 2)
         self.cell(55, 5, student_display, align="L")
 
-        # Course/Group
         self.set_xy(75, row_y + 2)
         self.cell(65, 5, course_display, align="L")
 
-        # Level
         self.set_xy(140, row_y + 2)
         level_text = str(level) if level else "-"
         self.cell(15, 5, level_text, align="C")
 
-        # Amount
         self.set_xy(155, row_y + 2)
-        self.set_font("helvetica", "B", 9)
+        self.set_font(self.font_b, "B", 9)
         amount_text = f"{amount:,.2f} {currency}"
         self.cell(40, 5, amount_text, align="R")
 
-        # Partial badge (if applicable) - amber/orange color
         if is_partial:
             badge_x = 20
             badge_y = row_y + 6
-            self.set_fill_color(*self.colors.TERTIARY)
-            self.rect(badge_x, badge_y, 35, 3.5, style='F', round_corners=True, corner_radius=1)
+            self.set_fill_color(*self.colors.BADGE_BG)
+            self.rect(badge_x, badge_y, 35, 3.5, style='F')
             self.set_xy(badge_x, badge_y)
-            self.set_font("helvetica", "", 7)
-            self.set_text_color(255, 255, 255)  # White text on amber
+            self.set_font(self.font_b, "", 7)
+            self.set_text_color(*self.colors.BADGE_TEXT)
             remaining_text = f"Partial: {remaining:,.0f}"
             self.cell(35, 3.5, remaining_text, align="C")
 
         self.ln(row_height)
     
     def add_totals(self, subtotal: float, discount: float, total: float, currency: str = "EGP"):
-        """Add totals section with clean styling."""
-        self.ln(4)
+        """Add totals section with clean tonal block."""
+        self.ln(8) # Aggressive whitespace instead of line
 
-        # Separator line
-        self.set_draw_color(*self.colors.BORDER)
-        self.set_line_width(0.5)
-        self.line(self.w - 80, self.get_y(), self.w - 10, self.get_y())
-        self.ln(2)
-
-        self.set_font("helvetica", "", 10)
+        self.set_font(self.font_b, "", 10)
 
         # Subtotal
         self.set_text_color(*self.colors.TEXT_SECONDARY)
@@ -222,20 +262,22 @@ class ReceiptPDF(FPDF):
         if discount > 0:
             self.set_text_color(*self.colors.TEXT_SECONDARY)
             self.cell(100, 6, "Discount:", align="L")
-            self.set_text_color(*self.colors.TERTIARY)  # Amber for discount
+            self.set_text_color(*self.colors.TEXT_PRIMARY)
             self.cell(0, 6, f"-{discount:,.2f} {currency}", align="R", ln=1)
 
-        self.ln(2)
+        self.ln(4)
 
-        # Total highlight bar (blue)
+        # Total highlight tonal block
         total_y = self.get_y()
-        self.set_fill_color(*self.colors.PRIMARY)
-        self.rect(self.w - 80, total_y - 1, 70, 10, style='F', round_corners=True, corner_radius=2)
+        self.set_fill_color(*self.colors.TOTALS_BG)
+        # Full width totals block for differentiation without borders
+        self.rect(10, total_y - 1, self.w - 20, 10, style='F')
 
-        self.set_xy(self.w - 75, total_y + 1.5)
-        self.set_font("helvetica", "B", 11)
-        self.set_text_color(255, 255, 255)  # White text on blue
-        self.cell(30, 6, "TOTAL:", align="L")
+        self.set_xy(15, total_y + 1.5)
+        self.set_font(self.font_h, "B", 11)
+        self.set_text_color(*self.colors.TEXT_PRIMARY)
+        self.cell(30, 6, "TOTAL PAID:", align="L")
+        self.set_xy(self.w - 55, total_y + 1.5)
         self.cell(40, 6, f"{total:,.2f} {currency}", align="R")
 
         self.ln(12)
@@ -246,32 +288,20 @@ class ReceiptPDF(FPDF):
             return
 
         self.ln(4)
-        self.set_font("helvetica", "B", 9)
+        self.set_font(self.font_b, "B", 9)
         self.set_text_color(*self.colors.TEXT_SECONDARY)
         self.cell(0, 6, "Notes:", ln=1)
 
-        self.set_font("helvetica", "", 9)
+        self.set_font(self.font_b, "", 9)
         self.set_text_color(*self.colors.TEXT_MUTED)
         self.multi_cell(self.w - 20, 5, notes)
         self.ln(4)
     
     def add_signature_section(self):
-        """Add signature section with clean label."""
-        self.ln(8)
+        """Add signature section with typography hierarchy."""
+        self.ln(12)
 
-        # Center the signature section
-        sig_y = self.get_y()
-        line_x1 = 65
-        line_x2 = 115
-
-        self.set_draw_color(*self.colors.TEXT_MUTED)
-        self.set_line_width(0.5)
-        self.line(line_x1, sig_y, line_x2, sig_y)
-
-        self.ln(1)
-
-        # Label centered
-        self.set_font("helvetica", "", 9)
+        self.set_font(self.font_b, "", 9)
         self.set_text_color(*self.colors.TEXT_MUTED)
         self.cell(0, 5, settings.receipt_signature_label, align="C", ln=1)
 
@@ -286,7 +316,13 @@ def build_receipt_pdf(
     total: float,
     payer_name: str,
     payer_phone: Optional[str] = None,
-    currency: str = "EGP"
+    currency: str = "EGP",
+    processed_by: str = "",
+    location: str = "",
+    device: str = "",
+    transaction_ref: str = "",
+    balance_remaining: float = 0.0,
+    payment_time: str = ""
 ) -> bytes:
     """
     Generate a PDF receipt with Corporate Light design.
@@ -313,15 +349,21 @@ def build_receipt_pdf(
         receipt_number=receipt.receipt_number,
         paid_at=receipt.paid_at,
         payer_name=payer_name,
-        payment_method=receipt.payment_method
+        payment_method=receipt.payment_method,
+        processed_by=processed_by,
+        location=location,
+        device=device,
+        transaction_ref=transaction_ref,
+        balance_remaining=balance_remaining,
+        payment_time=payment_time
     )
 
     # Add phone if available
     if payer_phone:
-        pdf.set_font("helvetica", "", 10)
+        pdf.set_font(pdf.font_b, "", 10)
         pdf.set_text_color(*pdf.colors.TEXT_SECONDARY)
         pdf.cell(40, 6, "Phone:", align="L")
-        pdf.set_font("helvetica", "B", 10)
+        pdf.set_font(pdf.font_b, "B", 10)
         pdf.set_text_color(*pdf.colors.TEXT_PRIMARY)
         pdf.cell(0, 6, payer_phone, align="L", ln=1)
         pdf.ln(2)

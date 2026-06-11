@@ -127,7 +127,7 @@ class ReceiptRepository(IReceiptRepository):
         return [
             DailyReceiptItem(
                 receipt_id=row.receipt_id,
-                receipt_number=row.receipt_number,
+                receipt_number=row.receipt_number or "PENDING",
                 payer_name=row.payer_name,
                 total_amount=float(row.total or 0),
                 payment_method=row.payment_method or "unknown",

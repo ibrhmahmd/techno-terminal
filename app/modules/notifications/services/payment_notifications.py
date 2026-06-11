@@ -98,20 +98,60 @@ class PaymentNotificationService(BaseNotificationService):
             # Build rich variables for subject and body - use receipt object's fields
             actual_receipt_number = receipt.receipt_number or f"REC-{receipt.id}"
             actual_receipt_id = receipt.id
-            # Use paid_at if available, otherwise created_at, otherwise fallback to current time
-            if receipt.paid_at:
-                payment_date = receipt.paid_at.strftime("%Y-%m-%d")
-            elif receipt.created_at:
-                payment_date = receipt.created_at.strftime("%Y-%m-%d")
-            else:
-                from datetime import datetime
-                payment_date = datetime.now().strftime("%Y-%m-%d")
+            
+            from datetime import datetime
+            dt_obj = receipt.paid_at or receipt.created_at or datetime.now()
+            payment_date = dt_obj.strftime("%Y-%m-%d")
+            payment_time = dt_obj.strftime("%H:%M")
 
             # payment_method can be string or enum
             if receipt.payment_method:
                 payment_method = receipt.payment_method.value if hasattr(receipt.payment_method, 'value') else str(receipt.payment_method)
             else:
                 payment_method = "N/A"
+                
+            # Location and Device
+            pm_lower = payment_method.lower()
+            if pm_lower in ["card", "online", "stripe", "bank_transfer"]:
+                location = "Online Portal"
+                device = "Web Client"
+            else:
+                location = "KFS Branch"
+                device = "Reception Desktop POS"
+                
+            transaction_reference = f"TXN-{actual_receipt_id}-{dt_obj.strftime('%M%S')}"
+            
+            # Fetch Processed By Info
+            processed_by_name = "System Auto"
+            processed_by_role = "System"
+            from app.modules.auth.models.auth_models import User
+            from app.modules.hr.models.employee_models import Employee
+            if receipt.received_by:
+                user = session.get(User, receipt.received_by)
+                if user:
+                    processed_by_name = user.email.split('@')[0] if user.email else f"User {user.id}"
+                    processed_by_role = str(getattr(user, 'role', 'Admin'))
+                    # Attempt to fetch Employee
+                    stmt_emp = select(Employee).where(Employee.user_id == user.id)
+                    employee = session.exec(stmt_emp).first()
+                    if employee:
+                        processed_by_name = employee.full_name
+                        processed_by_role = employee.job_title or processed_by_role
+
+            # Fetch Remaining Balance
+            balance_remaining = 0.0
+            try:
+                from sqlalchemy import text
+                result = session.execute(
+                    text("SELECT COALESCE(SUM(balance), 0) FROM v_enrollment_balance WHERE student_id = :sid"),
+                    {"sid": student.id}
+                ).first()
+                if result:
+                    net_balance = float(result[0] or 0)
+                    if net_balance < 0:
+                        balance_remaining = abs(net_balance)
+            except Exception:
+                pass
 
             # Generate PDF attachment
             pdf_bytes = None
@@ -122,7 +162,13 @@ class PaymentNotificationService(BaseNotificationService):
                     lines=payment_lines,
                     total=float(amount),
                     payer_name=student_name,
-                    currency="EGP"
+                    currency="EGP",
+                    processed_by=f"{processed_by_name} ({processed_by_role})",
+                    location=location,
+                    device=device,
+                    transaction_ref=transaction_reference,
+                    balance_remaining=balance_remaining,
+                    payment_time=payment_time
                 )
                 logger.info(f"Generated receipt PDF for receipt {actual_receipt_number}")
             except Exception as e:
@@ -137,14 +183,24 @@ class PaymentNotificationService(BaseNotificationService):
                 "group_name": group_name,
                 "instructor_name": instructor_name,
                 "payment_date": payment_date,
+                "payment_time": payment_time,
                 "payment_method": payment_method,
+                "location": location,
+                "device": device,
+                "processed_by": processed_by_name,
+                "processed_role": processed_by_role,
+                "transaction_ref": transaction_reference,
+                "balance_remaining": f"{balance_remaining:.2f}",
                 "item_count": str(len(payment_lines)),
             }
 
             # Prepare attachments - use receipt.id as reliable fallback
             attachments = None
             if pdf_bytes:
-                filename = f"receipt_{actual_receipt_number}.pdf"
+                clean_student = "".join(c for c in student_name if c.isalnum() or c in " _-").replace(' ', '_')
+                clean_group = "".join(c for c in group_name if c.isalnum() or c in " _-").replace(' ', '_')
+                clean_time = payment_time.replace(':', '')
+                filename = f"Receipt_{clean_student}_{clean_group}_{amount}EGP_{payment_date}_{clean_time}.pdf"
                 attachments = [(filename, pdf_bytes, "application/pdf")]
 
         # Send to all enabled recipients with PDF attachment
