@@ -16,7 +16,7 @@ CREATE TABLE receipts (
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     receipt_template VARCHAR(50) DEFAULT 'standard'::character varying,
     generation_metadata JSONB,
-    CONSTRAINT receipts_payment_method_check CHECK ((payment_method = ANY (ARRAY['cash'::text, 'card'::text, 'transfer'::text, 'online'::text]))),
+    CONSTRAINT receipts_payment_method_check CHECK ((payment_method = ANY (ARRAY['cash'::text, 'card'::text, 'transfer'::text, 'online'::text, 'ewallet'::text, 'instapay'::text, 'other'::text]))),
     CONSTRAINT receipts_receipt_number_key UNIQUE (receipt_number),
     CONSTRAINT receipts_received_by_fkey FOREIGN KEY (received_by) REFERENCES users(id) ON DELETE SET NULL
 );

@@ -12,25 +12,25 @@ from fpdf import FPDF
 from app.core.config import settings
 
 
-# Corporate Light Design System Colors
+# Precision Engine Design System Colors
 class ReceiptColors:
-    """Color palette for clean corporate receipt design."""
+    """Color palette for Precision Engine receipt design."""
     # Backgrounds
-    BACKGROUND = (255, 255, 255)  # #FFFFFF - white
-    HEADER_BG = (245, 245, 245)   # #F5F5F5 - light gray
-    ROW_EVEN = (250, 250, 250)    # #FAFAFA - very light gray
-    ROW_ODD = (255, 255, 255)     # #FFFFFF - white
+    BACKGROUND = (255, 255, 255)  # #FFFFFF
+    HEADER_BG = (19, 27, 46)      # #131b2e - primary_container
+    ROW_EVEN = (248, 249, 255)    # #f8f9ff - surface
+    ROW_ODD = (255, 255, 255)     # #ffffff - surface_card
     
     # Accents
-    PRIMARY = (37, 99, 235)       # #2563EB - blue for headers/total
-    SECONDARY = (107, 114, 128)    # #6B7280 - gray for secondary text
-    TERTIARY = (245, 158, 11)      # #F59E0B - amber/orange for partial badges
+    PRIMARY = (0, 106, 97)        # #006a61 - secondary (Success)
+    SECONDARY = (100, 116, 139)   # #64748b - gray for secondary text
+    TERTIARY = (118, 113, 255)    # #7671ff - tertiary_container
     
     # Text
-    TEXT_PRIMARY = (31, 41, 55)     # #1F2937 - dark gray
-    TEXT_SECONDARY = (75, 85, 99)   # #4B5563 - medium gray
-    TEXT_MUTED = (156, 163, 175)    # #9CA3AF - light gray
-    BORDER = (229, 231, 235)      # #E5E7EB - border gray
+    TEXT_PRIMARY = (11, 28, 48)   # #0b1c30
+    TEXT_SECONDARY = (100, 116, 139) # #64748b
+    TEXT_MUTED = (156, 163, 175)  # #9ca3af
+    BORDER = (198, 198, 205)      # #c6c6cd
 
 
 class ReceiptPDF(FPDF):
@@ -60,14 +60,14 @@ class ReceiptPDF(FPDF):
         
         # Company Name - left aligned
         self.set_font("helvetica", "B", 14)
-        self.set_text_color(*self.colors.TEXT_PRIMARY)
+        self.set_text_color(255, 255, 255)  # White text on dark header
         self.set_xy(10, 12)
         self.cell(0, 6, settings.receipt_company_name, ln=1, align="L")
         
         # Company address if available
         if settings.receipt_company_address:
             self.set_font("helvetica", "", 9)
-            self.set_text_color(*self.colors.TEXT_SECONDARY)
+            self.set_text_color(200, 200, 200)  # Lighter gray for secondary
             self.set_xy(10, 20)
             self.cell(0, 5, settings.receipt_company_address, ln=1, align="L")
         
