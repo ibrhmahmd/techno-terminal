@@ -232,6 +232,24 @@ CUSTOM_CSS = """
         letter-spacing: -0.03em !important;
     }
     
+    /* Sidebar Font Colors & High-Contrast Contrasting */
+    [data-testid="stSidebar"] {
+        color: #f8f9ff !important;
+    }
+    
+    [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] .stText, [data-testid="stSidebar"] label {
+        color: #f8f9ff !important;
+    }
+    
+    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, [data-testid="stSidebar"] h4, [data-testid="stSidebar"] h5, [data-testid="stSidebar"] h6 {
+        color: #ffffff !important;
+    }
+    
+    /* Ensure sidebar select/radio options are readable */
+    div[data-testid="stSidebar"] div[role="radiogroup"] label {
+        color: #e5eeff !important;
+    }
+    
     /* Metric Cards (Design Constitution spec) */
     .metric-card {
         background: #ffffff;
@@ -278,5 +296,6 @@ CUSTOM_CSS = """
     }
 </style>
 """
+
 
 
