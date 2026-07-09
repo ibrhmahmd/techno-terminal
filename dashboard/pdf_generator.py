@@ -416,8 +416,6 @@ def generate_bi_pdf() -> bytes:
     # --- ATTENDANCE & LIFE CYCLE ---
     pdf.draw_section_header('Attendance & Enrollment Lifecycle')
     
-    col_att, col_life = st.columns(2) # we can just layout two tables side by side in PDF
-    
     # We will write the two tables sequentially
     pdf.set_font('helvetica', 'B', 9.5)
     pdf.cell(95, 6, 'Attendance Status Rates:', ln=False)
