@@ -12,7 +12,7 @@ class BIReportPDF(FPDF):
         # Title text inside banner
         self.set_text_color(255, 255, 255)
         self.set_font('helvetica', 'B', 16)
-        self.cell(0, 10, 'TECHNO KIDS — OPERATIONAL & FINANCIAL BI REPORT', ln=True, align='L')
+        self.cell(0, 10, 'TECHNO KIDS - OPERATIONAL & FINANCIAL BI REPORT', ln=True, align='L')
         self.set_font('helvetica', '', 9)
         self.cell(0, 5, f'Generated on: {date.today().strftime("%B %d, %Y")} | Source: Supabase Live Database', ln=True, align='L')
         self.ln(15) # whitespace
