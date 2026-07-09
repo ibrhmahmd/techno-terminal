@@ -75,7 +75,7 @@ def render_audit_page(start_date: date | None):
     ordered = nonzero + zero
 
     if not nonzero:
-        st.success("🎉 Outstanding! 0 balance integrity anomalies detected across all checks.")
+        st.success("0 balance integrity anomalies detected across all checks.")
         return
 
     # Render Tabs

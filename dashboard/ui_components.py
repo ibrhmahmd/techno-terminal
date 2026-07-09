@@ -4,24 +4,24 @@ from datetime import date
 from dashboard.config import SEVERITY_COLOR, SEVERITY_ICON
 
 def severity_badge(severity: str) -> str:
-    color = SEVERITY_COLOR.get(severity, "#4B9EFF")
+    color = SEVERITY_COLOR.get(severity, "#006a61")
     icon = SEVERITY_ICON.get(severity, "🔵")
     return (
-        f'<span style="background:{color};color:white;padding:3px 10px;'
-        f'border-radius:20px;font-size:0.75rem;font-weight:600;display:inline-block;'
-        f'box-shadow: 0 2px 8px {color}33">'
+        f'<span style="background:{color}15;color:{color};padding:2px 8px;'
+        f'border: 1px solid {color}30;border-radius:4px;font-size:0.75rem;'
+        f'font-weight:600;display:inline-block;font-family:\'Space Grotesk\', sans-serif;">'
         f'{icon} {severity}</span>'
     )
 
 def render_metric(col, label: str, value: int, severity: str):
-    color = SEVERITY_COLOR.get(severity, "#4B9EFF")
+    color = SEVERITY_COLOR.get(severity, "#006a61")
     icon = SEVERITY_ICON.get(severity, "🔵")
     
     num_color = (
         "#FF4B4B" if value > 0 and severity == "ERROR"
         else "#FFA500" if value > 0 and severity == "WARNING"
-        else "#4B9EFF" if value > 0
-        else "#4CAF50"
+        else "#006a61" if value > 0
+        else "#006a61"
     )
     
     col.markdown(
@@ -34,14 +34,14 @@ def render_metric(col, label: str, value: int, severity: str):
         unsafe_allow_html=True,
     )
 
-def render_egp_metric(col, label: str, value, icon: str = "💰", color: str = "#4B9EFF"):
+def render_egp_metric(col, label: str, value, icon: str = "💰", color: str = "#006a61"):
     try:
         val_f = float(value) if value is not None else 0.0
         formatted = f"{val_f:,.0f} EGP"
-        num_color = "#FF4B4B" if val_f > 0 and color == "#FF4B4B" else color
+        num_color = "#FF4B4B" if val_f > 0 and color == "#FF4B4B" else "#0c111d"
     except (TypeError, ValueError):
         formatted = str(value)
-        num_color = color
+        num_color = "#0c111d"
         
     col.markdown(
         f"""
@@ -53,13 +53,13 @@ def render_egp_metric(col, label: str, value, icon: str = "💰", color: str = "
         unsafe_allow_html=True,
     )
 
-def render_count_metric(col, label: str, value, icon: str = "📊", color: str = "#4B9EFF"):
+def render_count_metric(col, label: str, value, icon: str = "📊", color: str = "#7671ff"):
     try:
         val_i = int(value) if value is not None else 0
-        num_color = "#FF4B4B" if val_i > 0 and color == "#FF4B4B" else color
+        num_color = "#FF4B4B" if val_i > 0 and color == "#FF4B4B" else "#0c111d"
     except (TypeError, ValueError):
         val_i = value
-        num_color = color
+        num_color = "#0c111d"
         
     col.markdown(
         f"""

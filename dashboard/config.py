@@ -216,86 +216,124 @@ def query(sql: str, params=None) -> pd.DataFrame:
         return pd.DataFrame([dict(r) for r in rows])
     except Exception:
         conn.rollback()
-        raise
-
-# Shared styling
+        raise# Shared styling
 CUSTOM_CSS = """
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Inter:wght@300;400;500;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
     
-    .stApp {
-        background: radial-gradient(circle at top right, #131224 0%, #090911 100%);
+    /* Core Layout Base */
+    html, body, [data-testid="stAppViewContainer"], .main {
+        background-color: #f8f9ff !important;
+        color: #1f2538 !important;
         font-family: 'Inter', sans-serif;
     }
     
+    /* Typography & Hierarchy */
     h1, h2, h3, h4, h5, h6 {
-        font-family: 'Outfit', sans-serif;
-        font-weight: 600;
-        letter-spacing: -0.02em;
-        color: #E8E8FF !important;
+        font-family: 'Space Grotesk', sans-serif !important;
+        font-weight: 500 !important;
+        letter-spacing: -0.03em !important;
+        color: #0c111d !important; /* Avoid pure black */
+        margin-top: 1.5rem !important;
+        margin-bottom: 0.8rem !important;
     }
     
-    /* Sleek card style */
+    h1 { font-size: 2.2rem !important; }
+    h2 { font-size: 1.6rem !important; }
+    h3 { font-size: 1.25rem !important; }
+    
+    /* Sidebar Structure & Authority */
+    [data-testid="stSidebar"] {
+        background-color: #131b2e !important;
+        color: #f8f9ff !important;
+    }
+    
+    [data-testid="stSidebar"] * {
+        color: #e5eeff !important;
+        font-family: 'Inter', sans-serif;
+    }
+    
+    [data-testid="stSidebar"] h2 {
+        font-family: 'Space Grotesk', sans-serif !important;
+        color: #ffffff !important;
+    }
+    
+    /* Precision Engineering Dashboard Cards */
     .metric-card {
-        background: rgba(30, 30, 46, 0.45);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        border-left: 4px solid var(--accent-color, #4B9EFF);
-        padding: 18px 20px;
-        border-radius: 12px;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
-        backdrop-filter: blur(10px);
-        transition: transform 0.2s ease, border-color 0.2s ease;
-        margin-bottom: 12px;
+        background: #ffffff;
+        border: none;
+        border-left: 4px solid var(--accent-color, #006a61);
+        padding: 16px 20px;
+        border-radius: 6px;
+        box-shadow: 0 12px 40px rgba(11, 28, 48, 0.04);
+        margin-bottom: 16px;
+        transition: transform 120ms cubic-bezier(0.2, 0, 0, 1), box-shadow 120ms cubic-bezier(0.2, 0, 0, 1);
     }
     
     .metric-card:hover {
-        transform: translateY(-2px);
-        border-color: rgba(255, 255, 255, 0.15);
+        transform: translateY(-1px);
+        box-shadow: 0 16px 48px rgba(11, 28, 48, 0.07);
     }
     
     .metric-title {
-        font-size: 0.78rem;
-        color: #8E92B2;
+        font-size: 0.72rem;
+        color: #4b5563;
         text-transform: uppercase;
         letter-spacing: 0.08em;
         font-weight: 600;
-        margin-bottom: 6px;
+        margin-bottom: 4px;
     }
     
     .metric-value {
-        font-size: 2.2rem;
-        font-family: 'Outfit', sans-serif;
-        font-weight: 700;
+        font-size: 1.85rem;
+        font-family: 'Space Grotesk', sans-serif;
+        font-weight: 600;
         line-height: 1.1;
+        color: #0c111d;
     }
     
+    /* Tip Box (Tonal Layering, No Borders) */
     .tip-box {
-        background: rgba(255, 255, 255, 0.02);
-        border: 1px dashed rgba(255, 255, 255, 0.1);
-        border-radius: 8px;
+        background: #eff4ff;
+        border: none;
+        border-radius: 6px;
         padding: 12px 16px;
         font-size: 0.85rem;
-        color: #B4B9DC;
+        color: #1f2538;
         margin-bottom: 16px;
         line-height: 1.4;
     }
     
-    /* Formatted data tables */
+    /* High-density alternate rows for Tables */
     .stDataFrame {
-        border-radius: 12px;
-        overflow: hidden;
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        border: none !important;
     }
     
-    /* Navigation Bar */
-    .nav-bar {
-        display: flex;
-        gap: 12px;
-        margin-bottom: 24px;
-        background: rgba(30, 30, 46, 0.3);
-        padding: 8px;
-        border-radius: 14px;
-        border: 1px solid rgba(255, 255, 255, 0.03);
+    /* Bottom-border inputs only */
+    div[data-baseweb="input"] {
+        background-color: transparent !important;
+        border: none !important;
+        border-bottom: 2px solid #e5eeff !important;
+        border-radius: 0px !important;
+        color: #0c111d !important;
+    }
+    
+    div[data-baseweb="input"]:focus-within {
+        border-bottom-color: #006a61 !important;
+    }
+    
+    /* Primary buttons matching action color */
+    button[kind="primary"] {
+        background-color: #006a61 !important;
+        color: #ffffff !important;
+        border-radius: 6px !important;
+        font-weight: 500 !important;
+        transition: background-color 120ms cubic-bezier(0.2, 0, 0, 1) !important;
+    }
+    
+    button[kind="primary"]:hover {
+        background-color: #004d47 !important;
     }
 </style>
 """
+
