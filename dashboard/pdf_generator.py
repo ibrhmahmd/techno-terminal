@@ -189,4 +189,4 @@ def generate_bi_pdf() -> bytes:
         pdf.cell(0, 6, f'Error compiling staff loading: {e}', ln=True)
 
     # Return bytes output
-    return pdf.output(dest='S')
+    return bytes(pdf.output())
