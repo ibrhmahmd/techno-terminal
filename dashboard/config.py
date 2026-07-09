@@ -221,58 +221,31 @@ CUSTOM_CSS = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
     
-    /* Core Layout Base */
-    html, body, [data-testid="stAppViewContainer"], .main {
-        background-color: #f8f9ff !important;
-        color: #1f2538 !important;
-        font-family: 'Inter', sans-serif;
+    /* Global Font Settings */
+    .stApp, [data-testid="stAppViewContainer"], .main {
+        font-family: 'Inter', sans-serif !important;
     }
     
-    /* Typography & Hierarchy */
     h1, h2, h3, h4, h5, h6 {
         font-family: 'Space Grotesk', sans-serif !important;
         font-weight: 500 !important;
         letter-spacing: -0.03em !important;
-        color: #0c111d !important; /* Avoid pure black */
-        margin-top: 1.5rem !important;
-        margin-bottom: 0.8rem !important;
     }
     
-    h1 { font-size: 2.2rem !important; }
-    h2 { font-size: 1.6rem !important; }
-    h3 { font-size: 1.25rem !important; }
-    
-    /* Sidebar Structure & Authority */
-    [data-testid="stSidebar"] {
-        background-color: #131b2e !important;
-        color: #f8f9ff !important;
-    }
-    
-    [data-testid="stSidebar"] * {
-        color: #e5eeff !important;
-        font-family: 'Inter', sans-serif;
-    }
-    
-    [data-testid="stSidebar"] h2 {
-        font-family: 'Space Grotesk', sans-serif !important;
-        color: #ffffff !important;
-    }
-    
-    /* Precision Engineering Dashboard Cards */
+    /* Metric Cards (Design Constitution spec) */
     .metric-card {
         background: #ffffff;
         border: none;
         border-left: 4px solid var(--accent-color, #006a61);
         padding: 16px 20px;
         border-radius: 6px;
-        box-shadow: 0 12px 40px rgba(11, 28, 48, 0.04);
+        box-shadow: 0 12px 40px rgba(11, 28, 48, 0.06);
         margin-bottom: 16px;
-        transition: transform 120ms cubic-bezier(0.2, 0, 0, 1), box-shadow 120ms cubic-bezier(0.2, 0, 0, 1);
+        transition: transform 120ms cubic-bezier(0.2, 0, 0, 1);
     }
     
     .metric-card:hover {
         transform: translateY(-1px);
-        box-shadow: 0 16px 48px rgba(11, 28, 48, 0.07);
     }
     
     .metric-title {
@@ -292,7 +265,7 @@ CUSTOM_CSS = """
         color: #0c111d;
     }
     
-    /* Tip Box (Tonal Layering, No Borders) */
+    /* Tonal Layering (No Borders) */
     .tip-box {
         background: #eff4ff;
         border: none;
@@ -303,37 +276,7 @@ CUSTOM_CSS = """
         margin-bottom: 16px;
         line-height: 1.4;
     }
-    
-    /* High-density alternate rows for Tables */
-    .stDataFrame {
-        border: none !important;
-    }
-    
-    /* Bottom-border inputs only */
-    div[data-baseweb="input"] {
-        background-color: transparent !important;
-        border: none !important;
-        border-bottom: 2px solid #e5eeff !important;
-        border-radius: 0px !important;
-        color: #0c111d !important;
-    }
-    
-    div[data-baseweb="input"]:focus-within {
-        border-bottom-color: #006a61 !important;
-    }
-    
-    /* Primary buttons matching action color */
-    button[kind="primary"] {
-        background-color: #006a61 !important;
-        color: #ffffff !important;
-        border-radius: 6px !important;
-        font-weight: 500 !important;
-        transition: background-color 120ms cubic-bezier(0.2, 0, 0, 1) !important;
-    }
-    
-    button[kind="primary"]:hover {
-        background-color: #004d47 !important;
-    }
 </style>
 """
+
 
