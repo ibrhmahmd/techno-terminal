@@ -14,6 +14,7 @@ Auth: GET = require_any, mutations = require_admin.
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 
 from app.api.schemas.common import ApiResponse
+from app.shared.exceptions import NotFoundError, BusinessRuleError
 from app.api.dependencies import (
     require_any,
     require_admin,
@@ -30,9 +31,8 @@ from app.modules.academics.group.analytics.schemas import (
 from app.api.schemas.academics.group_lifecycle import CancelLevelInput, CancelLevelResult
 from app.api.schemas.academics.group_level import (
     GroupLevelPublic,
-    GroupLevelCompletionResponse,
-    GroupLevelSummary,
 )
+from app.modules.academics.group.level.schemas import UpdateLevelInput
 
 router = APIRouter(tags=["Academics — Group Lifecycle"])
 
@@ -55,45 +55,7 @@ def get_group_level(
     return ApiResponse(data=GroupLevelPublic.model_validate(level))
 
 
-# ── POST /academics/groups/{group_id}/levels/{level_number}/complete ──────────
 
-@router.post(
-    "/academics/groups/{group_id}/levels/{level_number}/complete",
-    response_model=ApiResponse[GroupLevelCompletionResponse],
-    summary="Complete a level and progress to next",
-)
-def complete_group_level(
-    group_id: int,
-    level_number: int,
-    _user: User = Depends(require_admin),
-    svc: GroupLevelService = Depends(get_group_level_service),
-):
-    """
-    Mark a level as completed and create the next level snapshot.
-    Requires admin privileges.
-    """
-    try:
-        completed, new_level = svc.complete_current_level(group_id)
-        return ApiResponse(
-            data=GroupLevelCompletionResponse(
-                completed_level=GroupLevelSummary(
-                    id=completed.id,
-                    group_id=completed.group_id,
-                    level_number=completed.level_number,
-                    status=completed.status,
-                ),
-                new_level=GroupLevelSummary(
-                    id=new_level.id,
-                    group_id=new_level.group_id,
-                    level_number=new_level.level_number,
-                    status=new_level.status,
-                ),
-                message=f"Group progressed from level {completed.level_number} to level {new_level.level_number}",
-            ),
-            message=f"Group progressed from level {completed.level_number} to level {new_level.level_number}",
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
 
 
 # ── POST /academics/groups/{group_id}/levels/{level_number}/cancel ────────────
@@ -127,7 +89,39 @@ def cancel_group_level_endpoint(
             ),
             message=f"Level {level_number} cancelled successfully.",
         )
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# ── PATCH /academics/groups/{group_id}/levels/{level_number} ──────────────────
+
+@router.patch(
+    "/academics/groups/{group_id}/levels/{level_number}",
+    response_model=ApiResponse[GroupLevelPublic],
+    summary="Update level info",
+)
+def update_group_level(
+    group_id: int,
+    level_number: int,
+    body: UpdateLevelInput = Body(...),
+    _user: User = Depends(require_admin),
+    svc: GroupLevelService = Depends(get_group_level_service),
+):
+    """
+    Update active group level details.
+    Requires admin privileges.
+    """
+    try:
+        level = svc.update_level(group_id, level_number, body)
+        return ApiResponse(
+            data=GroupLevelPublic.model_validate(level),
+            message=f"Level {level_number} updated successfully.",
+        )
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except BusinessRuleError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 

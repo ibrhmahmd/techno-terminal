@@ -117,3 +117,13 @@ class GroupCreationResult(BaseModel):
     sessions_count: int
     sessions: List[SessionSummaryDTO]
     message: str = "Group created successfully with Level 1 and sessions."
+
+
+class DeleteLevelResult(BaseModel):
+    """Result of undoing/deleting a level."""
+    level_number_deleted: int
+    reverted_to_level: int
+    sessions_deleted: int
+    enrollments_deleted: int
+    enrollments_reactivated: int
+    group_level_number_after: int

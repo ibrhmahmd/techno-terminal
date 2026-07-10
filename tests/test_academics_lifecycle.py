@@ -135,54 +135,6 @@ class TestGroupLifecycleRead:
 class TestGroupLifecycleWrite:
     """POST endpoints - require_admin auth"""
 
-    def test_complete_group_level_success(self, client, mock_admin_headers, override_auth, db_session):
-        """Test completing a group level."""
-        from tests.utils.db_helpers import create_test_course, create_test_group
-        course = create_test_course(db_session)
-        group = create_test_group(db_session, course_id=course.id, level_number=1)
-
-        # Create active level
-        level = GroupLevel(
-            group_id=group.id,
-            level_number=1,
-            course_id=course.id,
-            status="active"
-        )
-        db_session.add(level)
-        db_session.commit()
-
-        response = client.post(
-            f"/api/v1/academics/groups/{group.id}/levels/1/complete",
-            headers=mock_admin_headers
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["success"] is True
-        assert "progressed" in data["message"].lower()
-
-    def test_complete_group_level_not_found(self, client, mock_admin_headers, override_auth, db_session):
-        """Test completing non-existent level returns 404/400."""
-        from tests.utils.db_helpers import create_test_course, create_test_group
-        course = create_test_course(db_session)
-        group = create_test_group(db_session, course_id=course.id)
-
-        response = client.post(
-            f"/api/v1/academics/groups/{group.id}/levels/999/complete",
-            headers=mock_admin_headers
-        )
-
-        assert response.status_code in [400, 404]
-
-    def test_complete_group_level_unauthorized(self, client, db_session):
-        """Test completing level without auth fails."""
-        from tests.utils.db_helpers import create_test_course, create_test_group
-        course = create_test_course(db_session)
-        group = create_test_group(db_session, course_id=course.id)
-
-        response = client.post(f"/api/v1/academics/groups/{group.id}/levels/1/complete")
-        assert response.status_code == 401
-
     def test_cancel_group_level_success(self, client, mock_admin_headers, override_auth, db_session):
         """Test cancelling a group level."""
         from tests.utils.db_helpers import create_test_course, create_test_group
@@ -258,19 +210,6 @@ class TestGroupLifecycleWrite:
 
 class TestGroupLifecycleEdgeCases:
     """Edge cases and boundary conditions"""
-
-    def test_complete_group_no_active_level(self, client, mock_admin_headers, override_auth, db_session):
-        """Test completing when no active level exists."""
-        from tests.utils.db_helpers import create_test_course, create_test_group
-        course = create_test_course(db_session)
-        group = create_test_group(db_session, course_id=course.id)
-
-        response = client.post(
-            f"/api/v1/academics/groups/{group.id}/levels/1/complete",
-            headers=mock_admin_headers
-        )
-
-        assert response.status_code in [400, 404]
 
     def test_analytics_invalid_pagination(self, client, mock_admin_headers, override_auth, db_session):
         """Test analytics with invalid pagination params."""

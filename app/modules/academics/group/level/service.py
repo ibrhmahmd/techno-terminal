@@ -13,6 +13,7 @@ import app.modules.academics.group.level.repository as repo
 from app.modules.academics.group.level.schemas import (
     GroupLevelReadDTO,
     GroupLevelDetailDTO,
+    UpdateLevelInput,
 )
 from app.modules.hr.models import Employee
 from app.modules.academics.constants import DEFAULT_SESSIONS_PER_LEVEL
@@ -38,10 +39,11 @@ class GroupLevelService:
         Raises:
             ValueError: If level not found
         """
+        from app.shared.exceptions import NotFoundError
         with get_session() as session:
             level = repo.get_group_level_by_number(session, group_id, level_number)
             if not level:
-                raise ValueError(f"Level {level_number} not found for group {group_id}")
+                raise NotFoundError(f"Level {level_number} not found for group {group_id}")
 
             # Fetch related entities for names
             course = session.get(Course, level.course_id) if level.course_id else None
@@ -64,6 +66,7 @@ class GroupLevelService:
                 status=level.status,
                 effective_from=level.effective_from,
                 effective_to=level.effective_to,
+                notes=level.notes,
                 created_at=level.created_at,
             )
 
@@ -121,12 +124,91 @@ class GroupLevelService:
             session.refresh(updated)
             return updated
 
-    def cancel_level(self, group_id: int, level_number: int) -> GroupLevel:
-        """Cancel a level (admin only operation)."""
+    def update_level(
+        self, group_id: int, level_number: int, data: UpdateLevelInput
+    ) -> GroupLevelDetailDTO:
+        """
+        Update mutable fields of a level (active levels only).
+        """
+        from app.shared.exceptions import NotFoundError, BusinessRuleError
+        from app.modules.hr.models import Employee
+        from app.modules.academics.models import Course
+
         with get_session() as session:
-            level = repo.cancel_group_level(session, group_id, level_number)
+            # 1. Fetch level
+            level = repo.get_group_level_by_number(session, group_id, level_number)
             if not level:
-                raise ValueError(f"Level {level_number} not found for group {group_id}")
+                raise NotFoundError(f"Level {level_number} not found for group {group_id}")
+
+            # 2. Prevent edits on non-active levels
+            if level.status != "active":
+                raise BusinessRuleError(f"Cannot edit level {level_number} with status '{level.status}'")
+
+            # 3. Apply updates
+            if data.instructor_id is not None:
+                # Validate instructor exists
+                instructor = session.get(Employee, data.instructor_id)
+                if not instructor:
+                    raise NotFoundError(f"Instructor {data.instructor_id} not found")
+                level.instructor_id = data.instructor_id
+
+            if data.course_id is not None:
+                # Validate course exists
+                course = session.get(Course, data.course_id)
+                if not course:
+                    raise NotFoundError(f"Course {data.course_id} not found")
+                level.course_id = data.course_id
+
+            if data.price_override is not None:
+                level.price_override = data.price_override
+
+            if data.notes is not None:
+                level.notes = data.notes
+
+            session.add(level)
+            session.commit()
+
+        # Re-fetch via get_level_by_number to return enriched DTO
+        return self.get_level_by_number(group_id, level_number)
+
+    def cancel_level(
+        self, group_id: int, level_number: int, reason: Optional[str] = None
+    ) -> GroupLevel:
+        """Cancel a level (admin only operation)."""
+        from app.shared.exceptions import NotFoundError
+        from app.modules.academics.models import Group
+
+        with get_session() as session:
+            # 1. Fetch level first
+            level = repo.get_group_level_by_number(session, group_id, level_number)
+            if not level:
+                raise NotFoundError(f"Level {level_number} not found for group {group_id}")
+            
+            # 2. Check if already completed or cancelled
+            if level.status == "completed":
+                raise ValueError("Cannot cancel an already completed level")
+            if level.status == "cancelled":
+                raise ValueError("Level is already cancelled")
+
+            # 3. Cancel it
+            level.status = "cancelled"
+            level.effective_to = utc_now()
+            from app.shared.audit_utils import apply_update_audit
+            apply_update_audit(level)
+
+            if reason:
+                level.notes = f"Cancelled: {reason}" if not level.notes else f"{level.notes}\nCancelled: {reason}"
+            session.add(level)
+
+            # Sync group's level_number if we cancelled the current active level
+            group = session.get(Group, group_id)
+            if group and group.level_number == level_number:
+                # Find previous active level
+                prev_active = repo.get_previous_active_level(session, group_id, level_number)
+                if prev_active:
+                    group.level_number = prev_active.level_number
+                    session.add(group)
+            
             session.commit()
             session.refresh(level)
             return level

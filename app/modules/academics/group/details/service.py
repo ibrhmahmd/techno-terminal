@@ -10,7 +10,6 @@ from app.modules.academics.models import CourseSession
 from app.modules.academics.models.course_models import Course
 from app.modules.hr.models import Employee
 from app.modules.academics.group.details.schemas import (
-    LevelDeleteResultDTO,
     CourseLookupDTO,
     InstructorLookupDTO,
     StudentLookupDTO,
@@ -57,47 +56,7 @@ class GroupDetailsService:
     """Service for group details endpoints with lookup table patterns."""
 
     # ═══════════════════════════════════════════════════════════════════════════
-    # DELETE Level (P0)
-    # ═══════════════════════════════════════════════════════════════════════════
 
-    def delete_level(
-        self, group_id: int, level_number: int
-    ) -> LevelDeleteResultDTO:
-        """
-        Soft delete a level after checking constraints.
-        
-        Raises:
-            ValueError: If level not found
-            ConflictError: If level has sessions or enrollments
-        """
-        with get_session() as session:
-            # Check level exists
-            level = level_repo.get_group_level_by_number(session, group_id, level_number)
-            if not level:
-                raise ValueError(f"Level {level_number} not found for group {group_id}")
-            
-            # Check constraints
-            if level_repo.has_sessions_for_level(session, group_id, level_number):
-                raise ConflictError(
-                    f"Cannot delete level {level_number}: it has scheduled sessions"
-                )
-
-            if level_repo.has_enrollments_for_level(session, group_id, level_number):
-                raise ConflictError(
-                    f"Cannot delete level {level_number}: it has active enrollments"
-                )
-            
-            # Soft delete
-            deleted = level_repo.soft_delete_level(session, group_id, level_number)
-            if deleted:
-                session.commit()
-                return LevelDeleteResultDTO(
-                    level_id=deleted.id,
-                    level_number=deleted.level_number,
-                    group_id=deleted.group_id,
-                    deleted_at=utc_now().isoformat(),
-                )
-            raise ValueError(f"Failed to delete level {level_number}")
 
     # ═══════════════════════════════════════════════════════════════════════════
     # GET Levels Detailed (P0)

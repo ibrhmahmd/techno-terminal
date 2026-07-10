@@ -30,6 +30,7 @@ from app.modules.academics.group.lifecycle.schemas import (
     LevelProgressionResult,
     GroupLevelResult,
     SessionSummaryDTO,
+    DeleteLevelResult,
 )
 from app.modules.academics.group.core.schemas import ScheduleGroupInput as CreateGroupDTO
 from app.modules.academics.helpers.time_helpers import next_weekday
@@ -416,3 +417,139 @@ class GroupLifecycleService:
             end_time=session.end_time.isoformat() if session.end_time else None,
             status=session.status,
         )
+
+    def delete_level(self, group_id: int, level_number: int) -> DeleteLevelResult:
+        """
+        Delete a level and cascade-remove all related records.
+        """
+        from app.shared.exceptions import NotFoundError, ConflictError, BusinessRuleError
+        from app.modules.academics.models import GroupLevel, Group, CourseSession
+        from app.modules.enrollments.models.enrollment_models import Enrollment
+        from app.modules.academics.models.group_level_models import EnrollmentLevelHistory
+        from sqlmodel import select, delete
+
+        with get_session() as session:
+            # 1. Fetch group
+            group = session.get(Group, group_id)
+            if not group:
+                raise NotFoundError(f"Group {group_id} not found")
+
+            # 2. Fetch target level
+            level = repo.get_group_level_by_number(session, group_id, level_number)
+            if not level:
+                raise NotFoundError(f"Level {level_number} not found for group {group_id}")
+
+            # 3. Check if it's the latest level
+            latest_level_stmt = (
+                select(GroupLevel.level_number)
+                .where(GroupLevel.group_id == group_id)
+                .order_by(GroupLevel.level_number.desc())
+            )
+            latest_level_number = session.exec(latest_level_stmt).first()
+            if latest_level_number != level_number:
+                raise BusinessRuleError(f"Can only delete the latest level {latest_level_number} for group {group_id}")
+
+            # 4. Check if it is the only level
+            if level_number == 1:
+                raise BusinessRuleError("Cannot delete the first/only level of a group")
+
+            # 5. Check guards (payments and attendance)
+            payments_count = repo.count_payments_for_level(session, group_id, level_number)
+            if payments_count > 0:
+                raise ConflictError(f"Cannot delete level {level_number}: it has {payments_count} payments. Use cancel level instead.")
+
+            attendance_count = repo.count_attendance_for_level(session, group_id, level_number)
+            if attendance_count > 0:
+                raise ConflictError(f"Cannot delete level {level_number}: it has {attendance_count} attendance records. Use cancel level instead.")
+
+            # 6. Execute Cascades in correct order:
+
+            # Phase A: Get enrollment IDs to delete/revert and delete enrollment_level_history
+            new_enrollments_stmt = (
+                select(Enrollment)
+                .where(Enrollment.group_id == group_id)
+                .where(Enrollment.level_number == level_number)
+            )
+            new_enrollments = list(session.exec(new_enrollments_stmt).all())
+            new_enrollment_ids = [e.id for e in new_enrollments]
+
+            # Delete enrollment level history
+            if new_enrollment_ids:
+                del_elh_stmt = delete(EnrollmentLevelHistory).where(EnrollmentLevelHistory.enrollment_id.in_(new_enrollment_ids))
+                session.exec(del_elh_stmt)
+
+            # Delete student activity log entries matching 'level_started' reference to these enrollments
+            if new_enrollment_ids:
+                from app.modules.crm.models.activity_models import StudentActivityLog
+                del_act_stmt = delete(StudentActivityLog).where(
+                    StudentActivityLog.activity_subtype == "level_started",
+                    StudentActivityLog.reference_type == "enrollment",
+                    StudentActivityLog.reference_id.in_(new_enrollment_ids)
+                )
+                session.exec(del_act_stmt)
+
+            # Delete the new enrollments
+            if new_enrollment_ids:
+                del_enr_stmt = delete(Enrollment).where(Enrollment.id.in_(new_enrollment_ids))
+                session.exec(del_enr_stmt)
+
+            # Reactivate old enrollments at the previous level
+            prev_level_number = level_number - 1
+            reactivate_stmt = (
+                select(Enrollment)
+                .where(Enrollment.group_id == group_id)
+                .where(Enrollment.level_number == prev_level_number)
+                .where(Enrollment.status == "completed")
+            )
+            old_enrollments = list(session.exec(reactivate_stmt).all())
+            for old_enr in old_enrollments:
+                old_enr.status = "active"
+                old_enr.updated_at = utc_now()
+                session.add(old_enr)
+
+            # Delete sessions linked to this group_level_id
+            sessions_stmt = (
+                select(CourseSession)
+                .where(CourseSession.group_level_id == level.id)
+            )
+            level_sessions = list(session.exec(sessions_stmt).all())
+            sessions_deleted_count = len(level_sessions)
+            for s in level_sessions:
+                session.delete(s)
+
+            # Delete latest group course history entry if course was changed during this level progression
+            from app.modules.academics.models.group_level_models import GroupCourseHistory
+            history_stmt = (
+                select(GroupCourseHistory)
+                .where(GroupCourseHistory.group_id == group_id)
+                .order_by(GroupCourseHistory.assigned_at.desc())
+            )
+            latest_history = session.exec(history_stmt).first()
+            if latest_history:
+                session.delete(latest_history)
+
+            # Revert group's level_number, and optionally course_id, back to the previous level's configuration
+            prev_level = repo.get_group_level_by_number(session, group_id, prev_level_number)
+            if prev_level:
+                group.course_id = prev_level.course_id
+                if prev_level.status == "completed":
+                    prev_level.status = "active"
+                    prev_level.effective_to = None
+                    session.add(prev_level)
+            
+            group.level_number = prev_level_number
+            session.add(group)
+
+            # Hard delete the level itself
+            session.delete(level)
+
+            session.commit()
+
+            return DeleteLevelResult(
+                level_number_deleted=level_number,
+                reverted_to_level=prev_level_number,
+                sessions_deleted=sessions_deleted_count,
+                enrollments_deleted=len(new_enrollment_ids),
+                enrollments_reactivated=len(old_enrollments),
+                group_level_number_after=prev_level_number,
+            )

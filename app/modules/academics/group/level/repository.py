@@ -174,21 +174,62 @@ def has_enrollments_for_level(session: Session, group_id: int, level_number: int
     return count > 0
 
 
-def soft_delete_level(
+def delete_group_level(
     session: Session, group_id: int, level_number: int
 ) -> GroupLevel | None:
     """
-    Soft delete a level by setting status='deleted' and deleted_at timestamp.
-    
-    Returns the deleted level or None if not found.
+    Hard delete a level.
     """
     level = get_group_level_by_number(session, group_id, level_number)
     if level:
-        level.status = "deleted"
-        level.effective_to = utc_now()
-        from app.shared.audit_utils import apply_update_audit
-        apply_update_audit(level)
-        # Note: GroupLevel model doesn't have deleted_at field, using effective_to
-        session.add(level)
+        session.delete(level)
         session.flush()
     return level
+
+
+def get_previous_active_level(
+    session: Session, group_id: int, before_level_number: int
+) -> GroupLevel | None:
+    """Get the highest active or completed level number strictly below before_level_number."""
+    stmt = (
+        select(GroupLevel)
+        .where(GroupLevel.group_id == group_id)
+        .where(GroupLevel.level_number < before_level_number)
+        .where(GroupLevel.status.in_([LEVEL_STATUS_ACTIVE, LEVEL_STATUS_COMPLETED]))
+        .order_by(GroupLevel.level_number.desc())
+    )
+    return session.exec(stmt).first()
+
+
+def count_payments_for_level(
+    session: Session, group_id: int, level_number: int
+) -> int:
+    """Count how many payments exist for students enrolled at this level."""
+    from app.modules.finance.models.payment import Payment
+    from app.modules.enrollments.models.enrollment_models import Enrollment
+    stmt = (
+        select(func.count(Payment.id))
+        .select_from(Payment)
+        .join(Enrollment, Payment.enrollment_id == Enrollment.id)
+        .where(Enrollment.group_id == group_id)
+        .where(Enrollment.level_number == level_number)
+        .where(Payment.deleted_at.is_(None))
+    )
+    return session.exec(stmt).one()
+
+
+def count_attendance_for_level(
+    session: Session, group_id: int, level_number: int
+) -> int:
+    """Count how many attendance records exist for sessions at this level."""
+    from app.modules.attendance.models.attendance_models import Attendance
+    from app.modules.academics.models.session_models import CourseSession
+    stmt = (
+        select(func.count(Attendance.id))
+        .select_from(Attendance)
+        .join(CourseSession, Attendance.session_id == CourseSession.id)
+        .where(CourseSession.group_id == group_id)
+        .where(CourseSession.level_number == level_number)
+    )
+    return session.exec(stmt).one()
+

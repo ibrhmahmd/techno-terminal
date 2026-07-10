@@ -24,6 +24,7 @@ class GroupLevelReadDTO(BaseModel):
     status: str
     effective_from: Optional[datetime] = None
     effective_to: Optional[datetime] = None
+    notes: Optional[str] = None
     created_at: Optional[datetime] = None
 
 
@@ -43,4 +44,13 @@ class GroupLevelDetailDTO(BaseModel):
     status: str
     effective_from: Optional[datetime] = None
     effective_to: Optional[datetime] = None
+    notes: Optional[str] = None
     created_at: Optional[datetime] = None
+
+
+class UpdateLevelInput(BaseModel):
+    """Partial update input for a group level."""
+    instructor_id: Optional[int] = None
+    course_id: Optional[int] = None
+    price_override: Optional[Decimal] = None
+    notes: Optional[str] = None

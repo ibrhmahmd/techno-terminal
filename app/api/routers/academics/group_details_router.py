@@ -18,13 +18,14 @@ from app.api.schemas.common import ApiResponse
 from app.api.dependencies import require_any, require_admin
 from app.modules.academics.group.details.service import GroupDetailsService
 from app.modules.academics.group.details.schemas import (
-    LevelDeleteResultDTO,
     GroupLevelsDetailedResponseDTO,
     GroupAttendanceResponseDTO,
     GroupPaymentsResponseDTO,
     GroupEnrollmentsResponseDTO,
 )
-from app.shared.exceptions import NotFoundError, ConflictError
+from app.shared.exceptions import NotFoundError, ConflictError, BusinessRuleError
+from app.modules.academics.group.lifecycle.service import GroupLifecycleService
+from app.modules.academics.group.lifecycle.schemas import DeleteLevelResult
 
 router = APIRouter(tags=["Academics — Group Details"])
 
@@ -34,14 +35,19 @@ def get_group_details_service() -> GroupDetailsService:
     return GroupDetailsService()
 
 
+def get_lifecycle_service() -> GroupLifecycleService:
+    """Dependency provider for GroupLifecycleService."""
+    return GroupLifecycleService()
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # DELETE /academics/groups/{group_id}/levels/{level_number}
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @router.delete(
     "/academics/groups/{group_id}/levels/{level_number}",
-    response_model=ApiResponse[LevelDeleteResultDTO],
-    summary="Delete a level (soft delete)",
+    response_model=ApiResponse[DeleteLevelResult],
+    summary="Delete a level (hard delete with cascade)",
     responses={
         404: {"description": "Level not found"},
         409: {"description": "Level has sessions or enrollments - cannot delete"},
@@ -51,17 +57,16 @@ def delete_level(
     group_id: int = Path(..., ge=1, description="Group ID"),
     level_number: int = Path(..., ge=1, description="Level number"),
     _user=Depends(require_admin),
-    svc: GroupDetailsService = Depends(get_group_details_service),
+    svc: GroupLifecycleService = Depends(get_lifecycle_service),
 ):
     """
-    Soft delete a level if it has no sessions or enrollments.
+    Hard delete a level (undo progression) if it has no payments or attendance.
     
-    Returns the deleted level info including deletion timestamp.
+    Returns the deleted level info and counts of cascade-deleted items.
     
     **Error cases:**
     - 404: Level not found
-    - 409: Level has scheduled sessions
-    - 409: Level has active enrollments
+    - 409: Level has payments or attendance records
     """
     try:
         result = svc.delete_level(group_id, level_number)
@@ -71,10 +76,8 @@ def delete_level(
         )
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except ConflictError as e:
+    except (ConflictError, BusinessRuleError) as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

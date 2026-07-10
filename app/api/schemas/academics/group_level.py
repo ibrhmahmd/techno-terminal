@@ -24,6 +24,7 @@ class GroupLevelPublic(BaseModel):
     status: str
     effective_from: Optional[datetime] = None
     effective_to: Optional[datetime] = None
+    notes: Optional[str] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

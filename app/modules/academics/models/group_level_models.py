@@ -28,6 +28,8 @@ class GroupLevel(SQLModel, table=True):
     status: str = Field(default="active", sa_column=Column(String, index=True))
     effective_from: datetime = Field(default_factory=utc_now)
     effective_to: Optional[datetime] = None
+    created_by_user_id: Optional[int] = Field(default=None, foreign_key="users.id")
+    notes: Optional[str] = None
     created_at: Optional[datetime] = Field(default_factory=utc_now)
     updated_at: Optional[datetime] = Field(default_factory=utc_now)
 
@@ -64,18 +66,4 @@ class EnrollmentLevelHistory(SQLModel, table=True):
 
 
 
-
-class GroupLevelCourseAssignment(SQLModel, table=True):
-    """Track course assignments to group levels."""
-    __tablename__ = "group_level_course_assignments"
-    __table_args__ = {"extend_existing": True}
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    group_level_id: int = Field(foreign_key="group_levels.id", index=True)
-    course_id: int = Field(foreign_key="courses.id", index=True)
-    assigned_at: datetime = Field(default_factory=utc_now)
-    removed_at: Optional[datetime] = None
-    assigned_by_user_id: Optional[int] = Field(default=None, foreign_key="users.id")
-    notes: Optional[str] = None
-    created_at: Optional[datetime] = Field(default_factory=utc_now)
-    updated_at: Optional[datetime] = Field(default_factory=utc_now)
+

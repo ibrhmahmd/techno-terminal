@@ -6,7 +6,11 @@ Interfaces for the Group Level slice.
 from typing import Protocol, runtime_checkable
 from typing import Optional
 from app.modules.academics.models.group_level_models import GroupLevel
-from app.modules.academics.group.level.schemas import GroupLevelReadDTO, GroupLevelDetailDTO
+from app.modules.academics.group.level.schemas import (
+    GroupLevelReadDTO,
+    GroupLevelDetailDTO,
+    UpdateLevelInput,
+)
 
 
 @runtime_checkable
@@ -16,6 +20,7 @@ class GroupLevelServiceInterface(Protocol):
     def get_paginated_levels(self, group_id: int, status: Optional[str] = None, include_inactive: bool = False, skip: int = 0, limit: int = 50) -> tuple[list[GroupLevelReadDTO], int]: ...
     def get_level_history(self, group_id: int) -> list[GroupLevel]: ...
     def update_level_instructor(self, group_id: int, level_number: int, instructor_id: int) -> GroupLevel: ...
+    def update_level(self, group_id: int, level_number: int, data: UpdateLevelInput) -> GroupLevelDetailDTO: ...
     def cancel_level(self, group_id: int, level_number: int) -> GroupLevel: ...
 
 
