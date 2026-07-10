@@ -137,6 +137,7 @@ class AttendanceRosterStudentDTO(BaseModel):
     student_name: str
     enrollment_id: int
     billing_status: str  # 'paid' | 'due'
+    balance: float
     joined_at: Optional[str] = None  # ISO 8601
 
 

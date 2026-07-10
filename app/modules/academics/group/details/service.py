@@ -292,6 +292,7 @@ class GroupDetailsService:
                     student_name=r.student_name,
                     enrollment_id=r.enrollment_id,
                     billing_status=r.billing_status,
+                    balance=r.balance,
                     joined_at=r.joined_at.isoformat() if r.joined_at else None,
                 )
                 for r in roster_data
