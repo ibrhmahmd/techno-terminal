@@ -37,7 +37,7 @@ class EnrollmentDirectoryService:
                 balance_info = pay_repo.get_enrollment_balance(enrollment.id)
                 if balance_info:
                     dto.payment_status = balance_info.status
-                    dto.amount_remaining = float(balance_info.balance)
+                    dto.amount_remaining = max(0.0, -float(balance_info.balance))
                 result.append(dto)
             return result
 
