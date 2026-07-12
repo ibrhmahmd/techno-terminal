@@ -411,3 +411,15 @@ def get_competition_analytics_service() -> CompetitionAnalyticsService:
 def get_group_analytics_service() -> GroupAnalyticsService:
     """Returns a fresh GroupAnalyticsService instance per request."""
     return GroupAnalyticsService()
+
+
+# Tasks service
+def get_task_service(
+    session: Session = Depends(get_db),
+    notification_svc: "NotificationService" = Depends(get_notification_service),
+) -> "TaskService":
+    """Returns TaskService with fresh Unit of Work per request."""
+    from app.modules.tasks import TaskService, TasksUnitOfWork
+    uow = TasksUnitOfWork(session)
+    return TaskService(uow, notification_service=notification_svc)
+

@@ -55,6 +55,7 @@
 \i schema/08_tables_notifications.sql
 \i schema/09_tables_history.sql
 \i schema/10_tables_supabase.sql
+\i schema/11_tables_tasks.sql
 
 -- Database objects
 \i schema/20_indexes.sql

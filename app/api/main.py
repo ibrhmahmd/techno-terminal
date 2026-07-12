@@ -36,6 +36,7 @@ from app.api.routers.analytics import (
 )
 from app.api.routers.finance import receipt_router, finance_router, reporting_router
 from app.api.routers import admin_auth_router
+from app.api.routers.tasks import router as tasks_router
 
 
 def create_app() -> FastAPI:
@@ -59,11 +60,20 @@ def create_app() -> FastAPI:
             session = Session(get_engine(), expire_on_commit=False)
             return NotificationService(repo=NotificationRepository(session))
 
+        from app.modules.tasks.scheduler import start_task_scheduler
+        from app.modules.tasks import TaskService, TasksUnitOfWork
+
+        def _make_task_service() -> TaskService:
+            session = Session(get_engine(), expire_on_commit=False)
+            return TaskService(TasksUnitOfWork(session))
+
         task = asyncio.create_task(start_report_scheduler(_make_notification_service))
+        task_spawner_task = asyncio.create_task(start_task_scheduler(_make_task_service))
         yield
         task.cancel()
+        task_spawner_task.cancel()
         try:
-            await task
+            await asyncio.gather(task, task_spawner_task, return_exceptions=True)
         except asyncio.CancelledError:
             pass
 
@@ -133,6 +143,8 @@ def create_app() -> FastAPI:
     app.include_router(teams_router, prefix="/api/v1", tags=["Teams"])
     # HR
     app.include_router(hr_router.router, prefix="/api/v1", tags=["HR"])
+    # Tasks
+    app.include_router(tasks_router, prefix="/api/v1", tags=["Tasks"])
     # Analytics
     app.include_router(academic_router, prefix="/api/v1", tags=["Analytics — Academic"])
     app.include_router(

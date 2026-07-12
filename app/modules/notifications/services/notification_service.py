@@ -19,6 +19,7 @@ from app.modules.notifications.services.enrollment_notifications import Enrollme
 from app.modules.notifications.services.payment_notifications import PaymentNotificationService
 from app.modules.notifications.services.report_notifications import ReportNotificationService
 from app.modules.notifications.services.competition_notifications import CompetitionNotificationService
+from app.modules.notifications.services.task_notifications import TaskNotificationService
 from app.modules.notifications.models.notification_template import NotificationTemplate
 from app.modules.notifications.schemas.template_dto import TemplateTestResultDTO
 from app.db.connection import get_session
@@ -46,6 +47,7 @@ class NotificationService:
         self.payment = PaymentNotificationService(repo)
         self.report = ReportNotificationService(repo)
         self.competition = CompetitionNotificationService(repo)
+        self.task = TaskNotificationService(repo)
 
 
     # ── Template CRUD (delegates to self._repo) ─────────────────────────
