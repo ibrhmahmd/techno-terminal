@@ -422,10 +422,12 @@ class GroupLifecycleService:
         """
         Delete a level and cascade-remove all related records.
         """
-        from app.shared.exceptions import NotFoundError, ConflictError, BusinessRuleError
+        from app.shared.exceptions import NotFoundError, BusinessRuleError
         from app.modules.academics.models import GroupLevel, Group, CourseSession
         from app.modules.enrollments.models.enrollment_models import Enrollment
         from app.modules.academics.models.group_level_models import EnrollmentLevelHistory
+        from app.modules.finance.models.payment import Payment
+        from app.modules.attendance.models.attendance_models import Attendance
         from sqlmodel import select, delete
 
         with get_session() as session:
@@ -453,18 +455,23 @@ class GroupLifecycleService:
             if level_number == 1:
                 raise BusinessRuleError("Cannot delete the first/only level of a group")
 
-            # 5. Check guards (payments and attendance)
-            payments_count = repo.count_payments_for_level(session, group_id, level_number)
-            if payments_count > 0:
-                raise ConflictError(f"Cannot delete level {level_number}: it has {payments_count} payments. Use cancel level instead.")
-
-            attendance_count = repo.count_attendance_for_level(session, group_id, level_number)
-            if attendance_count > 0:
-                raise ConflictError(f"Cannot delete level {level_number}: it has {attendance_count} attendance records. Use cancel level instead.")
+            # 5. Void payments for this level (soft-delete)
+            payments_stmt = (
+                select(Payment)
+                .join(Enrollment, Payment.enrollment_id == Enrollment.id)
+                .where(Enrollment.group_id == group_id)
+                .where(Enrollment.level_number == level_number)
+                .where(Payment.deleted_at.is_(None))
+            )
+            level_payments = list(session.exec(payments_stmt).all())
+            for p in level_payments:
+                p.deleted_at = utc_now()
+                session.add(p)
+            payments_voided_count = len(level_payments)
 
             # 6. Execute Cascades in correct order:
 
-            # Phase A: Get enrollment IDs to delete/revert and delete enrollment_level_history
+            # Phase A: Get enrollment IDs to delete/revert
             new_enrollments_stmt = (
                 select(Enrollment)
                 .where(Enrollment.group_id == group_id)
@@ -487,6 +494,16 @@ class GroupLifecycleService:
                     StudentActivityLog.reference_id.in_(new_enrollment_ids)
                 )
                 session.exec(del_act_stmt)
+
+            # Delete attendance records for sessions at this level
+            # (ON DELETE RESTRICT on attendance.session_id blocks session deletion)
+            attendance_stmt = (
+                delete(Attendance)
+                .where(Attendance.session_id.in_(
+                    select(CourseSession.id).where(CourseSession.group_level_id == level.id)
+                ))
+            )
+            session.exec(attendance_stmt)
 
             # Delete the new enrollments
             if new_enrollment_ids:
@@ -551,5 +568,6 @@ class GroupLifecycleService:
                 sessions_deleted=sessions_deleted_count,
                 enrollments_deleted=len(new_enrollment_ids),
                 enrollments_reactivated=len(old_enrollments),
+                payments_voided=payments_voided_count,
                 group_level_number_after=prev_level_number,
             )

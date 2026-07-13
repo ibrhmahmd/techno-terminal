@@ -23,7 +23,7 @@ from app.modules.academics.group.details.schemas import (
     GroupPaymentsResponseDTO,
     GroupEnrollmentsResponseDTO,
 )
-from app.shared.exceptions import NotFoundError, ConflictError, BusinessRuleError
+from app.shared.exceptions import NotFoundError, BusinessRuleError
 from app.modules.academics.group.lifecycle.service import GroupLifecycleService
 from app.modules.academics.group.lifecycle.schemas import DeleteLevelResult
 
@@ -76,7 +76,7 @@ def delete_level(
         )
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except (ConflictError, BusinessRuleError) as e:
+    except BusinessRuleError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
 
 

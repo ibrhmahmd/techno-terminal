@@ -126,4 +126,5 @@ class DeleteLevelResult(BaseModel):
     sessions_deleted: int
     enrollments_deleted: int
     enrollments_reactivated: int
+    payments_voided: int
     group_level_number_after: int
