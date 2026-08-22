@@ -16,9 +16,9 @@ class CreateEmployeeDTO(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     full_name: str = Field(..., min_length=2, max_length=100)
-    phone: str = Field(..., pattern=r"^\d{10,}$")
+    phone: str = Field(..., pattern=r"^\+?\d{10,}$")
     email: Optional[str] = Field(None, max_length=255)
-    national_id: str = Field(..., min_length=10, max_length=20)
+    national_id: str = Field(..., min_length=10)
     university: str = Field(..., min_length=1, max_length=100)
     major: str = Field(..., min_length=1, max_length=100)
     is_graduate: bool = False
@@ -40,9 +40,9 @@ class UpdateEmployeeDTO(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     full_name: Optional[str] = Field(None, min_length=2, max_length=100)
-    phone: Optional[str] = Field(None, pattern=r"^\d{10,}$")
+    phone: Optional[str] = Field(None, pattern=r"^\+?\d{10,}$")
     email: Optional[str] = Field(None, max_length=255)
-    national_id: Optional[str] = Field(None, min_length=10, max_length=20)
+    national_id: Optional[str] = Field(None, min_length=10)
     university: Optional[str] = Field(None, min_length=1, max_length=100)
     major: Optional[str] = Field(None, min_length=1, max_length=100)
     is_graduate: Optional[bool] = None

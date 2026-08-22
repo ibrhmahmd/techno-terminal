@@ -8,6 +8,7 @@ Tag:    HR
 """
 from datetime import datetime, timezone
 
+import pydantic
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.schemas.common import ApiResponse
@@ -99,6 +100,8 @@ def create_employee(
             data=EmployeePublic.model_validate(emp),
             message="Employee created successfully.",
         )
+    except pydantic.ValidationError as e:
+        raise HTTPException(status_code=422, detail=format_validation_error(e))
     except ValidationError as e:
         raise HTTPException(status_code=422, detail=str(e))
     except ConflictError as e:
@@ -130,10 +133,20 @@ def update_employee(
         )
     except NotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except pydantic.ValidationError as e:
+        raise HTTPException(status_code=422, detail=format_validation_error(e))
     except ValidationError as e:
         raise HTTPException(status_code=422, detail=str(e))
     except ConflictError as e:
         raise HTTPException(status_code=409, detail=str(e))
+
+
+def format_validation_error(exc: pydantic.ValidationError) -> str:
+    """Flatten pydantic ValidationError into a short, human-readable message."""
+    return "; ".join(
+        f"{'.'.join(str(part) for part in e['loc']) or 'body'}: {e['msg']}"
+        for e in exc.errors()
+    )
 
 
 # list staff accounts
