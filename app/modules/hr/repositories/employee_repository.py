@@ -8,7 +8,7 @@ from sqlalchemy import func, select
 from sqlmodel import Session
 
 from app.modules.hr.models import Employee
-from app.modules.hr.schemas import CreateEmployeeDTO, UpdateEmployeeDTO
+from app.modules.hr.schemas import CreateEmployeeDTO, UpdateEmployeeDTO, EmployeeListResult
 from app.shared.datetime_utils import utc_now
 
 
@@ -46,7 +46,9 @@ class EmployeeRepository:
         if not emp:
             return None
 
-        update_data = dto.model_dump(exclude_unset=True, exclude_none=True)
+        # exclude_unset keeps partial semantics while allowing the service to
+        # pass explicit None values (e.g. clearing contract_percentage).
+        update_data = dto.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(emp, key, value)
 
@@ -122,7 +124,7 @@ class EmployeeRepository:
         results = self._session.exec(stmt)
         return list(results.scalars().all())
 
-    def list_all(self, page: int = 1, page_size: int = 20) -> tuple[list[Employee], int]:
+    def list_all(self, page: int = 1, page_size: int = 20) -> EmployeeListResult:
         """List all employees with pagination.
         
         Args:
@@ -130,7 +132,7 @@ class EmployeeRepository:
             page_size: Items per page
             
         Returns:
-            Tuple of (employees list, total count)
+            EmployeeListResult with paginated employees and total count
         """
         # Get total count - use scalar() to get int value, not Row tuple
         total = self._session.exec(
@@ -143,4 +145,4 @@ class EmployeeRepository:
         results = self._session.exec(stmt)
         employees = list(results.scalars().all())
         
-        return employees, total
+        return EmployeeListResult(items=employees, total=total)

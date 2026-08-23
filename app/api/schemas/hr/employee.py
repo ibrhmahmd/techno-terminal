@@ -66,6 +66,27 @@ class EmployeeCreateInput(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class EmployeeUpdateInput(BaseModel):
+    """
+    Partial-update input for an employee via API. All fields optional;
+    only provided fields are applied.
+    """
+    full_name: Optional[str] = Field(None, min_length=2, max_length=100)
+    phone: Optional[str] = Field(None, pattern=r"^\+?\d{10,}$")
+    email: Optional[str] = Field(None, max_length=255)
+    national_id: Optional[str] = Field(None, min_length=10)
+    university: Optional[str] = Field(None, min_length=1, max_length=100)
+    major: Optional[str] = Field(None, min_length=1, max_length=100)
+    is_graduate: Optional[bool] = None
+    job_title: Optional[str] = Field(None, max_length=100)
+    employment_type: Optional[str] = None  # full_time, part_time, contract
+    monthly_salary: Optional[float] = None
+    contract_percentage: Optional[float] = None
+    is_active: Optional[bool] = None
+
+    model_config = {"from_attributes": True}
+
+
 class StaffAccountPublic(BaseModel):
     """
     Public view of staff account with linked employee info.

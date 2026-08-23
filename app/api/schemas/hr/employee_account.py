@@ -7,11 +7,17 @@ from datetime import datetime
 from typing import Literal
 from pydantic import BaseModel, EmailStr, Field
 
+from app.shared.constants import MIN_PASSWORD_LENGTH
+
 
 class CreateEmployeeAccountRequest(BaseModel):
     """Request body for creating an employee account."""
     email: EmailStr = Field(..., description="Account email address")
-    password: str = Field(..., min_length=8, description="Account password (min 8 characters)")
+    password: str = Field(
+        ...,
+        min_length=MIN_PASSWORD_LENGTH,
+        description=f"Account password (min {MIN_PASSWORD_LENGTH} characters)",
+    )
     role: Literal["admin", "system_admin"] = Field(..., description="User role")
 
 

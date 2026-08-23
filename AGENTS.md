@@ -1,12 +1,14 @@
 # AGENTS.md — Techno Terminal
 
 FastAPI + SQLModel + PostgreSQL backend for STEM education center management.
-Supabase Auth, 11 business modules, 83 migrations. Python 3.10+.
+Supabase Auth, 11 business modules, 87 migrations. Python 3.10+. Plus an internal
+Streamlit audit dashboard (`audit_dashboard.py` + `dashboard/`) — not part of the API.
 
 ## Entry Points
 
 - **Dev**: `python run_api.py` — hot reload. Inserts project root into `PYTHONPATH`; breaking this breaks all imports.
 - **Prod**: `uvicorn app.api.main:app` (via `create_app()`) — used by gunicorn/railpack.
+- **Dashboard**: `streamlit run audit_dashboard.py`.
 
 ## Required Env
 
@@ -29,7 +31,7 @@ Optional PDF/receipt settings in `app/core/config.py`.
 | DB init | `psql "$DATABASE_URL" -f db/schema.sql` |
 | Schema verify | `python scripts/verify_test_db.py` |
 | Get test JWT | `python scripts/get_test_jwt.py` |
-| Pool tests | `python test_connection_exhaustion.py --uow` |
+| Pool tests | `pytest tests/test_connection_exhaustion.py -v` |
 
 ## Architecture: Router → Service → Repository
 
@@ -42,7 +44,7 @@ Optional PDF/receipt settings in `app/core/config.py`.
 
 ### D+ Hybrid Pattern (dominant-entity modules)
 
-`academics/group/` and `enrollments/` split into sub-slices (`core/`, `directory/`, `lifecycle/`, `analytics/`). Models stay horizontal (`models/` per module, never per-slice). Each slice contains: `__init__.py`, `interface.py`, `service.py`, `repository.py`, `schemas.py`. CRM uses traditional horizontal layers — not D+.
+`academics/group/` and `enrollments/` split into sub-slices (`core/`, `directory/`, `lifecycle/`, plus domain-specific ones). Models stay horizontal (`models/` per module, never per-slice). Each slice contains: `__init__.py`, `interface.py`, `service.py`, `repository.py`, `schemas.py`. CRM uses traditional horizontal layers — not D+.
 
 **Interface design**: `@runtime_checkable` Protocols named `{Entity}{Concern}Interface` (no `I-` prefix, no `Protocol` suffix).
 
@@ -63,7 +65,7 @@ All service factories in `app/api/dependencies.py`.
 
 1. `Authorization: Bearer <jwt>` → `get_current_user()` validates via Supabase (`get_supabase_anon()`).
 2. Maps to local `User` via `get_user_by_supabase_uid()`.
-3. Role from JWT `app_metadata.role`. Role guards: `require_admin` (`admin` + `system_admin`), `require_system_admin`, `require_any` (any authenticated active user).
+3. Role comes from the **local `users.role` column** (JWT only proves identity). Role guards in `app/api/dependencies.py:112-118`: `require_admin` (`admin` + `system_admin`), `require_system_admin`, `require_any` (alias for `get_current_user`), plus `require_coach_or_admin` (`dependencies.py:340`).
 
 **Test tokens**:
 - **Real Supabase JWT** — `admin_token` fixture in `tests/conftest.py`, expires ~1h, regen via `python scripts/get_test_jwt.py`.
@@ -84,13 +86,16 @@ All service factories in `app/api/dependencies.py`.
 ## Gotchas
 
 ### Router Registration Order
-`group_directory_router` MUST register before `groups_router` — `/{group_id}` shadows `/enriched`. Confirmed in `app/api/main.py:107-110`.
+`group_directory_router` MUST register before `groups_router` — `/{group_id}` shadows `/enriched`. Confirmed in `app/api/main.py:116-120`.
+
+### Lifespan Starts Background Schedulers
+`app/api/main.py` lifespan spawns the notifications report scheduler and the tasks scheduler (`asyncio.create_task`). `TestClient(app)` used as a context manager triggers lifespan, so schedulers run during tests too.
 
 ### `get_group_analytics_service` defined twice
 Defined at `dependencies.py:213` and `dependencies.py:411`. Python uses the last definition (line 411 wins). Same interface.
 
 ### Migrations
-83 files in `db/migrations/`. Duplicate prefix numbers exist (`008`, `020`, `021`, `022`, `026`, `030`, `036`, `051`) — apply in **chronological order**, not numeric. Cleanup migrations: `042`–`049`. Schema: 17 modular files in `db/schema/` applied via `db/schema.sql`. `alembic/` directory and `alembic.ini` do NOT exist (but `Dockerfile` references them — stale).
+87 files in `db/migrations/`. Duplicate prefix numbers exist (`008`, `020`, `021`, `022`, `026`, `030`, `036`, `051`, `057`) — apply in **chronological order**, not numeric. Cleanup migrations: `042`–`049`. Schema: 18 modular files in `db/schema/` applied via `db/schema.sql`. `alembic/` directory and `alembic.ini` do NOT exist (but `Dockerfile` references them — stale).
 
 ### Database Pool (code truth in `app/db/connection.py`)
 `pool_size=10, max_overflow=5 (15 total), pool_timeout=30, pool_pre_ping=True, pool_recycle=240s`, `sslmode=prefer`, `statement_timeout=30000`, `expire_on_commit=False`.
@@ -119,10 +124,10 @@ Before any refactoring, grep for callers of every method. Delete dead code immed
 
 ## Business Reports
 
-Four finalized report queries (new customers, old customers, waiting students, round cost) live in `Implementing Payment Void And Refund.md`. Key schema notes: `group_levels` table tracks rounds, `student_status` is an enum (`active`/`waiting`/`inactive`), soft delete via `deleted_at`/`deleted_by`. Always verify against live schema — docs lag behind.
+Four finalized report queries (new customers, old customers, waiting students, round cost) live in `specs/035-business-reports-feature/spec.md`. Key schema notes: `group_levels` table tracks rounds, `student_status` is an enum (`active`/`waiting`/`inactive`), soft delete via `deleted_at`/`deleted_by`. Always verify against live schema — docs lag behind (README endpoint/table counts are stale).
 
-**Open:** Report 3 (waiting students) needs app fix to set `waiting_since = now()` on status transition. Part-time instructor cost report not yet scoped.
+**Open:** Existing waiting students have NULL `waiting_since` (the migration `068` trigger only covers new transitions; no backfill). Report 3 falls back to `COALESCE(waiting_since, created_at)`. Part-time instructor cost report not yet scoped.
 
 <!-- SPECKIT START -->
-Active plan: `specs/038-employee-task-tracking/plan.md`
+Active plan: `specs/040-employee-soft-delete/plan.md`
 <!-- SPECKIT END -->

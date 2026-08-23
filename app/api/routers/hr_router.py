@@ -12,7 +12,13 @@ import pydantic
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.schemas.common import ApiResponse
-from app.api.schemas.hr.employee import EmployeePublic, EmployeeListItem, EmployeeCreateInput, StaffAccountPublic
+from app.api.schemas.hr.employee import (
+    EmployeePublic,
+    EmployeeListItem,
+    EmployeeCreateInput,
+    EmployeeUpdateInput,
+    StaffAccountPublic,
+)
 from app.api.schemas.hr.employee_account import CreateEmployeeAccountRequest, EmployeeAccountResponse
 from app.api.schemas.hr.attendance import AttendanceLogInput, AttendanceLogOutput
 
@@ -70,11 +76,8 @@ def get_employee(
     """
     Returns a single employee by ID. Restricted to admin.
     """
-    try:
-        emp = service.get_by_id(employee_id)
-        return ApiResponse(data=EmployeePublic.model_validate(emp))
-    except NotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    emp = service.get_by_id(employee_id)
+    return ApiResponse(data=EmployeePublic.model_validate(emp))
 
 
 # create employee
@@ -102,10 +105,6 @@ def create_employee(
         )
     except pydantic.ValidationError as e:
         raise HTTPException(status_code=422, detail=format_validation_error(e))
-    except ValidationError as e:
-        raise HTTPException(status_code=422, detail=str(e))
-    except ConflictError as e:
-        raise HTTPException(status_code=409, detail=str(e))
 
 
 # update employee
@@ -116,29 +115,19 @@ def create_employee(
 )
 def update_employee(
     employee_id: int,
-    body: EmployeeCreateInput,
+    body: EmployeeUpdateInput,
     _user: User = Depends(require_admin),
     service: EmployeeCrudService = Depends(get_employee_crud_service),
 ):
     """
-    Updates an existing employee record. Restricted to admin.
+    Updates an existing employee record (partial updates allowed). Restricted to admin.
     """
-    try:
-        # Map API input to internal DTO (partial update)
-        dto = UpdateEmployeeDTO(**body.model_dump(exclude_unset=True))
-        emp = service.update(employee_id, dto)
-        return ApiResponse(
-            data=EmployeePublic.model_validate(emp),
-            message="Employee updated successfully.",
-        )
-    except NotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except pydantic.ValidationError as e:
-        raise HTTPException(status_code=422, detail=format_validation_error(e))
-    except ValidationError as e:
-        raise HTTPException(status_code=422, detail=str(e))
-    except ConflictError as e:
-        raise HTTPException(status_code=409, detail=str(e))
+    dto = UpdateEmployeeDTO(**body.model_dump(exclude_unset=True))
+    emp = service.update(employee_id, dto)
+    return ApiResponse(
+        data=EmployeePublic.model_validate(emp),
+        message="Employee updated successfully.",
+    )
 
 
 def format_validation_error(exc: pydantic.ValidationError) -> str:
@@ -168,12 +157,12 @@ def list_staff_accounts(
         StaffAccountPublic(
             id=acc.user_id,
             username=acc.username,
-            email=None,  # Not in StaffAccountDTO, would need extension
+            email=acc.email,
             employee_id=acc.employee_id,
             employee_name=acc.full_name,
-            job_title=None,  # Not in StaffAccountDTO
+            job_title=acc.job_title,
             is_active=acc.is_active,
-            created_at=None,  # Not in StaffAccountDTO
+            created_at=acc.created_at,
         )
         for acc in accounts
     ]
@@ -222,28 +211,20 @@ def create_employee_account_endpoint(
     Creates a Supabase user account for an existing employee.
     Only admin or system_admin roles are allowed.
     """
-    try:
-        # Map API request to internal DTO
-        dto = CreateEmployeeAccountDTO(
-            employee_id=employee_id,
-            email=body.email,
-            password=body.password,
-            role=body.role,
-        )
-        result = service.create_account(dto)
-        return ApiResponse(
-            data=EmployeeAccountResponse(
-                employee_id=result.employee_id,
-                user_id=result.user_id,
-                email=result.email,
-                role=result.role,
-                created_at=result.created_at,
-            ),
-            message="Employee account created successfully.",
-        )
-    except NotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except ConflictError as e:
-        raise HTTPException(status_code=409, detail=str(e))
-    except ValidationError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+    dto = CreateEmployeeAccountDTO(
+        employee_id=employee_id,
+        email=body.email,
+        password=body.password,
+        role=body.role,
+    )
+    result = service.create_account(dto)
+    return ApiResponse(
+        data=EmployeeAccountResponse(
+            employee_id=result.employee_id,
+            user_id=result.user_id,
+            email=result.email,
+            role=result.role,
+            created_at=result.created_at,
+        ),
+        message="Employee account created successfully.",
+    )

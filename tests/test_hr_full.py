@@ -99,7 +99,7 @@ class TestEmployeeCRUD:
         assert resp.status_code == 404
         body = resp.json()
         assert body["success"] is False
-        assert body["error"] == "NotFound"
+        assert body["error"] == "NotFoundError"
 
     def test_get_employee_unauthorized(self, client):
         resp = client.get("/api/v1/hr/employees/1")
@@ -185,7 +185,7 @@ class TestEmployeeCRUD:
             json=valid_employee_payload(),
         )
         assert resp.status_code == 404
-        assert resp.json()["error"] == "NotFound"
+        assert resp.json()["error"] == "NotFoundError"
 
     def test_update_employee_unauthorized(self, client):
         resp = client.put(
@@ -232,7 +232,7 @@ class TestEmployeeEdgeCases:
         )
         resp2 = client.post("/api/v1/hr/employees", headers=mock_admin_headers, json=dup)
         assert resp2.status_code == 409
-        assert resp2.json()["error"] == "Conflict"
+        assert resp2.json()["error"] == "ConflictError"
 
     @pytest.mark.xfail(strict=False, reason="App bug: literal validation in DTO causes unhandled exception instead of 422")
     def test_create_employee_invalid_employment_type(self, client, mock_admin_headers, override_auth):

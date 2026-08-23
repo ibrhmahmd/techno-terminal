@@ -40,9 +40,7 @@ EMPLOYEE_FIELD_KEYS: Final[FrozenSet[str]] = frozenset(
     }
 )
 
-# Validation constants
-MIN_NATIONAL_ID_LENGTH: Final[int] = 14
-MIN_PHONE_LENGTH: Final[int] = 11
+# Pagination defaults
 EMPLOYEE_PAGE_SIZE: Final[int] = 20
 MAX_PAGE_SIZE: Final[int] = 100
 

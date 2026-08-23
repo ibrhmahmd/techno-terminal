@@ -3,6 +3,7 @@
 Pydantic DTOs for employee-user account linking operations.
 """
 from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -16,10 +17,13 @@ class StaffAccountDTO(BaseModel):
     user_id: int
     employee_id: int
     username: str
+    email: str
     full_name: str
     role: UserRole
     is_active: bool
     phone: str
+    job_title: Optional[str] = None
+    created_at: Optional[datetime] = None
 
 
 class CreateStaffAccountResultDTO(BaseModel):
@@ -59,8 +63,11 @@ class StaffAccountLinkDTO(BaseModel):
 
     user_id: int
     username: str
+    email: str
     employee_id: int
     full_name: str
     role: UserRole
     is_active: bool
     phone: str
+    job_title: Optional[str] = None
+    created_at: Optional[datetime] = None

@@ -2,7 +2,10 @@
 
 Business logic for employee-user account linking.
 """
+import logging
+
 from app.modules.auth.constants import UserRole
+from app.modules.hr.models import Employee
 from app.modules.hr.repositories import HRUnitOfWork
 from app.modules.hr.schemas import (
     CreateEmployeeAccountDTO,
@@ -12,7 +15,16 @@ from app.modules.hr.schemas import (
 )
 from app.shared.constants import MIN_PASSWORD_LENGTH
 from app.shared.datetime_utils import utc_now
-from app.shared.exceptions import ConflictError, NotFoundError, ValidationError
+from app.shared.exceptions import (
+    BusinessRuleError,
+    ConflictError,
+    NotFoundError,
+    ValidationError,
+)
+
+logger = logging.getLogger(__name__)
+
+_EMAIL_TAKEN_SIGNALS = ("already registered", "already exists", "already in use")
 
 
 class StaffAccountService:
@@ -26,21 +38,25 @@ class StaffAccountService:
         self, dto: CreateEmployeeAccountDTO
     ) -> EmployeeAccountResultDTO:
         """Create user account for existing employee.
-        
+
+        Guarantees zero partial state: remote-auth failures persist nothing,
+        and a failure after the remote identity is created compensates by
+        deleting that identity before rolling back local work.
+
         Args:
             dto: Account creation data
-            
+
         Returns:
             EmployeeAccountResultDTO with created account details
-            
+
         Raises:
             NotFoundError: If employee not found
             ConflictError: If email exists or employee already has account
             ValidationError: If password too short or invalid role
+            BusinessRuleError: If provisioning fails midway (nothing created; retry)
         """
-        self._validate_account_creation(dto)
+        employee = self._validate_account_creation(dto)
 
-        # Create Supabase user if client available
         if not self._supabase:
             raise ValidationError("Supabase client not configured")
 
@@ -54,14 +70,24 @@ class StaffAccountService:
             )
             supabase_uid = auth_response.user.id
         except Exception as e:
-            raise ConflictError(f"Supabase error: {e}") from e
+            if self._is_email_taken_signal(e):
+                raise ConflictError("email: already registered") from e
+            raise BusinessRuleError(
+                "Account provisioning is temporarily unavailable — "
+                "nothing was created; please retry shortly."
+            ) from e
 
-        # Create local records only after Supabase success
-        employee = self._uow.employees.get_by_id(dto.employee_id)
-        employee, user = self._uow.staff_accounts.create_linked_account(
-            employee, dto, supabase_uid
-        )
-        self._uow.commit()
+        try:
+            user = self._uow.staff_accounts.create_linked_account(employee, dto, supabase_uid)
+            self._uow.commit()
+        except Exception as exc:
+            self._compensate_remote_user(supabase_uid)
+            self._uow.rollback()
+            if isinstance(exc, (ConflictError, NotFoundError, ValidationError)):
+                raise
+            raise BusinessRuleError(
+                "Account provisioning failed — nothing was created; it is safe to retry."
+            ) from exc
 
         return EmployeeAccountResultDTO(
             employee_id=employee.id,
@@ -85,10 +111,13 @@ class StaffAccountService:
                 user_id=link.user_id,
                 employee_id=link.employee_id,
                 username=link.username,
+                email=link.email,
                 full_name=link.full_name,
                 role=link.role,
                 is_active=link.is_active,
                 phone=link.phone,
+                job_title=link.job_title,
+                created_at=link.created_at,
             )
             for link in links
         ]
@@ -117,21 +146,27 @@ class StaffAccountService:
         self._uow.commit()
         return True
 
-    def _validate_account_creation(self, dto: CreateEmployeeAccountDTO) -> None:
-        """Validate account creation request.
-        
+    def _validate_account_creation(self, dto: CreateEmployeeAccountDTO) -> Employee:
+        """Validate account creation request and resolve the target employee.
+
+        Runs entirely before any remote call so a missing or already-linked
+        employee can never leave an orphaned auth identity.
+
         Args:
             dto: Account creation DTO
-            
+
+        Returns:
+            The employee to provision the account for
+
         Raises:
             NotFoundError: If employee not found
             ConflictError: If conflicts found
             ValidationError: If validation fails
         """
-        # Validate password
+        # Validate password (pre-remote; field-named for aggregated reporting)
         if len(dto.password) < MIN_PASSWORD_LENGTH:
             raise ValidationError(
-                f"Password must be at least {MIN_PASSWORD_LENGTH} characters"
+                f"password: must be at least {MIN_PASSWORD_LENGTH} characters"
             )
 
         # Validate role
@@ -150,3 +185,23 @@ class StaffAccountService:
             )
 
         # Note: Email uniqueness is validated by Supabase during user creation
+        return emp
+
+    @staticmethod
+    def _is_email_taken_signal(exc: Exception) -> bool:
+        """Detect registration-conflict signals from the remote auth provider."""
+        text = str(exc).lower()
+        return any(signal in text for signal in _EMAIL_TAKEN_SIGNALS)
+
+    def _compensate_remote_user(self, supabase_uid: str) -> None:
+        """Best-effort deletion of a just-created remote identity.
+
+        Compensation failures are logged and never mask the original error.
+        """
+        try:
+            self._supabase.auth.admin.delete_user(supabase_uid)
+        except Exception:
+            logger.exception(
+                "Compensation failed: orphaned auth identity %s requires manual cleanup",
+                supabase_uid,
+            )

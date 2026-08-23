@@ -528,37 +528,35 @@ class TestEmployeesEdgeCases:
 
 class TestHRAuth:
     """Authentication tests for all HR endpoints."""
-    
-    def test_all_hr_endpoints_require_admin(self, client, mock_admin_headers, override_auth):
-        """
-        Verify all HR endpoints require admin authentication.
-        """
-        endpoints = [
-            ("GET", "/api/v1/hr/employees"),
-            ("GET", "/api/v1/hr/employees/1"),
-            ("POST", "/api/v1/hr/employees"),
-            ("PUT", "/api/v1/hr/employees/99999"),
-            ("GET", "/api/v1/hr/staff-accounts"),
-            ("POST", "/api/v1/hr/attendance/log"),
-        ]
-        
-        for method, endpoint in endpoints:
-            # Without auth should fail
-            if method == "GET":
-                no_auth = client.get(endpoint)
-            elif method == "POST":
-                no_auth = client.post(endpoint, json={})
-            elif method == "PUT":
-                no_auth = client.put(endpoint, json={})
-            
-            assert no_auth.status_code == 401, f"{endpoint} should require auth"
-            
-            # With admin auth should not be 401 (may be 404 if resource doesn't exist)
-            if method == "GET":
-                with_auth = client.get(endpoint, headers=mock_admin_headers)
-            elif method == "POST":
-                with_auth = client.post(endpoint, headers=mock_admin_headers, json={"employee_id": 1, "status": "check_in"} if "attendance" in endpoint else {"full_name": "Test", "job_title": "Tester"})
-            elif method == "PUT":
-                with_auth = client.put(endpoint, headers=mock_admin_headers, json={"full_name": "Test", "job_title": "Tester"})
-            
-            assert with_auth.status_code != 401, f"{endpoint} should accept admin auth"
+
+    ENDPOINTS = [
+        ("GET", "/api/v1/hr/employees"),
+        ("GET", "/api/v1/hr/employees/1"),
+        ("POST", "/api/v1/hr/employees"),
+        ("PUT", "/api/v1/hr/employees/99999"),
+        ("GET", "/api/v1/hr/staff-accounts"),
+        ("POST", "/api/v1/hr/attendance/log"),
+    ]
+
+    def _call(self, client, method, endpoint, headers=None):
+        if method == "GET":
+            return client.get(endpoint, headers=headers)
+        if method == "POST":
+            payload = (
+                {"employee_id": 1, "status": "check_in"}
+                if "attendance" in endpoint
+                else {"full_name": "Test", "job_title": "Tester"}
+            )
+            return client.post(endpoint, headers=headers, json=payload)
+        return client.put(endpoint, headers=headers, json={"full_name": "Test", "job_title": "Tester"})
+
+    def test_all_hr_endpoints_reject_missing_credentials(self, client):
+        """Without override_auth: real dependency chain must reject with 401."""
+        for method, endpoint in self.ENDPOINTS:
+            resp = self._call(client, method, endpoint)
+            assert resp.status_code == 401, f"{endpoint} should require auth"
+
+    def test_all_hr_endpoints_accept_admin_auth(self, client, mock_admin_headers, override_auth):
+        for method, endpoint in self.ENDPOINTS:
+            resp = self._call(client, method, endpoint, mock_admin_headers)
+            assert resp.status_code != 401, f"{endpoint} should accept admin auth"

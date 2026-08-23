@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlmodel import Session
 
 from app.modules.hr.models import Employee
+from app.shared.datetime_utils import utc_now
 from app.shared.exceptions import NotFoundError
 
 if TYPE_CHECKING:
@@ -22,16 +23,16 @@ class StaffAccountRepository:
 
     def create_linked_account(
         self, employee: Employee, dto: "CreateEmployeeAccountDTO", supabase_uid: str
-    ) -> tuple[Employee, "User"]:
+    ) -> "User":
         """Create user and link to employee in one transaction.
         
         Args:
-            employee: Employee to link
+            employee: Employee to link (mutated with user_id)
             dto: Account creation DTO
             supabase_uid: Supabase user UID
             
         Returns:
-            Tuple of (updated Employee, created User)
+            The created User
         """
         from app.modules.auth.models.auth_models import User
         from app.modules.hr.schemas import CreateEmployeeAccountDTO
@@ -41,15 +42,20 @@ class StaffAccountRepository:
             role=dto.role,
             supabase_uid=supabase_uid,
             is_active=True,
+            created_at=utc_now(),  # explicit: model None would override DB default
         )
         self._session.add(user)
         self._session.flush()
 
+        # Write BOTH sides of the 1:1 link so reverse lookups
+        # (User.employee_id joins / status syncs) work.
         employee.user_id = user.id
+        user.employee_id = employee.id
         self._session.add(employee)
+        self._session.add(user)
         self._session.flush()
 
-        return employee, user
+        return user
 
     def list_all_with_employees(self) -> list["StaffAccountLinkDTO"]:
         """List all user-employee linked accounts.
@@ -69,14 +75,35 @@ class StaffAccountRepository:
             StaffAccountLinkDTO(
                 user_id=user.id,
                 username=user.username,
+                email=user.username,  # User model stores the account email in username
                 employee_id=employee.id,
                 full_name=employee.full_name,
                 role=user.role,
                 is_active=user.is_active,
                 phone=employee.phone,
+                job_title=employee.job_title,
+                created_at=user.created_at,
             )
             for user, employee in results
         ]
+
+    def set_user_active(self, user_id: int, active: bool) -> None:
+        """Set a user account's active flag without touching role or employee.
+
+        Args:
+            user_id: User ID to update
+            active: New is_active value
+
+        Raises:
+            NotFoundError: If user not found
+        """
+        from app.modules.auth.models.auth_models import User
+
+        user = self._session.get(User, user_id)
+        if not user:
+            raise NotFoundError(f"User {user_id} not found")
+        user.is_active = active
+        self._session.add(user)
 
     def update_account_status(
         self, user_id: int, is_active: bool, role: str

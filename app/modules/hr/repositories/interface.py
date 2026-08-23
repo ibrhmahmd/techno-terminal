@@ -11,6 +11,7 @@ from app.modules.hr.schemas import (
     CreateEmployeeDTO,
     UpdateEmployeeDTO,
     CreateEmployeeAccountDTO,
+    EmployeeListResult,
     StaffAccountLinkDTO,
 )
 
@@ -45,8 +46,8 @@ class EmployeeRepositoryInterface(Protocol):
     def list_active(self) -> list[Employee]: ...
     """List all active employees."""
 
-    def list_all(self, page: int = 1, page_size: int = 20) -> tuple[list[Employee], int]: ...
-    """List all employees with pagination. Returns (employees, total_count)."""
+    def list_all(self, page: int = 1, page_size: int = 20) -> EmployeeListResult: ...
+    """List all employees with pagination as a named result (items + total)."""
 
 
 @runtime_checkable
@@ -58,8 +59,8 @@ class StaffAccountRepositoryInterface(Protocol):
         employee: Employee,
         dto: CreateEmployeeAccountDTO,
         supabase_uid: str,
-    ) -> tuple[Employee, "User"]: ...  # type: ignore[type-arg]
-    """Create user and link to employee."""
+    ) -> "User": ...  # type: ignore[type-arg]
+    """Create user and link to employee. Returns the created User."""
 
     def list_all_with_employees(self) -> list[StaffAccountLinkDTO]: ...
     """List all user-employee linked accounts."""
@@ -73,6 +74,17 @@ class StaffAccountRepositoryInterface(Protocol):
         user_id: User ID to update
         is_active: New active status
         role: New role
+
+    Raises:
+        NotFoundError: If user not found
+    """
+
+    def set_user_active(self, user_id: int, active: bool) -> None: ...
+    """Set a user account's active flag without touching role or employee.
+
+    Args:
+        user_id: User ID to update
+        active: New is_active value
 
     Raises:
         NotFoundError: If user not found

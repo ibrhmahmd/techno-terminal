@@ -1,25 +1,32 @@
 <!--
 ## Sync Impact Report
-Version change: 1.1.0 → 1.1.1 (PATCH)
+Version change: 1.1.1 → 1.1.2 (PATCH)
 
 ### Changes
-- §III Typed Contracts: Added clarification that repository *internal* query-helper functions
-  that return (rows, count) tuples MUST be wrapped in a named DTO before crossing a
-  public boundary. The prohibition on `-> tuple` applies at the public method signature;
-  private implementation helpers may use tuples only if they never appear in the interface
-  Protocol or in service method signatures.
-- Operational Constraints / Database Engine Configuration: Corrected pool_size from 5 to 10
-  and max_overflow from 5 to 5 (15 max total) to match the actual code in
-  `app/db/connection.py`. The previous value (pool_size=5, 10 max) was stale.
+- §V Auth-Guarded Endpoints: CORRECTED the documented role mechanism to match code
+  truth. The previous text claimed the user role is read from JWT `app_metadata.role`;
+  in reality the JWT only proves identity (Supabase uid mapped to a local User row via
+  `get_user_by_supabase_uid`) and authorization reads exclusively from the local
+  `users.role` column (`app/api/dependencies.py:100-106`). Mock-token guidance updated:
+  tests need a matching seeded local user row or the `override_auth` fixture, not a
+  role claim. Also listed `require_system_admin`, which was missing from the guard list.
+- Operational Constraints / Database Engine Configuration: corrected `sslmode=require`
+  → `sslmode=prefer` per `app/db/connection.py:28`.
+- Development Workflow / Database Migrations: schema file count corrected 17 → 18;
+  duplicate-prefix list extended with 051 and 057; total migration count noted as 87.
 
 ### Templates requiring updates
-- .specify/templates/plan-template.md ✅ No change needed (dynamic reference)
-- .specify/templates/spec-template.md ✅ No change needed (structural only)
-- .specify/templates/tasks-template.md ✅ No change needed (structural only)
-- .specify/templates/constitution-template.md ✅ No change needed (generic base)
+- .specify/templates/plan-template.md ✅ No change needed (no stale references found)
+- .specify/templates/spec-template.md ✅ No change needed (no stale references found)
+- .specify/templates/tasks-template.md ✅ No change needed (no stale references found)
+- .specify/templates/commands/*.md ✅ No change needed (grep for `app_metadata` matched
+  only this file)
 
 ### Deferred items
 - None
+
+Source audit: feature 039-audit-employee-creation findings F-11 (accepted-risk) and
+post-analysis remediation R-batch C1.
 -->
 
 # Techno Terminal Constitution
@@ -104,14 +111,22 @@ envelope.
 
 All endpoints except health checks (`/health`, `/kaithhealthcheck`) require a valid
 Supabase JWT. Auth flows through `get_current_user()` in `app/api/dependencies.py` which
-validates via `get_supabase_anon()` and maps to the local `User` model. Role guards enforce
-access:
+validates the JWT via `get_supabase_anon()` and maps the Supabase uid to the local `User`
+model. The JWT proves identity ONLY — authorization never reads role claims.
+
+The user role is read exclusively from the local `users.role` column
+(`dependencies.py:100-106`). Role guards enforce access:
 
 - `require_admin`: allows `admin` + `system_admin`
+- `require_system_admin`: allows `system_admin` only
 - `require_any`: any authenticated active user — use for read endpoints serving all staff
 
-The user role is read from JWT `app_metadata.role`. Mock test JWTs use HS256 with
-`TEST_SECRET` and must also place role in `app_metadata`.
+Inactive accounts are rejected with 403 before any role check.
+
+Mock test JWTs use HS256 with `TEST_SECRET`. Because roles come from the database, a
+mock token MUST be paired with either a matching seeded local user row (same
+`supabase_uid`) or the `override_auth` fixture, which replaces `get_current_user`
+entirely — role claims inside mock tokens are not authoritative.
 
 ## Operational Constraints
 
@@ -121,7 +136,7 @@ Actual values from `app/db/connection.py` (code is the source of truth):
 
 - Pool: `pool_size=10`, `max_overflow=5` (15 max total), `pool_timeout=30`
 - Health: `pool_pre_ping=True`, `pool_recycle=240` (4 minutes)
-- SSL: `sslmode=require`
+- SSL: `sslmode=prefer`
 - Timeout: `statement_timeout=30000` (30 seconds global)
 - Session: `expire_on_commit=False`
 - TCP keepalive: `keepalives=1`, idle=30s, interval=10s, count=5
@@ -159,10 +174,10 @@ the request. This is intentional for background/non-transactional notifications.
 
 ### Database Migrations
 
-- Schema: 17 modular files in `db/schema/` applied in dependency order via `db/schema.sql`
-- Migrations: numbered `NNN_description.sql` files in `db/migrations/`, apply in
+- Schema: 18 modular files in `db/schema/` applied in dependency order via `db/schema.sql`
+- Migrations: 87 numbered `NNN_description.sql` files in `db/migrations/`, apply in
   chronological order (not strictly numeric — some numbers have duplicates from parallel
-  branches: 008, 020, 021, 022, 026, 030, 036)
+  branches: 008, 020, 021, 022, 026, 030, 036, 051, 057)
 
 ### Testing & Tokens
 
@@ -192,4 +207,4 @@ Amendments require:
 Constitution violations are always CRITICAL and must be resolved before implementation
 proceeds.
 
-**Version**: 1.1.1 | **Ratified**: 2026-05-11 | **Last Amended**: 2026-06-03
+**Version**: 1.1.2 | **Ratified**: 2026-05-11 | **Last Amended**: 2026-08-23

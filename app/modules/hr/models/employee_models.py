@@ -5,7 +5,6 @@ SQLModel entities for employee management.
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import field_validator
 from sqlalchemy import Column, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import SQLModel, Field
@@ -43,36 +42,3 @@ class Employee(EmployeeBase, table=True):
         default=None,
         sa_column=Column("metadata", JSONB),
     )
-
-
-class EmployeeCreate(EmployeeBase):
-    """DTO for creating a new employee."""
-    
-    @field_validator("phone", "national_id", "university", "major", mode="before")
-    @classmethod
-    def strip_strings(cls, v):
-        if isinstance(v, str):
-            return v.strip()
-        return v
-
-    @field_validator("email", mode="before")
-    @classmethod
-    def empty_email_none(cls, v):
-        if v is None or (isinstance(v, str) and not v.strip()):
-            return None
-        return v.strip()
-
-    @field_validator("national_id")
-    @classmethod
-    def national_id_len(cls, v: str) -> str:
-        if len(v) < 10:
-            raise ValueError("National ID must be at least 10 characters.")
-        return v
-
-
-class EmployeeRead(EmployeeBase):
-    """DTO for reading employee data."""
-    id: int
-    hired_at: Optional[datetime] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None

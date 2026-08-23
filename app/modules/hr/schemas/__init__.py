@@ -14,7 +14,7 @@ from .staff_account_schemas import (
     EmployeeAccountResultDTO,
     StaffAccountLinkDTO,
 )
-from .response_schemas import EmployeeListResponseDTO
+from .response_schemas import EmployeeListResponseDTO, EmployeeListResult
 
 __all__ = [
     # Employee DTOs
@@ -29,4 +29,5 @@ __all__ = [
     "StaffAccountLinkDTO",
     # Response DTOs
     "EmployeeListResponseDTO",
+    "EmployeeListResult",
 ]
