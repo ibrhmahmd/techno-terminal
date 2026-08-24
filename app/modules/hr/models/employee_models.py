@@ -38,6 +38,8 @@ class Employee(EmployeeBase, table=True):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     user_id: Optional[int] = Field(default=None, foreign_key="users.id", unique=True)
+    deleted_at: Optional[datetime] = None
+    deleted_by: Optional[int] = Field(default=None, foreign_key="users.id")
     employee_metadata: Optional[dict[str, Any]] = Field(
         default=None,
         sa_column=Column("metadata", JSONB),

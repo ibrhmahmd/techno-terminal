@@ -31,23 +31,33 @@ class EmployeeRepositoryInterface(Protocol):
     ) -> Employee | None: ...
     """Update employee from DTO."""
 
-    def get_by_id(self, employee_id: int) -> Employee | None: ...
-    """Get employee by ID."""
+    def get_by_id(
+        self, employee_id: int, include_deleted: bool = False
+    ) -> Employee | None: ...
+    """Get employee by ID; deleted rows excluded unless include_deleted."""
 
-    def get_by_national_id(self, national_id: str) -> Employee | None: ...
-    """Get employee by national ID."""
+    def soft_delete(self, employee_id: int, deleted_by: int) -> Employee: ...
+    """Stamp deleted_at/deleted_by markers.
 
-    def get_by_phone(self, phone: str) -> Employee | None: ...
-    """Get employee by phone number."""
+    Raises:
+        NotFoundError: If the employee is missing or already deleted
+    """
 
-    def get_by_email(self, email: str, exclude_id: int | None = None) -> Employee | None: ...
-    """Get employee by email, optionally excluding an ID."""
+    def restore(self, employee_id: int) -> Employee: ...
+    """Clear soft-delete markers.
+
+    Raises:
+        NotFoundError: If no employee exists with this ID
+        ConflictError: If the employee is not currently deleted
+    """
 
     def list_active(self) -> list[Employee]: ...
     """List all active employees."""
 
-    def list_all(self, page: int = 1, page_size: int = 20) -> EmployeeListResult: ...
-    """List all employees with pagination as a named result (items + total)."""
+    def list_all(
+        self, page: int = 1, page_size: int = 20, include_deleted: bool = False
+    ) -> EmployeeListResult: ...
+    """List employees with pagination as a named result (items + total)."""
 
 
 @runtime_checkable

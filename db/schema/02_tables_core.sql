@@ -37,11 +37,10 @@ CREATE TABLE employees (
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     metadata JSONB DEFAULT '{}'::jsonb,
     user_id INTEGER,
+    deleted_at TIMESTAMPTZ,
+    deleted_by INTEGER,
     CONSTRAINT employees_contract_pct_check CHECK ((((employment_type <> 'contract'::text) AND (contract_percentage IS NULL)) OR (employment_type = 'contract'::text))),
     CONSTRAINT employees_employment_type_check CHECK ((employment_type = ANY (ARRAY['full_time'::text, 'part_time'::text, 'contract'::text]))),
-    CONSTRAINT uq_employees_email UNIQUE (email),
-    CONSTRAINT uq_employees_national_id UNIQUE (national_id),
-    CONSTRAINT uq_employees_phone UNIQUE (phone),
     CONSTRAINT uq_employees_user_id UNIQUE (user_id)
 );
 
@@ -64,3 +63,4 @@ CREATE TABLE users (
 );
 
 ALTER TABLE employees ADD CONSTRAINT fk_employees_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL;
+ALTER TABLE employees ADD CONSTRAINT fk_employees_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id);

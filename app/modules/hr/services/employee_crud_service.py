@@ -106,19 +106,104 @@ class EmployeeCrudService:
             raise NotFoundError(f"Employee {employee_id} not found")
         return EmployeeReadDTO.model_validate(emp)
 
+    def delete_employee(self, employee_id: int, actor_user_id: int) -> None:
+        """Soft-delete an employee and block any linked login.
+
+        The record is kept for historical references (instructor assignments,
+        task logs); identity fields become reusable for re-hire.
+
+        Args:
+            employee_id: ID of the employee to delete
+            actor_user_id: Local user ID of the acting admin (audit trail)
+
+        Raises:
+            NotFoundError: If the employee is missing or already deleted
+        """
+        existing = self._uow.employees.get_by_id(employee_id)
+        if not existing:
+            raise NotFoundError(f"Employee {employee_id} not found")
+
+        if existing.user_id is not None:
+            self._uow.staff_accounts.set_user_active(existing.user_id, False)
+
+        self._uow.employees.soft_delete(employee_id, actor_user_id)
+        self._uow.flush()
+        self._uow.commit()
+
+    def restore_employee(self, employee_id: int) -> EmployeeReadDTO:
+        """Restore a soft-deleted employee.
+
+        Restoration is refused when any identity field of the deleted record
+        now collides with a LIVE employee (e.g. after a re-hire). Every
+        colliding field is reported together. A restored employee's linked
+        login stays blocked; re-enabling it is a separate admin decision.
+
+        Args:
+            employee_id: ID of the deleted employee
+
+        Returns:
+            EmployeeReadDTO of the restored employee
+
+        Raises:
+            NotFoundError: If no employee exists with this ID
+            ConflictError: If the employee is live or identities collide
+        """
+        emp = self._uow.employees.get_by_id(employee_id, include_deleted=True)
+        if not emp:
+            raise NotFoundError(f"Employee {employee_id} not found")
+        if emp.deleted_at is None:
+            raise ConflictError(f"Employee {employee_id} is not deleted")
+
+        snapshot = CreateEmployeeDTO(
+            **{
+                field: getattr(emp, field)
+                for field in (
+                    "full_name",
+                    "phone",
+                    "email",
+                    "national_id",
+                    "university",
+                    "major",
+                    "is_graduate",
+                    "job_title",
+                    "employment_type",
+                    "monthly_salary",
+                    "contract_percentage",
+                    "is_active",
+                )
+            }
+        )
+        self._validate_unique_fields(snapshot, exclude_id=employee_id)
+
+        try:
+            self._uow.employees.restore(employee_id)
+            self._uow.flush()
+            self._uow.commit()
+        except IntegrityError as exc:
+            self._uow.rollback()
+            raise translate_employee_integrity_error(exc) from exc
+
+        refreshed = self._uow.employees.get_by_id(employee_id)
+        assert refreshed is not None
+        return EmployeeReadDTO.model_validate(refreshed)
+
     def list_paginated(
-        self, page: int = 1, page_size: int = 20
+        self,
+        page: int = 1,
+        page_size: int = 20,
+        include_deleted: bool = False,
     ) -> EmployeeListResponseDTO:
         """List employees with pagination.
-        
+
         Args:
             page: Page number (1-indexed)
             page_size: Items per page
-            
+            include_deleted: Include soft-deleted employees (admin discovery)
+
         Returns:
             EmployeeListResponseDTO with paginated results
         """
-        result = self._uow.employees.list_all(page, page_size)
+        result = self._uow.employees.list_all(page, page_size, include_deleted)
         return EmployeeListResponseDTO(
             items=[EmployeeReadDTO.model_validate(e) for e in result.items],
             total=result.total,

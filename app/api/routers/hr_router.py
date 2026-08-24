@@ -49,13 +49,18 @@ router = APIRouter(tags=["HR"])
 def list_employees(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
+    include_deleted: bool = Query(
+        False,
+        description="Include soft-deleted employees (admin discovery view)",
+    ),
     _user: User = Depends(require_admin),
     service: EmployeeCrudService = Depends(get_employee_crud_service),
 ):
     """
     Returns a paginated list of all employees. Restricted to admin.
+    Rows carry deleted_at/deleted_by only when include_deleted=true.
     """
-    result = service.list_paginated(page, page_size)
+    result = service.list_paginated(page, page_size, include_deleted)
     return ApiResponse(
         data=[EmployeeListItem.model_validate(e) for e in result.items],
         message=f"Showing {len(result.items)} of {result.total} employees"
@@ -127,6 +132,51 @@ def update_employee(
     return ApiResponse(
         data=EmployeePublic.model_validate(emp),
         message="Employee updated successfully.",
+    )
+
+
+# soft-delete employee
+@router.delete(
+    "/hr/employees/{employee_id}",
+    response_model=ApiResponse[bool],
+    summary="Soft-delete employee record",
+)
+def delete_employee_endpoint(
+    employee_id: int,
+    user: User = Depends(require_admin),
+    service: EmployeeCrudService = Depends(get_employee_crud_service),
+):
+    """
+    Soft-deletes an employee: hidden from all lookups and lists, any linked
+    login is blocked, history stays intact. Restricted to admin.
+    """
+    service.delete_employee(employee_id, user.id)
+    return ApiResponse(
+        data=True,
+        message="Employee deleted successfully.",
+    )
+
+
+# restore soft-deleted employee
+@router.post(
+    "/hr/employees/{employee_id}/restore",
+    response_model=ApiResponse[EmployeePublic],
+    summary="Restore a soft-deleted employee",
+)
+def restore_employee_endpoint(
+    employee_id: int,
+    _user: User = Depends(require_admin),
+    service: EmployeeCrudService = Depends(get_employee_crud_service),
+):
+    """
+    Restores a previously soft-deleted employee. Refused with 409 when any
+    identity field now collides with a live employee (e.g. after re-hire).
+    A linked login stays blocked after restore. Restricted to admin.
+    """
+    emp = service.restore_employee(employee_id)
+    return ApiResponse(
+        data=EmployeePublic.model_validate(emp),
+        message="Employee restored successfully.",
     )
 
 

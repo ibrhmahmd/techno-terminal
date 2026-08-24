@@ -30,9 +30,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_competitions_name_edition_year ON public.co
 -- -----------------------------------------------------------------------------
 -- Indexes for table employees
 -- -----------------------------------------------------------------------------
-CREATE UNIQUE INDEX IF NOT EXISTS uq_employees_email ON public.employees USING btree (email);
-CREATE UNIQUE INDEX IF NOT EXISTS uq_employees_national_id ON public.employees USING btree (national_id);
-CREATE UNIQUE INDEX IF NOT EXISTS uq_employees_phone ON public.employees USING btree (phone);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_employees_email ON public.employees USING btree (email) WHERE (deleted_at IS NULL);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_employees_national_id ON public.employees USING btree (national_id) WHERE (deleted_at IS NULL);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_employees_phone ON public.employees USING btree (phone) WHERE (deleted_at IS NULL);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_employees_user_id ON public.employees USING btree (user_id);
 
 -- -----------------------------------------------------------------------------

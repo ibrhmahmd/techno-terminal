@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from typing import Optional
 
@@ -5,6 +6,8 @@ from app.db.connection import get_session
 import app.modules.auth.repositories.audit_repository as audit_repo
 from app.modules.auth.models.audit_log import AuditLog, AuditLogEventType
 from app.modules.auth.schemas.auth_schemas import AuditLogEntryDTO, AuditLogQueryResult
+
+logger = logging.getLogger(__name__)
 
 
 class AuditService:
@@ -15,19 +18,35 @@ class AuditService:
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
         details: Optional[dict] = None,
-    ) -> AuditLog:
-        with get_session() as session:
-            log = AuditLog(
-                user_id=user_id,
-                event_type=event_type,
-                ip_address=ip_address,
-                user_agent=user_agent,
-                details=details,
+    ) -> Optional[AuditLog]:
+        """Persist an audit event without ever breaking the calling request.
+
+        Audit writes must be best-effort: an infrastructure hiccup (e.g. a
+        transient RLS/pooler error) degrades to a warning instead of a
+        traceback in an auth response path.
+        """
+        try:
+            with get_session() as session:
+                log = AuditLog(
+                    user_id=user_id,
+                    event_type=event_type,
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                    details=details,
+                )
+                result = audit_repo.create_log(session, log)
+                session.commit()
+                session.refresh(result)
+                return result
+        except Exception:
+            logger.warning(
+                "audit_log write failed (event_type=%s, user_id=%s) - "
+                "continuing without this audit trail",
+                event_type,
+                user_id,
+                exc_info=True,
             )
-            result = audit_repo.create_log(session, log)
-            session.commit()
-            session.refresh(result)
-            return result
+            return None
 
     def query_logs(
         self,

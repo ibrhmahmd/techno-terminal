@@ -467,3 +467,50 @@ class TestFR008SecondAccountRefusal:
             select(UserModel).where(UserModel.username == attempted_email)
         ).all()
         assert leftovers == [], "no local identity may be created for a refused request"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# FR-007 — Identity probes ignore soft-deleted employees (re-hire support)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestFR007ProbesIgnoreDeleted:
+    def test_deleted_identity_triple_is_reusable(self, client, mock_admin_headers, override_auth):
+        """After a soft delete, national_id/phone/email may be hired again."""
+        identity = valid_employee_payload()
+        original = _create_employee(
+            client, mock_admin_headers,
+            full_name=identity["full_name"],
+            phone=identity["phone"],
+            email=identity["email"],
+            national_id=identity["national_id"],
+        )
+
+        resp = client.delete(
+            f"/api/v1/hr/employees/{original['id']}", headers=mock_admin_headers
+        )
+        assert resp.status_code == 200, resp.text
+
+        rehired = client.post(
+            "/api/v1/hr/employees", headers=mock_admin_headers, json=identity
+        )
+        assert rehired.status_code == 201, rehired.text
+        assert rehired.json()["data"]["national_id"] == identity["national_id"]
+
+    def test_duplicate_probes_still_aggregate_against_live_records(self, client, mock_admin_headers, override_auth):
+        """Deleting someone must not weaken conflict detection among the living."""
+        live = _create_employee(client, mock_admin_headers)
+
+        colliding = valid_employee_payload(
+            phone=live["phone"],
+            email=live["email"],
+            national_id=live["national_id"],
+        )
+        resp = client.post(
+            "/api/v1/hr/employees", headers=mock_admin_headers, json=colliding
+        )
+
+        assert resp.status_code == 409, resp.text
+        message = resp.json()["message"]
+        assert "national_id" in message
+        assert "phone" in message
+        assert "email" in message

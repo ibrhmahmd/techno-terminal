@@ -81,3 +81,5 @@ class EmployeeReadDTO(BaseModel):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     user_id: Optional[int] = None
+    deleted_at: Optional[datetime] = None
+    deleted_by: Optional[int] = None

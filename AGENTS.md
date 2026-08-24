@@ -103,6 +103,18 @@ Defined at `dependencies.py:213` and `dependencies.py:411`. Python uses the last
 ### Test Isolation
 `db_session` fixture uses `get_session()` context manager — rollback only happens if the test raises. Successful tests simply close without explicit rollback; uncommitted mutations are lost on session close. `seeded_session` fixture (module-scoped) explicitly rolls back on teardown for zero side effects between modules. 30+ test files total.
 
+### Testing DB Policy (environment ladder)
+| Tier | Target | Allowed |
+|------|--------|---------|
+| Dev/unit | `localhost/techno` | Full fast gate, destructive resets (`db/schema.sql`), migration dry-runs |
+| Staging | Supabase **testing** project (`qugffjtucavdseczbata`) | Forward-only migrations FIRST, full pytest gate, live smoke via `TESTING=true python run_api.py` |
+| Prod | `srbppkcvrgioneitktdj` | Migrations only after the staging gate is green |
+
+- `.env.test` serves BOTH pytest and the server (`config.py:106` selects it when running under pytest or `TESTING=true`). Its `DATABASE_URL`, `SUPABASE_URL`, and keys must all point at the SAME project — `get_engine()` logs a warning on mismatch (`app/db/connection.py:_warn_on_project_mismatch`).
+- NEVER apply `db/schema.sql` or reset scripts to the cloud testing DB (it holds restored data) — resets are localhost/CI-container only.
+- Suite rows persist on the cloud testing DB by design; everything is uuid-tagged debris.
+- Migration ladder: write migration → apply to testing project → green HR/CI gates there → then prod.
+
 ### CI Pipeline
 `.github/workflows/ci.yml` runs on every push/PR:
 - **Backend only**: Ubuntu, PostgreSQL 15 service, Python 3.10, applies `db/schema.sql` via `cd db && psql`, seeds via `scripts/ci_seed_database.py`, runs **only** `pytest tests/test_finance.py tests/test_crm.py -v` (not the full suite).

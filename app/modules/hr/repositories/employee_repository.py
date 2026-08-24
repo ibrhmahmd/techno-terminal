@@ -10,6 +10,7 @@ from sqlmodel import Session
 from app.modules.hr.models import Employee
 from app.modules.hr.schemas import CreateEmployeeDTO, UpdateEmployeeDTO, EmployeeListResult
 from app.shared.datetime_utils import utc_now
+from app.shared.exceptions import ConflictError, NotFoundError
 
 
 class EmployeeRepository:
@@ -56,16 +57,66 @@ class EmployeeRepository:
         self._session.add(emp)
         return emp
 
-    def get_by_id(self, employee_id: int) -> Optional[Employee]:
+    def get_by_id(
+        self, employee_id: int, include_deleted: bool = False
+    ) -> Optional[Employee]:
         """Get employee by ID.
-        
+
         Args:
             employee_id: Employee ID
-            
+            include_deleted: Return soft-deleted employees too
+
         Returns:
-            Employee or None
+            Employee or None (deleted rows excluded unless include_deleted)
         """
-        return self._session.get(Employee, employee_id)
+        emp = self._session.get(Employee, employee_id)
+        if emp and not include_deleted and emp.deleted_at is not None:
+            return None
+        return emp
+
+    def soft_delete(self, employee_id: int, deleted_by: int) -> Employee:
+        """Stamp soft-delete markers on a live employee.
+
+        Args:
+            employee_id: ID of the employee to delete
+            deleted_by: Local user ID of the acting admin
+
+        Returns:
+            The soft-deleted Employee
+
+        Raises:
+            NotFoundError: If the employee is missing or already deleted
+        """
+        emp = self._session.get(Employee, employee_id)
+        if not emp or emp.deleted_at is not None:
+            raise NotFoundError(f"Employee {employee_id} not found")
+        emp.deleted_at = utc_now()
+        emp.deleted_by = deleted_by
+        self._session.add(emp)
+        return emp
+
+    def restore(self, employee_id: int) -> Employee:
+        """Clear soft-delete markers on a previously deleted employee.
+
+        Args:
+            employee_id: ID of the employee to restore
+
+        Returns:
+            The restored Employee
+
+        Raises:
+            NotFoundError: If no employee exists with this ID
+            ConflictError: If the employee is not currently deleted
+        """
+        emp = self._session.get(Employee, employee_id)
+        if not emp:
+            raise NotFoundError(f"Employee {employee_id} not found")
+        if emp.deleted_at is None:
+            raise ConflictError(f"Employee {employee_id} is not deleted")
+        emp.deleted_at = None
+        emp.deleted_by = None
+        self._session.add(emp)
+        return emp
 
     def find_by_national_id(
         self, nid: str, exclude_id: Optional[int] = None
@@ -79,7 +130,10 @@ class EmployeeRepository:
         Returns:
             Employee or None
         """
-        stmt = select(Employee).where(Employee.national_id == nid.strip())
+        stmt = select(Employee).where(
+            Employee.national_id == nid.strip(),
+            Employee.deleted_at.is_(None),
+        )
         if exclude_id:
             stmt = stmt.where(Employee.id != exclude_id)
         return self._session.exec(stmt).first()
@@ -96,7 +150,10 @@ class EmployeeRepository:
         Returns:
             Employee or None
         """
-        stmt = select(Employee).where(Employee.phone == phone)
+        stmt = select(Employee).where(
+            Employee.phone == phone,
+            Employee.deleted_at.is_(None),
+        )
         if exclude_id:
             stmt = stmt.where(Employee.id != exclude_id)
         return self._session.exec(stmt).first()
@@ -113,36 +170,50 @@ class EmployeeRepository:
         Returns:
             Employee or None
         """
-        stmt = select(Employee).where(Employee.email == email.strip())
+        stmt = select(Employee).where(
+            Employee.email == email.strip(),
+            Employee.deleted_at.is_(None),
+        )
         if exclude_id:
             stmt = stmt.where(Employee.id != exclude_id)
         return self._session.exec(stmt).first()
 
     def list_active(self) -> list[Employee]:
-        """List all active employees."""
-        stmt = select(Employee).where(Employee.is_active.is_(True))
+        """List all active employees (soft-deleted rows never appear)."""
+        stmt = select(Employee).where(
+            Employee.is_active.is_(True),
+            Employee.deleted_at.is_(None),
+        )
         results = self._session.exec(stmt)
         return list(results.scalars().all())
 
-    def list_all(self, page: int = 1, page_size: int = 20) -> EmployeeListResult:
-        """List all employees with pagination.
-        
+    def list_all(
+        self, page: int = 1, page_size: int = 20, include_deleted: bool = False
+    ) -> EmployeeListResult:
+        """List employees with pagination.
+
         Args:
             page: Page number (1-indexed)
             page_size: Items per page
-            
+            include_deleted: Include soft-deleted employees (admin discovery)
+
         Returns:
             EmployeeListResult with paginated employees and total count
         """
-        # Get total count - use scalar() to get int value, not Row tuple
-        total = self._session.exec(
-            select(func.count()).select_from(Employee)
-        ).scalar() or 0
+        base_filter = (
+            None if include_deleted else Employee.deleted_at.is_(None)
+        )
 
-        # Get paginated results - use scalars() to get ORM objects not Row tuples
+        count_stmt = select(func.count()).select_from(Employee)
+        if base_filter is not None:
+            count_stmt = count_stmt.where(base_filter)
+        total = self._session.exec(count_stmt).scalar() or 0
+
         offset = (page - 1) * page_size
         stmt = select(Employee).offset(offset).limit(page_size)
+        if base_filter is not None:
+            stmt = stmt.where(base_filter)
         results = self._session.exec(stmt)
         employees = list(results.scalars().all())
-        
+
         return EmployeeListResult(items=employees, total=total)

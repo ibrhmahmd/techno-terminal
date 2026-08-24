@@ -59,15 +59,20 @@ class StaffAccountRepository:
 
     def list_all_with_employees(self) -> list["StaffAccountLinkDTO"]:
         """List all user-employee linked accounts.
-        
+
+        Soft-deleted employees are excluded: their logins are blocked and
+        the accounts must not surface in the staff overview.
+
         Returns:
             List of StaffAccountLinkDTO with user and employee data
         """
         from app.modules.auth.models.auth_models import User
         from app.modules.hr.schemas import StaffAccountLinkDTO
-        
-        stmt = select(User, Employee).join(
-            Employee, User.employee_id == Employee.id
+
+        stmt = (
+            select(User, Employee)
+            .join(Employee, User.employee_id == Employee.id)
+            .where(Employee.deleted_at.is_(None))
         )
         results = self._session.exec(stmt).all()
         

@@ -28,6 +28,15 @@ class EmployeePublic(BaseModel):
     is_graduate: Optional[bool] = None
     monthly_salary: Optional[float] = None
     contract_percentage: Optional[float] = None
+    deleted_at: Optional[datetime] = Field(
+        default=None,
+        description="Populated only when the row is soft-deleted and "
+        "returned via include_deleted=true",
+    )
+    deleted_by: Optional[int] = Field(
+        default=None,
+        description="Local user ID of the admin who deleted the employee",
+    )
 
     model_config = {"from_attributes": True}
 
@@ -41,6 +50,8 @@ class EmployeeListItem(BaseModel):
     job_title: Optional[str] = None
     employment_type: str
     is_active: bool
+    deleted_at: Optional[datetime] = None
+    deleted_by: Optional[int] = None
 
     model_config = {"from_attributes": True}
 
