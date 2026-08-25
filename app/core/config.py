@@ -49,6 +49,9 @@ class Settings(BaseSettings):
     slow_request_ms: int = 5000
     json_logs: bool = False
 
+    # Logfire Observability
+    logfire_token: Optional[str] = None
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 

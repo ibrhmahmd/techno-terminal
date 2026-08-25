@@ -1,6 +1,8 @@
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 
+import logfire
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -8,6 +10,35 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from app.api.exceptions import register_exception_handlers
 from app.api.middleware.logging_middleware import logging_middleware
 from app.core.config import configure_logging, settings
+
+
+def configure_logfire() -> None:
+    """Configure Logfire observability with the project settings."""
+    config_kwargs = {
+        "service_name": "techno-terminal-api",
+        "service_version": "1.0.0",
+        "advanced": logfire.AdvancedOptions(
+            base_url="https://logfire-us.pydantic.dev"
+        ),
+    }
+    if settings.logfire_token:
+        config_kwargs["token"] = settings.logfire_token
+    
+    logfire.configure(**config_kwargs)
+    # Instrument integrations that don't require app instance
+    # Note: SQLAlchemy instrumentation requires SQLAlchemy < 2.1, but we use 2.0.x
+    # The existing query_logger provides detailed SQL logging with request correlation
+    logfire.instrument_httpx()
+    logfire.instrument_system_metrics()
+    # Bridge standard logging to Logfire
+    logging.getLogger().addHandler(logfire.LogfireLoggingHandler())
+
+
+def instrument_fastapi_app(app: FastAPI) -> None:
+    """Instrument FastAPI app with Logfire (must be called after app creation)."""
+    logfire.instrument_fastapi(app)
+
+
 from app.api.routers import auth_router
 from app.api.routers import attendance_router
 from app.api.routers import enrollments_router
@@ -40,6 +71,7 @@ from app.api.routers.tasks import router as tasks_router
 
 
 def create_app() -> FastAPI:
+    configure_logfire()
     configure_logging(settings)
 
     from app.db.connection import get_engine
@@ -53,6 +85,7 @@ def create_app() -> FastAPI:
     from app.modules.notifications.services.report_scheduler import (
         start_report_scheduler,
     )
+    from app.observability.scheduler import run_metrics_collector, stop_metrics_collector
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -69,9 +102,11 @@ def create_app() -> FastAPI:
 
         task = asyncio.create_task(start_report_scheduler(_make_notification_service))
         task_spawner_task = asyncio.create_task(start_task_scheduler(_make_task_service))
+        metrics_task = asyncio.create_task(run_metrics_collector(interval_seconds=60))
         yield
         task.cancel()
         task_spawner_task.cancel()
+        await stop_metrics_collector()
         try:
             await asyncio.gather(task, task_spawner_task, return_exceptions=True)
         except asyncio.CancelledError:
@@ -86,6 +121,8 @@ def create_app() -> FastAPI:
         redoc_url="/api/v1/redoc",
         openapi_url="/api/v1/openapi.json",
     )
+
+    instrument_fastapi_app(app)
 
     app.state.slow_request_ms = settings.slow_request_ms
 

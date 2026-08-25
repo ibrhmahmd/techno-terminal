@@ -106,7 +106,8 @@ class ReportNotificationService(BaseNotificationService):
         
         today = target_date or date.today()
         week_start = today - timedelta(days=today.weekday())
-        week_end = today
+        completed_week_end = week_start + timedelta(days=6)
+        week_end = completed_week_end if completed_week_end < date.today() else today
         
         aggregates = self._fetch_weekly_aggregates(week_start, week_end)
         
@@ -122,6 +123,7 @@ class ReportNotificationService(BaseNotificationService):
             "total_debt": f"{aggregates.total_debt:,.2f}",
             "top_groups": aggregates.top_groups,
             "revenue_by_course": aggregates.revenue_by_course,
+            "dropped_enrollments": aggregates.dropped_enrollments,
         }
 
         # Send to all enabled recipients (admins + additional recipients)
@@ -139,9 +141,13 @@ class ReportNotificationService(BaseNotificationService):
         recipients = self._resolve_notification_recipients("monthly_report")
 
         today = target_date or date.today()
+        import calendar
         month_start = today.replace(day=1)
+        last_day = calendar.monthrange(month_start.year, month_start.month)[1]
+        completed_month_end = date(month_start.year, month_start.month, last_day)
+        month_end = completed_month_end if completed_month_end < date.today() else today
 
-        aggregates = self._fetch_monthly_aggregates(month_start, today)
+        aggregates = self._fetch_monthly_aggregates(month_start, month_end)
 
         variables = {
             "month": today.strftime("%B %Y"),
@@ -673,13 +679,14 @@ class ReportNotificationService(BaseNotificationService):
         
         try:
             with get_session() as session:
-                # 1. Total Revenue
+                # 1. Total Revenue (exclude voided payments)
                 rev_res = session.execute(text("""
                     SELECT COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type IN ('payment','charge')), 0) 
                          - COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type = 'refund'), 0) AS total_revenue
                     FROM receipts r
                     JOIN payments p ON p.receipt_id = r.id
                     WHERE DATE(COALESCE(r.paid_at, r.created_at)) BETWEEN :start AND :end
+                      AND p.deleted_at IS NULL
                 """), {"start": week_start, "end": week_end}).one_or_none()
                 dto.total_revenue = Decimal(str(rev_res.total_revenue)) if rev_res and rev_res.total_revenue is not None else Decimal("0.00")
 
@@ -690,6 +697,25 @@ class ReportNotificationService(BaseNotificationService):
                     WHERE DATE(COALESCE(enrolled_at, created_at)) BETWEEN :start AND :end
                 """), {"start": week_start, "end": week_end}).one_or_none()
                 dto.new_enrollments = enr_res.count if enr_res else 0
+
+                # 2b. New Students (distinct students whose first enrollment falls in period)
+                stud_res = session.execute(text("""
+                    SELECT COUNT(DISTINCT student_id) AS new_students
+                    FROM enrollments 
+                    WHERE DATE(COALESCE(enrolled_at, created_at)) BETWEEN :start AND :end 
+                      AND student_id NOT IN (
+                          SELECT student_id FROM enrollments WHERE DATE(COALESCE(enrolled_at, created_at)) < :start
+                      )
+                """), {"start": week_start, "end": week_end}).one_or_none()
+                dto.new_students = stud_res.new_students if stud_res else 0
+
+                # 2c. Dropped Enrollments
+                drop_res = session.execute(text("""
+                    SELECT COUNT(*) AS dropped_enrollments
+                    FROM enrollments 
+                    WHERE status = 'dropped' AND DATE(updated_at) BETWEEN :start AND :end
+                """), {"start": week_start, "end": week_end}).one_or_none()
+                dto.dropped_enrollments = drop_res.dropped_enrollments if drop_res else 0
 
                 # 3. Total Sessions
                 sess_res = session.execute(text("""
@@ -709,7 +735,7 @@ class ReportNotificationService(BaseNotificationService):
                     dto.debtor_count = debt_res.debtor_count
                     dto.total_debt = float(debt_res.total_debt)
 
-                # 5. Top Groups
+                # 5. Top Groups (exclude voided payments)
                 top_groups_rows = session.execute(text("""
                     SELECT g.name AS group_name, COALESCE(SUM(p.amount), 0) AS revenue
                     FROM groups g
@@ -718,6 +744,7 @@ class ReportNotificationService(BaseNotificationService):
                     JOIN receipts r ON p.receipt_id = r.id
                     WHERE DATE(COALESCE(r.paid_at, r.created_at)) BETWEEN :start AND :end
                       AND p.transaction_type IN ('payment','charge')
+                      AND p.deleted_at IS NULL
                     GROUP BY g.id, g.name
                     ORDER BY revenue DESC LIMIT 5
                 """), {"start": week_start, "end": week_end}).all()
@@ -728,7 +755,7 @@ class ReportNotificationService(BaseNotificationService):
                 else:
                     dto.top_groups = "<p style='font-size:12px;color:#64748b;'>No revenue generated this week.</p>"
 
-                # 6. Revenue by course
+                # 6. Revenue by course (exclude voided payments)
                 course_rows = session.execute(text("""
                     SELECT c.name AS course_name, COALESCE(SUM(p.amount), 0) AS revenue
                     FROM courses c
@@ -738,6 +765,7 @@ class ReportNotificationService(BaseNotificationService):
                     JOIN receipts r ON p.receipt_id = r.id
                     WHERE DATE(COALESCE(r.paid_at, r.created_at)) BETWEEN :start AND :end
                       AND p.transaction_type IN ('payment','charge')
+                      AND p.deleted_at IS NULL
                     GROUP BY c.id, c.name
                     ORDER BY revenue DESC
                 """), {"start": week_start, "end": week_end}).all()
@@ -799,13 +827,14 @@ class ReportNotificationService(BaseNotificationService):
 
         try:
             with get_session() as session:
-                # 1. Total Revenue
+                # 1. Total Revenue (exclude voided payments)
                 rev_res = session.execute(text("""
                     SELECT COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type IN ('payment','charge')), 0) 
                          - COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type = 'refund'), 0) AS total_revenue
                     FROM receipts r
                     JOIN payments p ON p.receipt_id = r.id
                     WHERE DATE(COALESCE(r.paid_at, r.created_at)) BETWEEN :start AND :end
+                      AND p.deleted_at IS NULL
                 """), {"start": month_start, "end": month_end}).one_or_none()
                 dto.total_revenue = Decimal(str(rev_res.total_revenue)) if rev_res and rev_res.total_revenue is not None else Decimal("0.00")
 
@@ -870,13 +899,14 @@ class ReportNotificationService(BaseNotificationService):
                 else:
                     dto.top_courses = "<p style='font-size:12px;color:#64748b;'>No new enrollments this month.</p>"
 
-                # Revenue breakdown by type
+                # Revenue breakdown by type (exclude voided payments)
                 type_rows = session.execute(text("""
                     SELECT p.payment_type, COALESCE(SUM(p.amount), 0) AS revenue
                     FROM payments p
                     JOIN receipts r ON p.receipt_id = r.id
                     WHERE DATE(COALESCE(r.paid_at, r.created_at)) BETWEEN :start AND :end
                       AND p.transaction_type IN ('payment','charge')
+                      AND p.deleted_at IS NULL
                     GROUP BY p.payment_type
                     ORDER BY revenue DESC
                 """), {"start": month_start, "end": month_end}).all()

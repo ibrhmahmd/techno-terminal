@@ -1,0 +1,795 @@
+{
+  "kind": "Dashboard",
+  "metadata": {
+    "name": "Techno Terminal — Dev Ops",
+    "project": "techno-terminal"
+  },
+  "spec": {
+    "datasources": {
+      "default": {
+        "default": true,
+        "plugin": {
+          "kind": "LogfireDatasource",
+          "spec": {}
+        }
+      }
+    },
+    "display": {
+      "description": "Operational dashboard for Techno Terminal API — System, API Health, Business KPIs, and Data Quality",
+      "name": "Techno Terminal — Dev Ops"
+    },
+    "duration": "24h",
+    "refreshInterval": "60s",
+    "layouts": [
+      {
+        "kind": "Grid",
+        "spec": {
+          "display": {
+            "collapse": { "open": true },
+            "title": "System & API Health"
+          },
+          "items": [
+            { "content": { "$ref": "cpu-util" }, "height": 4, "width": 6, "x": 0, "y": 0 },
+            { "content": { "$ref": "memory-util" }, "height": 4, "width": 6, "x": 6, "y": 0 },
+            { "content": { "$ref": "disk-util" }, "height": 4, "width": 6, "x": 12, "y": 0 },
+            { "content": { "$ref": "network-io" }, "height": 4, "width": 6, "x": 18, "y": 0 },
+            { "content": { "$ref": "request-rate" }, "height": 6, "width": 8, "x": 0, "y": 4 },
+            { "content": { "$ref": "error-rate" }, "height": 6, "width": 8, "x": 8, "y": 4 },
+            { "content": { "$ref": "latency-p50" }, "height": 6, "width": 8, "x": 16, "y": 4 }
+          ]
+        }
+      },
+      {
+        "kind": "Grid",
+        "spec": {
+          "display": {
+            "collapse": { "open": true },
+            "title": "Enrollment & Revenue"
+          },
+          "items": [
+            { "content": { "$ref": "active-students" }, "height": 4, "width": 6, "x": 0, "y": 0 },
+            { "content": { "$ref": "waiting-students" }, "height": 4, "width": 6, "x": 6, "y": 0 },
+            { "content": { "$ref": "new-students-mtd" }, "height": 4, "width": 6, "x": 12, "y": 0 },
+            { "content": { "$ref": "active-groups" }, "height": 4, "width": 6, "x": 18, "y": 0 },
+            { "content": { "$ref": "revenue-mtd" }, "height": 6, "width": 8, "x": 0, "y": 4 },
+            { "content": { "$ref": "collection-rate" }, "height": 6, "width": 8, "x": 8, "y": 4 },
+            { "content": { "$ref": "outstanding-ar" }, "height": 6, "width": 8, "x": 16, "y": 4 },
+            { "content": { "$ref": "high-risk-ar" }, "height": 4, "width": 6, "x": 0, "y": 10 },
+            { "content": { "$ref": "discounts-mtd" }, "height": 4, "width": 6, "x": 6, "y": 10 },
+            { "content": { "$ref": "avg-revenue-per-student" }, "height": 4, "width": 6, "x": 12, "y": 10 },
+            { "content": { "$ref": "revenue-all-time" }, "height": 4, "width": 6, "x": 18, "y": 10 }
+          ]
+        }
+      },
+      {
+        "kind": "Grid",
+        "spec": {
+          "display": {
+            "collapse": { "open": true },
+            "title": "Payroll & Operations"
+          },
+          "items": [
+            { "content": { "$ref": "payroll-obligations" }, "height": 4, "width": 8, "x": 0, "y": 0 },
+            { "content": { "$ref": "idle-instructors" }, "height": 4, "width": 8, "x": 8, "y": 0 },
+            { "content": { "$ref": "groups-over-capacity" }, "height": 4, "width": 8, "x": 16, "y": 0 },
+            { "content": { "$ref": "demographics-completeness" }, "height": 4, "width": 8, "x": 0, "y": 4 }
+          ]
+        }
+      },
+      {
+        "kind": "Grid",
+        "spec": {
+          "display": {
+            "collapse": { "open": true },
+            "title": "Data Quality — Audit"
+          },
+          "items": [
+            { "content": { "$ref": "audit-critical-errors" }, "height": 4, "width": 6, "x": 0, "y": 0 },
+            { "content": { "$ref": "audit-warnings" }, "height": 4, "width": 6, "x": 6, "y": 0 },
+            { "content": { "$ref": "audit-info-items" }, "height": 4, "width": 6, "x": 12, "y": 0 },
+            { "content": { "$ref": "audit-scenario-bar" }, "height": 8, "width": 12, "x": 0, "y": 4 },
+            { "content": { "$ref": "audit-scenario-a" }, "height": 4, "width": 4, "x": 12, "y": 4 },
+            { "content": { "$ref": "audit-scenario-b" }, "height": 4, "width": 4, "x": 16, "y": 4 },
+            { "content": { "$ref": "audit-scenario-c" }, "height": 4, "width": 4, "x": 20, "y": 4 },
+            { "content": { "$ref": "audit-scenario-d" }, "height": 4, "width": 4, "x": 12, "y": 8 },
+            { "content": { "$ref": "audit-scenario-e" }, "height": 4, "width": 4, "x": 16, "y": 8 },
+            { "content": { "$ref": "audit-scenario-f" }, "height": 4, "width": 4, "x": 20, "y": 8 }
+          ]
+        }
+      }
+    ],
+    "panels": {
+      "cpu-util": {
+        "kind": "Panel",
+        "spec": {
+          "display": { "name": "CPU Utilization %" },
+          "plugin": { "kind": "TimeSeriesChart", "spec": { "yAxis": { "unit": "percentunit" } } },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "LogfireTimeSeriesQuery",
+                  "spec": {
+                    "query": "metric host.cpu.utilization",
+                    "groupBy": "host.name",
+                    "metrics": ["host.cpu.utilization"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "memory-util": {
+        "kind": "Panel",
+        "spec": {
+          "display": { "name": "Memory Utilization %" },
+          "plugin": { "kind": "TimeSeriesChart", "spec": { "yAxis": { "unit": "percentunit" } } },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "LogfireTimeSeriesQuery",
+                  "spec": {
+                    "query": "metric host.memory.utilization",
+                    "groupBy": "host.name",
+                    "metrics": ["host.memory.utilization"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "disk-util": {
+        "kind": "Panel",
+        "spec": {
+          "display": { "name": "Disk Utilization %" },
+          "plugin": { "kind": "TimeSeriesChart", "spec": { "yAxis": { "unit": "percentunit" } } },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "LogfireTimeSeriesQuery",
+                  "spec": {
+                    "query": "metric host.disk.utilization",
+                    "groupBy": "host.name",
+                    "metrics": ["host.disk.utilization"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "network-io": {
+        "kind": "Panel",
+        "spec": {
+          "display": { "name": "Network I/O (bytes/s)" },
+          "plugin": { "kind": "TimeSeriesChart", "spec": { "yAxis": { "unit": "By/s" } } },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "LogfireTimeSeriesQuery",
+                  "spec": {
+                    "query": "metric host.network.io",
+                    "groupBy": "direction",
+                    "metrics": ["host.network.io"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "request-rate": {
+        "kind": "Panel",
+        "spec": {
+          "display": { "name": "Request Rate (req/s) by Route" },
+          "plugin": { "kind": "TimeSeriesChart", "spec": { "yAxis": { "unit": "reqps" } } },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "LogfireTimeSeriesQuery",
+                  "spec": {
+                    "query": "metric http.server.request.rate",
+                    "groupBy": "http.route",
+                    "metrics": ["http.server.request.rate"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "error-rate": {
+        "kind": "Panel",
+        "spec": {
+          "display": { "name": "Error Rate (%) by Route" },
+          "plugin": { "kind": "TimeSeriesChart", "spec": { "yAxis": { "unit": "percentunit" } } },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "LogfireTimeSeriesQuery",
+                  "spec": {
+                    "query": "metric http.server.request.error_rate",
+                    "groupBy": "http.route",
+                    "metrics": ["http.server.request.error_rate"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "latency-p50": {
+        "kind": "Panel",
+        "spec": {
+          "display": { "name": "Latency P50/P95/P99 (ms) by Route" },
+          "plugin": { "kind": "TimeSeriesChart", "spec": { "yAxis": { "unit": "ms" } } },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "LogfireTimeSeriesQuery",
+                  "spec": {
+                    "query": "metric http.server.request.duration{quantile=[0.5,0.95,0.99]}",
+                    "groupBy": "http.route",
+                    "metrics": ["http.server.request.duration"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "active-students": {
+        "kind": "Panel",
+        "spec": {
+          "display": { "name": "Active Students" },
+          "plugin": { "kind": "Values", "spec": { "colorMode": "value", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 0 }] } } },
+          "queries": [
+            {
+              "kind": "NonTimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "LogfireNonTimeSeriesQuery",
+                  "spec": {
+                    "query": "metric business_active_students | last",
+                    "metrics": ["business_active_students"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "waiting-students": {
+        "kind": "Panel",
+        "spec": {
+          "display": { "name": "Waiting Students" },
+          "plugin": { "kind": "Values", "spec": { "colorMode": "value", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 10 }, { "color": "red", "value": 50 }] } } },
+          "queries": [
+            {
+              "kind": "NonTimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "LogfireNonTimeSeriesQuery",
+                  "spec": {
+                    "query": "metric business_waiting_students | last",
+                    "metrics": ["business_waiting_students"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "new-students-mtd": {
+        "kind": "Panel",
+        "spec": {
+          "display": { "name": "New Students MTD" },
+          "plugin": { "kind": "Values", "spec": { "colorMode": "value" } },
+          "queries": [
+            {
+              "kind": "NonTimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "LogfireNonTimeSeriesQuery",
+                  "spec": {
+                    "query": "metric business_new_students_mtd | last",
+                    "metrics": ["business_new_students_mtd"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "active-groups": {
+        "kind": "Panel",
+        "spec": {
+          "display": { "name": "Active Groups" },
+          "plugin": { "kind": "Values", "spec": { "colorMode": "value" } },
+          "queries": [
+            {
+              "kind": "NonTimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "LogfireNonTimeSeriesQuery",
+                  "spec": {
+                    "query": "metric business_active_groups | last",
+                    "metrics": ["business_active_groups"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "revenue-mtd": {
+        "kind": "Panel",
+        "spec": {
+          "display": { "name": "Revenue MTD (EGP)" },
+          "plugin": { "kind": "Values", "spec": { "colorMode": "value" } },
+          "queries": [
+            {
+              "kind": "NonTimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "LogfireNonTimeSeriesQuery",
+                  "spec": {
+                    "query": "metric business_revenue_mtd | last",
+                    "metrics": ["business_revenue_mtd"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "collection-rate": {
+        "kind": "Panel",
+        "spec": {
+          "display": { "name": "Collection Rate %" },
+          "plugin": { "kind": "GaugeChart", "spec": { "min": 0, "max": 100, "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "orange", "value": 60 }, { "color": "green", "value": 80 }] } } },
+          "queries": [
+            {
+              "kind": "NonTimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "LogfireNonTimeSeriesQuery",
+                  "spec": {
+                    "query": "metric business_collection_rate_pct | last",
+                    "metrics": ["business_collection_rate_pct"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "outstanding-ar": {
+        "kind": "Panel",
+        "spec": {
+          "display": { "name": "Outstanding AR (EGP)" },
+          "plugin": { "kind": "Values", "spec": { "colorMode": "value", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 50000 }, { "color": "red", "value": 100000 }] } } },
+          "queries": [
+            {
+              "kind": "NonTimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "LogfireNonTimeSeriesQuery",
+                  "spec": {
+                    "query": "metric business_outstanding_ar | last",
+                    "metrics": ["business_outstanding_ar"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "high-risk-ar": {
+        "kind": "Panel",
+        "spec": {
+          "display": { "name": "High-Risk AR >30d (EGP)" },
+          "plugin": { "kind": "Values", "spec": { "colorMode": "value", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 5000 }, { "color": "red", "value": 10000 }] } } },
+          "queries": [
+            {
+              "kind": "NonTimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "LogfireNonTimeSeriesQuery",
+                  "spec": {
+                    "query": "metric business_high_risk_ar | last",
+                    "metrics": ["business_high_risk_ar"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "discounts-mtd": {
+        "kind": "Panel",
+        "spec": {
+          "display": { "name": "Discounts MTD (EGP)" },
+          "plugin": { "kind": "Values", "spec": { "colorMode": "value" } },
+          "queries": [
+            {
+              "kind": "NonTimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "LogfireNonTimeSeriesQuery",
+                  "spec": {
+                    "query": "metric business_discounts_mtd | last",
+                    "metrics": ["business_discounts_mtd"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "avg-revenue-per-student": {
+        "kind": "Panel",
+        "spec": {
+          "display": { "name": "Avg Revenue/Student (EGP)" },
+          "plugin": { "kind": "Values", "spec": { "colorMode": "value" } },
+          "queries": [
+            {
+              "kind": "NonTimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "LogfireNonTimeSeriesQuery",
+                  "spec": {
+                    "query": "metric business_avg_revenue_per_student | last",
+                    "metrics": ["business_avg_revenue_per_student"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "revenue-all-time": {
+        "kind": "Panel",
+        "spec": {
+          "display": { "name": "Revenue All-Time (EGP)" },
+          "plugin": { "kind": "Values", "spec": { "colorMode": "value" } },
+          "queries": [
+            {
+              "kind": "NonTimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "LogfireNonTimeSeriesQuery",
+                  "spec": {
+                    "query": "metric business_revenue_all_time | last",
+                    "metrics": ["business_revenue_all_time"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "payroll-obligations": {
+        "kind": "Panel",
+        "spec": {
+          "display": { "name": "Payroll Obligations (EGP)" },
+          "plugin": { "kind": "Values", "spec": { "colorMode": "value" } },
+          "queries": [
+            {
+              "kind": "NonTimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "LogfireNonTimeSeriesQuery",
+                  "spec": {
+                    "query": "metric business_payroll_obligations | last",
+                    "metrics": ["business_payroll_obligations"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "idle-instructors": {
+        "kind": "Panel",
+        "spec": {
+          "display": { "name": "Idle Instructors" },
+          "plugin": { "kind": "Values", "spec": { "colorMode": "value", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 2 }, { "color": "red", "value": 5 }] } } },
+          "queries": [
+            {
+              "kind": "NonTimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "LogfireNonTimeSeriesQuery",
+                  "spec": {
+                    "query": "metric business_idle_instructors | last",
+                    "metrics": ["business_idle_instructors"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "groups-over-capacity": {
+        "kind": "Panel",
+        "spec": {
+          "display": { "name": "Groups Over Capacity" },
+          "plugin": { "kind": "Values", "spec": { "colorMode": "value", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": 0 }, { "color": "red", "value": 1 }] } } },
+          "queries": [
+            {
+              "kind": "NonTimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "LogfireNonTimeSeriesQuery",
+                  "spec": {
+                    "query": "metric business_groups_over_capacity | last",
+                    "metrics": ["business_groups_over_capacity"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "demographics-completeness": {
+        "kind": "Panel",
+        "spec": {
+          "display": { "name": "Demographics Completeness %" },
+          "plugin": { "kind": "GaugeChart", "spec": { "min": 0, "max": 100, "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "orange", "value": 80 }, { "color": "green", "value": 95 }] } } },
+          "queries": [
+            {
+              "kind": "NonTimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "LogfireNonTimeSeriesQuery",
+                  "spec": {
+                    "query": "metric business_demographics_completeness_pct | last",
+                    "metrics": ["business_demographics_completeness_pct"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "audit-critical-errors": {
+        "kind": "Panel",
+        "spec": {
+          "display": { "name": "Critical Errors (Audit)" },
+          "plugin": { "kind": "Values", "spec": { "colorMode": "value", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": 0 }, { "color": "red", "value": 1 }] } } },
+          "queries": [
+            {
+              "kind": "NonTimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "LogfireNonTimeSeriesQuery",
+                  "spec": {
+                    "query": "metric business_audit_critical_errors | last",
+                    "metrics": ["business_audit_critical_errors"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "audit-warnings": {
+        "kind": "Panel",
+        "spec": {
+          "display": { "name": "Warnings (Audit)" },
+          "plugin": { "kind": "Values", "spec": { "colorMode": "value", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": 0 }, { "color": "orange", "value": 5 }, { "color": "red", "value": 20 }] } } },
+          "queries": [
+            {
+              "kind": "NonTimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "LogfireNonTimeSeriesQuery",
+                  "spec": {
+                    "query": "metric business_audit_warnings | last",
+                    "metrics": ["business_audit_warnings"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "audit-info-items": {
+        "kind": "Panel",
+        "spec": {
+          "display": { "name": "Info Items (Audit)" },
+          "plugin": { "kind": "Values", "spec": { "colorMode": "value" } },
+          "queries": [
+            {
+              "kind": "NonTimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "LogfireNonTimeSeriesQuery",
+                  "spec": {
+                    "query": "metric business_audit_info_items | last",
+                    "metrics": ["business_audit_info_items"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "audit-scenario-bar": {
+        "kind": "Panel",
+        "spec": {
+          "display": { "name": "Anomalies by Scenario (A-I)" },
+          "plugin": { "kind": "BarChart", "spec": { "orientation": "horizontal", "yAxis": { "unit": "short" } } },
+          "queries": [
+            {
+              "kind": "NonTimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "LogfireNonTimeSeriesQuery",
+                  "spec": {
+                    "query": "metric business_audit_scenario_count | last",
+                    "groupBy": "scenario_code",
+                    "metrics": ["business_audit_scenario_count"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "audit-scenario-a": {
+        "kind": "Panel",
+        "spec": {
+          "display": { "name": "Scenario A: Zero-Charge" },
+          "plugin": { "kind": "Values", "spec": { "colorMode": "value", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": 0 }, { "color": "blue", "value": 1 }] } } },
+          "queries": [
+            {
+              "kind": "NonTimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "LogfireNonTimeSeriesQuery",
+                  "spec": {
+                    "query": "metric business_audit_scenario_count{scenario_code='A'} | last",
+                    "metrics": ["business_audit_scenario_count"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "audit-scenario-b": {
+        "kind": "Panel",
+        "spec": {
+          "display": { "name": "Scenario B: Overpaid" },
+          "plugin": { "kind": "Values", "spec": { "colorMode": "value", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": 0 }, { "color": "orange", "value": 1 }] } } },
+          "queries": [
+            {
+              "kind": "NonTimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "LogfireNonTimeSeriesQuery",
+                  "spec": {
+                    "query": "metric business_audit_scenario_count{scenario_code='B'} | last",
+                    "metrics": ["business_audit_scenario_count"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "audit-scenario-c": {
+        "kind": "Panel",
+        "spec": {
+          "display": { "name": "Scenario C: Orphaned" },
+          "plugin": { "kind": "Values", "spec": { "colorMode": "value", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": 0 }, { "color": "orange", "value": 1 }] } } },
+          "queries": [
+            {
+              "kind": "NonTimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "LogfireNonTimeSeriesQuery",
+                  "spec": {
+                    "query": "metric business_audit_scenario_count{scenario_code='C'} | last",
+                    "metrics": ["business_audit_scenario_count"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "audit-scenario-d": {
+        "kind": "Panel",
+        "spec": {
+          "display": { "name": "Scenario D: Duplicates" },
+          "plugin": { "kind": "Values", "spec": { "colorMode": "value", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": 0 }, { "color": "red", "value": 1 }] } } },
+          "queries": [
+            {
+              "kind": "NonTimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "LogfireNonTimeSeriesQuery",
+                  "spec": {
+                    "query": "metric business_audit_scenario_count{scenario_code='D'} | last",
+                    "metrics": ["business_audit_scenario_count"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "audit-scenario-e": {
+        "kind": "Panel",
+        "spec": {
+          "display": { "name": "Scenario E: Dead Groups" },
+          "plugin": { "kind": "Values", "spec": { "colorMode": "value", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": 0 }, { "color": "blue", "value": 1 }] } } },
+          "queries": [
+            {
+              "kind": "NonTimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "LogfireNonTimeSeriesQuery",
+                  "spec": {
+                    "query": "metric business_audit_scenario_count{scenario_code='E'} | last",
+                    "metrics": ["business_audit_scenario_count"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "audit-scenario-f": {
+        "kind": "Panel",
+        "spec": {
+          "display": { "name": "Scenario F: Unrefunded" },
+          "plugin": { "kind": "Values", "spec": { "colorMode": "value", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": 0 }, { "color": "orange", "value": 1 }] } } },
+          "queries": [
+            {
+              "kind": "NonTimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "LogfireNonTimeSeriesQuery",
+                  "spec": {
+                    "query": "metric business_audit_scenario_count{scenario_code='F'} | last",
+                    "metrics": ["business_audit_scenario_count"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "variables": [
+      {
+        "kind": "TimeBucketVariable",
+        "spec": {},
+        "name": "time_bucket",
+        "allowMultiple": false,
+        "allowAllValue": false,
+        "defaultValue": "1m",
+        "plugin": { "kind": "TimeBucketVariable", "spec": {} }
+      }
+    ]
+  }
+}

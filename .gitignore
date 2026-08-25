@@ -3,6 +3,9 @@
 *.env
 .env.test
 
+# Logfire credentials
+.logfire/
+
 # Python
 __pycache__/
 *.py[cod]

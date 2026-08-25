@@ -47,11 +47,13 @@ async def start_report_scheduler(make_service: Callable[[], NotificationService]
                             last_daily = today
 
                         if now.weekday() == 0 and last_weekly != today:
-                            await svc.send_weekly_report()
+                            yesterday = today - timedelta(days=1)
+                            await svc.send_weekly_report(target_date=yesterday)
                             last_weekly = today
 
                         if now.day == 1 and last_monthly != today:
-                            await svc.send_monthly_report()
+                            yesterday = today - timedelta(days=1)
+                            await svc.send_monthly_report(target_date=yesterday)
                             last_monthly = today
                     finally:
                         svc.close_session()

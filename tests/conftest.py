@@ -76,6 +76,7 @@ def override_auth(app, db_session):
     """
     Override the get_current_user dependency to bypass real Supabase JWT validation.
     Also creates the mock user in DB to satisfy FK constraints.
+    Ensures a user with id=1 exists (required by admin_settings_router SYSTEM_ADMIN_ID).
     
     Use this fixture in tests that don't need real Supabase auth.
     Combine with mock_admin_headers or system_admin_headers for token-passing tests.
@@ -83,6 +84,19 @@ def override_auth(app, db_session):
     from app.api.dependencies import get_current_user
     from app.modules.auth.models.auth_models import User as UserModel
     from sqlmodel import select
+
+    # Ensure a user with id=1 exists (SYSTEM_ADMIN_ID in admin_settings_router)
+    user_id1 = db_session.get(UserModel, 1)
+    if user_id1 is None:
+        user_id1 = UserModel(
+            id=1,
+            username="system_admin",
+            role="system_admin",
+            supabase_uid="system-admin-001",
+            is_active=True,
+        )
+        db_session.add(user_id1)
+        db_session.commit()
 
     user = db_session.exec(
         select(UserModel).where(UserModel.supabase_uid == "test-admin-001")
@@ -112,10 +126,24 @@ def override_system_admin_auth(app, db_session):
     Override get_current_user with a system_admin user.
     Use with system_admin_headers for token-passing tests.
     Also creates the mock user in DB to satisfy FK constraints.
+    Ensures a user with id=1 exists (required by admin_settings_router SYSTEM_ADMIN_ID).
     """
     from app.api.dependencies import get_current_user
     from app.modules.auth.models.auth_models import User as UserModel
     from sqlmodel import select
+
+    # Ensure a user with id=1 exists (SYSTEM_ADMIN_ID in admin_settings_router)
+    user_id1 = db_session.get(UserModel, 1)
+    if user_id1 is None:
+        user_id1 = UserModel(
+            id=1,
+            username="system_admin",
+            role="system_admin",
+            supabase_uid="system-admin-001",
+            is_active=True,
+        )
+        db_session.add(user_id1)
+        db_session.commit()
 
     user = db_session.exec(
         select(UserModel).where(UserModel.supabase_uid == "test-sysadmin-001")

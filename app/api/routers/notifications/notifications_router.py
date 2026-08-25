@@ -186,7 +186,9 @@ async def get_weekly_report_data(
     try:
         from datetime import timedelta
         week_start = report_date - timedelta(days=report_date.weekday())
-        aggregates = await asyncio.to_thread(svc.report._fetch_weekly_aggregates, week_start, report_date)
+        completed_week_end = week_start + timedelta(days=6)
+        week_end = completed_week_end if completed_week_end < date.today() else report_date
+        aggregates = await asyncio.to_thread(svc.report._fetch_weekly_aggregates, week_start, week_end)
     except Exception:
         from fastapi import HTTPException, status
         raise HTTPException(
@@ -223,8 +225,12 @@ async def get_monthly_report_data(
         from fastapi import HTTPException
         raise HTTPException(status_code=400, detail="Report date cannot be in the future")
     try:
+        import calendar
         month_start = report_date.replace(day=1)
-        aggregates = await asyncio.to_thread(svc.report._fetch_monthly_aggregates, month_start, report_date)
+        last_day = calendar.monthrange(month_start.year, month_start.month)[1]
+        completed_month_end = date(month_start.year, month_start.month, last_day)
+        month_end = completed_month_end if completed_month_end < date.today() else report_date
+        aggregates = await asyncio.to_thread(svc.report._fetch_monthly_aggregates, month_start, month_end)
     except Exception:
         from fastapi import HTTPException, status
         raise HTTPException(
