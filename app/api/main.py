@@ -71,8 +71,8 @@ from app.api.routers.tasks import router as tasks_router
 
 
 def create_app() -> FastAPI:
-    configure_logfire()
     configure_logging(settings)
+    configure_logfire()
 
     from app.db.connection import get_engine
     from sqlmodel import Session
@@ -84,6 +84,9 @@ def create_app() -> FastAPI:
     )
     from app.modules.notifications.services.report_scheduler import (
         start_report_scheduler,
+    )
+    from app.modules.notifications.services.report_watchdog import (
+        start_report_watchdog,
     )
     from app.observability.scheduler import run_metrics_collector, stop_metrics_collector
 
@@ -101,14 +104,18 @@ def create_app() -> FastAPI:
             return TaskService(TasksUnitOfWork(session))
 
         task = asyncio.create_task(start_report_scheduler(_make_notification_service))
+        watchdog_task = asyncio.create_task(start_report_watchdog())
         task_spawner_task = asyncio.create_task(start_task_scheduler(_make_task_service))
         metrics_task = asyncio.create_task(run_metrics_collector(interval_seconds=60))
         yield
         task.cancel()
+        watchdog_task.cancel()
         task_spawner_task.cancel()
         await stop_metrics_collector()
         try:
-            await asyncio.gather(task, task_spawner_task, return_exceptions=True)
+            await asyncio.gather(
+                task, watchdog_task, task_spawner_task, return_exceptions=True
+            )
         except asyncio.CancelledError:
             pass
 
