@@ -2,19 +2,14 @@
   "version": "0.8.8.dev0",
   "integration_state_schema": 1,
   "installed_integrations": [
-    "opencode",
-    "pi"
+    "opencode"
   ],
   "integration_settings": {
     "opencode": {
       "script": "ps",
       "invoke_separator": "."
-    },
-    "pi": {
-      "script": "ps",
-      "invoke_separator": "."
     }
   },
-  "integration": "pi",
-  "default_integration": "pi"
+  "integration": "opencode",
+  "default_integration": "opencode"
 }

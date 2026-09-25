@@ -52,7 +52,7 @@
 | **Auth** | Supabase | JWT-based authentication & user management |
 | **Validation** | Pydantic v2 | Request/response DTOs |
 | **Testing** | pytest | 26 test modules, 180+ tests |
-| **Container** | Docker | Deployment with Gunicorn + Uvicorn |
+| **Hosting** | FastAPI Cloud | Deploys via root `main.py` |
 
 ---
 
@@ -131,9 +131,7 @@ project_root/
 ├── tests/                        # 26 test modules
 ├── docs/                         # API documentation
 ├── memory-bank/                  # Architecture decisions
-├── Dockerfile
 ├── pyproject.toml
-├── requirements.txt
 └── run_api.py                    # Entry point
 ```
 
@@ -444,7 +442,7 @@ async def not_found_handler(request: Request, exc: NotFoundError):
 ```bash
 python -m venv .venv
 .venv\Scripts\activate  # Windows
-pip install -r requirements.txt
+pip install -e .
 ```
 
 ### 2. Configuration
@@ -473,15 +471,6 @@ uvicorn app.api.main:app --host 0.0.0.0 --port 8000
 ### 5. Run Tests
 ```bash
 pytest tests/ -v --tb=short
-```
-
----
-
-## Docker
-
-```bash
-docker build -t techno-terminal .
-docker run -p 8000:8000 --env-file .env techno-terminal
 ```
 
 ---

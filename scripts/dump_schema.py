@@ -1,11 +1,28 @@
-import sys
+"""
+scripts/dump_schema.py
+──────────────────────
+Dump the live public schema (enums, tables, constraints, views, triggers)
+of the database behind DATABASE_URL.
+
+Usage:
+    python scripts/dump_schema.py             # print to stdout
+    python scripts/dump_schema.py out.txt     # write to a file
+"""
 import os
-sys.path.insert(0, os.path.abspath('.'))
+import sys
+from contextlib import nullcontext
+
+# Ensure project root is in PYTHONPATH
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 from app.db.connection import get_engine
 from sqlalchemy import text
 
 engine = get_engine()
-with open("scratch/schema_dump_output.txt", "w", encoding="utf-8") as f:
+output = open(sys.argv[1], "w", encoding="utf-8") if len(sys.argv) > 1 else nullcontext(sys.stdout)
+with output as f:
     with engine.connect() as conn:
         f.write("=== ENUMS ===\n")
         res = conn.execute(text("""
@@ -20,7 +37,8 @@ with open("scratch/schema_dump_output.txt", "w", encoding="utf-8") as f:
         for row in res:
             enums.setdefault(row[0], []).append(row[1])
         for name, labels in enums.items():
-            f.write(f"CREATE TYPE {name} AS ENUM ({', '.join(f"'{l}'" for l in labels)});\n")
+            quoted = ", ".join(f"'{l}'" for l in labels)
+            f.write(f"CREATE TYPE {name} AS ENUM ({quoted});\n")
 
         f.write("\n=== TABLES ===\n")
         res_tables = conn.execute(text("""

@@ -45,13 +45,10 @@ htmlcov/
 # Data (raw data is not version controlled)
 data/raw/
 data/processed/
-.idea/modules.xml
-.idea/techno_data_ Copy.iml
-.idea/vcs.xml
+.idea/
 archieve/
 .pytest_cache/
 .fastapicloud/
-.opencode/
 
 # Generated test artifacts
 test_report_*.pdf

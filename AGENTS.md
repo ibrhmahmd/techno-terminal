@@ -7,7 +7,7 @@ Streamlit audit dashboard (`audit_dashboard.py` + `dashboard/`) — not part of 
 ## Entry Points
 
 - **Dev**: `python run_api.py` — hot reload. Inserts project root into `PYTHONPATH`; breaking this breaks all imports.
-- **Prod**: `uvicorn app.api.main:app` (via `create_app()`) — used by gunicorn/railpack.
+- **Prod**: FastAPI Cloud. Root `main.py` re-exports `app.api.main:app` (built via `create_app()`) as the deploy entrypoint.
 - **Dashboard**: `streamlit run audit_dashboard.py`.
 
 ## Required Env
@@ -95,7 +95,7 @@ All service factories in `app/api/dependencies.py`.
 Defined at `dependencies.py:213` and `dependencies.py:411`. Python uses the last definition (line 411 wins). Same interface.
 
 ### Migrations
-87 files in `db/migrations/`. Duplicate prefix numbers exist (`008`, `020`, `021`, `022`, `026`, `030`, `036`, `051`, `057`) — apply in **chronological order**, not numeric. Cleanup migrations: `042`–`049`. Schema: 18 modular files in `db/schema/` applied via `db/schema.sql`. `alembic/` directory and `alembic.ini` do NOT exist (but `Dockerfile` references them — stale).
+87 files in `db/migrations/`. Duplicate prefix numbers exist (`008`, `020`, `021`, `022`, `026`, `030`, `036`, `051`, `057`) — apply in **chronological order**, not numeric. Cleanup migrations: `042`–`049`. Schema: 18 modular files in `db/schema/` applied via `db/schema.sql`. There is no Alembic: migrations are plain SQL files applied by hand.
 
 ### Database Pool (code truth in `app/db/connection.py`)
 `pool_size=10, max_overflow=5 (15 total), pool_timeout=30, pool_pre_ping=True, pool_recycle=240s`, `sslmode=prefer`, `statement_timeout=30000`, `expire_on_commit=False`.
@@ -130,8 +130,7 @@ Before any refactoring, grep for callers of every method. Delete dead code immed
 
 ## Deployment
 
-- **Platform**: Leapcell (`railpack.json`). Build: `pip install -e .`. Start: `uvicorn app.api.main:app`.
-- `gunicorn.conf.py` uses `/tmp` for runtime files (read-only filesystem workaround).
+- **Platform**: FastAPI Cloud. Entrypoint: root `main.py`. Dependencies come from `pyproject.toml` (`requirements.txt` is gone).
 - **Health**: `/health`, `/kaithhealthcheck`.
 
 ## Business Reports
