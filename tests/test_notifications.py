@@ -528,7 +528,7 @@ class TestDailyReportIntegration:
             GmailEmailDispatcher
         )
 
-        FALLBACK_EMAIL = os.getenv("FALLBACK_EMAIL", "ibrahim.ahmd.net@gmail.com")
+        FALLBACK_EMAIL = os.getenv("FALLBACK_EMAIL", "techno.terminal.notifications@gmail.com")
 
         # 1. Fetch real data from DB
         repo = NotificationRepository(db_session)

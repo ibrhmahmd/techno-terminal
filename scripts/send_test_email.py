@@ -14,7 +14,7 @@ from app.modules.notifications.repositories.notification_repository import Notif
 from app.db.connection import get_session
 
 async def send_test_email():
-    target_email = "ibrahim.ahmd.net@gmail.com"
+    target_email = "techno.terminal.notifications@gmail.com"
     print(f"Sending test payment receipt email to {target_email}...")
     
     with get_session() as session:

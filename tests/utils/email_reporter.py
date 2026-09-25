@@ -34,7 +34,7 @@ class TestEmailReporter:
         self,
         sender: Optional[str] = None,
         app_password: Optional[str] = None,
-        recipient: str = "ibrahim.ahmd.net@gmail.com",
+        recipient: str = "techno.terminal.notifications@gmail.com",
     ):
         self.sender = sender or os.getenv("GMAIL_SENDER_ADDRESS", "")
         self.app_password = app_password or os.getenv("GMAIL_APP_PASSWORD", "")

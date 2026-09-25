@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     receipt_receipt_label: str = "Payment Receipt"
 
     # Notifications Configuration
-    fallback_email: str = "ibrahim.ahmd.net@gmail.com"
+    fallback_email: str = "techno.terminal.notifications@gmail.com"
     scheduler_enabled: bool = True
     daily_report_hour: int = 8
     daily_report_minute: int = 0
