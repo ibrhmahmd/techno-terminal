@@ -18,6 +18,14 @@ Ordered, hand-written SQL for production-style upgrades. Use when you need expli
 | [009_core_logic_refactor.sql](009_core_logic_refactor.sql) | Core logic refactor — schema cleanups aligned with the service-layer refactor. |
 | [010_phase2_competition_fees.sql](010_phase2_competition_fees.sql) | **Phase 2:** Adds `competitions.fee_per_student` and `team_members.member_share` (snapshotted at registration). Backfills `member_share` from the legacy `teams.enrollment_fee_per_student` column. |
 
+### Recent
+
+The table above stops at `010`. Files `011`–`080` are documented in their own headers.
+
+| File | Purpose |
+|------|---------|
+| [081_notification_logs_report_period.sql](081_notification_logs_report_period.sql) | Adds `notification_logs.report_period_start` and the partial unique index `uq_notification_logs_report_delivery`, which keys each scheduled-report Delivery on (template, period, recipient). It only adds things. **Apply it before deploying** the code that maps the column. The rollback is in the file header. |
+
 ## Relationship to Alembic
 
 - **Greenfield:** Prefer loading [../schema.sql](../schema.sql), then `alembic stamp head` so Alembic revision matches reality (see [../README.md](../README.md)).
