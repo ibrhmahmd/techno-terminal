@@ -1,3 +1,6 @@
+from datetime import date
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -89,3 +92,20 @@ class DailyReportAggregateDTO(BaseModel):
     outstanding_by_group: list[OutstandingByGroupItem] = []
     today_unpaid_attendees: list[UnpaidAttendeeItem] = []
     tomorrow_preview: TomorrowPreviewDTO = TomorrowPreviewDTO()
+
+
+class ReportDeliveryResult(BaseModel):
+    report_type: str
+    period_start: date
+    outcome: Literal[
+        "delivered",
+        "partial",
+        "failed",
+        "nothing_to_send",
+        "disabled",
+        "not_configured",
+    ]
+    sent: int = 0
+    failed: int = 0
+    skipped: int = 0
+    errors: list[str] = []

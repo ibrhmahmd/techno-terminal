@@ -345,7 +345,7 @@ class BaseNotificationService:
         self, template: NotificationTemplate, channel: str, recipient_type: str,
         recipient_id: int, contact: str, variables: dict,
         attachments: Optional[List[Tuple[str, bytes, str]]] = None
-    ) -> None:
+    ) -> bool:
         """Send notification and log result.
         
         Args:
@@ -409,3 +409,4 @@ class BaseNotificationService:
             logger.info(f"Notification sent to {recipient_type} {recipient_id} via {channel}")
         else:
             logger.error(f"Notification failed to {recipient_type} {recipient_id}: {error}")
+        return success

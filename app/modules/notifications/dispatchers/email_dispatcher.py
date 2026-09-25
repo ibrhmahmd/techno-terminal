@@ -15,6 +15,8 @@ from email.mime.text import MIMEText
 from email import encoders
 from typing import List, Optional, Tuple
 
+import logfire
+
 from app.core.config import settings
 from app.modules.notifications.dispatchers.i_dispatcher import IMessageDispatcher
 
@@ -102,6 +104,7 @@ class GmailEmailDispatcher(IMessageDispatcher):
         except smtplib.SMTPAuthenticationError as e:
             error_msg = f"SMTP auth failed: {e}"
             logger.error(error_msg)
+            logfire.error("smtp_auth_failed", recipient=recipient, error=error_msg)
             return False, error_msg
 
         except Exception as e:

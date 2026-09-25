@@ -40,9 +40,7 @@ class Settings(BaseSettings):
 
     # Notifications Configuration
     fallback_email: str = "techno.terminal.notifications@gmail.com"
-    scheduler_enabled: bool = True
-    daily_report_hour: int = 8
-    daily_report_minute: int = 0
+    internal_trigger_secret: str = ""
 
     # Logging Configuration
     log_level: str = "INFO"

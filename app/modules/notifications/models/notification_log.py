@@ -3,7 +3,7 @@ app/modules/notifications/models/notification_log.py
 ───────────────────────────────────────────────────
 Audit log for notifications sent or attempting to send.
 """
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Optional
 
 from sqlmodel import SQLModel, Field
@@ -24,3 +24,4 @@ class NotificationLog(SQLModel, table=True):
     error_message: Optional[str] = Field(default=None)
     sent_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    report_period_start: Optional[date] = None

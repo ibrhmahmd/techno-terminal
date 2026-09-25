@@ -169,7 +169,7 @@ async def trigger_weekly_report(
         raise HTTPException(status_code=400, detail="Report date cannot be in the future")
     
     # We trigger the standard dispatch. Weekly report uses email only.
-    await svc.report.send_weekly_report(target_date=report_date)
+    await svc.report.send_weekly_report(target_date=report_date, force=True)
     return ApiResponse(data="Weekly report email queued successfully.")
 
 
@@ -210,7 +210,7 @@ async def trigger_monthly_report(
         from fastapi import HTTPException
         raise HTTPException(status_code=400, detail="Report date cannot be in the future")
     
-    await svc.report.send_monthly_report(target_date=report_date)
+    await svc.report.send_monthly_report(target_date=report_date, force=True)
     return ApiResponse(data="Monthly report email queued successfully.")
 
 

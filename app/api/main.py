@@ -76,26 +76,10 @@ def create_app() -> FastAPI:
 
     from app.db.connection import get_engine
     from sqlmodel import Session
-    from app.modules.notifications.repositories.notification_repository import (
-        NotificationRepository,
-    )
-    from app.modules.notifications.services.notification_service import (
-        NotificationService,
-    )
-    from app.modules.notifications.services.report_scheduler import (
-        start_report_scheduler,
-    )
-    from app.modules.notifications.services.report_watchdog import (
-        start_report_watchdog,
-    )
     from app.observability.scheduler import run_metrics_collector, stop_metrics_collector
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        def _make_notification_service() -> NotificationService:
-            session = Session(get_engine(), expire_on_commit=False)
-            return NotificationService(repo=NotificationRepository(session))
-
         from app.modules.tasks.scheduler import start_task_scheduler
         from app.modules.tasks import TaskService, TasksUnitOfWork
 
@@ -103,18 +87,14 @@ def create_app() -> FastAPI:
             session = Session(get_engine(), expire_on_commit=False)
             return TaskService(TasksUnitOfWork(session))
 
-        task = asyncio.create_task(start_report_scheduler(_make_notification_service))
-        watchdog_task = asyncio.create_task(start_report_watchdog())
         task_spawner_task = asyncio.create_task(start_task_scheduler(_make_task_service))
         metrics_task = asyncio.create_task(run_metrics_collector(interval_seconds=60))
         yield
-        task.cancel()
-        watchdog_task.cancel()
         task_spawner_task.cancel()
         await stop_metrics_collector()
         try:
             await asyncio.gather(
-                task, watchdog_task, task_spawner_task, return_exceptions=True
+                task_spawner_task, return_exceptions=True
             )
         except asyncio.CancelledError:
             pass

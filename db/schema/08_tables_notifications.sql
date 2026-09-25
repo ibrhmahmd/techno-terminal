@@ -35,6 +35,7 @@ CREATE TABLE notification_logs (
     error_message TEXT,
     sent_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    report_period_start DATE,
     retry_count INTEGER DEFAULT 0,
     next_retry_at TIMESTAMP,
     CONSTRAINT notification_logs_channel_check CHECK ((channel = ANY (ARRAY['WHATSAPP'::text, 'EMAIL'::text]))),
@@ -42,6 +43,10 @@ CREATE TABLE notification_logs (
     CONSTRAINT notification_logs_status_check CHECK ((status = ANY (ARRAY['PENDING'::text, 'SENT'::text, 'FAILED'::text]))),
     CONSTRAINT notification_logs_template_id_fkey FOREIGN KEY (template_id) REFERENCES notification_templates(id) ON DELETE SET NULL
 );
+
+CREATE UNIQUE INDEX uq_notification_logs_report_delivery
+    ON notification_logs (template_id, report_period_start, recipient_contact)
+    WHERE report_period_start IS NOT NULL AND status IN ('PENDING', 'SENT');
 
 CREATE TABLE notification_additional_recipients (
     id SERIAL PRIMARY KEY,

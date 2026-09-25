@@ -329,20 +329,27 @@ class TestDailyReport:
         from app.modules.notifications.services.report_notifications import (
             ReportNotificationService
         )
+        from tests.utils.notification_mocks import InMemoryReportDeliveryLedger
         mock_repo.templates["daily_report"] = daily_report_template
-        svc = ReportNotificationService(mock_repo)
+        svc = ReportNotificationService(
+            mock_repo,
+            ledger=InMemoryReportDeliveryLedger(),
+        )
         svc._email = mock_email
+        svc._get_template_by_name = Mock(return_value=daily_report_template)
         svc._resolve_notification_recipients = Mock(return_value=[
             ("admin@test.com", 1, "ADDITIONAL")
         ])
         svc._fetch_daily_aggregates = Mock(return_value=mock_aggregates)
 
-        await svc.send_daily_report()
+        result = await svc.send_daily_report()
 
+        assert result.outcome == "delivered"
+        assert result.sent == 1
         assert len(mock_email.sent_emails) == 1
         email = mock_email.sent_emails[0]
         assert email.recipient == "admin@test.com"
-        assert "System generated report" in email.body
+        assert "Report for" in email.body
         assert "Omar" in email.body  # payment detail rendered
 
     @pytest.mark.anyio
@@ -352,16 +359,22 @@ class TestDailyReport:
         from app.modules.notifications.services.report_notifications import (
             ReportNotificationService
         )
+        from tests.utils.notification_mocks import InMemoryReportDeliveryLedger
         mock_repo.templates["daily_report"] = daily_report_template
-        svc = ReportNotificationService(mock_repo)
+        svc = ReportNotificationService(
+            mock_repo,
+            ledger=InMemoryReportDeliveryLedger(),
+        )
         svc._email = mock_email
+        svc._get_template_by_name = Mock(return_value=daily_report_template)
         svc._resolve_notification_recipients = Mock(return_value=[
             ("admin@test.com", 1, "ADDITIONAL")
         ])
         svc._fetch_daily_aggregates = Mock(return_value=mock_aggregates)
 
-        await svc.send_daily_report()
+        result = await svc.send_daily_report()
 
+        assert result.outcome == "delivered"
         assert len(mock_email.sent_emails) == 1
         attachments = mock_email.sent_emails[0].attachments
         assert attachments is not None

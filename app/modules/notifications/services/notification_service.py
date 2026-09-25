@@ -21,6 +21,7 @@ from app.modules.notifications.services.report_notifications import ReportNotifi
 from app.modules.notifications.services.competition_notifications import CompetitionNotificationService
 from app.modules.notifications.services.task_notifications import TaskNotificationService
 from app.modules.notifications.models.notification_template import NotificationTemplate
+from app.modules.notifications.schemas.report_dto import ReportDeliveryResult
 from app.modules.notifications.schemas.template_dto import TemplateTestResultDTO
 from app.db.connection import get_session
 from app.modules.notifications.repositories.admin_settings_repository import AdminSettingsRepository
@@ -124,17 +125,32 @@ class NotificationService:
 
     # ── Scheduled Reports (delegate to self.report) ─────────────────────
 
-    async def send_daily_report(self, target_date: Optional[date] = None) -> None:
+    async def send_daily_report(
+        self,
+        target_date: Optional[date] = None,
+        *,
+        force: bool = False,
+    ) -> ReportDeliveryResult:
         """Daily business summary to DAILY subscribers."""
-        await self.report.send_daily_report(target_date)
+        return await self.report.send_daily_report(target_date, force=force)
 
-    async def send_weekly_report(self, target_date: Optional[date] = None) -> None:
+    async def send_weekly_report(
+        self,
+        target_date: Optional[date] = None,
+        *,
+        force: bool = False,
+    ) -> ReportDeliveryResult:
         """Weekly business summary to WEEKLY subscribers."""
-        await self.report.send_weekly_report(target_date)
+        return await self.report.send_weekly_report(target_date, force=force)
 
-    async def send_monthly_report(self, target_date: Optional[date] = None) -> None:
+    async def send_monthly_report(
+        self,
+        target_date: Optional[date] = None,
+        *,
+        force: bool = False,
+    ) -> ReportDeliveryResult:
         """Monthly business summary to MONTHLY subscribers."""
-        await self.report.send_monthly_report(target_date)
+        return await self.report.send_monthly_report(target_date, force=force)
 
     # ── Bulk Marketing (kept here for now - simple delegation) ────────────
     # TODO: Move to BulkNotificationService if needed
@@ -244,7 +260,6 @@ class NotificationService:
         
         Returns TemplateTestResultDTO with rendered content and actual send results.
         """
-        from app.modules.notifications.schemas.template_dto import TemplateTestResultDTO
         from app.db.connection import get_session
         from app.modules.notifications.repositories.admin_settings_repository import AdminSettingsRepository
         from app.modules.notifications.models.notification_template import NotificationTemplate

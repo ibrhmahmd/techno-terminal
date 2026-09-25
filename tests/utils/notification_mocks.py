@@ -2,7 +2,7 @@
 Mock dispatchers and repositories for notification testing.
 Captures sent messages in-memory for assertion without real SMTP/Twilio.
 """
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional, Any
 from dataclasses import dataclass, field
 
@@ -64,6 +64,57 @@ class _MockTemplate:
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
             setattr(self, k, v)
+
+
+class InMemoryReportDeliveryLedger:
+    def __init__(self):
+        self.logs: list[_MockLog] = []
+        self._next_id = 1
+
+    def claim(
+        self,
+        template_id: int,
+        period_start: date,
+        recipient_type: str,
+        recipient_id: int,
+        recipient_contact: str,
+        subject: Optional[str],
+        body: str,
+    ) -> Optional[int]:
+        for log in self.logs:
+            if (
+                log.template_id == template_id
+                and log.report_period_start == period_start
+                and log.recipient_contact == recipient_contact
+                and log.status in ("PENDING", "SENT")
+            ):
+                return None
+        log = _MockLog(
+            id=self._next_id,
+            template_id=template_id,
+            report_period_start=period_start,
+            recipient_type=recipient_type,
+            recipient_id=recipient_id,
+            recipient_contact=recipient_contact,
+            subject=subject,
+            body=body,
+            status="PENDING",
+            error_message=None,
+            sent_at=None,
+            created_at=datetime.utcnow(),
+        )
+        self._next_id += 1
+        self.logs.append(log)
+        return log.id
+
+    def mark(self, log_id: int, status: str, error_message: Optional[str]) -> None:
+        for log in self.logs:
+            if log.id == log_id:
+                log.status = status
+                log.error_message = error_message
+                if status == "SENT":
+                    log.sent_at = datetime.utcnow()
+                return
 
 
 class MockNotificationRepository:

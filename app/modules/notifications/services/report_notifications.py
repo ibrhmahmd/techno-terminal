@@ -10,7 +10,12 @@ import logging
 from pydantic import BaseModel, ConfigDict
 
 from app.modules.notifications.services.base_notification_service import BaseNotificationService
+from app.modules.notifications.interfaces.i_report_delivery_ledger import (
+    ReportDeliveryLedgerInterface,
+)
+from app.modules.notifications.models.notification_template import NotificationTemplate
 from app.modules.notifications.repositories.notification_repository import NotificationRepository
+from app.modules.notifications.repositories.report_delivery_ledger import SqlReportDeliveryLedger
 from app.modules.notifications.repositories.reports_repository import ReportsRepository
 from app.modules.notifications.schemas.report_dto import (
     DailyReportAggregateDTO,
@@ -18,6 +23,7 @@ from app.modules.notifications.schemas.report_dto import (
     SessionDetailItem,
     InstructorSummaryItem,
     PaymentDetailItem,
+    ReportDeliveryResult,
     TopDebtorItem,
     UnpaidAttendeeItem,
 )
@@ -53,61 +59,102 @@ logger = logging.getLogger(__name__)
 class ReportNotificationService(BaseNotificationService):
     """Handles: daily, weekly, monthly business reports."""
     
-    def __init__(self, repo: NotificationRepository):
+    def __init__(
+        self,
+        repo: NotificationRepository,
+        ledger: Optional[ReportDeliveryLedgerInterface] = None,
+    ):
         super().__init__(repo)
+        self._ledger: ReportDeliveryLedgerInterface = (
+            ledger if ledger is not None else SqlReportDeliveryLedger()
+        )
     
     # ── Scheduled Report Methods ─────────────────────────────────────────
     
-    async def send_daily_report(self, target_date: Optional[date] = None) -> None:
+    async def send_daily_report(
+        self,
+        target_date: Optional[date] = None,
+        *,
+        force: bool = False,
+    ) -> ReportDeliveryResult:
         """Daily business summary to all admins."""
+        report_date = target_date or date.today()
         template = self._get_template_by_name("daily_report")
-        if not template or not template.is_active:
-            logger.warning("daily_report template not found or inactive - skipping.")
-            return
+        if not template:
+            logger.warning("daily_report template not found - report is not configured.")
+            return ReportDeliveryResult(
+                report_type="daily_report",
+                period_start=report_date,
+                outcome="not_configured",
+            )
 
         recipients = self._resolve_notification_recipients("daily_report")
+        if not template.is_active or not recipients:
+            return ReportDeliveryResult(
+                report_type="daily_report",
+                period_start=report_date,
+                outcome="disabled",
+            )
 
-        today = target_date or date.today()
-        aggregates = self._fetch_daily_aggregates(today)
-        variables = self._build_variables(aggregates, today)
+        aggregates = self._fetch_daily_aggregates(report_date)
+        variables = self._build_variables(aggregates, report_date)
 
         # Generate PDF attachment
         pdf_bytes = None
         try:
             from app.modules.notifications.pdf.daily_report_pdf import generate_daily_report_pdf
             pdf_bytes = generate_daily_report_pdf(
-                date_str=today.strftime("%Y-%m-%d"),
+                date_str=report_date.strftime("%Y-%m-%d"),
                 aggregates=aggregates
             )
-            logger.info(f"Generated daily report PDF for {today}")
+            logger.info(f"Generated daily report PDF for {report_date}")
         except Exception as e:
             logger.error(f"Failed to generate daily report PDF: {e}")
 
         attachments = None
         if pdf_bytes:
-            filename = f"daily_report_{today.strftime('%Y-%m-%d')}.pdf"
+            filename = f"daily_report_{report_date.strftime('%Y-%m-%d')}.pdf"
             attachments = [(filename, pdf_bytes, "application/pdf")]
 
-        for email, recipient_id, recipient_type in recipients:
-            await self._dispatch(
-                template, "EMAIL", recipient_type, recipient_id, email,
-                variables, attachments=attachments
-            )
+        return await self._deliver_report(
+            template,
+            recipients,
+            report_date,
+            variables,
+            attachments=attachments,
+            force=force,
+        )
     
-    async def send_weekly_report(self, target_date: Optional[date] = None) -> None:
+    async def send_weekly_report(
+        self,
+        target_date: Optional[date] = None,
+        *,
+        force: bool = False,
+    ) -> ReportDeliveryResult:
         """Weekly business summary to all admins."""
+        report_date = target_date or date.today()
+        period_start = report_date - timedelta(days=report_date.weekday())
         template = self._get_template_by_name("weekly_report")
-        if not template or not template.is_active:
-            logger.warning("weekly_report template not found or inactive - skipping.")
-            return
+        if not template:
+            logger.warning("weekly_report template not found - report is not configured.")
+            return ReportDeliveryResult(
+                report_type="weekly_report",
+                period_start=period_start,
+                outcome="not_configured",
+            )
         
         # Get notification recipients (fallback handled automatically by base service)
         recipients = self._resolve_notification_recipients("weekly_report")
+        if not template.is_active or not recipients:
+            return ReportDeliveryResult(
+                report_type="weekly_report",
+                period_start=period_start,
+                outcome="disabled",
+            )
         
-        today = target_date or date.today()
-        week_start = today - timedelta(days=today.weekday())
+        week_start = period_start
         completed_week_end = week_start + timedelta(days=6)
-        week_end = completed_week_end if completed_week_end < date.today() else today
+        week_end = completed_week_end if completed_week_end < date.today() else report_date
         
         aggregates = self._fetch_weekly_aggregates(week_start, week_end)
         
@@ -126,31 +173,51 @@ class ReportNotificationService(BaseNotificationService):
             "dropped_enrollments": aggregates.dropped_enrollments,
         }
 
-        # Send to all enabled recipients (admins + additional recipients)
-        for email, recipient_id, recipient_type in recipients:
-            await self._dispatch(template, "EMAIL", recipient_type, recipient_id, email, variables)
+        return await self._deliver_report(
+            template,
+            recipients,
+            period_start,
+            variables,
+            force=force,
+        )
 
-    async def send_monthly_report(self, target_date: Optional[date] = None) -> None:
+    async def send_monthly_report(
+        self,
+        target_date: Optional[date] = None,
+        *,
+        force: bool = False,
+    ) -> ReportDeliveryResult:
         """Monthly business summary to all admins."""
+        report_date = target_date or date.today()
+        period_start = report_date.replace(day=1)
         template = self._get_template_by_name("monthly_report")
-        if not template or not template.is_active:
-            logger.warning("monthly_report template not found or inactive - skipping.")
-            return
+        if not template:
+            logger.warning("monthly_report template not found - report is not configured.")
+            return ReportDeliveryResult(
+                report_type="monthly_report",
+                period_start=period_start,
+                outcome="not_configured",
+            )
 
         # Get notification recipients (fallback handled automatically by base service)
         recipients = self._resolve_notification_recipients("monthly_report")
+        if not template.is_active or not recipients:
+            return ReportDeliveryResult(
+                report_type="monthly_report",
+                period_start=period_start,
+                outcome="disabled",
+            )
 
-        today = target_date or date.today()
         import calendar
-        month_start = today.replace(day=1)
+        month_start = period_start
         last_day = calendar.monthrange(month_start.year, month_start.month)[1]
         completed_month_end = date(month_start.year, month_start.month, last_day)
-        month_end = completed_month_end if completed_month_end < date.today() else today
+        month_end = completed_month_end if completed_month_end < date.today() else report_date
 
         aggregates = self._fetch_monthly_aggregates(month_start, month_end)
 
         variables = {
-            "month": today.strftime("%B %Y"),
+            "month": report_date.strftime("%B %Y"),
             "total_revenue": f"{aggregates.total_revenue:,.2f}",
             "new_enrollments": aggregates.new_enrollments,
             "active_students": aggregates.active_students,
@@ -164,9 +231,103 @@ class ReportNotificationService(BaseNotificationService):
             "revenue_breakdown": aggregates.revenue_breakdown,
         }
         
-        # Send to all enabled recipients (admins + additional recipients)
-        for email, recipient_id, recipient_type in recipients:
-            await self._dispatch(template, "EMAIL", recipient_type, recipient_id, email, variables)
+        return await self._deliver_report(
+            template,
+            recipients,
+            period_start,
+            variables,
+            force=force,
+        )
+
+    async def _deliver_report(
+        self,
+        template: NotificationTemplate,
+        recipients: list[tuple[str, int, str]],
+        period_start: date,
+        variables: dict,
+        attachments: Optional[list[tuple[str, bytes, str]]] = None,
+        force: bool = False,
+    ) -> ReportDeliveryResult:
+        report_type = template.name
+        body = self._render_template(template, variables)
+        subject = None
+        if template.subject:
+            subject = template.subject
+            for key, value in variables.items():
+                subject = subject.replace(f"{{{{{key}}}}}", str(value))
+
+        sent = 0
+        failed = 0
+        skipped = 0
+        errors: list[str] = []
+
+        def _record_error(message: str) -> None:
+            if message not in errors and len(errors) < 5:
+                errors.append(message)
+
+        for contact, recipient_id, recipient_type in recipients:
+            if force:
+                delivered = await self._dispatch(
+                    template,
+                    "EMAIL",
+                    recipient_type,
+                    recipient_id,
+                    contact,
+                    variables,
+                    attachments=attachments,
+                )
+                if delivered:
+                    sent += 1
+                else:
+                    failed += 1
+                    _record_error(f"Delivery failed for {contact}")
+                continue
+
+            log_id = self._ledger.claim(
+                template_id=template.id,
+                period_start=period_start,
+                recipient_type=recipient_type,
+                recipient_id=recipient_id,
+                recipient_contact=contact,
+                subject=subject,
+                body=body,
+            )
+            if log_id is None:
+                skipped += 1
+                continue
+
+            try:
+                success, error = await self._email.send(contact, body, subject, attachments)
+            except Exception as send_error:
+                success, error = False, str(send_error)
+
+            if success:
+                self._ledger.mark(log_id, "SENT", None)
+                sent += 1
+            else:
+                error_message = error or f"Delivery failed for {contact}"
+                self._ledger.mark(log_id, "FAILED", error_message)
+                failed += 1
+                _record_error(error_message)
+
+        if sent > 0 and failed > 0:
+            outcome = "partial"
+        elif sent > 0:
+            outcome = "delivered"
+        elif failed > 0:
+            outcome = "failed"
+        else:
+            outcome = "nothing_to_send"
+
+        return ReportDeliveryResult(
+            report_type=report_type,
+            period_start=period_start,
+            outcome=outcome,
+            sent=sent,
+            failed=failed,
+            skipped=skipped,
+            errors=errors,
+        )
     
     # ── Public Helpers for Date-Param Endpoints ─────────────────────────
 
