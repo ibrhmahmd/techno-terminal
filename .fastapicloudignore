@@ -1,0 +1,13 @@
+# Not needed at runtime; keep deploy uploads small (see .gitignore for the rest).
+.claude/
+.scratch/
+.specify/
+.opencode/
+archieve/
+dashboard/
+docs/
+specs/
+tests/
+scripts/
+db/migrations/
+audit_dashboard.py
