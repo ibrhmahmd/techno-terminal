@@ -104,3 +104,24 @@ _(will be filled in on merge: `closes #1`)_
 1. Change the database password on both Supabase projects (production `srbppkcvrgioneitktdj` and testing `qugffjtucavdseczbata`). Update `.env`, `.env.test` and the FastAPI Cloud env.
 2. Decide: make the repo private, rewrite history (`git filter-repo`), or both.
 
+## #3 — Attendance/group-progression 500s: datetime fields backed by DATE columns
+
+**Status:** 🟢 FIXED (commit `c678197`, pending push/deploy)
+**Type:** bug
+**Created:** 2026-09-26
+
+### Description
+Clients hit 500s on `POST /api/v1/attendance/session/{id}/mark` and `POST /api/v1/academics/groups/{id}/progress-level` starting 2026-09-26, after working fine the day before. Confirmed via Logfire: `AttributeError: 'datetime.date' object has no attribute 'utcoffset'` in `sqlmodel/sql/sqltypes.py:46`, raised from `app/modules/enrollments/core/repository.py:26` (`get_active_enrollment`).
+
+### Root Cause
+`Enrollment.enrolled_at`, `Student.date_of_birth`, `Employee.hired_at`, and `Group.started_at` were typed `Optional[datetime]` while their Postgres columns are `DATE` (confirmed dormant since as far back as 2026-03-27). `pyproject.toml` pins `sqlmodel>=0.0.16` with no upper bound. Commit `cf7fb88` (2026-09-25, a `logfire` dependency-constraint bump, unrelated to this code) forced a fresh dependency resolution on the next FastAPI Cloud build, which pulled in `sqlmodel==0.0.47`. That version's `UTCDateTime.process_result_value` unconditionally calls `.utcoffset()` on every non-null value read for a `datetime`-typed field — a `date` object has no such method, so the six-month-old type mismatch became a hard crash with no code change to attendance/enrollments/HR/academics.
+
+### Fix
+Corrected the 4 ORM fields to `Optional[date]`, plus 8 mirrored `from_attributes=True` DTOs across enrollments/CRM/HR/academics-analytics that would have failed Pydantic validation the same way once the ORM fix went live. Verified via stash-and-compare against the full test suite: 14 failures are pre-existing (shared testing-DB FK/data-isolation issue, reproduces identically on unmodified code) — zero regressions from this change.
+
+### Follow-up
+Consider pinning `sqlmodel` (and `sqlalchemy`) to a known-good range in `pyproject.toml` so a routine dependency-constraint change can't silently re-resolve a breaking transitive version again.
+
+### Closes
+_(will be filled in on merge: `closes #3`)_
+
