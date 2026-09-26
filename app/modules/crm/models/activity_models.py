@@ -6,7 +6,7 @@ Activity and history tracking models for comprehensive student audit trails.
 from datetime import datetime
 from typing import Optional, List, Any, Dict
 
-from sqlalchemy import Column as SAColumn
+from sqlalchemy import Column as SAColumn, DateTime
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import SQLModel, Field
 
@@ -24,7 +24,7 @@ class StudentActivityLogBase(SQLModel):
         default=None,
         sa_column=SAColumn("meta", JSONB)
     )
-    created_at: Optional[datetime] = None
+    created_at: Optional[datetime] = Field(default=None, sa_column=SAColumn(DateTime(timezone=False)))
 
 
 class StudentActivityLog(StudentActivityLogBase, table=True):

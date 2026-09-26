@@ -1,5 +1,5 @@
 from typing import Optional, Any
-from datetime import datetime
+from datetime import date, datetime
 from pydantic import BaseModel, ConfigDict
 from app.modules.enrollments.models.enrollment_models import EnrollmentBase
 
@@ -36,7 +36,7 @@ class EnrollmentDTO(EnrollmentBase):
     group_name: Optional[str] = None
     course_name: Optional[str] = None
     instructor_name: Optional[str] = None
-    enrolled_at: Optional[datetime] = None
+    enrolled_at: Optional[date] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     created_by: Optional[int] = None

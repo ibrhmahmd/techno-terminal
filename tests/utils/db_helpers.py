@@ -263,7 +263,8 @@ def create_test_enrollment(
     transferred_from: Optional[int] = None,
 ):
     from app.modules.enrollments.models.enrollment_models import Enrollment
-    from datetime import datetime
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
     enrollment = Enrollment(
         student_id=student_id,
         group_id=group_id,
@@ -274,8 +275,8 @@ def create_test_enrollment(
         notes=notes,
         created_by=created_by,
         transferred_from=transferred_from,
-        enrolled_at=datetime.utcnow(),
-        created_at=datetime.utcnow(),
+        enrolled_at=now.date(),
+        created_at=now,
     )
     session.add(enrollment)
     session.commit()

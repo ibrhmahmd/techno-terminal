@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 
 from pydantic import BaseModel
@@ -10,7 +10,7 @@ class WaitingListStudentDTO(BaseModel):
     phone: Optional[str] = None
     gender: Optional[str] = None
     status: str
-    date_of_birth: Optional[datetime] = None
+    date_of_birth: Optional[date] = None
     age: Optional[int] = None
     has_unpaid_balance: bool = False
     waiting_since: Optional[datetime] = None

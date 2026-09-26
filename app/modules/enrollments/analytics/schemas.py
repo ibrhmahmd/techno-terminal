@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 from pydantic import BaseModel, ConfigDict
 
@@ -22,7 +22,7 @@ class GroupEnrollmentDTO(BaseModel):
     parent_name: Optional[str] = None
     level_number: int
     status: str
-    enrolled_at: Optional[datetime] = None
+    enrolled_at: Optional[date] = None
     sessions_attended: int
     sessions_total: int
     payment_status: str

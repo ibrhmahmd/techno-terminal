@@ -4,7 +4,9 @@ from typing import Any, Optional
 from sqlalchemy import Column as SAColumn
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import SQLModel, Field, Relationship, Column, String
+from sqlmodel.sql.sqltypes import UTCDateTime
 from app.shared.constants import EnrollmentStatus
+
 
 # --- Enrollment Models ---
 
@@ -23,10 +25,10 @@ class Enrollment(EnrollmentBase, table=True):
     __table_args__ = {"extend_existing": True}
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    enrolled_at: Optional[datetime] = None
+    enrolled_at: Optional[date] = None
     created_by: Optional[int] = Field(default=None, foreign_key="users.id")
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: Optional[datetime] = Field(default=None, sa_column=Column(UTCDateTime))
+    updated_at: Optional[datetime] = Field(default=None, sa_column=Column(UTCDateTime))
     enrollment_metadata: Optional[dict[str, Any]] = Field(
         default=None,
         sa_column=SAColumn("metadata", JSONB),

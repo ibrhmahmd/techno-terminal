@@ -43,7 +43,7 @@ class DailyEnrollmentDTO(BaseModel):
     student_name: str
     course_name: str
     group_name: str
-    enrolled_at: datetime
+    enrolled_at: date
 
 
 class DailyGroupDTO(BaseModel):

@@ -3,7 +3,7 @@ app/modules/academics/models/group_models.py
 ────────────────────────────────────────────
 SQLModel classes for the Group entity.
 """
-from datetime import datetime, time
+from datetime import date, datetime, time
 from typing import Any, Optional
 
 from sqlalchemy import Column as SAColumn
@@ -28,7 +28,7 @@ class Group(GroupBase, table=True):
     __table_args__ = {"extend_existing": True}
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    started_at: Optional[datetime] = None
+    started_at: Optional[date] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     group_metadata: Optional[dict[str, Any]] = Field(

@@ -3,7 +3,7 @@ app/api/schemas/enrollments/enrollment.py
 ─────────────────────────────────────────
 Public-facing Enrollment DTOs.
 """
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 
 from pydantic import BaseModel
@@ -29,7 +29,7 @@ class EnrollmentPublic(BaseModel):
     payment_status: Optional[PaymentStatus] = None  # not_paid, partially_paid, paid
     amount_remaining: Optional[float] = None
     notes: Optional[str] = None
-    enrolled_at: Optional[datetime] = None
+    enrolled_at: Optional[date] = None
 
     model_config = {"from_attributes": True}
 

@@ -26,7 +26,7 @@ class EnrollmentInfo(BaseModel):
     status: str
     amount_due: Optional[float] = None
     discount_applied: float = 0.0
-    enrolled_at: Optional[datetime] = None
+    enrolled_at: Optional[date] = None
 
     model_config = {"from_attributes": True}
 
@@ -57,7 +57,7 @@ class CurrentEnrollmentInfo(BaseModel):
 class StudentWithDetails(BaseModel):
     id: int
     full_name: str
-    date_of_birth: Optional[datetime] = None
+    date_of_birth: Optional[date] = None
     age: Optional[int] = None
     gender: Optional[str] = None
     phone: Optional[str] = None

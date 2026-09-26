@@ -2,7 +2,7 @@
 
 SQLModel entities for employee management.
 """
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Optional
 
 from sqlalchemy import Column, String
@@ -34,7 +34,7 @@ class Employee(EmployeeBase, table=True):
     __table_args__ = {"extend_existing": True}
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    hired_at: Optional[datetime] = None
+    hired_at: Optional[date] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     user_id: Optional[int] = Field(default=None, foreign_key="users.id", unique=True)

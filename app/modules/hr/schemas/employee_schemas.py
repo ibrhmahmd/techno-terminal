@@ -2,7 +2,7 @@
 
 Pydantic DTOs for employee CRUD operations.
 """
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
@@ -77,7 +77,7 @@ class EmployeeReadDTO(BaseModel):
     monthly_salary: Optional[Decimal] = None
     contract_percentage: Optional[float] = None
     is_active: bool
-    hired_at: Optional[datetime] = None
+    hired_at: Optional[date] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     user_id: Optional[int] = None

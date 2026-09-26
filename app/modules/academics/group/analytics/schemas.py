@@ -3,7 +3,7 @@ app/api/schemas/academics/group_analytics.py
 ───────────────────────────────────────────
 DTOs for group analytics and history endpoints.
 """
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -52,7 +52,7 @@ class EnrollmentHistoryItemDTO(BaseModel):
     student_name: str
     student_phone: Optional[str] = None
     level_number_at_enrollment: int
-    enrolled_at: Optional[datetime] = None
+    enrolled_at: Optional[date] = None
     status: str
     amount_due: float = 0.0
     discount_applied: float = 0.0

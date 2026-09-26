@@ -4,7 +4,7 @@ app/modules/crm/models/student_models.py
 SQLModel table definition for the Student entity.
 StudentParent junction lives in link_models.py to avoid circular refs.
 """
-from datetime import datetime
+from datetime import date, datetime
 from enum import Enum
 from typing import TYPE_CHECKING, Any, List, Optional
 
@@ -25,7 +25,7 @@ class StudentStatus(str, Enum):
 
 class StudentBase(SQLModel):
     full_name: str
-    date_of_birth: Optional[datetime] = None  # column type: DATE
+    date_of_birth: Optional[date] = None  # column type: DATE
     gender: Optional[str] = None              # CHECK: 'male' | 'female'
     phone: Optional[str] = None
     notes: Optional[str] = None
