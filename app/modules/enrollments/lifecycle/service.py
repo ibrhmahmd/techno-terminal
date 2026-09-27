@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date
 from typing import Any, List, Optional
 from sqlmodel import Session, select
 from app.modules.academics.models import Course, Group
@@ -8,6 +8,7 @@ from app.modules.enrollments.lifecycle.schemas import (
     EnrollmentMigrationResult,
 )
 from app.shared.exceptions import NotFoundError
+from app.shared.datetime_utils import utc_now
 
 
 class EnrollmentLifecycleService:
@@ -40,7 +41,7 @@ class EnrollmentLifecycleService:
 
         for enrollment in active_enrollments:
             enrollment.status = "completed"
-            enrollment.updated_at = datetime.utcnow()
+            enrollment.updated_at = utc_now()
             session.add(enrollment)
             migrated_ids.append(enrollment.id)
 
@@ -60,7 +61,7 @@ class EnrollmentLifecycleService:
                 amount_due=new_amount_due,
                 discount_applied=discount,
                 status="active",
-                enrolled_at=datetime.utcnow(),
+                enrolled_at=date.today(),
             )
             session.add(new_enrollment)
             session.flush()

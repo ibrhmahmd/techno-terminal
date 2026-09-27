@@ -8,6 +8,7 @@ from app.modules.crm.interfaces import IStudentRepository, StudentSummaryDTO, St
 from app.modules.crm.schemas.student_details import SiblingInfo
 from app.modules.crm.models import Student, StudentStatus, StudentParent, Parent
 from app.shared.audit_utils import apply_create_audit
+from app.shared.datetime_utils import utc_now
 
 class StudentRepository(IStudentRepository):
     """
@@ -108,15 +109,15 @@ class StudentRepository(IStudentRepository):
             return False
         
         # Soft delete student
-        student.deleted_at = datetime.utcnow()
+        student.deleted_at = utc_now()
         student.deleted_by = deleted_by
         self._session.add(student)
-        
+
         # Cascade soft delete to related payments
         stmt = select(Payment).where(Payment.student_id == student_id)
         payments = self._session.exec(stmt).all()
         for payment in payments:
-            payment.deleted_at = datetime.utcnow()
+            payment.deleted_at = utc_now()
             payment.deleted_by = deleted_by
             self._session.add(payment)
         
