@@ -7,7 +7,7 @@ Prefix: /api/v1/admin  (mounted in main.py)
 Tag:    Admin Auth
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Query
 
@@ -17,6 +17,21 @@ from app.api.schemas.auth import UpdateUserRequest, InviteUserRequest
 from app.modules.auth import AuthService, AuditService, User, UserAdminDTO, InviteResultDTO, AuditLogEntryDTO
 
 router = APIRouter(tags=["Admin Auth"])
+
+
+def _parse_audit_date(value: str | None) -> datetime | None:
+    """Parse an ISO date/datetime query param, defaulting naive values to UTC.
+
+    AuditLog.created_at is timezone-aware (SQLModel's UTCDateTime), so a
+    naive value here would raise ValueError at query time -- a bare date
+    like "2026-09-01" parses naive via fromisoformat.
+    """
+    if value is None:
+        return None
+    parsed = datetime.fromisoformat(value)
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
 
 
 @router.get(
@@ -119,8 +134,8 @@ def audit_logins(
     _user: User = Depends(require_admin),
     audit_svc: AuditService = Depends(get_audit_service),
 ):
-    from_date_dt = datetime.fromisoformat(from_date) if from_date else None
-    to_date_dt = datetime.fromisoformat(to_date) if to_date else None
+    from_date_dt = _parse_audit_date(from_date)
+    to_date_dt = _parse_audit_date(to_date)
     result = audit_svc.query_logins(
         user_id=user_id,
         from_date=from_date_dt,
@@ -145,8 +160,8 @@ def audit_password_changes(
     _user: User = Depends(require_admin),
     audit_svc: AuditService = Depends(get_audit_service),
 ):
-    from_date_dt = datetime.fromisoformat(from_date) if from_date else None
-    to_date_dt = datetime.fromisoformat(to_date) if to_date else None
+    from_date_dt = _parse_audit_date(from_date)
+    to_date_dt = _parse_audit_date(to_date)
     result = audit_svc.query_password_changes(
         user_id=user_id,
         from_date=from_date_dt,
@@ -170,8 +185,8 @@ def audit_failed_attempts(
     _user: User = Depends(require_admin),
     audit_svc: AuditService = Depends(get_audit_service),
 ):
-    from_date_dt = datetime.fromisoformat(from_date)
-    to_date_dt = datetime.fromisoformat(to_date) if to_date else None
+    from_date_dt = _parse_audit_date(from_date)
+    to_date_dt = _parse_audit_date(to_date)
     result = audit_svc.query_failed_attempts(
         from_date=from_date_dt,
         to_date=to_date_dt,
