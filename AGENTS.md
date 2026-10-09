@@ -110,7 +110,7 @@ Plain SQL files in `db/migrations/`. Duplicate prefix numbers exist (`008`, `020
 |------|--------|---------|
 | Dev/unit | Local `postgres:17` container (`techno-test-db`, `127.0.0.1:55432`) | Full fast gate, destructive resets (`scripts/local_test_db.sh reset`), migration dry-runs |
 | Staging | Supabase **testing** project (`qugffjtucavdseczbata`) | Forward-only migrations FIRST, full pytest gate, live smoke via `TESTING=true python run_api.py` |
-| Prod | `srbppkcvrgioneitktdj` | Migrations only after the staging gate is green |
+| Prod | production Supabase project (ID deliberately not recorded in this public repo) | Migrations only after the staging gate is green |
 
 - `.env.test` serves BOTH pytest and the server (`config.py:106` selects it when running under pytest or `TESTING=true`). Its `DATABASE_URL`, `SUPABASE_URL`, and keys must all point at the SAME project — `get_engine()` logs a warning on mismatch (`app/db/connection.py:_warn_on_project_mismatch`).
 - **Local gate (#28):** `scripts/local_test_db.sh up` spins up a throwaway `postgres:17` container (`techno-test-db`, `127.0.0.1:55432`), applies `db/schema.sql`, and writes `.env.test.local` (a copy of `.env.test` with only `DATABASE_URL` swapped). Under pytest, `config.py:select_env_file` prefers an explicit `TEST_ENV_FILE`, then `.env.test.local` if present, else `.env.test`. The gate is `pytest -m "not supabase"` — it never touches Supabase. Resets are localhost/container only.

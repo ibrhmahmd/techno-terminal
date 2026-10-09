@@ -12,7 +12,7 @@ os.chdir("/home/ibrahim/Desktop/techno-terminal")
 
 import app.api.main  # noqa: F401  (same import order as the server; avoids a circular import)
 from app.core.config import settings
-assert "srbppkcvrgioneitktdj" not in settings.database_url, "refusing to run against production"
+assert "127.0.0.1" in settings.database_url or "localhost" in settings.database_url, "refusing to run against a non-local database"
 print("DB project:", settings.database_url.split("@")[0].split(".")[-1].split(":")[0])
 
 from app.db.connection import get_session
