@@ -10,3 +10,4 @@ finance, enrollments, tasks and competitions imported `NotificationService` dire
 
 - Each port has a real adapter and a test fake, which meets the interface policy (ADR-0008).
 - The `NotificationService` pass-through facade is deleted.
+- Adapters live in `app/modules/notifications/adapters/`. **They are wired in the composition root, `create_app()` in `app/api/main.py`, never by the emitting module.** Each emitting module's `api/deps.py` declares a provider such as `get_enrollment_notifier()` that raises `NotImplementedError`, and `create_app()` sets `app.dependency_overrides[...]` to the notifications adapter factory. The lifespan builds the inline adapters for the scheduler the same way. This keeps lower modules from importing notifications, even indirectly through `app.api`, which import-linter's layer contract would flag.
