@@ -95,9 +95,6 @@ Rules that hold in both legacy and target code:
 ### Lifespan Starts Background Tasks
 `app/api/main.py` lifespan starts the tasks scheduler (`app/modules/tasks/scheduler.py`) and the Logfire metrics collector (`app/observability/scheduler.py`). `TestClient(app)` used as a context manager triggers lifespan, so they run during tests too. Scheduled reports have no in-process scheduler: an external cron calls `/internal/reports/*` (`app/api/routers/notifications/internal_scheduler_router.py`), guarded by the `X-Internal-Trigger-Secret` header ↔ `settings.internal_trigger_secret` (an empty secret is always rejected).
 
-### `get_group_analytics_service` defined twice
-Defined at `dependencies.py:213` and `dependencies.py:411`. Python uses the last definition (line 411 wins). Same interface.
-
 ### Migrations
 Plain SQL files in `db/migrations/`. Duplicate prefix numbers exist (`008`, `020`, `021`, `022`, `026`, `030`, `036`, `051`, `057`) — apply in **chronological order**, not numeric. Cleanup migrations: `042`–`049`. Schema: 18 modular files in `db/schema/` applied via `db/schema.sql`. There is no Alembic: migrations are plain SQL files applied by hand.
 

@@ -210,11 +210,6 @@ def get_session_service() -> SessionService:
     return SessionService()
 
 
-def get_group_analytics_service() -> GroupAnalyticsService:
-    """Returns a fresh GroupAnalyticsService instance per request."""
-    return GroupAnalyticsService()
-
-
 def get_notification_service() -> Generator["NotificationService", None, None]:
     from app.modules.notifications.repositories.notification_repository import NotificationRepository
     from app.modules.notifications.services.notification_service import NotificationService

@@ -11,7 +11,6 @@ from sqlmodel import Session, select
 
 from app.modules.finance import Payment
 from app.modules.finance.interfaces import (
-    IPaymentRepository,
     EnrollmentBalanceDTO,
     AddPaymentLineDTO,
     PaymentWithDetailsDTO,
@@ -21,7 +20,7 @@ from app.modules.finance import EnrollmentBalanceItem
 from app.shared.datetime_utils import utc_now
 
 
-class PaymentRepository(IPaymentRepository):
+class PaymentRepository:
     """Repository for payment data access operations."""
 
     def __init__(self, session: Session) -> None:

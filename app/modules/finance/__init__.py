@@ -6,7 +6,7 @@ Finance module with SOLID-compliant architecture.
 New Structure:
 - models: SQLModel database models (single-responsibility files)
 - schemas: Pydantic input/output DTOs (organized by domain)
-- interfaces: Protocols and internal DTOs
+- interfaces: internal DTOs
 - repositories: Data access layer with UnitOfWork
 - services: Business logic layer
 - pdf: PDF generation utilities
@@ -57,19 +57,6 @@ from .interfaces.dto import (
     ReceiptTemplateContextDTO,
 )
 
-# Protocols
-from .interfaces.repositories import (
-    IReceiptRepository,
-    IPaymentRepository,
-    IReportingRepository,
-)
-from .interfaces.services import (
-    IReceiptService,
-    IRefundService,
-    IBalanceService,
-    IReportingService,
-)
-
 __all__ = [
     # Models
     "Receipt",
@@ -108,12 +95,4 @@ __all__ = [
     "IssueRefundDTO",
     "OverpaymentRiskItem",
     "ReceiptTemplateContextDTO",
-    # Protocols
-    "IReceiptRepository",
-    "IPaymentRepository",
-    "IReportingRepository",
-    "IReceiptService",
-    "IRefundService",
-    "IBalanceService",
-    "IReportingService",
 ]

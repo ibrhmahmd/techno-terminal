@@ -6,12 +6,11 @@ Reporting service implementation for financial reports.
 from datetime import date
 from typing import Optional, List
 
-from app.modules.finance.interfaces import IReportingService
 from app.modules.finance import DailyCollectionItem, DailyReceiptItem, UnpaidCompFeeItem
 from app.modules.finance.repositories.unit_of_work import FinanceUnitOfWork
 
 
-class ReportingService(IReportingService):
+class ReportingService:
     """
     Service for financial reporting operations.
     

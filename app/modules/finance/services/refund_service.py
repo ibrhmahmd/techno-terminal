@@ -10,7 +10,6 @@ if TYPE_CHECKING:
     from app.modules.crm.services.activity_service import StudentActivityService
 
 from app.modules.finance.interfaces import (
-    IRefundService,
     RefundResultDTO,
     IssueRefundDTO,
 )
@@ -18,7 +17,7 @@ from app.modules.finance.repositories.unit_of_work import FinanceUnitOfWork
 from app.shared.exceptions import NotFoundError, BusinessRuleError
 
 
-class RefundService(IRefundService):
+class RefundService:
     """
     Service for refund business operations.
 

@@ -38,16 +38,6 @@ from app.modules.hr.repositories import (
 # Services
 from app.modules.hr.services import EmployeeCrudService, StaffAccountService
 
-# Interfaces
-from app.modules.hr.services.interface import (
-    EmployeeCrudServiceInterface,
-    StaffAccountServiceInterface,
-)
-from app.modules.hr.repositories.interface import (
-    EmployeeRepositoryInterface,
-    StaffAccountRepositoryInterface,
-)
-
 __all__ = [
     # Constants
     "EMPLOYEE_FIELD_KEYS",
@@ -68,11 +58,6 @@ __all__ = [
     "CreateEmployeeAccountDTO",
     "EmployeeAccountResultDTO",
     "StaffAccountLinkDTO",
-    # Interfaces
-    "EmployeeCrudServiceInterface",
-    "StaffAccountServiceInterface",
-    "EmployeeRepositoryInterface",
-    "StaffAccountRepositoryInterface",
     # Repositories
     "EmployeeRepository",
     "StaffAccountRepository",

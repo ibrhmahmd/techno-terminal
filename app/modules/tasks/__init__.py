@@ -28,10 +28,6 @@ from app.modules.tasks.repository import (
 from app.modules.tasks.service import (
     TaskService,
 )
-from app.modules.tasks.interface import (
-    TaskRepositoryInterface,
-    TaskServiceInterface,
-)
 
 __all__ = [
     # Models
@@ -59,7 +55,4 @@ __all__ = [
     "TasksUnitOfWork",
     # Service
     "TaskService",
-    # Interfaces
-    "TaskRepositoryInterface",
-    "TaskServiceInterface",
 ]

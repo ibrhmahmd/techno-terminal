@@ -2,11 +2,10 @@ from typing import Optional
 from sqlmodel import Session, select, func
 from sqlalchemy import or_
 
-from app.modules.crm.interfaces import IParentRepository
 from app.modules.crm.models import Parent
 from app.modules.crm.models.link_models import StudentParent
 
-class ParentRepository(IParentRepository):
+class ParentRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
 
