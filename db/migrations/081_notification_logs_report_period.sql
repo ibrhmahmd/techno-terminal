@@ -31,7 +31,7 @@
 --
 -- Applied:
 --   testing (qugffjtucavdseczbata): 2026-09-25
---   production (srbppkcvrgioneitktdj): 2026-09-25
+--   production: 2026-09-25
 -- =============================================================================
 
 SET lock_timeout = '5s';

@@ -2,7 +2,7 @@
 
 **Status:** FINALIZED  
 **Date:** 2026-07-09  
-**Supabase Project:** `techno-future-auth` (`srbppkcvrgioneitktdj`)  
+**Supabase Project:** `techno-future-auth`  
 **Relates to:** `specs/035-business-reports-feature/spec.md`
 
 ---

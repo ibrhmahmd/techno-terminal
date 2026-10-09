@@ -15,7 +15,7 @@ Full employee task tracking system for Techno Terminal STEM center. Covers backe
 
 **Language/Version**: Python 3.13 (backend), TypeScript + React 18 (frontend)  
 **Primary Dependencies**: FastAPI, SQLModel, PostgreSQL, APScheduler (recurring tasks), Starlette BackgroundTasks (notifications)  
-**Storage**: PostgreSQL via Supabase (project `srbppkcvrgioneitktdj`)  
+**Storage**: PostgreSQL via Supabase (production project)  
 **Testing**: pytest (backend) · Vitest + React Testing Library (frontend)  
 **Target Platform**: Linux server (Leapcell/Railpack) + Vercel (frontend)  
 **Project Type**: Web service (REST API) + React SPA  
