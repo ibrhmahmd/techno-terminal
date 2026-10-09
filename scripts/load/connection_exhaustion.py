@@ -1,25 +1,28 @@
 """
-Connection Pool Exhaustion Test Script
-
-This script reproduces the QueuePool limit error by creating
-concurrent database requests that exceed your pool capacity.
-
-Usage:
-    python test_connection_exhaustion.py
-
-Requires:
-    pip install httpx
+Connection pool exhaustion load script (manual, not a pytest suite).
+Targets localhost by default and refuses non-local hosts unless --allow-remote.
+Env: BASE_URL, TOKEN. Flags: --http --direct --scheduler --uow --stale --slow --all-direct --allow-remote.
 """
 
 import asyncio
+import os
 import time
 import sys
+from urllib.parse import urlparse
+
+# Keep app settings off .env (production) before any `app.*` import.
+os.environ.setdefault("TESTING", "true")
+
+# Ensure project root is importable when run as a plain script.
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
 import httpx
 
-# Configuration - adjust to your setup
-BASE_URL = "https://techno-terminal-5c255cfe.fastapicloud.dev/api/v1"  # Or your deployed URL
-TOKEN = "eyJhbGciOiJFUzI1NiIsImtpZCI6IjRmN2U4ODliLWNkNWItNDZlOS1hZDc1LWI4ZDMyY2I3YzI4NCIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL3NyYnBwa2N2cmdpb25laXRrdGRqLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiJjY2JjYTA2My01Y2UzLTRiNGYtOTdhMy03OTE1MTU0ZWRiOTIiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzc4MzIwMDU1LCJpYXQiOjE3NzgzMTY0NTUsImVtYWlsIjoiYWRtaW4ubmV0QHRlY2huby5jcm0iLCJwaG9uZSI6IiIsImFwcF9tZXRhZGF0YSI6eyJwcm92aWRlciI6ImVtYWlsIiwicHJvdmlkZXJzIjpbImVtYWlsIl19LCJ1c2VyX21ldGFkYXRhIjp7ImVtYWlsX3ZlcmlmaWVkIjp0cnVlfSwicm9sZSI6ImF1dGhlbnRpY2F0ZWQiLCJhYWwiOiJhYWwxIiwiYW1yIjpbeyJtZXRob2QiOiJwYXNzd29yZCIsInRpbWVzdGFtcCI6MTc3ODMxNjQ1NX1dLCJzZXNzaW9uX2lkIjoiMTY0MzRmNTktYjMxMy00ZmVmLTg2ZjAtOWUxM2EwNmRkNDQwIiwiaXNfYW5vbnltb3VzIjpmYWxzZX0.FL1ThYuK_jdjGemXyeXDWCoShhumKr3w5w9VTqzeUn4LQ8NNAWSXrArfvluw9vltbeVeGAmEvh7uQFrC_akbBg"  # Get from login response
+# Configuration via environment
+BASE_URL = os.environ.get("BASE_URL", "http://localhost:8000/api/v1")
+TOKEN = os.environ.get("TOKEN", "")
 
 # Test endpoints that hit the database
 ENDPOINTS = [
@@ -57,7 +60,7 @@ async def make_request(client: httpx.AsyncClient, endpoint: str, delay: float = 
         return f"💥 {endpoint}: {type(e).__name__}: {str(e)[:50]}"
 
 
-async def test_concurrent_requests(num_concurrent: int, delay_per_request: float = 0):
+async def run_concurrent_requests(num_concurrent: int, delay_per_request: float = 0):
     """Fire N concurrent requests to stress the pool."""
     print(f"\n🔥 Testing {num_concurrent} concurrent requests...")
     print(f"   Pool size: 5 + 5 overflow = 10 max")
@@ -99,7 +102,7 @@ async def test_concurrent_requests(num_concurrent: int, delay_per_request: float
             print(f"   ... and {len(results) - 5} more")
 
 
-async def test_sequential_vs_concurrent():
+async def run_sequential_vs_concurrent():
     """Compare sequential vs concurrent performance."""
     print("\n" + "="*60)
     print("TEST 1: Sequential Requests (should always work)")
@@ -113,15 +116,15 @@ async def test_sequential_vs_concurrent():
     print("\n" + "="*60)
     print("TEST 2: 12 Concurrent Requests (exceeds pool of 10)")
     print("="*60)
-    await test_concurrent_requests(12)
+    await run_concurrent_requests(12)
     
     print("\n" + "="*60)
     print("TEST 3: 20 Concurrent Requests (heavy overload)")
     print("="*60)
-    await test_concurrent_requests(20)
+    await run_concurrent_requests(20)
 
 
-async def test_slow_query_buildup():
+async def run_slow_query_buildup():
     """Simulate slow queries that hold connections."""
     print("\n" + "="*60)
     print("TEST 4: Slow Query Buildup (connections held > 30s)")
@@ -129,7 +132,7 @@ async def test_slow_query_buildup():
     print("   Sending 15 requests with 5s stagger delays...")
     print("   This simulates long-running database queries")
     
-    await test_concurrent_requests(15, delay_per_request=5)
+    await run_concurrent_requests(15, delay_per_request=5)
 
 
 def direct_sqlalchemy_test():
@@ -176,7 +179,7 @@ def direct_sqlalchemy_test():
             print(f"   {future.result()}")
 
 
-def test_scheduler_leak_simulation():
+def check_scheduler_leak():
     """
     TEST 6: Scheduler Leak Simulation
     
@@ -267,7 +270,7 @@ def test_scheduler_leak_simulation():
         print(f"\n✅ Pool handled scheduler leak (requests completed quickly)")
 
 
-def test_stale_connection_resurrection():
+def check_stale_connection_resurrection():
     """
     TEST 7: Stale Connection Resurrection
     
@@ -351,7 +354,7 @@ def test_stale_connection_resurrection():
         print(f"   pool_pre_ping=True and pool_recycle=240s working correctly")
 
 
-def test_uow_pattern_abuse():
+def check_uow_pattern_abuse():
     """
     TEST 8: UoW Pattern Abuse
     
@@ -473,7 +476,7 @@ def test_uow_pattern_abuse():
         print(f"\n⚠️  UoW sessions weren't closed (check UoW __exit__ implementation)")
 
 
-def test_long_running_transaction_hold():
+def check_long_running_transaction_hold():
     """
     TEST 9: Long-Running Transaction Hold
     
@@ -558,71 +561,134 @@ def test_long_running_transaction_hold():
         print(f"\n✅ Pool handled mixed workload well")
 
 
-def main():
+LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
+HTTP_MODES = {"--http"}
+DIRECT_MODES = {"--direct", "--scheduler", "--stale", "--uow", "--slow", "--all-direct"}
+SCRIPT = "python scripts/load/connection_exhaustion.py"
+
+
+def _is_local_host(host: str | None) -> bool:
+    return host in LOCAL_HOSTS
+
+
+def _guard_http_target(allow_remote: bool) -> None:
+    """Refuse non-local BASE_URL hosts unless --allow-remote is set."""
+    host = urlparse(BASE_URL).hostname
+    if allow_remote or _is_local_host(host):
+        return
+    print(
+        f"\n❌ Refusing to target non-local host '{host}'.\n"
+        f"   BASE_URL={BASE_URL}\n"
+        f"   Pass --allow-remote to override.",
+        file=sys.stderr,
+    )
+    sys.exit(2)
+
+
+def _guard_db_target(allow_remote: bool) -> None:
+    """Refuse non-local database hosts unless --allow-remote is set."""
+    if allow_remote:
+        return
+    from app.core.config import settings
+
+    host = urlparse(settings.database_url).hostname
+    if _is_local_host(host):
+        return
+    print(
+        f"\n❌ Refusing to target non-local database host '{host}'.\n"
+        f"   DATABASE_URL points at a remote server; pass --allow-remote to override.",
+        file=sys.stderr,
+    )
+    sys.exit(2)
+
+
+def _print_usage() -> None:
+    print("\n📖 Usage:")
+    print(f"   {SCRIPT} [OPTION] [--allow-remote]")
+    print("\nOptions:")
+    print("   --direct        Basic pool exhaustion test")
+    print("   --scheduler     Test 6: Scheduler leak simulation (60s)")
+    print("   --stale         Test 7: Stale connection test (250s!)")
+    print("   --uow           Test 8: UoW pattern abuse test")
+    print("   --slow          Test 9: Long-running query test")
+    print("   --all-direct    Run all SQLAlchemy tests (except --stale)")
+    print("   --http          HTTP API tests only (needs BASE_URL + TOKEN)")
+    print("   --allow-remote  Permit non-localhost targets (default: refuse)")
+    print("   --help          Show this help")
+    print("\nEnv:")
+    print("   BASE_URL        API base URL (default http://localhost:8000/api/v1)")
+    print("   TOKEN           Supabase JWT for --http modes (no default)")
+
+
+def _run_http() -> None:
+    if not TOKEN:
+        print(
+            "\n❌ --http requires a TOKEN environment variable (Supabase JWT).\n"
+            "   Get one by logging in via POST /auth/login.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+    asyncio.run(run_sequential_vs_concurrent())
+    asyncio.run(run_slow_query_buildup())
+
+
+def main() -> int:
+    args = sys.argv[1:]
+    allow_remote = "--allow-remote" in args
+    modes = [a for a in args if a != "--allow-remote"]
+
     print("="*60)
     print("CONNECTION POOL EXHAUSTION TEST SUITE")
     print("="*60)
-    print(f"\nTarget: {BASE_URL}")
-    print(f"Pool config: size=5, max_overflow=5, timeout=30s")
-    
-    # Parse arguments
-    if len(sys.argv) > 1:
-        arg = sys.argv[1]
-        
-        if arg == "--direct":
-            # Basic pool exhaustion test
-            direct_sqlalchemy_test()
-        elif arg == "--scheduler":
-            # Test 6: Scheduler leak simulation
-            test_scheduler_leak_simulation()
-        elif arg == "--stale":
-            # Test 7: Stale connection resurrection (250s!)
-            test_stale_connection_resurrection()
-        elif arg == "--uow":
-            # Test 8: UoW pattern abuse
-            test_uow_pattern_abuse()
-        elif arg == "--slow":
-            # Test 9: Long-running transaction hold
-            test_long_running_transaction_hold()
-        elif arg == "--all-direct":
-            # Run all SQLAlchemy tests
-            print("\n🧪 Running all direct SQLAlchemy tests...")
-            direct_sqlalchemy_test()
-            test_scheduler_leak_simulation()
-            test_uow_pattern_abuse()
-            test_long_running_transaction_hold()
-            print("\n⚠️  Skipping --stale test (250s). Run manually with: python test_connection_exhaustion.py --stale")
-        elif arg == "--http":
-            # HTTP API tests only
-            print("\n⚠️  Make sure to set TOKEN in this script!")
-            print("   Get a token by logging in via POST /auth/login")
-            asyncio.run(test_sequential_vs_concurrent())
-            asyncio.run(test_slow_query_buildup())
-        elif arg in ("--help", "-h"):
-            print("\n📖 Usage:")
-            print("   python test_connection_exhaustion.py [OPTION]")
-            print("\nOptions:")
-            print("   --direct        Basic pool exhaustion test")
-            print("   --scheduler     Test 6: Scheduler leak simulation (60s)")
-            print("   --stale         Test 7: Stale connection test (250s!)")
-            print("   --uow           Test 8: UoW pattern abuse test")
-            print("   --slow          Test 9: Long-running query test")
-            print("   --all-direct    Run all SQLAlchemy tests (except --stale)")
-            print("   --http          HTTP API tests only")
-            print("   --help          Show this help")
-        else:
-            print(f"\n❌ Unknown argument: {arg}")
-            print("   Use --help for usage information")
-    else:
-        # Default: Show help and basic info
+
+    if not modes:
         print("\n⚠️  No test specified. Use --help for options.")
-        print("\nQuick start:")
-        print("   python test_connection_exhaustion.py --direct     # Basic test")
-        print("   python test_connection_exhaustion.py --scheduler  # Scheduler leak")
-        print("   python test_connection_exhaustion.py --uow        # UoW pattern")
-        print("\n� Recommended for production debugging:")
-        print("   python test_connection_exhaustion.py --all-direct")
+        _print_usage()
+        return 0
+
+    if len(modes) != 1:
+        print(f"\n❌ Expected exactly one mode, got: {' '.join(modes)}")
+        _print_usage()
+        return 2
+
+    mode = modes[0]
+
+    if mode in ("--help", "-h"):
+        _print_usage()
+        return 0
+
+    if mode not in HTTP_MODES | DIRECT_MODES:
+        print(f"\n❌ Unknown argument: {mode}")
+        _print_usage()
+        return 2
+
+    if mode in HTTP_MODES:
+        _guard_http_target(allow_remote)
+        print(f"\nTarget: {BASE_URL}")
+        _run_http()
+        return 0
+
+    _guard_db_target(allow_remote)
+
+    if mode == "--direct":
+        direct_sqlalchemy_test()
+    elif mode == "--scheduler":
+        check_scheduler_leak()
+    elif mode == "--stale":
+        check_stale_connection_resurrection()
+    elif mode == "--uow":
+        check_uow_pattern_abuse()
+    elif mode == "--slow":
+        check_long_running_transaction_hold()
+    elif mode == "--all-direct":
+        print("\n🧪 Running all direct SQLAlchemy tests...")
+        direct_sqlalchemy_test()
+        check_scheduler_leak()
+        check_uow_pattern_abuse()
+        check_long_running_transaction_hold()
+        print(f"\n⚠️  Skipping --stale test (250s). Run manually with: {SCRIPT} --stale")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
