@@ -25,3 +25,13 @@ _Avoid_: send, dispatch, log entry
 **Trigger**:
 The external, scheduled request that asks the system to produce the Scheduled Reports that are due.
 _Avoid_: scheduler, cron, job
+
+### People
+
+**Employee**:
+A staff member of the center (instructor, admin or other role) as an HR record, whether or not they can sign in.
+_Avoid_: staff, user, instructor (when meaning the record)
+
+**Staff Account**:
+The sign-in identity someone uses to access the system, with a role that decides what they may do. It is usually linked to an Employee, but it doesn't have to be (e.g. a system administrator). An Employee without one cannot sign in.
+_Avoid_: user, login, account
