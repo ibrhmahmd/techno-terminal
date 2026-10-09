@@ -30,6 +30,49 @@ def client(app):
 
 
 @pytest.fixture
+def uow():
+    """A UnitOfWork bound to an outer transaction that is rolled back on teardown.
+
+    A commit inside the test releases only a SAVEPOINT (``join_transaction_mode
+    ="create_savepoint"``); the outer transaction is rolled back at teardown,
+    so even committed work leaves zero rows behind. Function-scoped.
+    """
+    from sqlmodel import Session
+    from app.db.connection import get_engine
+    from app.db.uow import UnitOfWork
+
+    connection = get_engine().connect()
+    outer = connection.begin()
+    session = Session(
+        bind=connection,
+        join_transaction_mode="create_savepoint",
+        expire_on_commit=False,
+    )
+    try:
+        yield UnitOfWork(session)
+    finally:
+        session.close()
+        outer.rollback()
+        connection.close()
+
+
+@pytest.fixture
+def client_with_uow(app, uow):
+    """TestClient whose ``get_uow`` override yields the rollback-only ``uow``.
+
+    Deliberately built WITHOUT the context-manager form so the app lifespan
+    (schedulers) does not start. The dependency override is always popped.
+    """
+    from app.api.dependencies import get_uow
+
+    app.dependency_overrides[get_uow] = lambda: uow
+    try:
+        yield TestClient(app)
+    finally:
+        app.dependency_overrides.pop(get_uow, None)
+
+
+@pytest.fixture
 def admin_token():
     """
     Real Supabase JWT token for testing, from the TEST_ADMIN_JWT environment
@@ -97,6 +140,7 @@ def override_auth(app, db_session):
     """
     from app.api.dependencies import get_current_user
     from app.modules.auth.models.auth_models import User as UserModel
+    from sqlalchemy import text
     from sqlmodel import select
 
     # Ensure a user with id=1 exists (SYSTEM_ADMIN_ID in admin_settings_router)
@@ -111,6 +155,13 @@ def override_auth(app, db_session):
         )
         db_session.add(user_id1)
         db_session.commit()
+
+    # The explicit id=1 insert above does not advance users_id_seq, so the next
+    # auto-id insert would collide on users_pkey. Push the sequence past MAX(id).
+    db_session.execute(
+        text("SELECT setval(pg_get_serial_sequence('users','id'), (SELECT MAX(id) FROM users))")
+    )
+    db_session.commit()
 
     user = db_session.exec(
         select(UserModel).where(UserModel.supabase_uid == "test-admin-001")
@@ -144,6 +195,7 @@ def override_system_admin_auth(app, db_session):
     """
     from app.api.dependencies import get_current_user
     from app.modules.auth.models.auth_models import User as UserModel
+    from sqlalchemy import text
     from sqlmodel import select
 
     # Ensure a user with id=1 exists (SYSTEM_ADMIN_ID in admin_settings_router)
@@ -158,6 +210,13 @@ def override_system_admin_auth(app, db_session):
         )
         db_session.add(user_id1)
         db_session.commit()
+
+    # The explicit id=1 insert above does not advance users_id_seq, so the next
+    # auto-id insert would collide on users_pkey. Push the sequence past MAX(id).
+    db_session.execute(
+        text("SELECT setval(pg_get_serial_sequence('users','id'), (SELECT MAX(id) FROM users))")
+    )
+    db_session.commit()
 
     user = db_session.exec(
         select(UserModel).where(UserModel.supabase_uid == "test-sysadmin-001")
