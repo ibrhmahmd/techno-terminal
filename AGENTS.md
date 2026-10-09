@@ -35,6 +35,11 @@ Optional PDF/receipt settings in `app/core/config.py`.
 | DB init | `psql "$DATABASE_URL" -f db/schema.sql` |
 | Schema verify | `python scripts/verify_test_db.py` |
 | Get test JWT | `TESTING=true TEST_ENV_FILE=.env.test python scripts/get_test_jwt.py` |
+| Architecture contracts | `pytest tests/architecture -q` (report-only; snapshot regen: `UPDATE_OPENAPI_SNAPSHOT=1 pytest tests/architecture/test_openapi_snapshot.py`) |
+
+### Architecture contracts
+
+`pytest tests/architecture` runs four import-graph rules against `app/modules` (module order and facades per ADR-0003, in-module layers per ADR-0002, no `get_session()` per ADR-0001) plus an OpenAPI spec snapshot. Violations are counted per module and printed in a summary table at the end of the run, but they only **fail** the suite once the module is added to `ENFORCED_MODULES` in `tests/architecture/test_module_rules.py` (report-only until then). The snapshot compares `create_app().openapi()` against `tests/snapshots/openapi.json`; regenerate it with `UPDATE_OPENAPI_SNAPSHOT=1` only for a ticket that names an API change.
 
 ## Architecture
 
