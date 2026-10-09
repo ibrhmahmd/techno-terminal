@@ -1,7 +1,7 @@
 # AGENTS.md — Techno Terminal
 
 FastAPI + SQLModel + PostgreSQL backend for STEM education center management.
-Supabase Auth, 11 business modules, 87 migrations. Python 3.10+. Plus an internal
+Supabase Auth, 11 business modules, plain-SQL migrations. Python `>=3.11,<3.13` (`.python-version` pins 3.11.9). Plus an internal
 Streamlit audit dashboard (`audit_dashboard.py` + `dashboard/`) — not part of the API.
 
 ## Entry Points
@@ -31,35 +31,36 @@ Optional PDF/receipt settings in `app/core/config.py`.
 | DB init | `psql "$DATABASE_URL" -f db/schema.sql` |
 | Schema verify | `python scripts/verify_test_db.py` |
 | Get test JWT | `python scripts/get_test_jwt.py` |
-| Pool tests | `pytest tests/test_connection_exhaustion.py -v` |
 
-## Architecture: Router → Service → Repository
+## Architecture
 
-- **Routers** (`app/api/routers/`): HTTP only — Pydantic validation, `Depends()` injection.
-- **Services** (`app/modules/*/services/`): Business logic + transaction boundaries.
-- **Repositories** (`app/modules/*/repositories/`): Pure SQLModel queries. Zero business rules.
-- **Two-Layer Schema Rule**: `app/api/schemas/*` is API-only DTOs. Services MUST NOT import from `app.api.schemas.*`.
+`app/` is mid-migration to a target shape recorded in `docs/adr/`. Read the relevant ADR before writing, moving, or reviewing code under `app/modules` or `app/api`. New and migrated code follows the target; legacy code is converted one module per ticket, bottom-up.
+
+### Target shape (ADRs)
+
+| ADR | Rule |
+|-----|------|
+| [0001](docs/adr/0001-one-unit-of-work-per-use-case.md) | One injected `UnitOfWork` per use case; only the top-level use case commits, before external I/O. Services never call `get_session()`. |
+| [0002](docs/adr/0002-horizontal-modules-own-their-api.md) | Each module: `api/ → services/ → repositories/ → schemas/, models/`; `__init__.py` is its facade. `app/api/` holds only shared HTTP code. |
+| [0003](docs/adr/0003-module-dependency-order-and-facades.md) | Fixed module order, bottom→top: auth, hr, crm, academics, enrollments, attendance, competitions, finance, tasks, notifications, analytics. Import only lower modules, only via their facade. Enforced by import-linter in pytest. |
+| [0004](docs/adr/0004-read-any-model-write-only-your-own.md) | Any repository may read any model; writes only to its own module's tables. Raw SQL only in repositories. |
+| [0005](docs/adr/0005-auth-is-the-identity-layer-below-hr.md) | auth is the identity layer at the bottom; hr provisions logins through `auth.provision_login()`. |
+| [0006](docs/adr/0006-cross-module-writes-live-in-the-highest-module.md) | A write workflow spanning modules lives in the highest module involved. |
+| [0007](docs/adr/0007-per-module-notifier-ports.md) | Modules notify through their own Notifier port, called after commit; services take no `BackgroundTasks`. |
+| [0008](docs/adr/0008-interfaces-only-where-two-adapters-exist.md) | A Protocol/ABC exists only where two adapters (a test fake counts) satisfy it. |
+
+Rules that hold in both legacy and target code:
+- **Repositories**: pure SQLModel queries, zero business rules. Services hold business logic.
 - **DTO naming**: Input `{Operation}{Entity}Input`, Output `{Entity}{Operation}Result`, Read `{Entity}{Qualifier}DTO`.
-- **Typed Contracts**: No `-> dict`, `-> list[dict]`, `-> tuple` in services/repositories. Return named Pydantic DTOs or ORM models with `model_config = ConfigDict(from_attributes=True)`.
+- **Typed Contracts**: services and repositories return named Pydantic DTOs or ORM models (`model_config = ConfigDict(from_attributes=True)`), never `dict`, `list[dict]` or `tuple`.
+- **HTTP schemas stay out of services**: services never import a router's request/response schemas.
 
-### D+ Hybrid Pattern (dominant-entity modules)
+### Legacy shape (still present in unmigrated modules)
 
-`academics/group/` and `enrollments/` split into sub-slices (`core/`, `directory/`, `lifecycle/`, plus domain-specific ones). Models stay horizontal (`models/` per module, never per-slice). Each slice contains: `__init__.py`, `interface.py`, `service.py`, `repository.py`, `schemas.py`. CRM uses traditional horizontal layers — not D+.
-
-**Interface design**: `@runtime_checkable` Protocols named `{Entity}{Concern}Interface` (no `I-` prefix, no `Protocol` suffix).
-
-**Import chain**: `interface.py` → `schemas.py`, `models/` → `repository.py` → `service.py`. Services MUST NOT import other services within the same module. Cross-slice orchestration goes through module root `__init__.py`. Repositories CAN cross slices.
-
-### Two DI Patterns
-
-- **UoW-based** (CRM, Finance, HR, Enrollments): `get_db()` yields session, commits on normal exit, rollbacks on exception. If `uow.rollback()` is called but the exception is swallowed, `get_db()` still commits — always re-raise after rollback.
-- **Stateless** (Academics, Attendance, Competitions, Analytics): services open their own `get_session()` per call.
-
-All service factories in `app/api/dependencies.py`.
-
-### Notification Service Gets Its Own Session
-
-`get_notification_service()` opens an independent session (different from the rest of the request). Intentional: background/non-transactional.
+- Routers in `app/api/routers/`, HTTP schemas in `app/api/schemas/`, all service factories in `app/api/dependencies.py`.
+- `academics/group/` and `enrollments/` use "D+" sub-slices (`core/`, `directory/`, `lifecycle/`, …) with unreferenced `interface.py` files.
+- Two transaction styles: per-module UoWs over the request `get_db()` session (CRM, Finance, HR) and services opening their own `get_session()` (everything else). One request can therefore span several non-atomic sessions. `get_db()` commits after the response is sent and still commits when a rolled-back exception is swallowed, so always re-raise after rollback.
+- `get_notification_service()` opens its own session; notification background tasks open fresh sessions because they run after the request closes.
 
 ## Auth Flow
 
@@ -88,14 +89,14 @@ All service factories in `app/api/dependencies.py`.
 ### Router Registration Order
 `group_directory_router` MUST register before `groups_router` — `/{group_id}` shadows `/enriched`. Confirmed in `app/api/main.py:116-120`.
 
-### Lifespan Starts Background Schedulers
-`app/api/main.py` lifespan spawns the notifications report scheduler and the tasks scheduler (`asyncio.create_task`). `TestClient(app)` used as a context manager triggers lifespan, so schedulers run during tests too.
+### Lifespan Starts Background Tasks
+`app/api/main.py` lifespan starts the tasks scheduler (`app/modules/tasks/scheduler.py`) and the Logfire metrics collector (`app/observability/scheduler.py`). `TestClient(app)` used as a context manager triggers lifespan, so they run during tests too. Scheduled reports have no in-process scheduler: an external cron calls `/internal/reports/*` (`app/api/routers/notifications/internal_scheduler_router.py`), guarded by the `X-Internal-Trigger-Secret` header ↔ `settings.internal_trigger_secret` (an empty secret is always rejected).
 
 ### `get_group_analytics_service` defined twice
 Defined at `dependencies.py:213` and `dependencies.py:411`. Python uses the last definition (line 411 wins). Same interface.
 
 ### Migrations
-87 files in `db/migrations/`. Duplicate prefix numbers exist (`008`, `020`, `021`, `022`, `026`, `030`, `036`, `051`, `057`) — apply in **chronological order**, not numeric. Cleanup migrations: `042`–`049`. Schema: 18 modular files in `db/schema/` applied via `db/schema.sql`. There is no Alembic: migrations are plain SQL files applied by hand.
+Plain SQL files in `db/migrations/`. Duplicate prefix numbers exist (`008`, `020`, `021`, `022`, `026`, `030`, `036`, `051`, `057`) — apply in **chronological order**, not numeric. Cleanup migrations: `042`–`049`. Schema: 18 modular files in `db/schema/` applied via `db/schema.sql`. There is no Alembic: migrations are plain SQL files applied by hand.
 
 ### Database Pool (code truth in `app/db/connection.py`)
 `pool_size=10, max_overflow=5 (15 total), pool_timeout=30, pool_pre_ping=True, pool_recycle=240s`, `sslmode=prefer`, `statement_timeout=30000`, `expire_on_commit=False`.
@@ -115,11 +116,8 @@ Defined at `dependencies.py:213` and `dependencies.py:411`. Python uses the last
 - Suite rows persist on the cloud testing DB by design; everything is uuid-tagged debris.
 - Migration ladder: write migration → apply to testing project → green HR/CI gates there → then prod.
 
-### CI Pipeline
-`.github/workflows/ci.yml` runs on every push/PR:
-- **Backend only**: Ubuntu, PostgreSQL 15 service, Python 3.10, applies `db/schema.sql` via `cd db && psql`, seeds via `scripts/ci_seed_database.py`, runs **only** `pytest tests/test_finance.py tests/test_crm.py -v` (not the full suite).
-- External services (Supabase, Twilio, Gmail) use mock-safe dummy values — no production credentials.
-- **No frontend CI** in this workflow (despite what README claims).
+### No CI
+`.github/` does not exist, so nothing runs on push. Run the tests yourself, against `localhost` Postgres for anything that writes.
 
 ### Dead Code Discipline
 Before any refactoring, grep for callers of every method. Delete dead code immediately — never migrate it into a new structure. Zero tolerance for commented-out code, deprecated shims, or superseded subset methods.
@@ -135,7 +133,7 @@ Before any refactoring, grep for callers of every method. Delete dead code immed
 
 ## Business Reports
 
-Four finalized report queries (new customers, old customers, waiting students, round cost) live in `specs/035-business-reports-feature/spec.md`. Key schema notes: `group_levels` table tracks rounds, `student_status` is an enum (`active`/`waiting`/`inactive`), soft delete via `deleted_at`/`deleted_by`. Always verify against live schema — docs lag behind (README endpoint/table counts are stale).
+Four finalized report queries (new customers, old customers, waiting students, round cost) live in `specs/archive/035-business-reports-feature/spec.md`. Key schema notes: `group_levels` table tracks rounds, `student_status` is an enum (`active`/`waiting`/`inactive`), soft delete via `deleted_at`/`deleted_by`. Always verify against live schema — docs lag behind (README endpoint/table counts are stale).
 
 **Open:** Existing waiting students have NULL `waiting_since` (the migration `068` trigger only covers new transitions; no backfill). Report 3 falls back to `COALESCE(waiting_since, created_at)`. Part-time instructor cost report not yet scoped.
 
