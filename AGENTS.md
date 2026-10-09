@@ -23,6 +23,7 @@ Optional PDF/receipt settings in `app/core/config.py`.
 | Task | Command |
 |------|---------|
 | Install deps | `pip install -e .` |
+| Install (locked) | `uv sync` |
 | Dev server | `python run_api.py` |
 | Prod server | `uvicorn app.api.main:app --host 0.0.0.0 --port 8000` |
 | Single test | `pytest tests/test_crm.py::test_student_list -v` |
