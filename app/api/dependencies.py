@@ -19,13 +19,14 @@ Service factory pattern:
     Session injection refactor is deferred — see docs/planning/BACKLOG.md §C1.
 """
 import logging
-from typing import Generator
+from typing import Annotated, Generator
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlmodel import Session
 
 from app.db.connection import get_session
+from app.db.uow import UnitOfWork, unit_of_work
 from app.core.supabase_clients import get_supabase_anon, get_supabase_admin
 from app.modules.auth import AuthService, User
 from app.modules.auth.constants import UserRole
@@ -42,6 +43,17 @@ def get_db() -> Generator[Session, None, None]:
     with get_session() as session:
         yield session
         session.commit()
+
+
+def get_uow() -> Generator[UnitOfWork, None, None]:
+    """Per-request UnitOfWork. Uncommitted work is rolled back on exit; never commits."""
+    with unit_of_work() as uow:
+        yield uow
+
+
+# scope="function" ends the dependency before the response is sent, so a
+# failed commit surfaces as an error response instead of a 200 already sent.
+UoW = Annotated[UnitOfWork, Depends(get_uow, scope="function")]
 
 
 async def get_current_user(
