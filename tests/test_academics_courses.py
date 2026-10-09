@@ -113,6 +113,7 @@ class TestCoursesWrite:
 
         assert response.status_code == 401
 
+    @pytest.mark.supabase
     def test_create_course_non_admin(self, client, system_admin_headers):
         """Test creating a course with non-admin token fails."""
         # Note: This test may return 401 (auth failed) or 403 (forbidden) depending on token validation

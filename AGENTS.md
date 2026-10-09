@@ -26,11 +26,14 @@ Optional PDF/receipt settings in `app/core/config.py`.
 | Dev server | `python run_api.py` |
 | Prod server | `uvicorn app.api.main:app --host 0.0.0.0 --port 8000` |
 | Single test | `pytest tests/test_crm.py::test_student_list -v` |
-| All tests (local) | `pytest tests/ -v` (auto-loads `.env.test` via `config.py:106`) |
+| Local test DB | `scripts/local_test_db.sh up` (also `reset`/`down`; writes `.env.test.local`) |
+| Local gate | `pytest -m "not supabase" -v` |
+| Cloud Supabase tests | `TEST_ENV_FILE=.env.test pytest -m supabase -v` (needs `TEST_ADMIN_JWT`) |
+| All tests (local) | `pytest tests/ -v` (env file chosen in `config.py`; `.env.test.local` wins under pytest) |
 | Coverage | `pytest tests/ -v --cov=app --cov-report=term-missing` |
 | DB init | `psql "$DATABASE_URL" -f db/schema.sql` |
 | Schema verify | `python scripts/verify_test_db.py` |
-| Get test JWT | `python scripts/get_test_jwt.py` |
+| Get test JWT | `TESTING=true TEST_ENV_FILE=.env.test python scripts/get_test_jwt.py` |
 
 ## Architecture
 
@@ -107,11 +110,13 @@ Plain SQL files in `db/migrations/`. Duplicate prefix numbers exist (`008`, `020
 ### Testing DB Policy (environment ladder)
 | Tier | Target | Allowed |
 |------|--------|---------|
-| Dev/unit | `localhost/techno` | Full fast gate, destructive resets (`db/schema.sql`), migration dry-runs |
+| Dev/unit | Local `postgres:17` container (`techno-test-db`, `127.0.0.1:55432`) | Full fast gate, destructive resets (`scripts/local_test_db.sh reset`), migration dry-runs |
 | Staging | Supabase **testing** project (`qugffjtucavdseczbata`) | Forward-only migrations FIRST, full pytest gate, live smoke via `TESTING=true python run_api.py` |
 | Prod | `srbppkcvrgioneitktdj` | Migrations only after the staging gate is green |
 
 - `.env.test` serves BOTH pytest and the server (`config.py:106` selects it when running under pytest or `TESTING=true`). Its `DATABASE_URL`, `SUPABASE_URL`, and keys must all point at the SAME project — `get_engine()` logs a warning on mismatch (`app/db/connection.py:_warn_on_project_mismatch`).
+- **Local gate (#28):** `scripts/local_test_db.sh up` spins up a throwaway `postgres:17` container (`techno-test-db`, `127.0.0.1:55432`), applies `db/schema.sql`, and writes `.env.test.local` (a copy of `.env.test` with only `DATABASE_URL` swapped). Under pytest, `config.py:select_env_file` prefers an explicit `TEST_ENV_FILE`, then `.env.test.local` if present, else `.env.test`. The gate is `pytest -m "not supabase"` — it never touches Supabase. Resets are localhost/container only.
+- **`supabase` marker:** registered in `pyproject.toml`. Tests that need real Supabase auth/API are either auto-marked (any test requesting the `admin_token` fixture, via the `pytest_collection_modifyitems` hook in `tests/conftest.py`) or explicitly decorated `@pytest.mark.supabase`. Run them once per sprint against the cloud testing project with `TEST_ENV_FILE=.env.test pytest -m supabase`, after generating a token: `TESTING=true TEST_ENV_FILE=.env.test python scripts/get_test_jwt.py` (export it as `TEST_ADMIN_JWT`); without it, `admin_token` tests skip.
 - NEVER apply `db/schema.sql` or reset scripts to the cloud testing DB (it holds restored data) — resets are localhost/CI-container only.
 - Suite rows persist on the cloud testing DB by design; everything is uuid-tagged debris.
 - Migration ladder: write migration → apply to testing project → green HR/CI gates there → then prod.

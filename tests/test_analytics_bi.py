@@ -51,6 +51,7 @@ class TestEnrollmentTrend:
         response = client.get("/api/v1/analytics/bi/enrollment-trend")
         assert response.status_code == 401
 
+    @pytest.mark.supabase
     def test_enrollment_trend_forbidden(self, client, system_admin_headers):
         """Test getting enrollment trend with system_admin token (may be 200 or 403)."""
         response = client.get(

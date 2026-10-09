@@ -13,6 +13,8 @@ All endpoints require admin authentication.
 """
 from datetime import date, timedelta
 
+import pytest
+
 
 class TestUnpaidAttendees:
     """GET /analytics/academics/unpaid-attendees - require_admin auth"""
@@ -47,6 +49,7 @@ class TestUnpaidAttendees:
         response = client.get("/api/v1/analytics/academics/unpaid-attendees")
         assert response.status_code == 401
 
+    @pytest.mark.supabase
     def test_unpaid_attendees_forbidden(self, client, system_admin_headers):
         """Test getting unpaid attendees with system_admin token (may be 200 or 403)."""
         response = client.get(
@@ -246,6 +249,7 @@ class TestCourseCompletion:
         response = client.get("/api/v1/analytics/academics/course-completion")
         assert response.status_code == 401
 
+    @pytest.mark.supabase
     def test_course_completion_forbidden(self, client, system_admin_headers):
         """Test getting course completion with system_admin token (may be 200 or 403)."""
         response = client.get(

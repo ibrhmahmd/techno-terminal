@@ -2,6 +2,7 @@
 .env
 *.env
 .env.test
+.env.test.local
 
 # Logfire credentials
 .logfire/

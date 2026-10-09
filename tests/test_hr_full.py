@@ -318,6 +318,7 @@ class TestStaffAccounts:
         resp = client.get("/api/v1/hr/staff-accounts")
         assert resp.status_code == 401
 
+    @pytest.mark.supabase
     def test_create_employee_account(self, client, mock_admin_headers, override_auth, db_session):
         emp = create_test_employee(db_session)
         uid = uuid.uuid4().hex[:8]

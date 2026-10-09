@@ -104,5 +104,35 @@ def configure_logging(settings: Settings) -> None:
 import os
 import sys
 
-_env_file = ".env.test" if ("pytest" in sys.modules or "PYTEST_CURRENT_TEST" in os.environ or os.environ.get("TESTING") == "true") else ".env"
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+def is_testing() -> bool:
+    """True when running under pytest or with TESTING=true."""
+    return (
+        "pytest" in sys.modules
+        or "PYTEST_CURRENT_TEST" in os.environ
+        or os.environ.get("TESTING") == "true"
+    )
+
+
+def select_env_file(testing: bool, env: dict, project_root: str) -> str:
+    """
+    Choose the settings env file.
+
+    Under tests: an explicit TEST_ENV_FILE wins, then .env.test.local if it
+    exists (local disposable DB), else .env.test. Outside tests: .env.
+    """
+    if not testing:
+        return ".env"
+    explicit = env.get("TEST_ENV_FILE")
+    if explicit:
+        return explicit
+    local = os.path.join(project_root, ".env.test.local")
+    if os.path.exists(local):
+        return local
+    return os.path.join(project_root, ".env.test")
+
+
+_env_file = select_env_file(is_testing(), os.environ, _PROJECT_ROOT)
 settings = Settings(_env_file=_env_file)
