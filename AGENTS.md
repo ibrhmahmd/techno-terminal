@@ -105,6 +105,8 @@ Plain SQL files in `db/migrations/`. Duplicate prefix numbers exist (`008`, `020
 ### Test Isolation
 `db_session` fixture uses `get_session()` context manager — rollback only happens if the test raises. Successful tests simply close without explicit rollback; uncommitted mutations are lost on session close. `seeded_session` fixture (module-scoped) explicitly rolls back on teardown for zero side effects between modules. 30+ test files total.
 
+`uow` and `client_with_uow` (tests/conftest.py) are the standard for new tests that write: the injected `UnitOfWork` commits against a SAVEPOINT inside an outer transaction that is rolled back at teardown, so even committed rows leave zero state (commit-safe, idempotent). `client_with_uow` overrides `get_uow` on the real app without starting lifespan schedulers. Legacy `db_session`/`seeded_session` stay as they are.
+
 ### Testing DB Policy (environment ladder)
 | Tier | Target | Allowed |
 |------|--------|---------|
