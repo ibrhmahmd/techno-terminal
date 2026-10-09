@@ -1,10 +1,19 @@
 """
 Test configuration and shared fixtures.
 """
+import os
+
 import pytest
 from fastapi.testclient import TestClient
 from app.api.main import create_app
 from tests.utils.jwt_mocks import generate_mock_supabase_token
+
+
+def pytest_collection_modifyitems(config, items):
+    """Auto-mark any test that requests the real-Supabase admin_token fixture."""
+    for item in items:
+        if "admin_token" in getattr(item, "fixturenames", ()):
+            item.add_marker(pytest.mark.supabase)
 
 
 @pytest.fixture(scope="session")
@@ -23,14 +32,19 @@ def client(app):
 @pytest.fixture
 def admin_token():
     """
-    Real Supabase JWT token for testing.
-    
-    Generated via: python scripts/get_test_jwt.py
-    User: ibrahim.net@techno.crm
-    
-    Note: Token expires after ~1 hour. Regenerate with script when needed.
+    Real Supabase JWT token for testing, from the TEST_ADMIN_JWT environment
+    variable.
+
+    Generate one (against the cloud *testing* project) with:
+        TESTING=true TEST_ENV_FILE=.env.test python scripts/get_test_jwt.py
     """
-    return "eyJhbGciOiJFUzI1NiIsImtpZCI6IjRmN2U4ODliLWNkNWItNDZlOS1hZDc1LWI4ZDMyY2I3YzI4NCIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL3NyYnBwa2N2cmdpb25laXRrdGRqLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiIxNDAwNmNlMy1lZWU0LTQzODQtYjlhOC02MDIwMDJmNmU0ODgiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzc5Mjc4ODQ3LCJpYXQiOjE3NzkyNzUyNDcsImVtYWlsIjoiaWJyYWhpbS5uZXRAdGVjaG5vLmNybSIsInBob25lIjoiIiwiYXBwX21ldGFkYXRhIjp7InByb3ZpZGVyIjoiZW1haWwiLCJwcm92aWRlcnMiOlsiZW1haWwiXX0sInVzZXJfbWV0YWRhdGEiOnsiZW1haWxfdmVyaWZpZWQiOnRydWV9LCJyb2xlIjoiYXV0aGVudGljYXRlZCIsImFhbCI6ImFhbDEiLCJhbXIiOlt7Im1ldGhvZCI6InBhc3N3b3JkIiwidGltZXN0YW1wIjoxNzc5Mjc1MjQ3fV0sInNlc3Npb25faWQiOiI1OGEwZWJkYS0yMmNkLTRlZWItYWRlMi00MGRiNDUxN2MzYWQiLCJpc19hbm9ueW1vdXMiOmZhbHNlfQ.8lR2USPVUXv2-y2uKIX8jSyHEtS2yqhrJQy81IHk7jffzipJhDk_Ban7q81A_3rGNaY0cps9N5ZDiu8OjkmoGw"
+    token = os.environ.get("TEST_ADMIN_JWT")
+    if not token:
+        pytest.skip(
+            "TEST_ADMIN_JWT not set — generate one with "
+            "TESTING=true TEST_ENV_FILE=.env.test python scripts/get_test_jwt.py"
+        )
+    return token
 
 
 @pytest.fixture

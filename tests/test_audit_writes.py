@@ -5,6 +5,7 @@ DB: POST /auth/login with credentials that fail local mapping must still
 persist a login_failure audit row — and an audit write failure must never
 break the auth response itself.
 """
+import pytest
 from sqlalchemy import func
 from sqlmodel import select
 
@@ -20,6 +21,7 @@ def _failure_count(db_session) -> int:
 
 
 class TestLoginFailureAuditing:
+    @pytest.mark.supabase
     def test_bad_credentials_return_401_and_persist_audit_row(
         self, client, db_session
     ):

@@ -37,3 +37,9 @@ dependencies = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "supabase: needs real Supabase auth/API (cloud testing project)",
+]

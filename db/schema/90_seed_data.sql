@@ -27,7 +27,7 @@ VALUES (
     NULL,
     NOW()
 )
-ON CONFLICT (national_id) DO NOTHING;
+ON CONFLICT (national_id) WHERE deleted_at IS NULL DO NOTHING;
 
 -- Default Notification Templates
 INSERT INTO notification_templates (name, channel, subject, body, variables, is_standard, is_active)

@@ -26,6 +26,7 @@ class TestErrorResponseStructure:
         assert data["success"] is False
         assert data["error"] == "Unauthorized"
     
+    @pytest.mark.supabase
     def test_401_invalid_token_format(self, client):
         """
         Invalid token format returns standard 401.
@@ -102,6 +103,7 @@ class TestErrorResponseStructure:
 class TestErrorFieldConsistency:
     """Ensure all error responses have consistent field structure."""
     
+    @pytest.mark.supabase
     def test_all_errors_have_success_field(self, client):
         """Every error response must have 'success' field set to false."""
         test_cases = [

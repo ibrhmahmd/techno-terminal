@@ -36,6 +36,7 @@ class TestAuthMe:
         assert "username" in data
         assert "role" in data
 
+    @pytest.mark.supabase
     def test_auth_me_success_with_system_admin(self, client, system_admin_headers):
         response = client.get("/api/v1/auth/me", headers=system_admin_headers)
 
@@ -51,6 +52,7 @@ class TestAuthMe:
 
         assert response.status_code == 401
 
+    @pytest.mark.supabase
     def test_auth_me_invalid_token_format(self, client):
         response = client.get(
             "/api/v1/auth/me",
@@ -59,6 +61,7 @@ class TestAuthMe:
 
         assert response.status_code == 401
 
+    @pytest.mark.supabase
     def test_auth_me_expired_token(self, client):
         expired_token = generate_expired_token(
             user_id="expired-user",

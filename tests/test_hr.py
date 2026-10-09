@@ -38,6 +38,7 @@ class TestEmployeesRead:
         response = client.get("/api/v1/hr/employees")
         assert response.status_code == 401
 
+    @pytest.mark.supabase
     def test_list_employees_forbidden(self, client, system_admin_headers):
         """GET /hr/employees with system_admin may return 200, 403, or 401."""
         response = client.get(
