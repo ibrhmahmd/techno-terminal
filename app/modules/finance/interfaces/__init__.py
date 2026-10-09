@@ -1,9 +1,9 @@
 """
 app/modules/finance/interfaces/__init__.py
 ─────────────────────────────────────────
-Abstract interfaces for the Finance module.
+Internal DTOs for the Finance module.
 
-Granular organization - each protocol in its own file.
+Granular organization - each DTO in its own file.
 """
 
 # DTOs (organized by domain)
@@ -35,21 +35,6 @@ from app.modules.finance.interfaces.dto import (
     ReceiptTemplateContextDTO,
 )
 
-# Repository Protocols
-from app.modules.finance.interfaces.repositories import (
-    IReceiptRepository,
-    IPaymentRepository,
-    IReportingRepository,
-)
-
-# Service Protocols
-from app.modules.finance.interfaces.services import (
-    IReceiptService,
-    IRefundService,
-    IBalanceService,
-    IReportingService,
-)
-
 __all__ = [
     # DTOs
     "ReceiptWithLinesDTO",
@@ -72,13 +57,4 @@ __all__ = [
     "StudentBalanceSummaryDTO",
     "PaginatedEnrollmentBalancesDTO",
     "ReceiptTemplateContextDTO",
-    # Repository Protocols
-    "IReceiptRepository",
-    "IPaymentRepository",
-    "IReportingRepository",
-    # Service Protocols
-    "IReceiptService",
-    "IRefundService",
-    "IBalanceService",
-    "IReportingService",
 ]

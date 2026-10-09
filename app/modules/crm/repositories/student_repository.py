@@ -4,13 +4,13 @@ from sqlalchemy import or_
 from datetime import datetime
 from decimal import Decimal
 
-from app.modules.crm.interfaces import IStudentRepository, StudentSummaryDTO, StudentBalanceSummaryDTO, AttendanceStatsDTO
+from app.modules.crm.interfaces import StudentSummaryDTO, StudentBalanceSummaryDTO, AttendanceStatsDTO
 from app.modules.crm.schemas.student_details import SiblingInfo
 from app.modules.crm.models import Student, StudentStatus, StudentParent, Parent
 from app.shared.audit_utils import apply_create_audit
 from app.shared.datetime_utils import utc_now
 
-class StudentRepository(IStudentRepository):
+class StudentRepository:
     """
     Repository for student data access with soft-delete support.
     Session is injected via constructor — never acquired internally.

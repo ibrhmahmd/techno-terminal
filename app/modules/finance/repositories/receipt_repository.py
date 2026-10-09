@@ -12,7 +12,6 @@ from sqlmodel import Session
 
 from app.modules.finance import Receipt
 from app.modules.finance.interfaces import (
-    IReceiptRepository,
     ReceiptWithLinesDTO,
     CreateReceiptDTO,
     SearchReceiptsDTO,
@@ -21,7 +20,7 @@ from app.modules.finance import DailyReceiptItem, ReceiptSearchItem
 from app.shared.datetime_utils import date_at_utc_midnight, utc_now
 
 
-class ReceiptRepository(IReceiptRepository):
+class ReceiptRepository:
     """Repository for receipt data access operations."""
 
     def __init__(self, session: Session) -> None:

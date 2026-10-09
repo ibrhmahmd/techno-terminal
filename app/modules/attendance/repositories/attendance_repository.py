@@ -141,7 +141,7 @@ def get_attendance_for_group_level(
     return session.exec(stmt).all()
 
 
-# ── RepositoryProtocol aliases ────────────────────────────────────────────────
+# ── Module-level aliases ──────────────────────────────────────────────────────
 # Note: Attendance is upsert-only (no separate insert/update).
 create = upsert_attendance
 list_all = get_session_attendance

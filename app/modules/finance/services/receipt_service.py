@@ -15,7 +15,6 @@ if TYPE_CHECKING:
     )
 
 from app.modules.finance.interfaces import (
-    IReceiptService,
     ReceiptFinalizedDTO,
     ReceiptDetailDTO,
     ReceiptLineItemDTO,
@@ -29,7 +28,7 @@ from app.modules.finance.pdf.receipt_pdf import build_receipt_pdf
 from app.shared.exceptions import NotFoundError, BusinessRuleError
 
 
-class ReceiptService(IReceiptService):
+class ReceiptService:
     """
     Service for receipt business operations.
 

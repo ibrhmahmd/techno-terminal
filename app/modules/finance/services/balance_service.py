@@ -7,7 +7,6 @@ from decimal import Decimal
 from typing import Optional, List
 
 from app.modules.finance.interfaces import (
-    IBalanceService,
     OverpaymentRiskItem,
     StudentBalanceSummaryDTO,
     PaginatedEnrollmentBalancesDTO,
@@ -16,7 +15,7 @@ from app.modules.finance import ReceiptLineInput, EnrollmentBalanceItem
 from app.modules.finance.repositories.unit_of_work import FinanceUnitOfWork
 
 
-class BalanceService(IBalanceService):
+class BalanceService:
     """
     Service for balance calculation operations.
     

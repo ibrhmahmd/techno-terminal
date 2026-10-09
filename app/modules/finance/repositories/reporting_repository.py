@@ -10,11 +10,10 @@ from sqlalchemy import text
 from sqlmodel import Session
 
 from app.modules.finance import DailyCollectionItem, UnpaidCompFeeItem
-from app.modules.finance.interfaces import IReportingRepository
 from app.shared.datetime_utils import date_at_utc_midnight
 
 
-class ReportingRepository(IReportingRepository):
+class ReportingRepository:
     """Repository for reporting and analytics data access."""
 
     def __init__(self, session: Session) -> None:

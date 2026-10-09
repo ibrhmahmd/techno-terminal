@@ -11,7 +11,6 @@ from decimal import Decimal
 from sqlmodel import Session
 from sqlalchemy import text
 
-from app.modules.crm.interfaces.iactivity_repository import IActivityRepository
 from app.modules.crm.models.activity_models import StudentActivityLog
 from app.modules.crm.interfaces.dtos import (
     ActivitySummaryDTO,
@@ -21,7 +20,7 @@ from app.modules.crm.interfaces.dtos import (
 )
 
 
-class ActivityRepository(IActivityRepository):
+class ActivityRepository:
     """Repository for student activity logging and history tracking."""
 
     def __init__(self, session: Session) -> None:
