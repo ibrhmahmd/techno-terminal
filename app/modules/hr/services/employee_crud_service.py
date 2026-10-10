@@ -8,6 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
 from app.db.uow import UnitOfWork
+from app.modules.auth import set_login_active
 from app.modules.hr.repositories import EmployeeRepository, StaffAccountRepository
 from app.modules.hr.schemas import (
     CreateEmployeeDTO,
@@ -31,13 +32,13 @@ class EmployeeCrudService:
 
     def create(self, dto: CreateEmployeeDTO) -> EmployeeReadDTO:
         """Create new employee.
-        
+
         Args:
             dto: CreateEmployeeDTO with employee data
-            
+
         Returns:
             EmployeeReadDTO of created employee
-            
+
         Raises:
             ConflictError: If national ID or phone already exists
         """
@@ -56,14 +57,14 @@ class EmployeeCrudService:
 
     def update(self, employee_id: int, dto: UpdateEmployeeDTO) -> EmployeeReadDTO:
         """Update existing employee.
-        
+
         Args:
             employee_id: ID of employee to update
             dto: UpdateEmployeeDTO with partial data
-            
+
         Returns:
             EmployeeReadDTO of updated employee
-            
+
         Raises:
             NotFoundError: If employee not found
             ConflictError: If unique fields conflict
@@ -84,7 +85,7 @@ class EmployeeCrudService:
                 and dto.is_active is False
                 and existing.user_id is not None
             ):
-                self._staff_accounts.set_user_active(existing.user_id, False)
+                set_login_active(self._uow, existing.user_id, False)
             self._uow.flush()
             self._uow.commit()
         except IntegrityError as exc:
@@ -95,13 +96,13 @@ class EmployeeCrudService:
 
     def get_by_id(self, employee_id: int) -> EmployeeReadDTO:
         """Get employee by ID.
-        
+
         Args:
             employee_id: Employee ID
-            
+
         Returns:
             EmployeeReadDTO
-            
+
         Raises:
             NotFoundError: If employee not found
         """
@@ -128,7 +129,7 @@ class EmployeeCrudService:
             raise NotFoundError(f"Employee {employee_id} not found")
 
         if existing.user_id is not None:
-            self._staff_accounts.set_user_active(existing.user_id, False)
+            set_login_active(self._uow, existing.user_id, False)
 
         self._employees.soft_delete(employee_id, actor_user_id)
         self._uow.flush()
@@ -217,7 +218,7 @@ class EmployeeCrudService:
 
     def list_active(self) -> list[EmployeeReadDTO]:
         """List all active employees.
-        
+
         Returns:
             List of EmployeeReadDTO
         """

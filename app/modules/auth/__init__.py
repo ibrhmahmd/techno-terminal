@@ -16,7 +16,11 @@ from app.modules.auth.schemas.auth_schemas import (
 from app.modules.auth.services.auth_service import AuthService
 from app.modules.auth.services.audit_service import AuditService
 from app.modules.auth.services.lookup import lookup_user_by_supabase_uid
-from app.modules.auth.services.provisioning import provision_login
+from app.modules.auth.services.login_admin import set_login_active, update_login_status
+from app.modules.auth.services.provisioning import (
+    compensate_provisioned_login,
+    provision_login,
+)
 
 __all__ = [
     "AuthService",
@@ -35,5 +39,8 @@ __all__ = [
     "is_valid_role",
     "lookup_user_by_supabase_uid",
     "provision_login",
+    "compensate_provisioned_login",
+    "set_login_active",
+    "update_login_status",
     "AuthNotifier",
 ]

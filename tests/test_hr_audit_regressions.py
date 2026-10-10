@@ -298,17 +298,16 @@ class TestF02RemoteFailureClassification:
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # F-03 — Midway failure compensates: zero orphaned identities / partial rows
-# ═══════════════════════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════════════════════════
 
 class TestF03ZeroPartialStateOnMidwayFailure:
-    def test_local_failure_after_remote_creation_compensates_and_leaves_no_rows(
+    def test_in_provision_failure_compensates_and_leaves_no_rows(
         self, client, mock_admin_headers, override_auth, db_session, monkeypatch
     ):
+        """Failure DURING provision_login (its internal flush) triggers its own compensation."""
         from app.modules.auth.models.auth_models import User as UserModel
         from app.modules.hr.models.employee_models import Employee
-        from app.modules.hr.repositories.staff_account_repository import (
-            StaffAccountRepository,
-        )
+        from app.db.uow import UnitOfWork
 
         created = _create_employee(client, mock_admin_headers)
         employee_id = created["id"]
@@ -326,10 +325,13 @@ class TestF03ZeroPartialStateOnMidwayFailure:
 
         _install_fake_supabase(monkeypatch, _FakeAdmin)
 
-        def _boom(self, employee, dto, supabase_uid):
+        # Fail on the FIRST flush (inside provision_login)
+        original_flush = UnitOfWork.flush
+
+        def _boom_flush(self, *args, **kwargs):
             raise RuntimeError("simulated local-side failure")
 
-        monkeypatch.setattr(StaffAccountRepository, "create_linked_account", _boom)
+        monkeypatch.setattr(UnitOfWork, "flush", _boom_flush)
 
         email = f"{_unique('comp')}@test.com"
         resp = _provision(client, mock_admin_headers, employee_id, email=email)
@@ -348,11 +350,62 @@ class TestF03ZeroPartialStateOnMidwayFailure:
         emp_row = db_session.get(Employee, employee_id)
         assert emp_row.user_id is None, "employee must remain unlinked"
 
+    def test_post_provision_failure_compensates_and_leaves_no_rows(
+        self, client, mock_admin_headers, override_auth, db_session, monkeypatch
+    ):
+        """Failure AFTER provision_login returns (during hr's commit) triggers hr's compensation."""
+        from app.modules.auth.models.auth_models import User as UserModel
+        from app.modules.hr.models.employee_models import Employee
+        from app.db.uow import UnitOfWork
+
+        created = _create_employee(client, mock_admin_headers)
+        employee_id = created["id"]
+
+        deleted_uids: list[str] = []
+
+        class _FakeAdmin:
+            @staticmethod
+            def create_user(data):
+                return type("R", (), {"user": _FakeRemoteUser("orphan-uid-456")})()
+
+            @staticmethod
+            def delete_user(uid):
+                deleted_uids.append(uid)
+
+        _install_fake_supabase(monkeypatch, _FakeAdmin)
+
+        # provision_login calls flush() once; hr's create_account calls flush() then commit()
+        # Fail on commit() - which only hr calls
+        original_commit = UnitOfWork.commit
+
+        def _boom_commit(self, *args, **kwargs):
+            raise RuntimeError("simulated local-side failure after provision_login")
+
+        monkeypatch.setattr(UnitOfWork, "commit", _boom_commit)
+
+        email = f"{_unique('comp2')}@test.com"
+        resp = _provision(client, mock_admin_headers, employee_id, email=email)
+
+        assert resp.status_code == 409, resp.text
+        body = resp.json()
+        assert body["error"] == "BusinessRuleError"
+        assert "nothing was created" in body["message"].lower()
+        assert deleted_uids == ["orphan-uid-456"], "hr compensation must delete remote identity"
+
+        # Verify from a fresh perspective that nothing persisted
+        leaked = db_session.exec(
+            select(UserModel).where(UserModel.username == email)
+        ).first()
+        assert leaked is None, "no partial local user row may persist"
+
+        emp_row = db_session.get(Employee, employee_id)
+        assert emp_row.user_id is None, "employee must remain unlinked"
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # F-06 — Staff accounts overview carries complete data (no null placeholders)
 # F-07 — Deactivating a linked employee blocks their account automatically
-# ═══════════════════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
 
 class TestF06CompleteStaffAccountListing:
     def test_listing_includes_real_email_job_title_and_created_at(

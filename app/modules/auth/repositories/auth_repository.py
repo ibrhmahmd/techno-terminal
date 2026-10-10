@@ -4,7 +4,6 @@ from sqlmodel import Session, select, func
 from app.shared.datetime_utils import utc_now
 from app.modules.auth.models.auth_models import User
 from app.modules.auth.schemas.auth_schemas import UserCreate, UserListResult
-from app.modules.hr.models import Employee
 
 
 class AuthRepository:
@@ -27,6 +26,7 @@ class AuthRepository:
 
     def create_user(self, data: UserCreate) -> User:
         user = User(**data.model_dump())
+        user.created_at = utc_now()
         self._session.add(user)
         self._session.flush()
         return user
@@ -100,4 +100,6 @@ class AuthRepository:
         return self._session.exec(stmt).first()
 
     def employee_exists(self, employee_id: int) -> bool:
+        # Local import to avoid circular dependency: hr's __init__ imports auth facade
+        from app.modules.hr.models import Employee
         return self._session.get(Employee, employee_id) is not None
