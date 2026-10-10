@@ -351,27 +351,6 @@ async def require_coach_or_admin(
     raise HTTPException(status_code=403, detail="Access denied. Admin or team coach required.")
 
 
-# HR SOLID services
-from app.modules.hr import EmployeeCrudService, StaffAccountService, HRUnitOfWork
-
-
-def get_employee_crud_service(
-    session: Session = Depends(get_db),
-) -> EmployeeCrudService:
-    """Returns EmployeeCrudService with fresh Unit of Work per request."""
-    uow = HRUnitOfWork(session)
-    return EmployeeCrudService(uow)
-
-
-def get_staff_account_service(
-    session: Session = Depends(get_db),
-    supabase_client = Depends(get_supabase_admin),
-) -> StaffAccountService:
-    """Returns StaffAccountService with fresh Unit of Work per request."""
-    uow = HRUnitOfWork(session)
-    return StaffAccountService(uow, supabase_client)
-
-
 # Analytics services
 from app.modules.analytics.services.academic_service import AcademicAnalyticsService
 from app.modules.analytics.services.financial_service import FinancialAnalyticsService

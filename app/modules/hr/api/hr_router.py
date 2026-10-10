@@ -1,6 +1,6 @@
 """
-app/api/routers/hr.py
-──────────────────────
+app/modules/hr/api/hr_router.py
+──────────────────────────────
 HR domain router using SOLID architecture.
 
 Prefix: /api/v1 (mounted in main.py)
@@ -12,15 +12,17 @@ import pydantic
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.schemas.common import ApiResponse
-from app.api.schemas.hr.employee import (
+from app.modules.hr.api.schemas import (
     EmployeePublic,
     EmployeeListItem,
     EmployeeCreateInput,
     EmployeeUpdateInput,
     StaffAccountPublic,
+    CreateEmployeeAccountRequest,
+    EmployeeAccountResponse,
+    AttendanceLogInput,
+    AttendanceLogOutput,
 )
-from app.api.schemas.hr.employee_account import CreateEmployeeAccountRequest, EmployeeAccountResponse
-from app.api.schemas.hr.attendance import AttendanceLogInput, AttendanceLogOutput
 
 # HR SOLID services
 from app.modules.hr import (
@@ -33,7 +35,8 @@ from app.modules.hr import (
     StaffAccountDTO,
 )
 from app.shared.exceptions import NotFoundError, ConflictError, ValidationError
-from app.api.dependencies import require_admin, get_employee_crud_service, get_staff_account_service
+from app.modules.hr.api.deps import get_employee_crud_service, get_staff_account_service
+from app.api.dependencies import require_admin
 from app.modules.auth import User
 
 router = APIRouter(tags=["HR"])

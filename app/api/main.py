@@ -46,7 +46,7 @@ from app.api.routers import attendance_router
 from app.api.routers import enrollments_router
 from app.api.routers.notifications import router as notifications_router
 from app.api.routers.competitions import competitions_router, teams_router
-from app.api.routers import hr_router
+from app.modules.hr.api import hr_router
 from app.api.routers.crm import (
     students_router,
     parents_router,
