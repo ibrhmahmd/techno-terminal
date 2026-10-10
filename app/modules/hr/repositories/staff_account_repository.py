@@ -2,17 +2,16 @@
 
 Handles cross-module User-Employee operations.
 """
-from typing import Optional, TYPE_CHECKING
+from typing import Optional
 
 from sqlalchemy import select
 from sqlmodel import Session
 
+from app.modules.auth.models.auth_models import User
 from app.modules.hr.models import Employee
+from app.modules.hr.schemas import CreateEmployeeAccountDTO, StaffAccountLinkDTO
 from app.shared.datetime_utils import utc_now
 from app.shared.exceptions import NotFoundError
-
-if TYPE_CHECKING:
-    from app.modules.auth.models.auth_models import User
 
 
 class StaffAccountRepository:
@@ -22,8 +21,8 @@ class StaffAccountRepository:
         self._session = session
 
     def create_linked_account(
-        self, employee: Employee, dto: "CreateEmployeeAccountDTO", supabase_uid: str
-    ) -> "User":
+        self, employee: Employee, dto: CreateEmployeeAccountDTO, supabase_uid: str
+    ) -> User:
         """Create user and link to employee in one transaction.
         
         Args:
@@ -34,9 +33,6 @@ class StaffAccountRepository:
         Returns:
             The created User
         """
-        from app.modules.auth.models.auth_models import User
-        from app.modules.hr.schemas import CreateEmployeeAccountDTO
-        
         user = User(
             username=dto.email,
             role=dto.role,
@@ -57,7 +53,7 @@ class StaffAccountRepository:
 
         return user
 
-    def list_all_with_employees(self) -> list["StaffAccountLinkDTO"]:
+    def list_all_with_employees(self) -> list[StaffAccountLinkDTO]:
         """List all user-employee linked accounts.
 
         Soft-deleted employees are excluded: their logins are blocked and
@@ -66,9 +62,6 @@ class StaffAccountRepository:
         Returns:
             List of StaffAccountLinkDTO with user and employee data
         """
-        from app.modules.auth.models.auth_models import User
-        from app.modules.hr.schemas import StaffAccountLinkDTO
-
         stmt = (
             select(User, Employee)
             .join(Employee, User.employee_id == Employee.id)
@@ -102,8 +95,6 @@ class StaffAccountRepository:
         Raises:
             NotFoundError: If user not found
         """
-        from app.modules.auth.models.auth_models import User
-
         user = self._session.get(User, user_id)
         if not user:
             raise NotFoundError(f"User {user_id} not found")
@@ -123,9 +114,6 @@ class StaffAccountRepository:
         Raises:
             NotFoundError: If user not found
         """
-        # Import here to avoid circular dependency
-        from app.modules.auth.models.auth_models import User
-        
         user = self._session.get(User, user_id)
         if not user:
             raise NotFoundError(f"User {user_id} not found")
@@ -141,7 +129,7 @@ class StaffAccountRepository:
 
         self._session.add(user)
 
-    def find_user_by_username(self, username: str) -> Optional["User"]:
+    def find_user_by_username(self, username: str) -> Optional[User]:
         """Find user by username.
         
         Args:
@@ -150,6 +138,5 @@ class StaffAccountRepository:
         Returns:
             User or None
         """
-        from app.modules.auth.models.auth_models import User
         stmt = select(User).where(User.username == username)
         return self._session.exec(stmt).first()

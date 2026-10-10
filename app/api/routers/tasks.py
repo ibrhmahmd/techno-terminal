@@ -26,7 +26,7 @@ from app.modules.tasks import (
 )
 from app.api.dependencies import require_admin, require_any, get_task_service
 from app.modules.auth import User
-from app.modules.hr import Employee
+from app.modules.hr.models import Employee
 
 router = APIRouter(tags=["Tasks"])
 

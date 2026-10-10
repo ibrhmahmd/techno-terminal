@@ -6,7 +6,8 @@ import logging
 
 from app.modules.auth import UserRole
 from app.modules.hr.models import Employee
-from app.modules.hr.repositories import HRUnitOfWork
+from app.db.uow import UnitOfWork
+from app.modules.hr.repositories import EmployeeRepository, StaffAccountRepository
 from app.modules.hr.schemas import (
     CreateEmployeeAccountDTO,
     EmployeeAccountResultDTO,
@@ -30,9 +31,11 @@ _EMAIL_TAKEN_SIGNALS = ("already registered", "already exists", "already in use"
 class StaffAccountService:
     """Service for staff account management."""
 
-    def __init__(self, uow: HRUnitOfWork, supabase_client=None):
+    def __init__(self, uow: UnitOfWork, supabase_client=None):
         self._uow = uow
         self._supabase = supabase_client
+        self._employees = EmployeeRepository(uow.session)
+        self._staff_accounts = StaffAccountRepository(uow.session)
 
     def create_account(
         self, dto: CreateEmployeeAccountDTO
@@ -78,7 +81,7 @@ class StaffAccountService:
             ) from e
 
         try:
-            user = self._uow.staff_accounts.create_linked_account(employee, dto, supabase_uid)
+            user = self._staff_accounts.create_linked_account(employee, dto, supabase_uid)
             self._uow.commit()
         except Exception as exc:
             self._compensate_remote_user(supabase_uid)
@@ -104,7 +107,7 @@ class StaffAccountService:
             List of StaffAccountDTO
         """
         links: list[StaffAccountLinkDTO] = (
-            self._uow.staff_accounts.list_all_with_employees()
+            self._staff_accounts.list_all_with_employees()
         )
         return [
             StaffAccountDTO(
@@ -142,7 +145,7 @@ class StaffAccountService:
         if not isinstance(role, UserRole):
             raise ValidationError(f"Invalid role: {role}")
 
-        self._uow.staff_accounts.update_account_status(user_id, is_active, role)
+        self._staff_accounts.update_account_status(user_id, is_active, role)
         self._uow.commit()
         return True
 
@@ -174,7 +177,7 @@ class StaffAccountService:
             raise ValidationError(f"Invalid role: {dto.role.value}")
 
         # Verify employee exists
-        emp = self._uow.employees.get_by_id(dto.employee_id)
+        emp = self._employees.get_by_id(dto.employee_id)
         if not emp:
             raise NotFoundError(f"Employee {dto.employee_id} not found")
 

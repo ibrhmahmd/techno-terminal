@@ -5,8 +5,10 @@ Business logic for employee operations with strict DTO contracts.
 from typing import Optional
 
 from sqlalchemy.exc import IntegrityError
+from sqlmodel import Session
 
-from app.modules.hr.repositories import HRUnitOfWork
+from app.db.uow import UnitOfWork
+from app.modules.hr.repositories import EmployeeRepository, StaffAccountRepository
 from app.modules.hr.schemas import (
     CreateEmployeeDTO,
     EmployeeReadDTO,
@@ -22,8 +24,10 @@ from app.shared.exceptions import ConflictError, NotFoundError
 class EmployeeCrudService:
     """Service for employee CRUD operations."""
 
-    def __init__(self, uow: HRUnitOfWork):
+    def __init__(self, uow: UnitOfWork):
         self._uow = uow
+        self._employees = EmployeeRepository(uow.session)
+        self._staff_accounts = StaffAccountRepository(uow.session)
 
     def create(self, dto: CreateEmployeeDTO) -> EmployeeReadDTO:
         """Create new employee.
@@ -41,7 +45,7 @@ class EmployeeCrudService:
         dto = self._normalize_employment_data(dto)
 
         try:
-            employee = self._uow.employees.create(dto)
+            employee = self._employees.create(dto)
             self._uow.flush()
             self._uow.commit()
         except IntegrityError as exc:
@@ -64,7 +68,7 @@ class EmployeeCrudService:
             NotFoundError: If employee not found
             ConflictError: If unique fields conflict
         """
-        existing = self._uow.employees.get_by_id(employee_id)
+        existing = self._employees.get_by_id(employee_id)
         if not existing:
             raise NotFoundError(f"Employee {employee_id} not found")
 
@@ -72,7 +76,7 @@ class EmployeeCrudService:
         self._normalize_update_employment(dto, existing)
 
         try:
-            updated = self._uow.employees.update(employee_id, dto)
+            updated = self._employees.update(employee_id, dto)
             # FR-011: deactivating an employee blocks their linked login.
             if (
                 getattr(dto, "model_fields_set", set())
@@ -80,7 +84,7 @@ class EmployeeCrudService:
                 and dto.is_active is False
                 and existing.user_id is not None
             ):
-                self._uow.staff_accounts.set_user_active(existing.user_id, False)
+                self._staff_accounts.set_user_active(existing.user_id, False)
             self._uow.flush()
             self._uow.commit()
         except IntegrityError as exc:
@@ -101,7 +105,7 @@ class EmployeeCrudService:
         Raises:
             NotFoundError: If employee not found
         """
-        emp = self._uow.employees.get_by_id(employee_id)
+        emp = self._employees.get_by_id(employee_id)
         if not emp:
             raise NotFoundError(f"Employee {employee_id} not found")
         return EmployeeReadDTO.model_validate(emp)
@@ -119,14 +123,14 @@ class EmployeeCrudService:
         Raises:
             NotFoundError: If the employee is missing or already deleted
         """
-        existing = self._uow.employees.get_by_id(employee_id)
+        existing = self._employees.get_by_id(employee_id)
         if not existing:
             raise NotFoundError(f"Employee {employee_id} not found")
 
         if existing.user_id is not None:
-            self._uow.staff_accounts.set_user_active(existing.user_id, False)
+            self._staff_accounts.set_user_active(existing.user_id, False)
 
-        self._uow.employees.soft_delete(employee_id, actor_user_id)
+        self._employees.soft_delete(employee_id, actor_user_id)
         self._uow.flush()
         self._uow.commit()
 
@@ -148,7 +152,7 @@ class EmployeeCrudService:
             NotFoundError: If no employee exists with this ID
             ConflictError: If the employee is live or identities collide
         """
-        emp = self._uow.employees.get_by_id(employee_id, include_deleted=True)
+        emp = self._employees.get_by_id(employee_id, include_deleted=True)
         if not emp:
             raise NotFoundError(f"Employee {employee_id} not found")
         if emp.deleted_at is None:
@@ -176,14 +180,14 @@ class EmployeeCrudService:
         self._validate_unique_fields(snapshot, exclude_id=employee_id)
 
         try:
-            self._uow.employees.restore(employee_id)
+            self._employees.restore(employee_id)
             self._uow.flush()
             self._uow.commit()
         except IntegrityError as exc:
             self._uow.rollback()
             raise translate_employee_integrity_error(exc) from exc
 
-        refreshed = self._uow.employees.get_by_id(employee_id)
+        refreshed = self._employees.get_by_id(employee_id)
         assert refreshed is not None
         return EmployeeReadDTO.model_validate(refreshed)
 
@@ -203,7 +207,7 @@ class EmployeeCrudService:
         Returns:
             EmployeeListResponseDTO with paginated results
         """
-        result = self._uow.employees.list_all(page, page_size, include_deleted)
+        result = self._employees.list_all(page, page_size, include_deleted)
         return EmployeeListResponseDTO(
             items=[EmployeeReadDTO.model_validate(e) for e in result.items],
             total=result.total,
@@ -217,7 +221,7 @@ class EmployeeCrudService:
         Returns:
             List of EmployeeReadDTO
         """
-        employees = self._uow.employees.list_active()
+        employees = self._employees.list_active()
         return [EmployeeReadDTO.model_validate(e) for e in employees]
 
     def _validate_unique_fields(
@@ -238,19 +242,19 @@ class EmployeeCrudService:
         conflicts: list[str] = []
 
         if dto.national_id:
-            existing = self._uow.employees.find_by_national_id(
+            existing = self._employees.find_by_national_id(
                 dto.national_id, exclude_id
             )
             if existing:
                 conflicts.append("national_id: already in use")
 
         if dto.phone:
-            existing = self._uow.employees.find_by_phone(dto.phone, exclude_id)
+            existing = self._employees.find_by_phone(dto.phone, exclude_id)
             if existing:
                 conflicts.append("phone: already in use")
 
         if dto.email:
-            existing = self._uow.employees.find_by_email(dto.email, exclude_id)
+            existing = self._employees.find_by_email(dto.email, exclude_id)
             if existing:
                 conflicts.append("email: already in use")
 

@@ -6,9 +6,8 @@ into ``app/modules/hr/api``.
 
 Buckets
 -------
-* HR services open their own ``get_session()`` via ``HRUnitOfWork`` in places,
-  so rows created through the rollback-only ``uow`` fixture are invisible to them.
-  GET endpoints that need data are therefore seeded through the committed
+* HR services now use the shared ``UnitOfWork`` from ``app.db.uow``.
+  GET endpoints that need data are seeded through the committed
   ``db_session`` fixture with uuid-tagged values. Write endpoints assert
   response shape only and use uuid-tagged values so reruns do not collide
   (their commits are real).
@@ -505,8 +504,8 @@ def test_create_employee_account_success(client_with_uow, db_session, override_a
     
     # Create fake service with the db_session (which can commit)
     from app.modules.hr.services.staff_account_service import StaffAccountService
-    from app.modules.hr.repositories import HRUnitOfWork
-    uow = HRUnitOfWork(db_session)
+    from app.db.uow import UnitOfWork
+    uow = UnitOfWork(db_session)
     fake_service = StaffAccountService(uow, fake_admin)
     
     # Override the service factory to return our fake service
@@ -542,8 +541,8 @@ def test_create_employee_account_employee_not_found(client_with_uow, db_session,
     fake_admin = _fake_admin_client()
     
     from app.modules.hr.services.staff_account_service import StaffAccountService
-    from app.modules.hr.repositories import HRUnitOfWork
-    uow = HRUnitOfWork(db_session)
+    from app.db.uow import UnitOfWork
+    uow = UnitOfWork(db_session)
     fake_service = StaffAccountService(uow, fake_admin)
     
     from app.modules.hr.api.deps import get_staff_account_service
@@ -575,8 +574,8 @@ def test_create_employee_account_duplicate_email(client_with_uow, db_session, ov
     fake_admin = type("C", (), {"auth": type("A", (), {"admin": FakeAdmin()})()})()
     
     from app.modules.hr.services.staff_account_service import StaffAccountService
-    from app.modules.hr.repositories import HRUnitOfWork
-    uow = HRUnitOfWork(db_session)
+    from app.db.uow import UnitOfWork
+    uow = UnitOfWork(db_session)
     fake_service = StaffAccountService(uow, fake_admin)
     
     from app.modules.hr.api.deps import get_staff_account_service
@@ -602,8 +601,8 @@ def test_create_employee_account_validation_errors(client_with_uow, db_session, 
     fake_admin = _fake_admin_client()
     
     from app.modules.hr.services.staff_account_service import StaffAccountService
-    from app.modules.hr.repositories import HRUnitOfWork
-    uow = HRUnitOfWork(db_session)
+    from app.db.uow import UnitOfWork
+    uow = UnitOfWork(db_session)
     fake_service = StaffAccountService(uow, fake_admin)
     
     from app.modules.hr.api.deps import get_staff_account_service
@@ -636,8 +635,8 @@ def test_create_employee_account_invalid_role(client_with_uow, db_session, overr
     fake_admin = _fake_admin_client()
     
     from app.modules.hr.services.staff_account_service import StaffAccountService
-    from app.modules.hr.repositories import HRUnitOfWork
-    uow = HRUnitOfWork(db_session)
+    from app.db.uow import UnitOfWork
+    uow = UnitOfWork(db_session)
     fake_service = StaffAccountService(uow, fake_admin)
     
     from app.modules.hr.api.deps import get_staff_account_service

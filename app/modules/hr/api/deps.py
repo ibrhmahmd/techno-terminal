@@ -2,24 +2,20 @@
 
 from fastapi import Depends
 from sqlmodel import Session
-from app.api.dependencies import get_db
-from app.core.supabase_clients import get_supabase_admin
+from app.api.dependencies import UoW, get_supabase_admin
 from app.modules.hr import EmployeeCrudService, StaffAccountService
-from app.modules.hr.repositories import HRUnitOfWork
 
 
 def get_employee_crud_service(
-    session: Session = Depends(get_db),
+    uow: UoW,
 ) -> EmployeeCrudService:
-    """Returns EmployeeCrudService with fresh Unit of Work per request."""
-    uow = HRUnitOfWork(session)
+    """Returns EmployeeCrudService with request-scoped UnitOfWork."""
     return EmployeeCrudService(uow)
 
 
 def get_staff_account_service(
-    session: Session = Depends(get_db),
+    uow: UoW,
     supabase_client = Depends(get_supabase_admin),
 ) -> StaffAccountService:
-    """Returns StaffAccountService with fresh Unit of Work per request."""
-    uow = HRUnitOfWork(session)
+    """Returns StaffAccountService with request-scoped UnitOfWork."""
     return StaffAccountService(uow, supabase_client)
