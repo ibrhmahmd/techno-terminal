@@ -4,7 +4,7 @@ Business logic for employee-user account linking.
 """
 import logging
 
-from app.modules.auth.constants import UserRole
+from app.modules.auth import UserRole
 from app.modules.hr.models import Employee
 from app.modules.hr.repositories import HRUnitOfWork
 from app.modules.hr.schemas import (

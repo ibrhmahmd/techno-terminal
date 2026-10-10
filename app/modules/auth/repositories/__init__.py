@@ -1,17 +1,7 @@
-from .auth_repository import (
-    get_user_by_username,
-    get_user_by_supabase_uid,
-    get_users_by_employee_id,
-    create_user,
-    update_last_login,
-    get_user_by_id,
-)
+from .auth_repository import AuthRepository
+from .audit_repository import AuditRepository
 
 __all__ = [
-    "get_user_by_username",
-    "get_user_by_supabase_uid",
-    "get_users_by_employee_id",
-    "create_user",
-    "update_last_login",
-    "get_user_by_id",
+    "AuthRepository",
+    "AuditRepository",
 ]

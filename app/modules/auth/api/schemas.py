@@ -1,6 +1,6 @@
 """
-app/api/schemas/auth.py
-───────────────────────
+app/modules/auth/api/schemas.py
+───────────────────────────────
 Request/Response DTOs specifically for the Authentication HTTP router.
 """
 from pydantic import BaseModel, Field

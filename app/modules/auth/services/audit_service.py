@@ -2,7 +2,7 @@ import logging
 from datetime import datetime
 from typing import Optional
 
-from app.db.connection import get_session
+from app.db.uow import UnitOfWork
 import app.modules.auth.repositories.audit_repository as audit_repo
 from app.modules.auth.models.audit_log import AuditLog, AuditLogEventType
 from app.modules.auth.schemas.auth_schemas import AuditLogEntryDTO, AuditLogQueryResult
@@ -11,6 +11,10 @@ logger = logging.getLogger(__name__)
 
 
 class AuditService:
+    def __init__(self, uow: UnitOfWork):
+        self._uow = uow
+        self._repo = audit_repo.AuditRepository(uow.session)
+
     def log_event(
         self,
         event_type: str,
@@ -24,9 +28,11 @@ class AuditService:
         Audit writes must be best-effort: an infrastructure hiccup (e.g. a
         transient RLS/pooler error) degrades to a warning instead of a
         traceback in an auth response path.
+
+        Uses a SAVEPOINT so failures don't poison the outer transaction.
         """
         try:
-            with get_session() as session:
+            with self._uow.session.begin_nested():
                 log = AuditLog(
                     user_id=user_id,
                     event_type=event_type,
@@ -34,9 +40,10 @@ class AuditService:
                     user_agent=user_agent,
                     details=details,
                 )
-                result = audit_repo.create_log(session, log)
-                session.commit()
-                session.refresh(result)
+                result = self._repo.create_log(log)
+                # Flush to get the ID, but don't commit - caller commits
+                self._uow.session.flush()
+                self._uow.session.refresh(result)
                 return result
         except Exception:
             logger.warning(
@@ -57,21 +64,14 @@ class AuditService:
         skip: int = 0,
         limit: int = 50,
     ) -> AuditLogQueryResult:
-        with get_session() as session:
-            logs, total = audit_repo.list_logs(
-                session,
-                event_type=event_type,
-                user_id=user_id,
-                from_date=from_date,
-                to_date=to_date,
-                skip=skip,
-                limit=limit,
-            )
-            dtos = [
-                AuditLogEntryDTO.model_validate(log, from_attributes=True)
-                for log in logs
-            ]
-            return AuditLogQueryResult(items=dtos, total=total)
+        return self._repo.list_logs(
+            event_type=event_type,
+            user_id=user_id,
+            from_date=from_date,
+            to_date=to_date,
+            skip=skip,
+            limit=limit,
+        )
 
     def query_logins(
         self,
@@ -121,3 +121,6 @@ class AuditService:
             skip=skip,
             limit=limit,
         )
+
+    def get_last_login_event(self, user_id: int) -> AuditLog | None:
+        return self._repo.get_last_login_event(user_id)

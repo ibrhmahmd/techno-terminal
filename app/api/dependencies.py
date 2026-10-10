@@ -28,7 +28,7 @@ from sqlmodel import Session
 from app.db.connection import get_session
 from app.db.uow import UnitOfWork, unit_of_work
 from app.core.supabase_clients import get_supabase_anon, get_supabase_admin
-from app.modules.auth import AuthService, User
+from app.modules.auth import User
 from app.modules.auth.constants import UserRole
 
 logger = logging.getLogger(__name__)
@@ -83,7 +83,9 @@ async def get_current_user(
         logger.warning("Supabase JWT validation failed: %s", type(e).__name__)
         raise credentials_exception
 
-    user = AuthService().get_user_by_supabase_uid(supabase_uid)
+    from app.modules.auth import lookup_user_by_supabase_uid
+
+    user = lookup_user_by_supabase_uid(supabase_uid)
     if user is None:
         raise credentials_exception
 
@@ -152,15 +154,6 @@ from app.modules.academics.group.analytics.service import GroupAnalyticsService
 from app.modules.enrollments.core.service import EnrollmentCoreService as EnrollmentService
 from app.modules.enrollments.directory.service import EnrollmentDirectoryService
 from app.modules.enrollments.lifecycle.service import EnrollmentLifecycleService as EnrollmentMigrationService
-
-def get_auth_service() -> AuthService:
-    return AuthService()
-
-
-def get_audit_service() -> "AuditService":
-    from app.modules.auth.services.audit_service import AuditService
-    return AuditService()
-
 
 def get_student_crud_service(
     session: Session = Depends(get_db),

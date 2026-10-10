@@ -1,0 +1,1 @@
+"""HTTP layer of the auth module (ADR-0002): routers, HTTP schemas, factories."""

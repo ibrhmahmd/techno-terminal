@@ -1,6 +1,6 @@
 """
-app/api/routers/auth.py
-────────────────────────
+app/modules/auth/api/auth_router.py
+───────────────────────────────────
 Authentication endpoints.
 
 Prefix: /api/v1/auth  (mounted in main.py)
@@ -14,19 +14,16 @@ All tokens are issued by Supabase. Use "Authorize" in Swagger UI with:
 """
 
 import logging
-from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request, BackgroundTasks
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.api.schemas.common import ApiResponse, PaginatedResponse
-from app.modules.auth import AuthService, User, UserPublic, UserSessionDTO, AuditLogEntryDTO
-from app.modules.auth.models.audit_log import AuditLogEventType
-from app.modules.auth.services.audit_service import AuditService
-from app.api.dependencies import get_current_user, require_admin, get_auth_service, get_audit_service, get_notification_service
-from app.modules.notifications.services.notification_service import NotificationService
+from app.modules.auth import AuthService, AuditService, User, UserPublic, UserSessionDTO, AuditLogEntryDTO, AuthNotifier
+from app.api.dependencies import get_current_user, require_admin
+from app.modules.auth.api.deps import get_auth_service, get_audit_service, get_auth_notifier
 from app.modules.auth.schemas.auth_schemas import UpdateProfileInput
-from app.api.schemas.auth import (
+from app.modules.auth.api.schemas import (
     LoginRequest,
     TokenResponse,
     RefreshRequest,
@@ -55,9 +52,9 @@ http_bearer = HTTPBearer(auto_error=False)
 def login(
     request: Request,
     body: LoginRequest,
-    background_tasks: BackgroundTasks,
     auth_svc: AuthService = Depends(get_auth_service),
-    notif_svc: NotificationService = Depends(get_notification_service),
+    audit_svc: AuditService = Depends(get_audit_service),
+    notifier: AuthNotifier = Depends(get_auth_notifier),
 ):
     supabase = get_supabase_anon()
     try:
@@ -67,18 +64,26 @@ def login(
         if not res.session:
             raise HTTPException(status_code=401, detail="Invalid credentials")
     except Exception:
-        AuditService().log_event(
-            event_type=AuditLogEventType.LOGIN_FAILURE,
-            details={"email": body.email},
+        ip_address = request.client.host if request.client else "Unknown"
+        user_agent = request.headers.get("user-agent", "Unknown")
+        auth_svc.record_login_failure(
+            reason="invalid_credentials",
+            ip_address=ip_address,
+            user_agent=user_agent,
+            email=body.email,
         )
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     # verify against local DB
     user = auth_svc.get_user_by_supabase_uid(res.user.id)
     if not user:
-        AuditService().log_event(
-            event_type=AuditLogEventType.LOGIN_FAILURE,
-            details={"supabase_uid": res.user.id, "reason": "no local identity"},
+        ip_address = request.client.host if request.client else "Unknown"
+        user_agent = request.headers.get("user-agent", "Unknown")
+        auth_svc.record_login_failure(
+            reason="no_local_identity",
+            ip_address=ip_address,
+            user_agent=user_agent,
+            supabase_uid=res.user.id,
         )
         raise HTTPException(
             status_code=401, detail="User authenticated but no local identity found."
@@ -87,49 +92,29 @@ def login(
     # Detect suspicious / first login
     ip_address = request.client.host if request.client else "Unknown"
     user_agent = request.headers.get("user-agent", "Unknown")
-    
-    alert_reason = None
-    if user.last_login is None:
-        alert_reason = "First time this user has ever logged in."
-    elif user.last_login.date() < date.today():
-        alert_reason = "First login of the day for this user."
-    else:
-        # Check against last audit log
-        from app.db.connection import get_session
-        from sqlmodel import select
-        from app.modules.auth.models.audit_log import AuditLog
-        with get_session() as session:
-            stmt = select(AuditLog).where(
-                AuditLog.user_id == user.id,
-                AuditLog.event_type == AuditLogEventType.LOGIN_SUCCESS
-            ).order_by(AuditLog.created_at.desc()).limit(1)
-            last_log = session.exec(stmt).first()
-            if last_log:
-                if last_log.ip_address and last_log.ip_address != ip_address:
-                    alert_reason = f"Login from a new IP address (Previous: {last_log.ip_address})."
-                elif last_log.user_agent and last_log.user_agent != user_agent:
-                    alert_reason = "Login from a new device/browser."
 
-    if alert_reason:
-        notif_svc.notify_admin_login(
-            username=user.username,
-            email=res.user.email,
-            role=user.role,
-            ip_address=ip_address,
-            user_agent=user_agent,
-            alert_reason=alert_reason,
-            background_tasks=background_tasks,
-        )
+    alert_reason = auth_svc.evaluate_login_alert(user, ip_address, user_agent)
 
-    # stamp last login
-    auth_svc.update_last_login(user.id)
-    
-    AuditService().log_event(
-        event_type=AuditLogEventType.LOGIN_SUCCESS,
+    # Stamp last login, log LOGIN_SUCCESS, and commit atomically
+    auth_svc.record_login_success(
         user_id=user.id,
         ip_address=ip_address,
         user_agent=user_agent,
     )
+
+    # Notify after commit (ADR-0007); failures must not fail the login
+    if alert_reason:
+        try:
+            notifier.admin_login(
+                username=user.username,
+                email=res.user.email,
+                role=user.role,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                alert_reason=alert_reason,
+            )
+        except Exception:
+            logger.exception("AuthNotifier.admin_login failed; login succeeds anyway")
 
     return ApiResponse(
         data=TokenResponse(

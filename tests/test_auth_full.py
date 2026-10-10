@@ -5,6 +5,7 @@ Auth Router: /api/v1/auth/**
 Admin Auth Router: /api/v1/admin/**
 """
 
+from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
 import uuid
 
@@ -13,8 +14,24 @@ from fastapi.testclient import TestClient
 from sqlmodel import select
 
 from tests.utils.jwt_mocks import generate_expired_token
+from tests.utils.auth_notifier_fake import FakeAuthNotifier
 from app.modules.auth.models.auth_models import User
 from app.api.dependencies import get_current_user
+from app.modules.auth.api.deps import get_auth_notifier
+
+
+@contextmanager
+def _with_fake_notifier_app(app, fake_notifier):
+    """Context manager to temporarily override get_auth_notifier and restore original."""
+    original = app.dependency_overrides.get(get_auth_notifier)
+    app.dependency_overrides[get_auth_notifier] = lambda: fake_notifier
+    try:
+        yield
+    finally:
+        if original is not None:
+            app.dependency_overrides[get_auth_notifier] = original
+        else:
+            app.dependency_overrides.pop(get_auth_notifier, None)
 
 
 @pytest.fixture
@@ -79,7 +96,7 @@ class TestAuthMe:
 
         assert response.status_code == 401
 
-    @patch("app.api.routers.auth_router.AuthService.update_profile")
+    @patch("app.modules.auth.api.auth_router.AuthService.update_profile")
     def test_update_profile_success(self, mock_update, client, override_auth, mock_admin_headers, db_user):
         from app.modules.auth.schemas.auth_schemas import UserPublic
 
@@ -103,7 +120,7 @@ class TestAuthMe:
         assert data["success"] is True
         assert data["data"]["username"] == "updated_username"
 
-    @patch("app.api.routers.auth_router.AuthService.update_profile")
+    @patch("app.modules.auth.api.auth_router.AuthService.update_profile")
     def test_update_profile_duplicate_username(self, mock_update, client, override_auth, mock_admin_headers):
         from app.shared.exceptions import ConflictError
 
@@ -148,7 +165,7 @@ class TestAuthSessions:
         assert isinstance(data["data"], list)
         assert "total" in data
 
-    @patch("app.api.routers.auth_router.AuthService.logout_all_sessions")
+    @patch("app.modules.auth.api.auth_router.AuthService.logout_all_sessions")
     def test_logout_all_sessions(self, mock_logout, client, override_auth, mock_admin_headers):
         mock_logout.return_value = None
 
@@ -202,7 +219,7 @@ class TestAuthMFA:
 class TestAdminUserManagement:
     """Tests for /api/v1/admin/users endpoints."""
 
-    @patch("app.api.routers.admin_auth_router.AuthService.list_users")
+    @patch("app.modules.auth.api.admin_auth_router.AuthService.list_users")
     def test_admin_list_users_success(self, mock_list, client, override_system_admin_auth, system_admin_headers):
         from app.modules.auth.schemas.auth_schemas import UserListResult
 
@@ -221,7 +238,7 @@ class TestAdminUserManagement:
         response = client.get("/api/v1/admin/users")
         assert response.status_code == 401
 
-    @patch("app.api.routers.admin_auth_router.AuthService.get_user")
+    @patch("app.modules.auth.api.admin_auth_router.AuthService.get_user")
     def test_admin_get_user_success(self, mock_get, client, override_system_admin_auth, system_admin_headers):
         fake_user = User(id=1, username="target_user", role="admin", supabase_uid="uid-1", is_active=True)
         mock_get.return_value = fake_user
@@ -233,7 +250,7 @@ class TestAdminUserManagement:
         assert data["success"] is True
         assert data["data"]["username"] == "target_user"
 
-    @patch("app.api.routers.admin_auth_router.AuthService.get_user")
+    @patch("app.modules.auth.api.admin_auth_router.AuthService.get_user")
     def test_admin_get_user_not_found(self, mock_get, client, override_system_admin_auth, system_admin_headers):
         from app.shared.exceptions import NotFoundError
 
@@ -243,7 +260,7 @@ class TestAdminUserManagement:
 
         assert response.status_code == 404
 
-    @patch("app.api.routers.admin_auth_router.AuthService.update_user")
+    @patch("app.modules.auth.api.admin_auth_router.AuthService.update_user")
     def test_admin_update_user_success(self, mock_update, client, override_system_admin_auth, system_admin_headers):
         fake_user = User(id=2, username="user2", role="admin", supabase_uid="uid-2", is_active=True)
         mock_update.return_value = fake_user
@@ -258,7 +275,7 @@ class TestAdminUserManagement:
         data = response.json()
         assert data["success"] is True
 
-    @patch("app.api.routers.admin_auth_router.AuthService.delete_user")
+    @patch("app.modules.auth.api.admin_auth_router.AuthService.delete_user")
     def test_admin_delete_user_success(self, mock_delete, client, override_system_admin_auth, system_admin_headers):
         mock_delete.return_value = None
 
@@ -296,7 +313,7 @@ class TestAdminUserManagement:
 class TestAdminAudit:
     """Tests for /api/v1/admin/audit endpoints."""
 
-    @patch("app.api.routers.admin_auth_router.AuditService.query_logins")
+    @patch("app.modules.auth.api.admin_auth_router.AuditService.query_logins")
     def test_admin_audit_logins(self, mock_query, client, override_system_admin_auth, system_admin_headers):
         from app.modules.auth.schemas.auth_schemas import AuditLogQueryResult, AuditLogEntryDTO
         from datetime import datetime
@@ -313,7 +330,7 @@ class TestAdminAudit:
         assert isinstance(data["data"], list)
         assert data["total"] == 0
 
-    @patch("app.api.routers.admin_auth_router.AuditService.query_password_changes")
+    @patch("app.modules.auth.api.admin_auth_router.AuditService.query_password_changes")
     def test_admin_audit_password_changes(self, mock_query, client, override_system_admin_auth, system_admin_headers):
         from app.modules.auth.schemas.auth_schemas import AuditLogQueryResult
 
@@ -329,7 +346,7 @@ class TestAdminAudit:
         assert data["success"] is True
         assert isinstance(data["data"], list)
 
-    @patch("app.api.routers.admin_auth_router.AuditService.query_failed_attempts")
+    @patch("app.modules.auth.api.admin_auth_router.AuditService.query_failed_attempts")
     def test_admin_audit_failed_attempts(self, mock_query, client, override_system_admin_auth, system_admin_headers):
         from app.modules.auth.schemas.auth_schemas import AuditLogQueryResult
 
@@ -361,23 +378,26 @@ class TestAdminAudit:
 class TestAuthLoginFlow:
     """Tests for login, register, and forgot-password flows."""
 
-    @patch("app.api.routers.auth_router.AuditService.log_event")
-    @patch("app.api.routers.auth_router.get_supabase_anon")
-    def test_login_with_invalid_credentials(self, mock_get_anon, mock_audit, client):
+    @patch("app.modules.auth.api.auth_router.AuditService.log_event")
+    @patch("app.modules.auth.api.auth_router.get_supabase_anon")
+    def test_login_with_invalid_credentials(self, mock_get_anon, mock_audit, client, app):
         mock_supabase = MagicMock()
         mock_supabase.auth.sign_in_with_password.side_effect = Exception("Invalid login credentials")
         mock_get_anon.return_value = mock_supabase
 
-        response = client.post(
-            "/api/v1/auth/login",
-            json={"email": "bad@test.com", "password": "wrong"}
-        )
+        fake_notifier = FakeAuthNotifier()
 
-        assert response.status_code == 401
-        data = response.json()
-        assert data["success"] is False
+        with _with_fake_notifier_app(app, fake_notifier):
+            response = client.post(
+                "/api/v1/auth/login",
+                json={"email": "bad@test.com", "password": "wrong"}
+            )
 
-    @patch("app.api.routers.auth_router.AuthService.register_with_invite")
+            assert response.status_code == 401
+            data = response.json()
+            assert data["success"] is False
+
+    @patch("app.modules.auth.api.auth_router.AuthService.register_with_invite")
     def test_register_without_invite(self, mock_register, client):
         from app.shared.exceptions import AuthError
 
@@ -400,20 +420,23 @@ class TestAuthLoginFlow:
 
         assert response.status_code == 422
 
-    @patch("app.api.routers.auth_router.AuditService.log_event")
-    @patch("app.api.routers.auth_router.get_supabase_anon")
-    def test_login_with_real_credentials_not_available(self, mock_get_anon, mock_audit, client):
+    @patch("app.modules.auth.api.auth_router.AuditService.log_event")
+    @patch("app.modules.auth.api.auth_router.get_supabase_anon")
+    def test_login_with_real_credentials_not_available(self, mock_get_anon, mock_audit, client, app):
         """Login uses real Supabase — test returns 401 when not configured."""
         mock_supabase = MagicMock()
         mock_supabase.auth.sign_in_with_password.side_effect = Exception("Supabase not configured")
         mock_get_anon.return_value = mock_supabase
 
-        response = client.post(
-            "/api/v1/auth/login",
-            json={"email": "real@test.com", "password": "realpassword123"}
-        )
+        fake_notifier = FakeAuthNotifier()
 
-        assert response.status_code == 401
+        with _with_fake_notifier_app(app, fake_notifier):
+            response = client.post(
+                "/api/v1/auth/login",
+                json={"email": "real@test.com", "password": "realpassword123"}
+            )
+
+            assert response.status_code == 401
 
     def test_register_missing_fields(self, client):
         response = client.post(
@@ -487,7 +510,7 @@ class TestPasswordManagement:
 
         assert response.status_code == 401
 
-    @patch("app.api.routers.auth_router.AuthService.force_reset_password")
+    @patch("app.modules.auth.api.auth_router.AuthService.force_reset_password")
     def test_force_reset_success(self, mock_reset, client, override_auth, mock_admin_headers):
         mock_reset.return_value = None
 
@@ -505,7 +528,7 @@ class TestPasswordManagement:
 class TestAdminInvite:
     """Tests for /api/v1/admin/users/invite endpoint."""
 
-    @patch("app.api.routers.admin_auth_router.AuthService.invite_user")
+    @patch("app.modules.auth.api.admin_auth_router.AuthService.invite_user")
     def test_admin_invite_user_success(self, mock_invite, client, override_system_admin_auth, system_admin_headers):
         from app.modules.auth.schemas.auth_schemas import InviteResultDTO
 
@@ -537,7 +560,7 @@ class TestAdminInvite:
 
         assert response.status_code == 401
 
-    @patch("app.api.routers.admin_auth_router.AuthService.invite_user")
+    @patch("app.modules.auth.api.admin_auth_router.AuthService.invite_user")
     def test_admin_invite_duplicate_email(self, mock_invite, client, override_system_admin_auth, system_admin_headers):
         from app.shared.exceptions import ConflictError
 
@@ -557,7 +580,7 @@ class TestAdminInvite:
 class TestAuthLogout:
     """Tests for POST /api/v1/auth/logout."""
 
-    @patch("app.api.routers.auth_router.get_supabase_anon")
+    @patch("app.modules.auth.api.auth_router.get_supabase_anon")
     def test_logout_success(self, mock_get_anon, client):
         mock_supabase = MagicMock()
         mock_get_anon.return_value = mock_supabase
@@ -576,13 +599,13 @@ class TestAuthLogout:
         response = client.post("/api/v1/auth/logout")
         assert response.status_code == 200
 
-    @patch("app.api.routers.auth_router.get_supabase_anon")
+    @patch("app.modules.auth.api.auth_router.get_supabase_anon")
     def test_logout_supabase_error_logged(self, mock_get_anon, client):
         mock_supabase = MagicMock()
         mock_supabase.auth.sign_out.side_effect = Exception("Connection error")
         mock_get_anon.return_value = mock_supabase
 
-        with patch("app.api.routers.auth_router.logger.warning") as mock_log:
+        with patch("app.modules.auth.api.auth_router.logger.warning") as mock_log:
             response = client.post(
                 "/api/v1/auth/logout",
                 headers={"Authorization": "Bearer some-token"}
@@ -595,7 +618,7 @@ class TestAuthLogout:
 class TestAuthRefresh:
     """Tests for POST /api/v1/auth/refresh."""
 
-    @patch("app.api.routers.auth_router.get_supabase_anon")
+    @patch("app.modules.auth.api.auth_router.get_supabase_anon")
     def test_refresh_token_invalid(self, mock_get_anon, client):
         mock_supabase = MagicMock()
         mock_supabase.auth.refresh_session.side_effect = Exception("Invalid refresh token")
@@ -608,8 +631,8 @@ class TestAuthRefresh:
 
         assert response.status_code == 401
 
-    @patch("app.api.routers.auth_router.get_supabase_anon")
-    def test_refresh_token_missing_local_user(self, mock_get_anon, client):
+    @patch("app.modules.auth.api.auth_router.get_supabase_anon")
+    def test_refresh_token_missing_local_user(self, mock_get_anon, client, app):
         class MockSessionObj:
             access_token = "mock-at"
             refresh_token = "mock-rt"
@@ -625,16 +648,22 @@ class TestAuthRefresh:
         mock_supabase.auth.refresh_session.return_value = mock_resp
         mock_get_anon.return_value = mock_supabase
 
-        with patch("app.api.routers.auth_router.AuthService.get_user_by_supabase_uid", return_value=None):
-            response = client.post(
-                "/api/v1/auth/refresh",
-                json={"refresh_token": "valid-but-orphan-token"}
-            )
+        fake_notifier = FakeAuthNotifier()
+        from app.modules.auth.api.deps import get_auth_service
+        app.dependency_overrides[get_auth_service] = lambda: MagicMock(get_user_by_supabase_uid=MagicMock(return_value=None))
 
-            assert response.status_code == 401
+        with _with_fake_notifier_app(app, fake_notifier):
+            with patch("app.modules.auth.api.auth_router.AuthService.get_user_by_supabase_uid", return_value=None):
+                response = client.post(
+                    "/api/v1/auth/refresh",
+                    json={"refresh_token": "valid-but-orphan-token"}
+                )
 
-    @patch("app.api.routers.auth_router.get_supabase_anon")
-    def test_refresh_token_success(self, mock_get_anon, client):
+                assert response.status_code == 401
+        app.dependency_overrides.pop(get_auth_service, None)
+
+    @patch("app.modules.auth.api.auth_router.get_supabase_anon")
+    def test_refresh_token_success(self, mock_get_anon, client, app):
         mock_supabase = MagicMock()
         mock_resp = MagicMock()
         mock_resp.session = MagicMock()
@@ -653,23 +682,29 @@ class TestAuthRefresh:
             is_active=True,
         )
 
-        with patch("app.api.routers.auth_router.AuthService.get_user_by_supabase_uid", return_value=fake_user):
-            response = client.post(
-                "/api/v1/auth/refresh",
-                json={"refresh_token": "valid-refresh-token"}
-            )
+        fake_notifier = FakeAuthNotifier()
+        from app.modules.auth.api.deps import get_auth_service
+        app.dependency_overrides[get_auth_service] = lambda: MagicMock(get_user_by_supabase_uid=MagicMock(return_value=fake_user))
 
-            assert response.status_code == 200
-            data = response.json()
-            assert data["success"] is True
-            assert data["data"]["access_token"] == "new-access-token"
-            assert data["data"]["refresh_token"] == "new-refresh-token"
+        with _with_fake_notifier_app(app, fake_notifier):
+            with patch("app.modules.auth.api.auth_router.AuthService.get_user_by_supabase_uid", return_value=fake_user):
+                response = client.post(
+                    "/api/v1/auth/refresh",
+                    json={"refresh_token": "valid-refresh-token"}
+                )
+
+                assert response.status_code == 200
+                data = response.json()
+                assert data["success"] is True
+                assert data["data"]["access_token"] == "new-access-token"
+                assert data["data"]["refresh_token"] == "new-refresh-token"
+        app.dependency_overrides.pop(get_auth_service, None)
 
 
 class TestAdminAuditWithData:
     """Tests audit endpoints that query actual repository data."""
 
-    @patch("app.api.routers.admin_auth_router.AuditService.query_logins")
+    @patch("app.modules.auth.api.admin_auth_router.AuditService.query_logins")
     def test_audit_logins_with_recent_data(self, mock_query, client, override_system_admin_auth, system_admin_headers):
         from app.modules.auth.schemas.auth_schemas import AuditLogQueryResult, AuditLogEntryDTO
         from datetime import datetime

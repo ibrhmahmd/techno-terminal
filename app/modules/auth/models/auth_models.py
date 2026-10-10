@@ -3,7 +3,6 @@ from typing import Optional
 from pydantic import field_validator
 from sqlmodel import SQLModel, Field
 
-from app.modules.hr.models import Employee
 from app.modules.auth.constants import ALL_ROLE_VALUES, UserRole
 
 class UserBase(SQLModel):

@@ -11,7 +11,7 @@ from tests.architecture.conftest import MODULES, RULE_KEYS
 
 # Modules that must be violation-free. Start empty: violations are reported,
 # never failing, until a module is migrated and added here.
-ENFORCED_MODULES: set[str] = set()
+ENFORCED_MODULES: set[str] = {"auth"}
 
 
 def _assert_clean(rule: str, module: str, violations: dict) -> None:

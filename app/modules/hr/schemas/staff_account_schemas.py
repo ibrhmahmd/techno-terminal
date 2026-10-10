@@ -7,7 +7,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.modules.auth.constants import UserRole
+from app.modules.auth import UserRole
 
 
 class StaffAccountDTO(BaseModel):
