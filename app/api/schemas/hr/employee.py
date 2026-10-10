@@ -3,7 +3,7 @@ app/api/schemas/hr/employee.py
 ──────────────────────────────
 Public-facing Employee DTOs (safe fields only).
 """
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 from pydantic import BaseModel, Field
 from app.modules.hr.constants import EmploymentType
@@ -21,7 +21,7 @@ class EmployeePublic(BaseModel):
     job_title: Optional[str] = None
     employment_type: str
     is_active: bool
-    hired_at: Optional[datetime] = None
+    hired_at: Optional[date] = None
     has_account: bool = Field(default=False, description="Whether employee has a linked user account")
     university: Optional[str] = None
     major: Optional[str] = None
