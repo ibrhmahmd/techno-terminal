@@ -58,6 +58,7 @@ def login(
     body: LoginRequest,
     background_tasks: BackgroundTasks,
     auth_svc: AuthService = Depends(get_auth_service),
+    audit_svc: AuditService = Depends(get_audit_service),
     notif_svc: NotificationService = Depends(get_notification_service),
 ):
     supabase = get_supabase_anon()
@@ -68,18 +69,26 @@ def login(
         if not res.session:
             raise HTTPException(status_code=401, detail="Invalid credentials")
     except Exception:
-        AuditService().log_event(
-            event_type=AuditLogEventType.LOGIN_FAILURE,
-            details={"email": body.email},
+        ip_address = request.client.host if request.client else "Unknown"
+        user_agent = request.headers.get("user-agent", "Unknown")
+        auth_svc.record_login_failure(
+            reason="invalid_credentials",
+            ip_address=ip_address,
+            user_agent=user_agent,
+            email=body.email,
         )
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     # verify against local DB
     user = auth_svc.get_user_by_supabase_uid(res.user.id)
     if not user:
-        AuditService().log_event(
-            event_type=AuditLogEventType.LOGIN_FAILURE,
-            details={"supabase_uid": res.user.id, "reason": "no local identity"},
+        ip_address = request.client.host if request.client else "Unknown"
+        user_agent = request.headers.get("user-agent", "Unknown")
+        auth_svc.record_login_failure(
+            reason="no_local_identity",
+            ip_address=ip_address,
+            user_agent=user_agent,
+            supabase_uid=res.user.id,
         )
         raise HTTPException(
             status_code=401, detail="User authenticated but no local identity found."
@@ -96,20 +105,12 @@ def login(
         alert_reason = "First login of the day for this user."
     else:
         # Check against last audit log
-        from app.db.connection import get_session
-        from sqlmodel import select
-        from app.modules.auth.models.audit_log import AuditLog
-        with get_session() as session:
-            stmt = select(AuditLog).where(
-                AuditLog.user_id == user.id,
-                AuditLog.event_type == AuditLogEventType.LOGIN_SUCCESS
-            ).order_by(AuditLog.created_at.desc()).limit(1)
-            last_log = session.exec(stmt).first()
-            if last_log:
-                if last_log.ip_address and last_log.ip_address != ip_address:
-                    alert_reason = f"Login from a new IP address (Previous: {last_log.ip_address})."
-                elif last_log.user_agent and last_log.user_agent != user_agent:
-                    alert_reason = "Login from a new device/browser."
+        last_log = audit_svc.get_last_login_event(user.id)
+        if last_log:
+            if last_log.ip_address and last_log.ip_address != ip_address:
+                alert_reason = f"Login from a new IP address (Previous: {last_log.ip_address})."
+            elif last_log.user_agent and last_log.user_agent != user_agent:
+                alert_reason = "Login from a new device/browser."
 
     if alert_reason:
         notif_svc.notify_admin_login(
@@ -122,11 +123,8 @@ def login(
             background_tasks=background_tasks,
         )
 
-    # stamp last login
-    auth_svc.update_last_login(user.id)
-    
-    AuditService().log_event(
-        event_type=AuditLogEventType.LOGIN_SUCCESS,
+    # Stamp last login, log LOGIN_SUCCESS, and commit atomically
+    auth_svc.record_login_success(
         user_id=user.id,
         ip_address=ip_address,
         user_agent=user_agent,
