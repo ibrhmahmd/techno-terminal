@@ -31,8 +31,6 @@ AUTH_ROUTER = "app.modules.auth.api.auth_router"
 AUTH_SERVICE = "app.modules.auth.services.auth_service"
 # Provisioning module (ADR-0005) imports supabase clients directly.
 PROVISIONING = "app.modules.auth.services.provisioning"
-# Supabase client factories are imported from here by both auth_service and provisioning.
-SUPABASE_CLIENTS = "app.core.supabase_clients"
 
 
 def _uid() -> str:
@@ -340,7 +338,7 @@ def test_me_activity(client_with_uow, override_auth, mock_admin_headers, db_sess
 
 def test_logout_all_sessions(client_with_uow, override_auth, mock_admin_headers):
     admin = MagicMock()
-    with patch(f"{SUPABASE_CLIENTS}.get_supabase_admin", return_value=admin):
+    with patch(f"{AUTH_SERVICE}.get_supabase_admin", return_value=admin):
         r = client_with_uow.post(
             "/api/v1/auth/me/sessions/logout-all", headers=mock_admin_headers
         )

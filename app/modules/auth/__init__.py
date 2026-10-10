@@ -2,6 +2,7 @@
 
 from app.modules.auth.constants import UserRole, ALL_ROLE_VALUES, is_valid_role
 from app.modules.auth.models.auth_models import User
+from app.modules.auth.ports import AuthNotifier
 from app.modules.auth.schemas.auth_schemas import (
     AuditLogEntryDTO,
     AuditLogQueryResult,
@@ -34,4 +35,5 @@ __all__ = [
     "is_valid_role",
     "lookup_user_by_supabase_uid",
     "provision_login",
+    "AuthNotifier",
 ]

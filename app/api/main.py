@@ -40,6 +40,8 @@ def instrument_fastapi_app(app: FastAPI) -> None:
 
 
 from app.modules.auth.api import auth_router
+from app.modules.auth.api.deps import get_auth_notifier as auth_deps_get_auth_notifier
+from app.modules.notifications.adapters import get_auth_notifier as notif_adapters_get_auth_notifier
 from app.api.routers import attendance_router
 from app.api.routers import enrollments_router
 from app.api.routers.notifications import router as notifications_router
@@ -197,6 +199,9 @@ def create_app() -> FastAPI:
     @app.get("/kaithhealthcheck", tags=["Health"])
     def leapcell_health_check():
         return {"status": "ok"}
+
+    # 6. Dependency overrides (composition root)
+    app.dependency_overrides[auth_deps_get_auth_notifier] = notif_adapters_get_auth_notifier
 
     return app
 

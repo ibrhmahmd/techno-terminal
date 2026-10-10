@@ -191,7 +191,6 @@ class TestAuditPersistence:
 
     def test_login_suspicious_detection_uses_prior_login_success(self, client, override_auth, mock_admin_headers, db_session):
         """Suspicious login detection (new IP/device) depends on prior LOGIN_SUCCESS rows existing."""
-        from app.modules.auth.api.auth_router import AuditService
         from app.modules.auth.models.audit_log import AuditLogEventType
         from app.shared.datetime_utils import utc_now
 
@@ -227,7 +226,7 @@ class TestAuditPersistence:
         mock_supabase.auth.sign_in_with_password.return_value = mock_resp
 
         with patch("app.modules.auth.api.auth_router.get_supabase_anon", return_value=mock_supabase):
-            with patch("app.modules.auth.api.auth_router.NotificationService.notify_admin_login") as mock_notify:
+            with patch("app.modules.notifications.services.notification_service.NotificationService.notify_admin_login") as mock_notify:
                 response = client.post(
                     "/api/v1/auth/login",
                     json={"email": "test_admin@test.com", "password": "password123456"},

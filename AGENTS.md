@@ -74,13 +74,15 @@ Rules that hold in both legacy and target code:
 ## Auth Flow
 
 1. `Authorization: Bearer <jwt>` → `get_current_user()` validates via Supabase (`get_supabase_anon()`).
-2. Maps to local `User` via `get_user_by_supabase_uid()`.
+2. Maps to local `User` via `lookup_user_by_supabase_uid()` (facade function that opens a short UoW).
 3. Role comes from the **local `users.role` column** (JWT only proves identity). Role guards in `app/api/dependencies.py:112-118`: `require_admin` (`admin` + `system_admin`), `require_system_admin`, `require_any` (alias for `get_current_user`), plus `require_coach_or_admin` (`dependencies.py:340`).
 
 **Test tokens**:
 - **Real Supabase JWT** — `admin_token` fixture in `tests/conftest.py`, expires ~1h, regen via `python scripts/get_test_jwt.py`.
 - **Mock tokens** — `system_admin_token`, `mock_admin_token` via `tests/utils/jwt_mocks.py` (HS256, `TEST_SECRET`).
 - **Auth bypass** — `override_auth` fixture replaces `get_current_user` entirely; pair with mock headers.
+
+**Notifier wiring (ADR-0007)**: `auth` declares `AuthNotifier` port; `notifications.adapters` provides `NotificationServiceAuthNotifier` adapter; wired in `create_app()` via `app.dependency_overrides[auth_deps.get_auth_notifier] = notifications_adapters.get_auth_notifier`. Login route calls `notifier.admin_login(...)` **after** `uow.commit()`; notifier failures are logged and never fail the login.
 
 ## Response Envelope
 

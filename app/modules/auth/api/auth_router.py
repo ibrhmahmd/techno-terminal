@@ -19,10 +19,9 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request, Backgrou
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.api.schemas.common import ApiResponse, PaginatedResponse
-from app.modules.auth import AuthService, AuditService, User, UserPublic, UserSessionDTO, AuditLogEntryDTO
-from app.api.dependencies import get_current_user, require_admin, get_notification_service
-from app.modules.auth.api.deps import get_auth_service, get_audit_service
-from app.modules.notifications.services.notification_service import NotificationService
+from app.modules.auth import AuthService, AuditService, User, UserPublic, UserSessionDTO, AuditLogEntryDTO, AuthNotifier
+from app.api.dependencies import get_current_user, require_admin
+from app.modules.auth.api.deps import get_auth_service, get_audit_service, get_auth_notifier
 from app.modules.auth.schemas.auth_schemas import UpdateProfileInput
 from app.modules.auth.api.schemas import (
     LoginRequest,
@@ -53,10 +52,9 @@ http_bearer = HTTPBearer(auto_error=False)
 def login(
     request: Request,
     body: LoginRequest,
-    background_tasks: BackgroundTasks,
     auth_svc: AuthService = Depends(get_auth_service),
     audit_svc: AuditService = Depends(get_audit_service),
-    notif_svc: NotificationService = Depends(get_notification_service),
+    notifier: AuthNotifier = Depends(get_auth_notifier),
 ):
     supabase = get_supabase_anon()
     try:
@@ -97,23 +95,26 @@ def login(
 
     alert_reason = auth_svc.evaluate_login_alert(user, ip_address, user_agent)
 
-    if alert_reason:
-        notif_svc.notify_admin_login(
-            username=user.username,
-            email=res.user.email,
-            role=user.role,
-            ip_address=ip_address,
-            user_agent=user_agent,
-            alert_reason=alert_reason,
-            background_tasks=background_tasks,
-        )
-
     # Stamp last login, log LOGIN_SUCCESS, and commit atomically
     auth_svc.record_login_success(
         user_id=user.id,
         ip_address=ip_address,
         user_agent=user_agent,
     )
+
+    # Notify after commit (ADR-0007); failures must not fail the login
+    if alert_reason:
+        try:
+            notifier.admin_login(
+                username=user.username,
+                email=res.user.email,
+                role=user.role,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                alert_reason=alert_reason,
+            )
+        except Exception:
+            logger.exception("AuthNotifier.admin_login failed; login succeeds anyway")
 
     return ApiResponse(
         data=TokenResponse(
