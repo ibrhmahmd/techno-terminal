@@ -26,6 +26,7 @@ from app.modules.tasks import (
 )
 from app.api.dependencies import require_admin, require_any, get_task_service
 from app.modules.auth import User
+from app.modules.hr.models import Employee
 
 router = APIRouter(tags=["Tasks"])
 
@@ -146,7 +147,6 @@ def add_comment(
     # Resolve author name
     author_name = current_user.username
     if current_user.employee_id:
-        from app.modules.hr.models.employee_models import Employee
         emp = service._uow._session.get(Employee, current_user.employee_id)
         if emp:
             author_name = emp.full_name
@@ -187,7 +187,6 @@ def add_time_log(
     # Resolve employee name
     employee_name = None
     if current_user.employee_id:
-        from app.modules.hr.models.employee_models import Employee
         emp = service._uow._session.get(Employee, current_user.employee_id)
         if emp:
             employee_name = emp.full_name

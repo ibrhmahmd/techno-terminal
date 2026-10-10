@@ -2,17 +2,14 @@
 
 Handles cross-module User-Employee operations.
 """
-from typing import Optional, TYPE_CHECKING
+from typing import Optional
 
 from sqlalchemy import select
 from sqlmodel import Session
 
+from app.modules.auth.models.auth_models import User
 from app.modules.hr.models import Employee
-from app.shared.datetime_utils import utc_now
-from app.shared.exceptions import NotFoundError
-
-if TYPE_CHECKING:
-    from app.modules.auth.models.auth_models import User
+from app.modules.hr.schemas import StaffAccountLinkDTO
 
 
 class StaffAccountRepository:
@@ -21,43 +18,7 @@ class StaffAccountRepository:
     def __init__(self, session: Session):
         self._session = session
 
-    def create_linked_account(
-        self, employee: Employee, dto: "CreateEmployeeAccountDTO", supabase_uid: str
-    ) -> "User":
-        """Create user and link to employee in one transaction.
-        
-        Args:
-            employee: Employee to link (mutated with user_id)
-            dto: Account creation DTO
-            supabase_uid: Supabase user UID
-            
-        Returns:
-            The created User
-        """
-        from app.modules.auth.models.auth_models import User
-        from app.modules.hr.schemas import CreateEmployeeAccountDTO
-        
-        user = User(
-            username=dto.email,
-            role=dto.role,
-            supabase_uid=supabase_uid,
-            is_active=True,
-            created_at=utc_now(),  # explicit: model None would override DB default
-        )
-        self._session.add(user)
-        self._session.flush()
-
-        # Write BOTH sides of the 1:1 link so reverse lookups
-        # (User.employee_id joins / status syncs) work.
-        employee.user_id = user.id
-        user.employee_id = employee.id
-        self._session.add(employee)
-        self._session.add(user)
-        self._session.flush()
-
-        return user
-
-    def list_all_with_employees(self) -> list["StaffAccountLinkDTO"]:
+    def list_all_with_employees(self) -> list[StaffAccountLinkDTO]:
         """List all user-employee linked accounts.
 
         Soft-deleted employees are excluded: their logins are blocked and
@@ -66,16 +27,13 @@ class StaffAccountRepository:
         Returns:
             List of StaffAccountLinkDTO with user and employee data
         """
-        from app.modules.auth.models.auth_models import User
-        from app.modules.hr.schemas import StaffAccountLinkDTO
-
         stmt = (
             select(User, Employee)
             .join(Employee, User.employee_id == Employee.id)
             .where(Employee.deleted_at.is_(None))
         )
         results = self._session.exec(stmt).all()
-        
+
         return [
             StaffAccountLinkDTO(
                 user_id=user.id,
@@ -92,64 +50,16 @@ class StaffAccountRepository:
             for user, employee in results
         ]
 
-    def set_user_active(self, user_id: int, active: bool) -> None:
-        """Set a user account's active flag without touching role or employee.
+    def sync_employee_active(self, user_id: int, is_active: bool) -> None:
+        """Sync employee's is_active status with linked user.
 
         Args:
-            user_id: User ID to update
-            active: New is_active value
-
-        Raises:
-            NotFoundError: If user not found
+            user_id: User ID to check for linked employee
+            is_active: New active status to apply to employee if linked
         """
-        from app.modules.auth.models.auth_models import User
-
         user = self._session.get(User, user_id)
-        if not user:
-            raise NotFoundError(f"User {user_id} not found")
-        user.is_active = active
-        self._session.add(user)
-
-    def update_account_status(
-        self, user_id: int, is_active: bool, role: str
-    ) -> None:
-        """Update user and linked employee status.
-        
-        Args:
-            user_id: User ID to update
-            is_active: New active status
-            role: New role
-            
-        Raises:
-            NotFoundError: If user not found
-        """
-        # Import here to avoid circular dependency
-        from app.modules.auth.models.auth_models import User
-        
-        user = self._session.get(User, user_id)
-        if not user:
-            raise NotFoundError(f"User {user_id} not found")
-
-        user.is_active = is_active
-        user.role = role
-
-        if user.employee_id:
+        if user and user.employee_id:
             emp = self._session.get(Employee, user.employee_id)
             if emp:
                 emp.is_active = is_active
                 self._session.add(emp)
-
-        self._session.add(user)
-
-    def find_user_by_username(self, username: str) -> Optional["User"]:
-        """Find user by username.
-        
-        Args:
-            username: Username to search
-            
-        Returns:
-            User or None
-        """
-        from app.modules.auth.models.auth_models import User
-        stmt = select(User).where(User.username == username)
-        return self._session.exec(stmt).first()

@@ -4,9 +4,15 @@ Business logic for employee-user account linking.
 """
 import logging
 
-from app.modules.auth import UserRole
+from app.modules.auth import (
+    UserRole,
+    compensate_provisioned_login,
+    provision_login,
+    update_login_status,
+)
 from app.modules.hr.models import Employee
-from app.modules.hr.repositories import HRUnitOfWork
+from app.db.uow import UnitOfWork
+from app.modules.hr.repositories import EmployeeRepository, StaffAccountRepository
 from app.modules.hr.schemas import (
     CreateEmployeeAccountDTO,
     EmployeeAccountResultDTO,
@@ -30,9 +36,11 @@ _EMAIL_TAKEN_SIGNALS = ("already registered", "already exists", "already in use"
 class StaffAccountService:
     """Service for staff account management."""
 
-    def __init__(self, uow: HRUnitOfWork, supabase_client=None):
+    def __init__(self, uow: UnitOfWork, supabase_client=None):
         self._uow = uow
         self._supabase = supabase_client
+        self._employees = EmployeeRepository(uow.session)
+        self._staff_accounts = StaffAccountRepository(uow.session)
 
     def create_account(
         self, dto: CreateEmployeeAccountDTO
@@ -61,27 +69,29 @@ class StaffAccountService:
             raise ValidationError("Supabase client not configured")
 
         try:
-            auth_response = self._supabase.auth.admin.create_user(
-                {
-                    "email": dto.email,
-                    "password": dto.password,
-                    "email_confirm": True,
-                }
+            user = provision_login(
+                self._uow,
+                username=dto.email,
+                raw_password=dto.password,
+                role=dto.role.value,
+                employee_id=employee.id,
+                is_active=True,
+                supabase_admin=self._supabase,
+                remote_error_mapper=self._map_remote_error,
             )
-            supabase_uid = auth_response.user.id
-        except Exception as e:
-            if self._is_email_taken_signal(e):
-                raise ConflictError("email: already registered") from e
+        except (ConflictError, NotFoundError, ValidationError):
+            raise
+        except Exception as exc:
             raise BusinessRuleError(
-                "Account provisioning is temporarily unavailable — "
-                "nothing was created; please retry shortly."
-            ) from e
+                "Account provisioning failed — nothing was created; it is safe to retry."
+            ) from exc
 
         try:
-            user = self._uow.staff_accounts.create_linked_account(employee, dto, supabase_uid)
+            employee.user_id = user.id
+            self._uow.flush()
             self._uow.commit()
         except Exception as exc:
-            self._compensate_remote_user(supabase_uid)
+            compensate_provisioned_login(user.supabase_uid, supabase_admin=self._supabase)
             self._uow.rollback()
             if isinstance(exc, (ConflictError, NotFoundError, ValidationError)):
                 raise
@@ -92,7 +102,7 @@ class StaffAccountService:
         return EmployeeAccountResultDTO(
             employee_id=employee.id,
             user_id=user.id,
-            email=user.username,  # User model stores email in username field
+            email=user.username,
             role=user.role,
             created_at=utc_now(),
         )
@@ -104,7 +114,7 @@ class StaffAccountService:
             List of StaffAccountDTO
         """
         links: list[StaffAccountLinkDTO] = (
-            self._uow.staff_accounts.list_all_with_employees()
+            self._staff_accounts.list_all_with_employees()
         )
         return [
             StaffAccountDTO(
@@ -126,15 +136,15 @@ class StaffAccountService:
         self, user_id: int, is_active: bool, role: UserRole
     ) -> bool:
         """Update staff account status.
-        
+
         Args:
             user_id: User ID to update
             is_active: New active status
             role: New role
-            
+
         Returns:
             True on success
-            
+
         Raises:
             NotFoundError: If user not found
             ValidationError: If invalid role
@@ -142,7 +152,8 @@ class StaffAccountService:
         if not isinstance(role, UserRole):
             raise ValidationError(f"Invalid role: {role}")
 
-        self._uow.staff_accounts.update_account_status(user_id, is_active, role)
+        update_login_status(self._uow, user_id, is_active, role.value)
+        self._staff_accounts.sync_employee_active(user_id, is_active)
         self._uow.commit()
         return True
 
@@ -174,7 +185,7 @@ class StaffAccountService:
             raise ValidationError(f"Invalid role: {dto.role.value}")
 
         # Verify employee exists
-        emp = self._uow.employees.get_by_id(dto.employee_id)
+        emp = self._employees.get_by_id(dto.employee_id)
         if not emp:
             raise NotFoundError(f"Employee {dto.employee_id} not found")
 
@@ -193,15 +204,19 @@ class StaffAccountService:
         text = str(exc).lower()
         return any(signal in text for signal in _EMAIL_TAKEN_SIGNALS)
 
-    def _compensate_remote_user(self, supabase_uid: str) -> None:
-        """Best-effort deletion of a just-created remote identity.
+    def _map_remote_error(self, exc: Exception) -> Exception:
+        """Map a remote Supabase error to the appropriate domain exception.
 
-        Compensation failures are logged and never mask the original error.
+        Reproduces the exact mapping from the old create_account implementation:
+        - Email taken signals -> ConflictError("email: already registered")
+        - Everything else -> BusinessRuleError("Account provisioning is temporarily unavailable — nothing was created; please retry shortly.")
         """
-        try:
-            self._supabase.auth.admin.delete_user(supabase_uid)
-        except Exception:
-            logger.exception(
-                "Compensation failed: orphaned auth identity %s requires manual cleanup",
-                supabase_uid,
-            )
+        if self._is_email_taken_signal(exc):
+            return ConflictError("email: already registered")
+        msg = (
+            "Account provisioning is temporarily unavailable — "
+            "nothing was created; please retry shortly."
+        )
+        err = BusinessRuleError(msg)
+        err.__cause__ = exc
+        return err

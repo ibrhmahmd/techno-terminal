@@ -68,7 +68,7 @@ Rules that hold in both legacy and target code:
 
 - Routers in `app/api/routers/`, HTTP schemas in `app/api/schemas/`, all service factories in `app/api/dependencies.py`.
 - `academics/group/` and `enrollments/` use "D+" sub-slices (`core/`, `directory/`, `lifecycle/`, …) with unreferenced `interface.py` files.
-- Two transaction styles: per-module UoWs over the request `get_db()` session (CRM, Finance, HR) and services opening their own `get_session()` (everything else). One request can therefore span several non-atomic sessions. `get_db()` commits after the response is sent and still commits when a rolled-back exception is swallowed, so always re-raise after rollback.
+- Two transaction styles: per-module UoWs over the request `get_db()` session (CRM, Finance) and services opening their own `get_session()` (everything else). One request can therefore span several non-atomic sessions. `get_db()` commits after the response is sent and still commits when a rolled-back exception is swallowed, so always re-raise after rollback.
 - `get_notification_service()` opens its own session; notification background tasks open fresh sessions because they run after the request closes.
 
 ## Auth Flow

@@ -1,12 +1,14 @@
 """
-app/api/schemas/hr/employee.py
+app/modules/hr/api/schemas.py
 ──────────────────────────────
-Public-facing Employee DTOs (safe fields only).
+HR HTTP request/response schemas (moved from app/api/schemas/hr/).
 """
-from datetime import datetime
-from typing import Optional
-from pydantic import BaseModel, Field
+from datetime import date, datetime
+from typing import Literal, Optional
+from pydantic import BaseModel, EmailStr, Field
+
 from app.modules.hr.constants import EmploymentType
+from app.shared.constants import MIN_PASSWORD_LENGTH
 
 
 class EmployeePublic(BaseModel):
@@ -21,7 +23,7 @@ class EmployeePublic(BaseModel):
     job_title: Optional[str] = None
     employment_type: str
     is_active: bool
-    hired_at: Optional[datetime] = None
+    hired_at: Optional[date] = None
     has_account: bool = Field(default=False, description="Whether employee has a linked user account")
     university: Optional[str] = None
     major: Optional[str] = None
@@ -113,3 +115,62 @@ class StaffAccountPublic(BaseModel):
     created_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
+
+
+class StaffAccountCreateInput(BaseModel):
+    """Input for creating a staff account with linked employee."""
+    employee: EmployeeCreateInput
+    username: str
+    role: str
+    password: str
+
+
+class StaffAccountUpdateInput(BaseModel):
+    """Input for updating a staff account."""
+    is_active: bool
+    role: str
+
+
+class AttendanceLogInput(BaseModel):
+    """
+    Input for logging employee attendance.
+    """
+    employee_id: int
+    status: str  # present, absenti 
+    check_in: Optional[datetime] = None
+    check_out: Optional[datetime] = None
+    notes: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+
+class AttendanceLogOutput(BaseModel):
+    """
+    Output for attendance log confirmation.
+    """
+    employee_id: int
+    status: str
+    logged_at: datetime
+    message: str
+
+    model_config = {"from_attributes": True}
+
+
+class CreateEmployeeAccountRequest(BaseModel):
+    """Request body for creating an employee account."""
+    email: EmailStr = Field(..., description="Account email address")
+    password: str = Field(
+        ...,
+        min_length=MIN_PASSWORD_LENGTH,
+        description=f"Account password (min {MIN_PASSWORD_LENGTH} characters)",
+    )
+    role: Literal["admin", "system_admin"] = Field(..., description="User role")
+
+
+class EmployeeAccountResponse(BaseModel):
+    """Response for created employee account."""
+    employee_id: int = Field(..., description="Employee ID")
+    user_id: int = Field(..., description="Created user ID")
+    email: str = Field(..., description="Account email")
+    role: str = Field(..., description="Assigned role")
+    created_at: datetime = Field(..., description="Account creation timestamp")

@@ -275,7 +275,7 @@ class TestCreateSupabaseUserHelper:
         mock_admin.auth.admin.create_user.return_value.user.id = "supabase-uid-helper"
 
         with patch("app.modules.auth.services.provisioning.get_supabase_admin", return_value=mock_admin):
-            uid = _create_supabase_user("testuser", TEST_PASSWORD)
+            uid = _create_supabase_user("testuser", TEST_PASSWORD, supabase_admin=mock_admin)
 
         assert uid == "supabase-uid-helper"
         mock_admin.auth.admin.create_user.assert_called_once_with(
@@ -289,7 +289,7 @@ class TestCreateSupabaseUserHelper:
 
         with patch("app.modules.auth.services.provisioning.get_supabase_admin", return_value=mock_admin):
             with pytest.raises(ConflictError, match="Supabase error: Supabase error detail"):
-                _create_supabase_user("testuser", TEST_PASSWORD)
+                _create_supabase_user("testuser", TEST_PASSWORD, supabase_admin=mock_admin)
 
 
 class TestLinkEmployeeToNewUser:
