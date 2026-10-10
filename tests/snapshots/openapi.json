@@ -6751,7 +6751,7 @@
           "hired_at": {
             "anyOf": [
               {
-                "format": "date-time",
+                "format": "date",
                 "type": "string"
               },
               {
