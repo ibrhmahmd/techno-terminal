@@ -153,15 +153,6 @@ from app.modules.enrollments.core.service import EnrollmentCoreService as Enroll
 from app.modules.enrollments.directory.service import EnrollmentDirectoryService
 from app.modules.enrollments.lifecycle.service import EnrollmentLifecycleService as EnrollmentMigrationService
 
-def get_auth_service() -> AuthService:
-    return AuthService()
-
-
-def get_audit_service() -> "AuditService":
-    from app.modules.auth.services.audit_service import AuditService
-    return AuditService()
-
-
 def get_student_crud_service(
     session: Session = Depends(get_db),
 ) -> StudentCrudService:

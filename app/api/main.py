@@ -39,7 +39,7 @@ def instrument_fastapi_app(app: FastAPI) -> None:
     logfire.instrument_fastapi(app)
 
 
-from app.api.routers import auth_router
+from app.modules.auth.api import auth_router
 from app.api.routers import attendance_router
 from app.api.routers import enrollments_router
 from app.api.routers.notifications import router as notifications_router
@@ -66,7 +66,7 @@ from app.api.routers.analytics import (
     dashboard_router,
 )
 from app.api.routers.finance import receipt_router, finance_router, reporting_router
-from app.api.routers import admin_auth_router
+from app.modules.auth.api import admin_auth_router
 from app.api.routers.tasks import router as tasks_router
 
 

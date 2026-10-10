@@ -1,6 +1,6 @@
 """
-app/api/routers/admin_auth_router.py
-────────────────────────────────────
+app/modules/auth/api/admin_auth_router.py
+─────────────────────────────────────────
 Admin user management + audit endpoints.
 
 Prefix: /api/v1/admin  (mounted in main.py)
@@ -11,9 +11,10 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Query
 
-from app.api.dependencies import require_admin, get_auth_service, get_audit_service
+from app.api.dependencies import require_admin
+from app.modules.auth.api.deps import get_auth_service, get_audit_service
 from app.api.schemas.common import ApiResponse, PaginatedResponse
-from app.api.schemas.auth import UpdateUserRequest, InviteUserRequest
+from app.modules.auth.api.schemas import UpdateUserRequest, InviteUserRequest
 from app.modules.auth import AuthService, AuditService, User, UserAdminDTO, InviteResultDTO, AuditLogEntryDTO
 
 router = APIRouter(tags=["Admin Auth"])

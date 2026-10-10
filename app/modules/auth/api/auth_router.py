@@ -1,6 +1,6 @@
 """
-app/api/routers/auth.py
-────────────────────────
+app/modules/auth/api/auth_router.py
+───────────────────────────────────
 Authentication endpoints.
 
 Prefix: /api/v1/auth  (mounted in main.py)
@@ -23,10 +23,11 @@ from app.api.schemas.common import ApiResponse, PaginatedResponse
 from app.modules.auth import AuthService, User, UserPublic, UserSessionDTO, AuditLogEntryDTO
 from app.modules.auth.models.audit_log import AuditLogEventType
 from app.modules.auth.services.audit_service import AuditService
-from app.api.dependencies import get_current_user, require_admin, get_auth_service, get_audit_service, get_notification_service
+from app.api.dependencies import get_current_user, require_admin, get_notification_service
+from app.modules.auth.api.deps import get_auth_service, get_audit_service
 from app.modules.notifications.services.notification_service import NotificationService
 from app.modules.auth.schemas.auth_schemas import UpdateProfileInput
-from app.api.schemas.auth import (
+from app.modules.auth.api.schemas import (
     LoginRequest,
     TokenResponse,
     RefreshRequest,
