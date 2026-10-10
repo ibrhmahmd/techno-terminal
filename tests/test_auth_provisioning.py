@@ -1,5 +1,6 @@
 """Tests for auth provisioning (provision_login and link_employee_to_new_user)."""
 
+import secrets
 import uuid
 from unittest.mock import MagicMock, patch
 
@@ -11,6 +12,9 @@ from app.modules.auth.services.auth_service import AuthService
 from app.modules.auth.services.provisioning import _create_supabase_user
 from app.shared.constants import MIN_PASSWORD_LENGTH
 from app.shared.exceptions import ConflictError, NotFoundError, ValidationError
+
+# Generated per run so no password literal is committed.
+TEST_PASSWORD = secrets.token_urlsafe(16)
 
 
 def _unique_username(prefix: str) -> str:
@@ -31,7 +35,7 @@ class TestProvisionLogin:
             user = provision_login(
                 uow,
                 username=username,
-                raw_password="strongpassword123",
+                raw_password=TEST_PASSWORD,
                 role="admin",
                 employee_id=None,
                 is_active=True,
@@ -43,7 +47,7 @@ class TestProvisionLogin:
         assert user.is_active is True
         assert user.employee_id is None
         mock_admin.auth.admin.create_user.assert_called_once_with(
-            {"email": f"{username}@system.local", "password": "strongpassword123", "email_confirm": True}
+            {"email": f"{username}@system.local", "password": TEST_PASSWORD, "email_confirm": True}
         )
 
     def test_provision_login_success_with_employee(self, uow, db_session):
@@ -74,7 +78,7 @@ class TestProvisionLogin:
             user = provision_login(
                 uow,
                 username=username,
-                raw_password="strongpassword123",
+                raw_password=TEST_PASSWORD,
                 role="admin",
                 employee_id=emp.id,
                 is_active=True,
@@ -94,7 +98,7 @@ class TestProvisionLogin:
                     provision_login(
                         uow,
                         username=_unique_username("failuser"),
-                        raw_password="strongpassword123",
+                        raw_password=TEST_PASSWORD,
                         role="admin",
                     )
 
@@ -120,7 +124,7 @@ class TestProvisionLogin:
                 provision_login(
                     uow,
                     username=username,
-                    raw_password="strongpassword123",
+                    raw_password=TEST_PASSWORD,
                     role="admin",
                 )
 
@@ -136,7 +140,7 @@ class TestProvisionLogin:
                     provision_login(
                         uow,
                         username=_unique_username("newuser"),
-                        raw_password="strongpassword123",
+                        raw_password=TEST_PASSWORD,
                         role="admin",
                         employee_id=999,
                     )
@@ -193,7 +197,7 @@ class TestProvisionLogin:
                 provision_login(
                     uow,
                     username=_unique_username("newuser"),
-                    raw_password="strongpassword123",
+                    raw_password=TEST_PASSWORD,
                     role="admin",
                     employee_id=emp.id,
                 )
@@ -224,7 +228,7 @@ class TestProvisionLogin:
                 provision_login(
                     uow,
                     username=_unique_username("newuser"),
-                    raw_password="strongpassword123",
+                    raw_password=TEST_PASSWORD,
                     role="invalid_role",
                 )
 
@@ -240,7 +244,7 @@ class TestProvisionLogin:
                 provision_login(
                     uow,
                     username=_unique_username("newuser"),
-                    raw_password="strongpassword123",
+                    raw_password=TEST_PASSWORD,
                     role="admin",
                 )
 
@@ -253,12 +257,12 @@ class TestProvisionLogin:
             user = provision_login(
                 uow,
                 username="user@example.com",
-                raw_password="strongpassword123",
+                raw_password=TEST_PASSWORD,
                 role="admin",
             )
 
         mock_admin.auth.admin.create_user.assert_called_once_with(
-            {"email": "user@example.com", "password": "strongpassword123", "email_confirm": True}
+            {"email": "user@example.com", "password": TEST_PASSWORD, "email_confirm": True}
         )
 
 
@@ -271,11 +275,11 @@ class TestCreateSupabaseUserHelper:
         mock_admin.auth.admin.create_user.return_value.user.id = "supabase-uid-helper"
 
         with patch("app.modules.auth.services.provisioning.get_supabase_admin", return_value=mock_admin):
-            uid = _create_supabase_user("testuser", "strongpassword123")
+            uid = _create_supabase_user("testuser", TEST_PASSWORD)
 
         assert uid == "supabase-uid-helper"
         mock_admin.auth.admin.create_user.assert_called_once_with(
-            {"email": "testuser@system.local", "password": "strongpassword123", "email_confirm": True}
+            {"email": "testuser@system.local", "password": TEST_PASSWORD, "email_confirm": True}
         )
 
     def test_create_supabase_user_error_raises_conflict(self):
@@ -285,7 +289,7 @@ class TestCreateSupabaseUserHelper:
 
         with patch("app.modules.auth.services.provisioning.get_supabase_admin", return_value=mock_admin):
             with pytest.raises(ConflictError, match="Supabase error: Supabase error detail"):
-                _create_supabase_user("testuser", "strongpassword123")
+                _create_supabase_user("testuser", TEST_PASSWORD)
 
 
 class TestLinkEmployeeToNewUser:
@@ -318,7 +322,7 @@ class TestLinkEmployeeToNewUser:
             user = auth_svc.link_employee_to_new_user(
                 employee_id=emp.id,
                 username=_unique_username("wrapperuser"),
-                raw_password="strongpassword123",
+                raw_password=TEST_PASSWORD,
                 role="admin",
             )
 
@@ -354,6 +358,6 @@ class TestLinkEmployeeToNewUser:
             auth_svc.link_employee_to_new_user(
                 employee_id=None,
                 username=username,
-                raw_password="strongpassword123",
+                raw_password=TEST_PASSWORD,
                 role="admin",
             )
