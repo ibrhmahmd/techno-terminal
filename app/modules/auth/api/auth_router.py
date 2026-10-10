@@ -14,15 +14,12 @@ All tokens are issued by Supabase. Use "Authorize" in Swagger UI with:
 """
 
 import logging
-from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request, BackgroundTasks
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.api.schemas.common import ApiResponse, PaginatedResponse
-from app.modules.auth import AuthService, User, UserPublic, UserSessionDTO, AuditLogEntryDTO
-from app.modules.auth.models.audit_log import AuditLogEventType
-from app.modules.auth.services.audit_service import AuditService
+from app.modules.auth import AuthService, AuditService, User, UserPublic, UserSessionDTO, AuditLogEntryDTO
 from app.api.dependencies import get_current_user, require_admin, get_notification_service
 from app.modules.auth.api.deps import get_auth_service, get_audit_service
 from app.modules.notifications.services.notification_service import NotificationService
@@ -97,20 +94,8 @@ def login(
     # Detect suspicious / first login
     ip_address = request.client.host if request.client else "Unknown"
     user_agent = request.headers.get("user-agent", "Unknown")
-    
-    alert_reason = None
-    if user.last_login is None:
-        alert_reason = "First time this user has ever logged in."
-    elif user.last_login.date() < date.today():
-        alert_reason = "First login of the day for this user."
-    else:
-        # Check against last audit log
-        last_log = audit_svc.get_last_login_event(user.id)
-        if last_log:
-            if last_log.ip_address and last_log.ip_address != ip_address:
-                alert_reason = f"Login from a new IP address (Previous: {last_log.ip_address})."
-            elif last_log.user_agent and last_log.user_agent != user_agent:
-                alert_reason = "Login from a new device/browser."
+
+    alert_reason = auth_svc.evaluate_login_alert(user, ip_address, user_agent)
 
     if alert_reason:
         notif_svc.notify_admin_login(

@@ -15,6 +15,7 @@ from app.modules.auth.schemas.auth_schemas import (
 from app.modules.auth.services.auth_service import AuthService
 from app.modules.auth.services.audit_service import AuditService
 from app.modules.auth.services.lookup import lookup_user_by_supabase_uid
+from app.modules.auth.services.provisioning import provision_login
 
 __all__ = [
     "AuthService",
@@ -32,4 +33,5 @@ __all__ = [
     "ALL_ROLE_VALUES",
     "is_valid_role",
     "lookup_user_by_supabase_uid",
+    "provision_login",
 ]

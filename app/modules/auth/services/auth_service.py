@@ -1,5 +1,6 @@
 import logging
 from typing import Optional
+from datetime import date
 
 from app.core.supabase_clients import get_supabase_admin, get_supabase_anon
 from app.db.uow import UnitOfWork
@@ -16,6 +17,7 @@ from app.shared.constants import MIN_PASSWORD_LENGTH
 from app.shared.exceptions import AuthError, BusinessRuleError, ConflictError, NotFoundError, ValidationError
 from app.modules.auth.models.audit_log import AuditLogEventType
 from app.modules.auth.services.audit_service import AuditService
+from app.modules.auth.services.provisioning import provision_login, _create_supabase_user
 
 logger = logging.getLogger(__name__)
 
@@ -133,19 +135,7 @@ class AuthService:
         existing = self._repo.get_user_by_username(username)
         if existing:
             raise ConflictError(f"Username {username!r} already exists.")
-        email_binding = username if "@" in username else f"{username}@system.local"
-        admin = get_supabase_admin()
-        try:
-            auth_response = admin.auth.admin.create_user(
-                {
-                    "email": email_binding,
-                    "password": password,
-                    "email_confirm": True,
-                }
-            )
-            native_uid = auth_response.user.id
-        except Exception as e:
-            raise ConflictError(f"Supabase error: {e}") from e
+        native_uid = _create_supabase_user(username, password)
         user.username = username
         user.supabase_uid = native_uid
         user.is_active = True
@@ -249,54 +239,35 @@ class AuthService:
     def link_employee_to_new_user(
         self, employee_id: int | None, username: str, raw_password: str, role: str
     ) -> User:
-        if len(raw_password) < MIN_PASSWORD_LENGTH:
-            raise ValidationError(
-                f"Password must be at least {MIN_PASSWORD_LENGTH} characters."
-            )
-        if not is_valid_role(role):
-            raise ValidationError(f"Invalid role: {role!r}.")
-
-        if employee_id is not None:
-            if not self._repo.employee_exists(employee_id):
-                raise NotFoundError(f"Employee {employee_id} not found.")
-            if self._repo.get_users_by_employee_id(employee_id):
-                raise ConflictError("This employee already has a linked login.")
-        if self._repo.get_user_by_username(username):
-            raise ConflictError(f"Username {username!r} already exists.")
-
-        email_binding = username if "@" in username else f"{username}@system.local"
-        admin = get_supabase_admin()
-        try:
-            auth_response = admin.auth.admin.create_user(
-                {
-                    "email": email_binding,
-                    "password": raw_password,
-                    "email_confirm": True,
-                }
-            )
-            native_uid = auth_response.user.id
-        except Exception as e:
-            raise ConflictError(f"Supabase error: {e}") from e
-
-        user_in = UserCreate(
+        user = provision_login(
+            self._uow,
             username=username,
+            raw_password=raw_password,
             role=role,
             employee_id=employee_id,
             is_active=True,
-            supabase_uid=native_uid,
         )
-        try:
-            user = self._repo.create_user(user_in)
-            self._uow.commit()
-            self._uow.session.refresh(user)
-            return user
-        except Exception:
-            self._uow.rollback()
-            try:
-                admin.auth.admin.delete_user(native_uid)
-            except Exception:
-                logger.exception("Failed to clean up Supabase user %s after DB rollback", native_uid)
-            raise
+        self._uow.commit()
+        self._uow.session.refresh(user)
+        return user
+
+    def evaluate_login_alert(self, user: User, ip_address: str, user_agent: str) -> str | None:
+        """Evaluate whether this login triggers a security alert.
+
+        Returns the alert reason string if an alert should be raised, else None.
+        Mirrors the exact logic and message strings from the original login route.
+        """
+        if user.last_login is None:
+            return "First time this user has ever logged in."
+        if user.last_login.date() < date.today():
+            return "First login of the day for this user."
+        last_log = self._audit.get_last_login_event(user.id)
+        if last_log:
+            if last_log.ip_address and last_log.ip_address != ip_address:
+                return f"Login from a new IP address (Previous: {last_log.ip_address})."
+            elif last_log.user_agent and last_log.user_agent != user_agent:
+                return "Login from a new device/browser."
+        return None
 
     def record_login_failure(
         self,
