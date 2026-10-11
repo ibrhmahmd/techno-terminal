@@ -1,36 +1,69 @@
 """Academics HTTP-layer service factories (ADR-0002: api/ → services/)."""
 
-from app.modules.academics.course.service import CourseService
-from app.modules.academics.group.core.service import GroupCoreService
-from app.modules.academics.group.directory.service import GroupDirectoryService
-from app.modules.academics.group.level.service import GroupLevelService
-from app.modules.academics.session.service import SessionService
-from app.modules.academics.group.analytics.service import GroupAnalyticsService
+from fastapi import Depends
+
+from app.api.dependencies import UoW
+from app.modules.academics.services.course_service import CourseService
+from app.modules.academics.services.group_service import GroupCoreService
+from app.modules.academics.services.group_directory_service import GroupDirectoryService
+from app.modules.academics.services.group_level_service import GroupLevelService
+from app.modules.academics.services.session_service import SessionService
+from app.modules.academics.services.group_analytics_service import GroupAnalyticsService
+from app.modules.academics.services.group_details_service import GroupDetailsService
+from app.modules.academics.services.group_lifecycle_service import GroupLifecycleService
 
 
-def get_course_service() -> CourseService:
-    return CourseService()
+def get_course_service(
+    uow: UoW,
+) -> CourseService:
+    """Returns a CourseService with request-scoped UnitOfWork."""
+    return CourseService(uow)
 
 
-def get_group_service() -> GroupCoreService:
+def get_group_service(
+    uow: UoW,
+) -> GroupCoreService:
     """Returns a fresh GroupCoreService instance per request."""
-    return GroupCoreService()
+    return GroupCoreService(uow)
 
 
-def get_group_directory_service() -> GroupDirectoryService:
-    """Returns a fresh GroupDirectoryService instance per request."""
-    return GroupDirectoryService()
+def get_group_directory_service(
+    uow: UoW,
+) -> GroupDirectoryService:
+    """Returns a GroupDirectoryService with request-scoped UnitOfWork."""
+    return GroupDirectoryService(uow)
 
 
-def get_group_level_service() -> GroupLevelService:
-    """Returns a fresh GroupLevelService instance per request."""
-    return GroupLevelService()
+def get_group_level_service(
+    uow: UoW,
+) -> GroupLevelService:
+    """Returns a GroupLevelService with request-scoped UnitOfWork."""
+    return GroupLevelService(uow)
 
 
-def get_session_service() -> SessionService:
-    return SessionService()
+def get_session_service(
+    uow: UoW,
+) -> SessionService:
+    """Returns a SessionService with request-scoped UnitOfWork."""
+    return SessionService(uow)
 
 
-def get_group_analytics_service() -> GroupAnalyticsService:
-    """Returns a fresh GroupAnalyticsService instance per request."""
-    return GroupAnalyticsService()
+def get_group_analytics_service(
+    uow: UoW,
+) -> GroupAnalyticsService:
+    """Returns a GroupAnalyticsService with request-scoped UnitOfWork."""
+    return GroupAnalyticsService(uow)
+
+
+def get_group_details_service(
+    uow: UoW,
+) -> GroupDetailsService:
+    """Returns a GroupDetailsService with request-scoped UnitOfWork."""
+    return GroupDetailsService(uow)
+
+
+def get_lifecycle_service(
+    uow: UoW,
+) -> GroupLifecycleService:
+    """Returns a GroupLifecycleService with request-scoped UnitOfWork."""
+    return GroupLifecycleService(uow)

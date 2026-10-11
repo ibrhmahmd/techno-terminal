@@ -7,20 +7,21 @@ def _unique(name: str) -> str:
     return f"{name}-{_time.time_ns()}"
 from app.modules.academics.models import Course, Group, CourseSession
 from app.modules.academics.models.group_level_models import GroupLevel
-from app.modules.academics.helpers.session_planning import create_sessions_in_session
-from app.modules.academics.session.repository import (
+from app.modules.academics.services.session_planning import create_sessions_in_session
+from app.modules.academics.repositories.session_repository import (
     get_group_level_id, list_sessions_by_group_level,
 )
-from app.modules.academics.session.service import SessionService
-from app.modules.academics.group.lifecycle.service import GroupLifecycleService
-from app.modules.academics.group.lifecycle.schemas import (
+from app.modules.academics.services.session_service import SessionService
+from app.modules.academics.services.group_lifecycle_service import GroupLifecycleService
+from app.modules.academics.schemas.group_lifecycle_schemas import (
     CreateGroupWithLevelDTO, ProgressLevelDTO, CreateGroupLevelDTO,
 )
-from app.modules.academics.group.core.schemas import ScheduleGroupInput
-from app.modules.academics.group.details.service import GroupDetailsService
-from app.modules.academics.course.schemas import AddNewCourseInput, UpdateCourseDTO, MAX_SESSIONS_PER_LEVEL, MAX_LEVELS
-from app.modules.academics.course.service import CourseService
+from app.modules.academics.schemas.group_schemas import ScheduleGroupInput
+from app.modules.academics.services.group_details_service import GroupDetailsService
+from app.modules.academics.schemas.course_schemas import AddNewCourseInput, UpdateCourseDTO, MAX_SESSIONS_PER_LEVEL, MAX_LEVELS
+from app.modules.academics.services.course_service import CourseService
 from app.shared.exceptions import ValidationError
+from app.db.uow import UnitOfWork
 from sqlmodel import Session, select
 
 
@@ -155,8 +156,8 @@ class TestSessionService:
         db_session.commit()
         return group, l1, l2
 
-    def _create_course(self) -> Course:
-        svc = CourseService()
+    def _create_course(self, db_session) -> Course:
+        svc = CourseService(UnitOfWork(db_session))
         return svc.add_new_course(AddNewCourseInput(
             name=f"T011-05 Course {id(self)}", category="software",
             price_per_level=500, sessions_per_level=4,
@@ -164,10 +165,10 @@ class TestSessionService:
 
     def test_list_group_sessions_defaults_to_current_level(self, db_session):
         """T011-05: Default session list returns only current active level."""
-        course = self._create_course()
+        course = self._create_course(db_session)
         group, l1, l2 = self._setup_group_with_levels(db_session, course)
 
-        sess_svc = SessionService()
+        sess_svc = SessionService(UnitOfWork(db_session))
         result = sess_svc.list_group_sessions(group.id)
 
         assert len(result) == 2
@@ -176,10 +177,10 @@ class TestSessionService:
 
     def test_list_group_sessions_explicit_level(self, db_session):
         """T011-06: Explicit level filter returns historical sessions."""
-        course = self._create_course()
+        course = self._create_course(db_session)
         group, l1, l2 = self._setup_group_with_levels(db_session, course)
 
-        sess_svc = SessionService()
+        sess_svc = SessionService(UnitOfWork(db_session))
         result = sess_svc.list_group_sessions(group.id, level_number=1)
 
         assert len(result) == 3
@@ -208,7 +209,7 @@ class TestGroupDetailsService:
         db_session.add(l2)
         db_session.commit()
 
-        details_svc = GroupDetailsService()
+        details_svc = GroupDetailsService(UnitOfWork(db_session))
         result = details_svc.get_levels_detailed(group.id)
 
         # Service now returns all levels when no specific level is requested
@@ -233,7 +234,7 @@ class TestGroupDetailsService:
         db_session.add(l2)
         db_session.commit()
 
-        details_svc = GroupDetailsService()
+        details_svc = GroupDetailsService(UnitOfWork(db_session))
         result = details_svc.get_levels_detailed(group.id, level_number=1)
 
         assert len(result.levels) == 1
@@ -302,14 +303,16 @@ class TestLifecycleService:
     _emp_counter = 0
 
     def _create_employee(self, db_session):
+        import uuid
         TestLifecycleService._emp_counter += 1
         counter = TestLifecycleService._emp_counter
         from app.modules.hr.models import Employee
         from datetime import datetime
+        token = uuid.uuid4().int
         emp = Employee(
             full_name=f"Test Instructor {counter}",
-            phone=f"+2010000000{counter:03d}",
-            national_id=f"{10000000000000 + counter}",
+            phone=f"+201{token % 10**9:09d}",
+            national_id=f"{token % 10**14:014d}",
             university="Test University",
             major="Computer Science",
             hired_at=datetime.now(tz=None),
@@ -335,7 +338,7 @@ class TestLifecycleService:
             ),
             start_date=date.today(),
         )
-        lifecycle = GroupLifecycleService()
+        lifecycle = GroupLifecycleService(UnitOfWork(db_session))
         result = lifecycle.create_group_with_first_level(inp)
 
         assert result.sessions_count > 0
@@ -358,7 +361,7 @@ class TestLifecycleService:
             ),
             start_date=date.today(),
         )
-        lifecycle = GroupLifecycleService()
+        lifecycle = GroupLifecycleService(UnitOfWork(db_session))
         result = lifecycle.create_group_with_first_level(inp)
 
         from datetime import timedelta

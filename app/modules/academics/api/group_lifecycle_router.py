@@ -15,6 +15,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query
 
 from app.api.schemas.common import ApiResponse
 from app.shared.exceptions import NotFoundError, BusinessRuleError
+from app.shared.datetime_utils import utc_now
 from app.api.dependencies import (
     require_any,
     require_admin,
@@ -24,9 +25,9 @@ from app.modules.academics.api.deps import (
     get_group_analytics_service,
 )
 from app.modules.auth import User
-from app.modules.academics.group.level.service import GroupLevelService
-from app.modules.academics.group.analytics.service import GroupAnalyticsService
-from app.modules.academics.group.analytics.schemas import (
+from app.modules.academics.services.group_level_service import GroupLevelService
+from app.modules.academics.services.group_analytics_service import GroupAnalyticsService
+from app.modules.academics.schemas.group_analytics_schemas import (
     GroupEnrollmentHistoryResponseDTO,
     GroupInstructorHistoryResponseDTO,
 )
@@ -34,7 +35,7 @@ from app.modules.academics.api.schemas.group_lifecycle import CancelLevelInput, 
 from app.modules.academics.api.schemas.group_level import (
     GroupLevelPublic,
 )
-from app.modules.academics.group.level.schemas import UpdateLevelInput
+from app.modules.academics.schemas.group_level_schemas import UpdateLevelInput
 
 router = APIRouter(tags=["Academics — Group Lifecycle"])
 
@@ -80,7 +81,6 @@ def cancel_group_level_endpoint(
     """
     try:
         cancelled_level = svc.cancel_level(group_id, level_number, body.reason)
-        from app.shared.datetime_utils import utc_now
         return ApiResponse(
             data=CancelLevelResult(
                 level_id=cancelled_level.id,
