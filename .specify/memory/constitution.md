@@ -7,7 +7,7 @@ Version change: 1.1.1 → 1.1.2 (PATCH)
   truth. The previous text claimed the user role is read from JWT `app_metadata.role`;
   in reality the JWT only proves identity (Supabase uid mapped to a local User row via
   `get_user_by_supabase_uid`) and authorization reads exclusively from the local
-  `users.role` column (`app/api/dependencies.py:100-106`). Mock-token guidance updated:
+  `users.role` column (`app/api/deps.py:100-106`). Mock-token guidance updated:
   tests need a matching seeded local user row or the `override_auth` fixture, not a
   role claim. Also listed `require_system_admin`, which was missing from the guard list.
 - Operational Constraints / Database Engine Configuration: corrected `sslmode=require`
@@ -110,7 +110,7 @@ envelope.
 ### V. Auth-Guarded Endpoints
 
 All endpoints except health checks (`/health`, `/kaithhealthcheck`) require a valid
-Supabase JWT. Auth flows through `get_current_user()` in `app/api/dependencies.py` which
+Supabase JWT. Auth flows through `get_current_user()` in `app/api/deps.py` which
 validates the JWT via `get_supabase_anon()` and maps the Supabase uid to the local `User`
 model. The JWT proves identity ONLY — authorization never reads role claims.
 

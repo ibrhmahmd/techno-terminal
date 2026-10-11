@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, BackgroundTasks
 
-from app.api.dependencies import require_admin
+from app.api.deps import require_admin
 from app.modules.notifications.api.deps import get_report_service
 from app.api.schemas.common import ApiResponse
 from app.modules.auth.models import User

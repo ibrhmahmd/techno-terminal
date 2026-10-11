@@ -14,7 +14,7 @@ from app.modules.competitions.api.schemas.competition_schemas import (
     UpdateCompetitionInput,
     CompetitionSummaryResponse,
 )
-from app.api.dependencies import require_any, require_admin
+from app.api.deps import require_any, require_admin
 from app.modules.competitions.api.deps import get_competition_service
 from app.modules.auth import User
 from app.modules.competitions import CompetitionService, CompetitionDTO, CreateCompetitionInput

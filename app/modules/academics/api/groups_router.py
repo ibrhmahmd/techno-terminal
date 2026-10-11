@@ -18,7 +18,7 @@ from app.modules.academics.api.schemas.group import (
     GroupPublic,
 )
 from app.modules.academics.api.schemas.session import SessionPublic, GenerateLevelSessionsRequest
-from app.api.dependencies import (
+from app.api.deps import (
     require_admin,
     require_any,
 )

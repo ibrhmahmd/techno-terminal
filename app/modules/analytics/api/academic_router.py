@@ -16,7 +16,7 @@ from app.modules.analytics.schemas.academic_schemas import (
     StudentProgressDTO,
     CourseCompletionDTO,
 )
-from app.api.dependencies import require_admin
+from app.api.deps import require_admin
 from app.modules.analytics.api.deps import get_academic_analytics_service
 from app.modules.auth import User
 from app.modules.analytics.services.academic_service import AcademicAnalyticsService

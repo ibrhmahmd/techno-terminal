@@ -15,7 +15,7 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def auto_override_auth(app):
-    from app.api.dependencies import get_current_user
+    from app.api.deps import get_current_user
     from app.modules.auth.models.auth_models import User
     from fastapi import Request, HTTPException
 

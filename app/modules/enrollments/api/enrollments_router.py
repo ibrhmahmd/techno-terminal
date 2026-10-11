@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.schemas.common import ApiResponse
 from app.modules.enrollments.api.schemas.enrollment import EnrollmentPublic, StudentEnrollmentSummaryPublic
-from app.api.dependencies import require_admin, require_any
+from app.api.deps import require_admin, require_any
 from app.modules.academics import ProgressLevelDTO
 from app.modules.enrollments.api.schemas.progress import ProgressGroupLevelRequest, ProgressGroupLevelResult
 from app.modules.enrollments.schemas.enrollment_schemas import EnrollStudentInput, TransferStudentInput, UpdateEnrollmentInput

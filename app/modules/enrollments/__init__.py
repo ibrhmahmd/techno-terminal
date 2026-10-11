@@ -23,12 +23,6 @@ from app.modules.enrollments.models import Enrollment, EnrollmentBase, Enrollmen
 # Ports (ADR-0007)
 from app.modules.enrollments.ports import EnrollmentNotifier
 
-# Services (via facade only)
-from app.modules.enrollments.services.enrollment_service import EnrollmentService
-from app.modules.enrollments.services.enrollment_directory_service import EnrollmentDirectoryService
-from app.modules.enrollments.services.enrollment_lifecycle_service import EnrollmentLifecycleService
-from app.modules.enrollments.services.enrollment_analytics_service import EnrollmentAnalyticsService
-
 # DTOs (via facade only)
 from app.modules.enrollments.schemas.enrollment_schemas import (
     EnrollStudentInput,
@@ -75,3 +69,27 @@ __all__ = [
     "EnrollmentMigrationResult",
     "LevelProgressionResult",
 ]
+
+
+_LAZY_SERVICES = {
+    "EnrollmentService": "app.modules.enrollments.services.enrollment_service",
+    "EnrollmentDirectoryService": "app.modules.enrollments.services.enrollment_directory_service",
+    "EnrollmentLifecycleService": "app.modules.enrollments.services.enrollment_lifecycle_service",
+    "EnrollmentAnalyticsService": "app.modules.enrollments.services.enrollment_analytics_service",
+}
+
+
+def __getattr__(name: str):
+    """Load the service classes on first access.
+
+    Lower modules (academics, crm, finance) import ``app.modules.enrollments.models``, which
+    runs this package's ``__init__``. Importing the services eagerly would pull in academics'
+    facade while academics itself is still initialising, so the services resolve lazily and
+    ``import app.modules.<any module>`` works in any order.
+    """
+    module = _LAZY_SERVICES.get(name)
+    if module is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    import importlib
+
+    return getattr(importlib.import_module(module), name)

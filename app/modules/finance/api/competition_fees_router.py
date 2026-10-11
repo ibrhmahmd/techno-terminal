@@ -10,7 +10,7 @@ Paths, request bodies, responses and auth are unchanged:
 """
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.api.dependencies import require_admin
+from app.api.deps import require_admin
 from app.modules.finance.api.deps import get_competition_fee_service
 from app.api.schemas.common import ApiResponse
 from app.modules.finance.api.schemas.competition_fee import PayCompetitionFeeBody, RefundCompetitionFeeBody

@@ -18,7 +18,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field, field_validator
 
 from app.api.schemas.common import ApiResponse
-from app.api.dependencies import require_admin
+from app.api.deps import require_admin
 from app.modules.attendance.api.deps import get_attendance_service
 from app.modules.auth import User
 from app.modules.attendance import (

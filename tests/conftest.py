@@ -63,7 +63,7 @@ def client_with_uow(app, uow):
     Deliberately built WITHOUT the context-manager form so the app lifespan
     (schedulers) does not start. The dependency override is always popped.
     """
-    from app.api.dependencies import get_uow
+    from app.api.deps import get_uow
 
     app.dependency_overrides[get_uow] = lambda: uow
     try:
@@ -138,7 +138,7 @@ def override_auth(app, db_session):
     Use this fixture in tests that don't need real Supabase auth.
     Combine with mock_admin_headers or system_admin_headers for token-passing tests.
     """
-    from app.api.dependencies import get_current_user
+    from app.api.deps import get_current_user
     from app.modules.auth.models.auth_models import User as UserModel
     from sqlalchemy import text
     from sqlmodel import select
@@ -193,7 +193,7 @@ def override_system_admin_auth(app, db_session):
     Also creates the mock user in DB to satisfy FK constraints.
     Ensures a user with id=1 exists (required by admin_settings_router SYSTEM_ADMIN_ID).
     """
-    from app.api.dependencies import get_current_user
+    from app.api.deps import get_current_user
     from app.modules.auth.models.auth_models import User as UserModel
     from sqlalchemy import text
     from sqlmodel import select

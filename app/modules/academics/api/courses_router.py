@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from app.api.schemas.common import ApiResponse, PaginatedResponse
 from app.modules.academics.api.schemas import CoursePublic
 from app.modules.academics.schemas.group_directory_schemas import GroupFilterResultDTO
-from app.api.dependencies import require_admin, require_any
+from app.api.deps import require_admin, require_any
 from app.modules.academics.api.deps import get_course_service, get_group_directory_service
 from app.modules.academics.schemas.course_schemas import AddNewCourseInput, UpdateCourseDTO, CourseStatsDTO
 from app.modules.auth import User

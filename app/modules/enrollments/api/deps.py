@@ -2,7 +2,7 @@
 
 from fastapi import Depends
 
-from app.api.dependencies import UoW
+from app.api.deps import UoW
 from app.modules.crm import StudentActivityService
 from app.modules.enrollments.ports import EnrollmentNotifier
 from app.modules.enrollments.services.enrollment_service import EnrollmentService

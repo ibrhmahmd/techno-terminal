@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 
-from app.api.dependencies import UoW
+from app.api.deps import UoW
 from app.api.exceptions import register_exception_handlers
 from app.db.connection import get_engine, get_session
 from app.db.uow import unit_of_work

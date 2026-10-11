@@ -3,7 +3,7 @@
 Analytics is read-only: its use cases never commit.
 """
 
-from app.api.dependencies import UoW
+from app.api.deps import UoW
 from app.modules.analytics.services.academic_service import AcademicAnalyticsService
 from app.modules.analytics.services.bi_service import BIAnalyticsService
 from app.modules.analytics.services.competition_service import CompetitionAnalyticsService

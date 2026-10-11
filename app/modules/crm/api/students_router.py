@@ -26,7 +26,7 @@ from app.modules.crm.api.deps import (
     get_student_search_service,
     get_student_crud_service,
 )
-from app.api.dependencies import require_any, require_admin
+from app.api.deps import require_any, require_admin
 from app.modules.crm.services.student_profile_service import StudentProfileService
 from app.modules.crm.services.search_service import SearchService
 from app.modules.crm.services.student_crud_service import StudentCrudService

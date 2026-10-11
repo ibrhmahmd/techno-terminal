@@ -20,7 +20,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.api.schemas.common import ApiResponse, PaginatedResponse
 from app.modules.auth import AuthService, AuditService, User, UserPublic, UserSessionDTO, AuditLogEntryDTO, AuthNotifier
-from app.api.dependencies import get_current_user, require_admin
+from app.api.deps import get_current_user, require_admin
 from app.modules.auth.api.deps import get_auth_service, get_audit_service, get_auth_notifier
 from app.modules.auth.schemas.auth_schemas import UpdateProfileInput
 from app.modules.auth.api.schemas import (

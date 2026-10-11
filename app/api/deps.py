@@ -1,31 +1,19 @@
 """
-app/api/dependencies.py
-────────────────────────
-FastAPI Dependency Injection bindings.
+app/api/deps.py
+───────────────
+Shared FastAPI dependencies (ADR-0002): everything module-specific lives in
+``app/modules/<module>/api/deps.py``.
 
-Two layers:
-  1. Core deps (get_db, get_current_user) — infrastructure
-  2. Role guards (require_admin, require_instructor, etc.) — authorization
-  3. Service factories — pragmatic bridge (Option A) to existing service classes
-
-Role guard pattern:
-    require_admin      → UserRole.admin, UserRole.manager
-    require_instructor → UserRole.instructor, UserRole.admin, UserRole.manager
-    require_any        → any authenticated user (alias for get_current_user)
-
-Service factory pattern:
-    Every service is instantiated fresh per request (stateless).
-    This is safe because all state lives in the DB session.
-    Session injection refactor is deferred — see docs/planning/BACKLOG.md §C1.
+  1. ``get_uow`` / ``UoW``: the per-request Unit of Work (ADR-0001).
+  2. ``get_current_user``: validates the Supabase JWT and loads the local user.
+  3. Role guards: ``require_admin``, ``require_system_admin``, ``require_any``.
 """
 import logging
 from typing import Annotated, Generator
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlmodel import Session
 
-from app.db.connection import get_session
 from app.db.uow import UnitOfWork, unit_of_work
 from app.core.supabase_clients import get_supabase_anon, get_supabase_admin
 from app.modules.auth import User
@@ -36,13 +24,6 @@ logger = logging.getLogger(__name__)
 # ── Infrastructure ─────────────────────────────────────────────────────────────
 
 http_bearer = HTTPBearer(auto_error=True)
-
-
-def get_db() -> Generator[Session, None, None]:
-    """Yields a database session that automatically closes when the request finishes."""
-    with get_session() as session:
-        yield session
-        session.commit()
 
 
 def get_uow() -> Generator[UnitOfWork, None, None]:
@@ -130,34 +111,3 @@ require_admin = _require_roles(
 require_system_admin = _require_roles(UserRole.SYSTEM_ADMIN)
 # Any valid, active, authenticated user.
 require_any = get_current_user
-
-
-from app.modules.auth import AuthService
-
-# Note: CRM service factories moved to app/modules/crm/api/deps.py
-# Import StudentActivityService for use by other modules' factories
-from app.modules.crm import StudentActivityService
-
-# Note: Enrollments service factories moved to app/modules/enrollments/api/deps.py
-
-# ── Additional Service Factories (Standardizing DI pattern) ─────────────────────
-
-# ── Coach Read-Only Guard ─────────────────────────────────────────────────────
-
-from app.modules.competitions.models import Team
-
-
-async def require_coach_or_admin(
-    team_id: int,
-    current_user: User = Depends(require_any),
-) -> User:
-    """Allows admin or the coach of the specified team to access."""
-    if current_user.is_admin:
-        return current_user
-    with get_session() as db:
-        team = db.get(Team, team_id)
-        if team and current_user.employee_id and team.coach_id == current_user.employee_id:
-            return current_user
-    raise HTTPException(status_code=403, detail="Access denied. Admin or team coach required.")
-
-

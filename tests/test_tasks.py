@@ -238,7 +238,7 @@ class TestTasksCRUD:
         task_id = task_resp.json()["data"]["id"]
 
         # Override auth to log in as task_worker
-        from app.api.dependencies import get_current_user
+        from app.api.deps import get_current_user
         async def mock_get_worker():
             return user
         app.dependency_overrides[get_current_user] = mock_get_worker

@@ -16,7 +16,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from app.api.schemas.common import ApiResponse
 from app.shared.exceptions import NotFoundError, BusinessRuleError
 from app.shared.datetime_utils import utc_now
-from app.api.dependencies import (
+from app.api.deps import (
     require_any,
     require_admin,
 )

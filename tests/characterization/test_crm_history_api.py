@@ -581,7 +581,7 @@ def test_search_activities_empty_body(client_with_uow, override_auth, mock_admin
 
 def test_history_endpoints_require_auth(client_with_uow):
     """GET /crm/students/1/history without auth returns 401."""
-    from app.api.dependencies import get_current_user
+    from app.api.deps import get_current_user
 
     client_with_uow.app.dependency_overrides.pop(get_current_user, None)
     r = client_with_uow.get("/api/v1/crm/students/1/history")

@@ -8,7 +8,7 @@ from app.db.uow import unit_of_work
 from typing import List, Dict
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.api.dependencies import require_admin
+from app.api.deps import require_admin
 from app.api.schemas import ApiResponse
 from app.modules.auth.models.auth_models import User
 from app.modules.notifications.schemas.admin_settings_dto import (

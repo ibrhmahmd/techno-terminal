@@ -17,7 +17,7 @@ from app.modules.academics.api.schemas.group import (
     EnrichedGroupPublic,
 )
 from app.modules.academics.api.schemas.grouped import GroupedGroupsResponse, GroupedItem
-from app.api.dependencies import require_any
+from app.api.deps import require_any
 from app.modules.academics.api.deps import get_group_directory_service
 from app.modules.auth import User
 from app.modules.academics.services.group_directory_service import GroupDirectoryService

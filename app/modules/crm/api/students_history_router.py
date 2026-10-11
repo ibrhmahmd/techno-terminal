@@ -10,7 +10,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, Query
 
 from app.modules.crm.api.deps import get_student_activity_service
-from app.api.dependencies import require_any, require_admin
+from app.api.deps import require_any, require_admin
 from app.api.schemas.common import ApiResponse, PaginatedResponse
 from app.modules.crm.api.schemas import (
     ActivityLogRequest,

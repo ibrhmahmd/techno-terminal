@@ -690,7 +690,7 @@ def test_list_deleted_students_pagination(client_with_uow, override_auth, mock_a
 
 def test_lifecycle_endpoints_require_auth(client_with_uow):
     """Endpoints under /crm/students/* require authentication."""
-    from app.api.dependencies import get_current_user
+    from app.api.deps import get_current_user
 
     client_with_uow.app.dependency_overrides.pop(get_current_user, None)
 

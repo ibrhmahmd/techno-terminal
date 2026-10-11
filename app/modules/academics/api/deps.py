@@ -2,7 +2,7 @@
 
 from fastapi import Depends
 
-from app.api.dependencies import UoW
+from app.api.deps import UoW
 from app.modules.academics.services.course_service import CourseService
 from app.modules.academics.services.group_service import GroupCoreService
 from app.modules.academics.services.group_directory_service import GroupDirectoryService
