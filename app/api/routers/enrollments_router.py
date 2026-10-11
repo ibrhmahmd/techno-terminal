@@ -11,17 +11,26 @@ Role policy:
   WRITE -> require_admin
 """
 from typing import Optional
-from fastapi import APIRouter, Depends, Query, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 
 from app.api.schemas.common import ApiResponse
 from app.api.schemas.enrollments.enrollment import EnrollmentPublic, StudentEnrollmentSummaryPublic
 from app.api.dependencies import require_admin, require_any, get_enrollment_service, get_enrollment_directory_service
+from app.modules.academics import ProgressLevelDTO
+from app.modules.academics.api.schemas.group import ProgressGroupLevelRequest, ProgressGroupLevelResult
 from app.modules.enrollments.core.schemas import EnrollStudentInput, TransferStudentInput, UpdateEnrollmentInput
 from app.modules.auth import User
 from app.modules.enrollments.core.service import EnrollmentCoreService as EnrollmentService
 from app.modules.enrollments.directory.service import EnrollmentDirectoryService
+from app.modules.enrollments.lifecycle.service import EnrollmentLifecycleService
 
 router = APIRouter(tags=["Enrollments"])
+progress_router = APIRouter(tags=["Academics — Groups"])
+
+
+def get_enrollment_lifecycle_service() -> EnrollmentLifecycleService:
+    """Dependency provider for the group level progression use case."""
+    return EnrollmentLifecycleService()
 
 # enroll a student in a group
 @router.post(
@@ -177,3 +186,51 @@ def get_group_enrollments_summary(
     """
     summaries = svc.get_enrollments_summary_by_group(group_id, level_number=level)
     return ApiResponse(data=[StudentEnrollmentSummaryPublic.model_validate(s) for s in summaries])
+
+
+# ── POST /academics/groups/{group_id}/progress-level ─────────────────────────
+
+@progress_router.post(
+    "/academics/groups/{group_id}/progress-level",
+    response_model=ApiResponse[ProgressGroupLevelResult],
+    status_code=200,
+    summary="Progress group to next level",
+)
+def progress_group_level(
+    group_id: int,
+    body: ProgressGroupLevelRequest,
+    _user: User = Depends(require_admin),
+    svc: EnrollmentLifecycleService = Depends(get_enrollment_lifecycle_service),
+):
+    """
+    Progress a group to the next level.
+    Completes current level, creates new level, migrates enrollments,
+    generates sessions, and logs activity for each affected student.
+    """
+    data = ProgressLevelDTO(
+        group_id=group_id,
+        price_override=body.price_override,
+        auto_migrate_enrollments=body.auto_migrate_enrollments,
+        target_level=body.target_level,
+        complete_current_level=body.complete_current_level,
+        instructor_id=body.instructor_id,
+        session_start_date=body.session_start_date,
+        course_id=body.course_id,
+        group_name=body.group_name,
+    )
+
+    try:
+        result = svc.progress_group_level(data)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return ApiResponse(
+        data=ProgressGroupLevelResult(
+            old_level_number=result.old_level_number,
+            new_level_number=result.new_level_number,
+            enrollments_migrated=result.enrollments_migrated,
+            sessions_created=result.sessions_created,
+            message=result.message,
+        ),
+        message=result.message,
+    )

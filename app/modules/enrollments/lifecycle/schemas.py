@@ -18,3 +18,13 @@ class EnrollmentMigrationResult(BaseModel):
     migrated_enrollment_ids: List[int]
     new_enrollment_ids: List[int]
     total_amount_due: float = 0.0
+
+
+class LevelProgressionResult(BaseModel):
+    """Output for the group level progression use case (level + enrollment migration)."""
+    old_level_number: int
+    new_level_number: int
+    new_level_id: int
+    sessions_created: int
+    enrollments_migrated: int
+    message: str

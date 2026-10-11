@@ -11,13 +11,11 @@ Auth: GET = require_any, mutations = require_admin.
 """
 from datetime import date
 
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query
 
 from app.api.schemas.common import ApiResponse, PaginatedResponse
 from app.modules.academics.api.schemas.group import (
     GroupPublic,
-    ProgressGroupLevelRequest,
-    ProgressGroupLevelResult,
 )
 from app.modules.academics.api.schemas.session import SessionPublic, GenerateLevelSessionsRequest
 from app.api.dependencies import (
@@ -149,56 +147,6 @@ def deactivate_group(
     return ApiResponse(
         data=GroupPublic.model_validate(group),
         message="Group deactivated successfully.",
-    )
-
-
-# ── POST /academics/groups/{group_id}/progress-level ─────────────────────────
-
-@router.post(
-    "/academics/groups/{group_id}/progress-level",
-    response_model=ApiResponse[ProgressGroupLevelResult],
-    status_code=200,
-    summary="Progress group to next level",
-)
-def progress_group_level(
-    group_id: int,
-    body: ProgressGroupLevelRequest,
-    _user: User = Depends(require_admin),
-    lifecycle_svc: GroupLifecycleService = Depends(get_lifecycle_service),
-):
-    """
-    Progress a group to the next level.
-    Completes current level, creates new level, migrates enrollments,
-    generates sessions, and logs activity for each affected student.
-    """
-    from app.modules.academics.group.lifecycle.schemas import ProgressLevelDTO
-
-    data = ProgressLevelDTO(
-        group_id=group_id,
-        price_override=body.price_override,
-        auto_migrate_enrollments=body.auto_migrate_enrollments,
-        target_level=body.target_level,
-        complete_current_level=body.complete_current_level,
-        instructor_id=body.instructor_id,
-        session_start_date=body.session_start_date,
-        course_id=body.course_id,
-        group_name=body.group_name,
-    )
-
-    try:
-        result = lifecycle_svc.progress_to_next_level(data)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-    return ApiResponse(
-        data=ProgressGroupLevelResult(
-            old_level_number=result.old_level_number,
-            new_level_number=result.new_level_number,
-            enrollments_migrated=result.enrollments_migrated,
-            sessions_created=result.sessions_created,
-            message=result.message,
-        ),
-        message=result.message,
     )
 
 
