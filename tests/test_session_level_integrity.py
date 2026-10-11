@@ -21,6 +21,7 @@ from app.modules.academics.services.group_details_service import GroupDetailsSer
 from app.modules.academics.schemas.course_schemas import AddNewCourseInput, UpdateCourseDTO, MAX_SESSIONS_PER_LEVEL, MAX_LEVELS
 from app.modules.academics.services.course_service import CourseService
 from app.shared.exceptions import ValidationError
+from app.db.uow import UnitOfWork
 from sqlmodel import Session, select
 
 
@@ -155,8 +156,8 @@ class TestSessionService:
         db_session.commit()
         return group, l1, l2
 
-    def _create_course(self) -> Course:
-        svc = CourseService()
+    def _create_course(self, db_session) -> Course:
+        svc = CourseService(UnitOfWork(db_session))
         return svc.add_new_course(AddNewCourseInput(
             name=f"T011-05 Course {id(self)}", category="software",
             price_per_level=500, sessions_per_level=4,
@@ -164,10 +165,10 @@ class TestSessionService:
 
     def test_list_group_sessions_defaults_to_current_level(self, db_session):
         """T011-05: Default session list returns only current active level."""
-        course = self._create_course()
+        course = self._create_course(db_session)
         group, l1, l2 = self._setup_group_with_levels(db_session, course)
 
-        sess_svc = SessionService()
+        sess_svc = SessionService(UnitOfWork(db_session))
         result = sess_svc.list_group_sessions(group.id)
 
         assert len(result) == 2
@@ -176,10 +177,10 @@ class TestSessionService:
 
     def test_list_group_sessions_explicit_level(self, db_session):
         """T011-06: Explicit level filter returns historical sessions."""
-        course = self._create_course()
+        course = self._create_course(db_session)
         group, l1, l2 = self._setup_group_with_levels(db_session, course)
 
-        sess_svc = SessionService()
+        sess_svc = SessionService(UnitOfWork(db_session))
         result = sess_svc.list_group_sessions(group.id, level_number=1)
 
         assert len(result) == 3

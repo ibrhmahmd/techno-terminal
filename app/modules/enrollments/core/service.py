@@ -50,7 +50,7 @@ class EnrollmentCoreService:
             if student.status == StudentStatus.INACTIVE:
                 raise BusinessRuleError(f"Student '{student.full_name}' is inactive and cannot be enrolled.")
 
-            group = GroupCoreService().get_group_by_id(data.group_id)
+            group = GroupCoreService(uow).get_group_by_id(data.group_id)
             if not group:
                 raise NotFoundError(f"Group ID {data.group_id} not found.")
             if group.status != "active":
@@ -241,13 +241,11 @@ class EnrollmentCoreService:
         data: TransferStudentInput,
         background_tasks: Optional[Any] = None,
     ) -> EnrollmentDTO:
-        target_group = GroupCoreService().get_group_by_id(data.to_group_id)
-        if not target_group:
-            raise NotFoundError(f"Target group {data.to_group_id} not found.")
-        if target_group.status != "active":
-            raise BusinessRuleError(f"Target group '{target_group.name}' is not active.")
-
         with get_session() as session:
+            target_group = GroupCoreService(UnitOfWork(session)).get_group_by_id(data.to_group_id)
+            if target_group.status != "active":
+                raise BusinessRuleError(f"Target group '{target_group.name}' is not active.")
+
             source = repo.get_enrollment(session, data.from_enrollment_id)
             if not source:
                 raise NotFoundError(f"Source enrollment {data.from_enrollment_id} not found.")
