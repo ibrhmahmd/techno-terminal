@@ -1,98 +1,66 @@
 """
 app/modules/finance/__init__.py
-──────────────────────────────
-Finance module with SOLID-compliant architecture.
+───────────────────────────────
+Finance Module Facade (ADR-0003)
 
-New Structure:
-- models: SQLModel database models (single-responsibility files)
-- schemas: Pydantic input/output DTOs (organized by domain)
-- interfaces: internal DTOs
-- repositories: Data access layer with UnitOfWork
-- services: Business logic layer
-- pdf: PDF generation utilities
+Other modules must import Finance ONLY via this facade, except
+app.modules.finance.models which anyone may import (ADR-0004).
+
+Exports:
+- Models: Receipt, Payment
+- Services: ReceiptService, RefundService, BalanceService, ReportingService,
+            StudentPaymentService
+- Ports: PaymentNotifier
+- DTOs: ReceiptLineInput, CreateReceiptServiceDTO, IssueRefundDTO,
+        RefundResultDTO, SearchReceiptsDTO, ReceiptDetailDTO, ReceiptSearchItem,
+        UnpaidCompFeeItem, DailyCollectionItem, DailyReceiptItem
+- PDF: build_receipt_pdf
+
+(CompetitionFeeService stays reachable at
+app.modules.finance.services.competition_fee_service: it imports the competitions
+facade, and exporting it here would create an import cycle through
+competitions' model registration.)
 """
 
-# Domain models
 from .models import Receipt, Payment
-
-# Schemas/DTOs
+from .ports import PaymentNotifier
 from .schemas import (
-    ReceiptLineInput,
-    IssueRefundInput,
-    EnrollmentBalanceItem,
+    CreateReceiptServiceDTO,
     DailyCollectionItem,
     DailyReceiptItem,
+    IssueRefundDTO,
+    ReceiptDetailDTO,
+    ReceiptLineInput,
     ReceiptSearchItem,
+    RefundResultDTO,
+    SearchReceiptsDTO,
     UnpaidCompFeeItem,
 )
-
-# Services (SOLID-compliant)
+from .services.balance_service import BalanceService
 from .services.receipt_service import ReceiptService
 from .services.refund_service import RefundService
-from .services.balance_service import BalanceService
 from .services.reporting_service import ReportingService
-
-# Repositories
-from .repositories.unit_of_work import FinanceUnitOfWork
-from .repositories.receipt_repository import ReceiptRepository
-from .repositories.payment_repository import PaymentRepository
-from .repositories.reporting_repository import ReportingRepository
-
-# PDF generation
-from .pdf.receipt_pdf import build_receipt_pdf, ReceiptPDF
-
-# Interface DTOs (for parameter wrapping and internal communication)
-from .interfaces.dto import (
-    ReceiptWithLinesDTO,
-    ReceiptLineItemDTO,
-    ReceiptDetailDTO,
-    CreateReceiptDTO,
-    SearchReceiptsDTO,
-    CreateReceiptServiceDTO,
-    EnrollmentBalanceDTO,
-    AddPaymentLineDTO,
-    RefundResultDTO,
-    IssueRefundDTO,
-    OverpaymentRiskItem,
-    ReceiptTemplateContextDTO,
-)
+from .services.student_payment_service import StudentPaymentService
+from .pdf.receipt_pdf import build_receipt_pdf
 
 __all__ = [
-    # Models
     "Receipt",
     "Payment",
-    # Schemas
-    "ReceiptLineInput",
-    "IssueRefundInput",
-    "EnrollmentBalanceItem",
-    "DailyCollectionItem",
-    "DailyReceiptItem",
-    "ReceiptSearchItem",
-    "UnpaidCompFeeItem",
-    # Services
+    "PaymentNotifier",
     "ReceiptService",
     "RefundService",
     "BalanceService",
     "ReportingService",
-    # Repositories
-    "FinanceUnitOfWork",
-    "ReceiptRepository",
-    "PaymentRepository",
-    "ReportingRepository",
-    # PDF
-    "build_receipt_pdf",
-    "ReceiptPDF",
-    # Interface DTOs
-    "ReceiptWithLinesDTO",
-    "ReceiptLineItemDTO",
-    "ReceiptDetailDTO",
-    "CreateReceiptDTO",
-    "SearchReceiptsDTO",
+    "StudentPaymentService",
+    "ReceiptLineInput",
     "CreateReceiptServiceDTO",
-    "EnrollmentBalanceDTO",
-    "AddPaymentLineDTO",
-    "RefundResultDTO",
     "IssueRefundDTO",
-    "OverpaymentRiskItem",
-    "ReceiptTemplateContextDTO",
+    "RefundResultDTO",
+    "SearchReceiptsDTO",
+    "ReceiptDetailDTO",
+    "ReceiptSearchItem",
+    "UnpaidCompFeeItem",
+    "DailyCollectionItem",
+    "DailyReceiptItem",
+    "build_receipt_pdf",
 ]

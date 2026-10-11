@@ -156,7 +156,7 @@ class PaymentNotificationService(BaseNotificationService):
             # Generate PDF attachment
             pdf_bytes = None
             try:
-                from app.modules.finance.pdf.receipt_pdf import build_receipt_pdf
+                from app.modules.finance import build_receipt_pdf
                 pdf_bytes = build_receipt_pdf(
                     receipt=receipt,
                     lines=payment_lines,

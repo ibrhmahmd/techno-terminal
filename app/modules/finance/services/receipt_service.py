@@ -6,15 +6,12 @@ Receipt service implementation with proper SOLID compliance.
 
 from decimal import Decimal
 from typing import Optional, List, TYPE_CHECKING
-from fastapi import BackgroundTasks
+import logging
 
 if TYPE_CHECKING:
     from app.modules.crm import StudentActivityService
-    from app.modules.notifications.services.notification_service import (
-        NotificationService,
-    )
 
-from app.modules.finance.interfaces import (
+from app.modules.finance.schemas import (
     ReceiptFinalizedDTO,
     ReceiptDetailDTO,
     ReceiptLineItemDTO,
@@ -22,10 +19,26 @@ from app.modules.finance.interfaces import (
     SearchReceiptsDTO,
     EnhancedReceiptLineDTO,
 )
-from app.modules.finance import ReceiptSearchItem, ReceiptLineInput
-from app.modules.finance.repositories.unit_of_work import FinanceUnitOfWork
+from app.modules.finance.schemas import ReceiptSearchItem, ReceiptLineInput
+from app.db.uow import UnitOfWork
+from app.modules.crm import LogPaymentDTO
+from app.modules.finance.repositories.receipt_repository import ReceiptRepository
+from app.modules.finance.repositories.payment_repository import PaymentRepository
+from app.modules.finance.ports import PaymentNotifier
 from app.modules.finance.pdf.receipt_pdf import build_receipt_pdf
 from app.shared.exceptions import NotFoundError, BusinessRuleError
+from app.modules.finance.schemas import CreateReceiptDTO
+from app.modules.finance.schemas import AddPaymentLineDTO
+from app.modules.crm.models.student_models import Student
+from app.modules.crm.models.parent_models import Parent
+from app.modules.crm.models.link_models import StudentParent
+from app.modules.enrollments.models.enrollment_models import Enrollment
+from app.modules.academics.models.group_models import Group
+from app.modules.academics.models.course_models import Course
+from sqlmodel import select
+from app.modules.finance.schemas import OverpaymentRiskItem
+
+logger = logging.getLogger(__name__)
 
 
 class ReceiptService:
@@ -41,18 +54,19 @@ class ReceiptService:
 
     def __init__(
         self,
-        uow: FinanceUnitOfWork,
+        uow: UnitOfWork,
         activity_svc: Optional["StudentActivityService"] = None,
-        notification_svc: Optional["NotificationService"] = None,
+        notifier: Optional[PaymentNotifier] = None,
     ) -> None:
         self._uow = uow
+        self._receipts = ReceiptRepository(uow.session)
+        self._payments = PaymentRepository(uow.session)
         self._activity_svc = activity_svc
-        self._notification_svc = notification_svc
+        self._notifier = notifier
 
     def create(
         self,
         dto: CreateReceiptServiceDTO,
-        background_tasks: Optional[BackgroundTasks] = None,
         commit: bool = True,
     ) -> ReceiptFinalizedDTO:
         """
@@ -76,9 +90,8 @@ class ReceiptService:
                 )
 
         # Create receipt and payment lines atomically
-        from app.modules.finance.interfaces import CreateReceiptDTO
 
-        receipt = self._uow.receipts.create(
+        receipt = self._receipts.create(
             CreateReceiptDTO(
                 payer_name=dto.payer_name,
                 payment_method=dto.payment_method,
@@ -86,16 +99,15 @@ class ReceiptService:
                 notes=dto.notes,
             )
         )
-        self._uow.receipts.set_receipt_number(receipt.id)
+        self._receipts.set_receipt_number(receipt.id)
         self._uow.flush()
 
         payment_ids: List[int] = []
         processed_lines: List[ReceiptLineItemDTO] = []
 
         for line in dto.lines:
-            from app.modules.finance.interfaces import AddPaymentLineDTO
 
-            payment = self._uow.payments.add_line(
+            payment = self._payments.add_line(
                 AddPaymentLineDTO(
                     receipt_id=receipt.id,
                     student_id=line.student_id,
@@ -127,16 +139,10 @@ class ReceiptService:
                 )
             )
 
-        total = self._uow.receipts.get_total(receipt.id)
-        if commit:
-            self._uow.commit()
-        else:
-            self._uow.flush()
+        total = self._receipts.get_total(receipt.id)
 
         # Log payment activities for each line
         if self._activity_svc:
-            from app.modules.crm import LogPaymentDTO
-
             for line in processed_lines:
                 if line.student_id:  # Only log if associated with a student
                     self._activity_svc.log_payment(
@@ -149,21 +155,28 @@ class ReceiptService:
                         )
                     )
 
+        if commit:
+            self._uow.commit()
+        else:
+            self._uow.flush()
+
         # Handle Notifications — one notification per receipt (not per line).
         # _process_received already fetches all lines for the receipt, so firing
         # once is correct. Use the first line that has a student_id.
-        if self._notification_svc and background_tasks:
+        if self._notifier:
             primary_student_id = next(
                 (line.student_id for line in processed_lines if line.student_id), None
             )
             if primary_student_id:
-                self._notification_svc.payment.notify_payment_received(
-                    receipt.id,
-                    primary_student_id,
-                    str(total),
-                    str(receipt.receipt_number),
-                    background_tasks,
-                )
+                try:
+                    self._notifier.payment_received(
+                        receipt_id=receipt.id,
+                        student_id=primary_student_id,
+                        amount=str(total),
+                        receipt_number=str(receipt.receipt_number),
+                    )
+                except Exception:
+                    logger.exception("Payment notifier failed for receipt %s", receipt.id)
 
         return ReceiptFinalizedDTO(
             receipt_id=receipt.id,
@@ -177,11 +190,11 @@ class ReceiptService:
 
     def get_detail(self, receipt_id: int) -> Optional[ReceiptDetailDTO]:
         """Get detailed receipt information with line items."""
-        data = self._uow.receipts.get_with_lines(receipt_id)
+        data = self._receipts.get_with_lines(receipt_id)
         if not data:
             return None
 
-        total = self._uow.receipts.get_total(receipt_id)
+        total = self._receipts.get_total(receipt_id)
 
         line_dtos = [
             ReceiptLineItemDTO(
@@ -208,15 +221,15 @@ class ReceiptService:
         if criteria.to_date < criteria.from_date:
             raise BusinessRuleError("End date must be on or after start date.")
 
-        return self._uow.receipts.search(criteria)
+        return self._receipts.search(criteria)
 
     def generate_pdf(self, receipt_id: int) -> bytes:
         """Generate PDF bytes for a receipt with enriched data."""
-        data = self._uow.receipts.get_with_lines(receipt_id)
+        data = self._receipts.get_with_lines(receipt_id)
         if not data:
             raise NotFoundError(f"Receipt {receipt_id} not found.")
 
-        total = self._uow.receipts.get_total(receipt_id)
+        total = self._receipts.get_total(receipt_id)
 
         # Build enriched lines with full student, enrollment, and balance data
         enhanced_lines = self._build_enhanced_lines(data.lines)
@@ -242,18 +255,12 @@ class ReceiptService:
         """
         Build enriched receipt line DTOs with student, enrollment, group, and balance data.
         """
-        from app.modules.crm.models.student_models import Student
-        from app.modules.crm.models.parent_models import Parent
-        from app.modules.crm.models.link_models import StudentParent
-        from app.modules.enrollments.models.enrollment_models import Enrollment
-        from app.modules.academics.models.group_models import Group
-        from app.modules.academics.models.course_models import Course
 
         enhanced = []
 
         for payment in payments:
             # Get student
-            student = self._uow.get_model_by_id(Student, payment.student_id)
+            student = self._uow.session.get(Student, payment.student_id)
             student_name = (
                 student.full_name if student else f"Student #{payment.student_id}"
             )
@@ -264,14 +271,13 @@ class ReceiptService:
             parent_name = None
             parent_phone = None
             if student:
-                from sqlmodel import select
 
                 stmt = select(StudentParent).where(
                     StudentParent.student_id == student.id
                 )
-                parent_link = self._uow._session.exec(stmt).first()
+                parent_link = self._uow.session.exec(stmt).first()
                 if parent_link:
-                    parent = self._uow.get_model_by_id(Parent, parent_link.parent_id)
+                    parent = self._uow.session.get(Parent, parent_link.parent_id)
                     if parent:
                         parent_id = parent.id
                         parent_name = parent.full_name
@@ -286,20 +292,18 @@ class ReceiptService:
             course_name = None
 
             if enrollment_id:
-                enrollment = self._uow.get_model_by_id(Enrollment, enrollment_id)
+                enrollment = self._uow.session.get(Enrollment, enrollment_id)
                 if enrollment:
                     enrollment_status = enrollment.status
                     level_number = enrollment.level_number
                     group_id = enrollment.group_id
 
                     if group_id:
-                        group = self._uow.get_model_by_id(Group, group_id)
+                        group = self._uow.session.get(Group, group_id)
                         if group:
                             group_name = group.name
                             if group.course_id:
-                                course = self._uow.get_model_by_id(
-                                    Course, group.course_id
-                                )
+                                course = self._uow.session.get(Course, group.course_id)
                                 if course:
                                     course_name = course.name
 
@@ -309,7 +313,7 @@ class ReceiptService:
             balance_status = "unknown"
 
             if enrollment_id:
-                balance_dto = self._uow.payments.get_enrollment_balance(enrollment_id)
+                balance_dto = self._payments.get_enrollment_balance(enrollment_id)
                 if balance_dto and hasattr(balance_dto, "status"):
                     balance_status = balance_dto.status
                     is_partial = balance_status in ("partial", "unpaid")
@@ -359,14 +363,13 @@ class ReceiptService:
 
     def _assess_overpayment_risk(self, lines: List[ReceiptLineInput]) -> List:
         """Internal: Check which lines would create credit."""
-        from app.modules.finance.interfaces import OverpaymentRiskItem
 
         risks = []
         for line in lines:
             if not line.enrollment_id:
                 continue
 
-            balance_dto = self._uow.payments.get_enrollment_balance(line.enrollment_id)
+            balance_dto = self._payments.get_enrollment_balance(line.enrollment_id)
             if not balance_dto:
                 continue
 

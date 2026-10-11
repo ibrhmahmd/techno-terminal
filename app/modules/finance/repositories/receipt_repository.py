@@ -10,14 +10,15 @@ from typing import Optional, List
 from sqlalchemy import text
 from sqlmodel import Session
 
-from app.modules.finance import Receipt
-from app.modules.finance.interfaces import (
+from app.modules.finance.models import Receipt
+from app.modules.finance.schemas import (
     ReceiptWithLinesDTO,
     CreateReceiptDTO,
     SearchReceiptsDTO,
 )
-from app.modules.finance import DailyReceiptItem, ReceiptSearchItem
+from app.modules.finance.schemas import DailyReceiptItem, ReceiptSearchItem
 from app.shared.datetime_utils import date_at_utc_midnight, utc_now
+from app.modules.finance.models import Payment
 
 
 class ReceiptRepository:
@@ -56,7 +57,6 @@ class ReceiptRepository:
 
     def get_with_lines(self, receipt_id: int) -> Optional[ReceiptWithLinesDTO]:
         """Get receipt with its payment lines."""
-        from app.modules.finance import Payment
 
         receipt = self.get_by_id(receipt_id)
         if not receipt:

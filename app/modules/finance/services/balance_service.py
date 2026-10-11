@@ -6,13 +6,14 @@ Balance service implementation for enrollment/student balance queries.
 from decimal import Decimal
 from typing import Optional, List
 
-from app.modules.finance.interfaces import (
+from app.modules.finance.schemas import (
     OverpaymentRiskItem,
     StudentBalanceSummaryDTO,
     PaginatedEnrollmentBalancesDTO,
 )
-from app.modules.finance import ReceiptLineInput, EnrollmentBalanceItem
-from app.modules.finance.repositories.unit_of_work import FinanceUnitOfWork
+from app.modules.finance.schemas import ReceiptLineInput, EnrollmentBalanceItem
+from app.db.uow import UnitOfWork
+from app.modules.finance.repositories.payment_repository import PaymentRepository
 
 
 class BalanceService:
@@ -25,14 +26,15 @@ class BalanceService:
     - Overpayment risk assessment
     """
 
-    def __init__(self, uow: FinanceUnitOfWork) -> None:
+    def __init__(self, uow: UnitOfWork) -> None:
         self._uow = uow
+        self._payments = PaymentRepository(uow.session)
 
     def get_enrollment_balance(
         self, enrollment_id: int
     ) -> Optional[EnrollmentBalanceItem]:
         """Get balance details for a specific enrollment."""
-        balance_dto = self._uow.payments.get_enrollment_balance(enrollment_id)
+        balance_dto = self._payments.get_enrollment_balance(enrollment_id)
 
         if not balance_dto:
             return None
@@ -60,14 +62,10 @@ class BalanceService:
         - Enrollment counts (total and unpaid)
         - Full list of enrollment balances (enrollments field)
         """
-        from app.modules.competitions.models.team_models import TeamMember
-        from sqlmodel import select
 
-        enrollments = self._uow.payments.get_student_balances(student_id)
+        enrollments = self._payments.get_student_balances(student_id)
         
-        team_memberships = self._uow._session.exec(
-            select(TeamMember).where(TeamMember.student_id == student_id)
-        ).all()
+        team_memberships = self._payments.list_team_memberships(student_id)
         
         competition_amount_due = float(sum(m.amount_due for m in team_memberships))
         competition_paid = float(sum(m.amount_paid for m in team_memberships))
@@ -102,10 +100,9 @@ class BalanceService:
         Get all unpaid enrollments with pagination.
         Returns PaginatedEnrollmentBalancesDTO with items and total count.
         """
-        items, total = self._uow.payments.get_unpaid_enrollments(
+        return self._payments.get_unpaid_enrollments(
             group_id=group_id, skip=skip, limit=limit
         )
-        return PaginatedEnrollmentBalancesDTO(items=items, total=total)
 
     def assess_overpayment_risk(
         self, lines: List[ReceiptLineInput]
@@ -121,7 +118,7 @@ class BalanceService:
             if not line.enrollment_id:
                 continue
 
-            balance_dto = self._uow.payments.get_enrollment_balance(line.enrollment_id)
+            balance_dto = self._payments.get_enrollment_balance(line.enrollment_id)
             if not balance_dto:
                 continue
 

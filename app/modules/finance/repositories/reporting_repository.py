@@ -9,7 +9,7 @@ from typing import List
 from sqlalchemy import text
 from sqlmodel import Session
 
-from app.modules.finance import DailyCollectionItem, UnpaidCompFeeItem
+from app.modules.finance.schemas import DailyCollectionItem, UnpaidCompFeeItem
 from app.shared.datetime_utils import date_at_utc_midnight
 
 

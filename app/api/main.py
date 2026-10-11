@@ -44,6 +44,8 @@ from app.modules.auth.api.deps import get_auth_notifier as auth_deps_get_auth_no
 from app.modules.notifications.adapters import get_auth_notifier as notif_adapters_get_auth_notifier
 from app.modules.notifications.adapters import get_enrollment_notifier as notif_adapters_get_enrollment_notifier
 from app.modules.notifications.adapters import get_competition_notifier as notif_adapters_get_competition_notifier
+from app.modules.notifications.adapters import get_payment_notifier as notif_adapters_get_payment_notifier
+from app.modules.finance.api.deps import get_payment_notifier as finance_deps_get_payment_notifier
 from app.modules.competitions.api.deps import get_competition_notifier as competitions_deps_get_competition_notifier
 from app.modules.enrollments.api.deps import get_enrollment_notifier as enrollments_deps_get_enrollment_notifier
 from app.modules.attendance.api import router as attendance_router
@@ -74,7 +76,7 @@ from app.api.routers.analytics import (
     bi_router,
     dashboard_router,
 )
-from app.api.routers.finance import receipt_router, finance_router, reporting_router, student_payments_router, competition_fees_router
+from app.modules.finance.api import receipt_router, finance_router, reporting_router, student_payments_router, competition_fees_router
 from app.modules.auth.api import admin_auth_router
 from app.api.routers.tasks import router as tasks_router
 
@@ -218,6 +220,7 @@ def create_app() -> FastAPI:
     app.dependency_overrides[auth_deps_get_auth_notifier] = notif_adapters_get_auth_notifier
     app.dependency_overrides[enrollments_deps_get_enrollment_notifier] = notif_adapters_get_enrollment_notifier
     app.dependency_overrides[competitions_deps_get_competition_notifier] = notif_adapters_get_competition_notifier
+    app.dependency_overrides[finance_deps_get_payment_notifier] = notif_adapters_get_payment_notifier
 
     return app
 

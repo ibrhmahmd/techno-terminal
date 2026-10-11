@@ -9921,7 +9921,7 @@
             "type": "string"
           },
           "enrollment": {
-            "$ref": "#/components/schemas/app__api__schemas__finance__payment__EnrollmentInfo"
+            "$ref": "#/components/schemas/app__modules__finance__api__schemas__payment__EnrollmentInfo"
           },
           "id": {
             "title": "Id",
@@ -9939,7 +9939,7 @@
             "title": "Notes"
           },
           "parent": {
-            "$ref": "#/components/schemas/app__api__schemas__finance__payment__ParentInfo"
+            "$ref": "#/components/schemas/app__modules__finance__api__schemas__payment__ParentInfo"
           },
           "payment_type": {
             "anyOf": [
@@ -16469,130 +16469,6 @@
         "title": "WaitingStudentDTO",
         "type": "object"
       },
-      "app__api__schemas__finance__payment__EnrollmentInfo": {
-        "description": "Enrollment info within payment details response.",
-        "properties": {
-          "course_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Course Name"
-          },
-          "enrollment_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Enrollment Id"
-          },
-          "group_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Group Id"
-          },
-          "group_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Group Name"
-          },
-          "instructor_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Instructor Id"
-          },
-          "instructor_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Instructor Name"
-          },
-          "level_number": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Level Number"
-          }
-        },
-        "title": "EnrollmentInfo",
-        "type": "object"
-      },
-      "app__api__schemas__finance__payment__ParentInfo": {
-        "description": "Parent info within payment details response.",
-        "properties": {
-          "full_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Full Name"
-          },
-          "parent_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Parent Id"
-          },
-          "phone": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Phone"
-          }
-        },
-        "title": "ParentInfo",
-        "type": "object"
-      },
       "app__modules__crm__schemas__student_details__EnrollmentInfo": {
         "properties": {
           "amount_due": {
@@ -16728,6 +16604,130 @@
           "id",
           "full_name"
         ],
+        "title": "ParentInfo",
+        "type": "object"
+      },
+      "app__modules__finance__api__schemas__payment__EnrollmentInfo": {
+        "description": "Enrollment info within payment details response.",
+        "properties": {
+          "course_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Name"
+          },
+          "enrollment_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enrollment Id"
+          },
+          "group_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Id"
+          },
+          "group_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Name"
+          },
+          "instructor_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructor Id"
+          },
+          "instructor_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructor Name"
+          },
+          "level_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level Number"
+          }
+        },
+        "title": "EnrollmentInfo",
+        "type": "object"
+      },
+      "app__modules__finance__api__schemas__payment__ParentInfo": {
+        "description": "Parent info within payment details response.",
+        "properties": {
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          }
+        },
         "title": "ParentInfo",
         "type": "object"
       }
@@ -25687,16 +25687,6 @@
       "post": {
         "description": "Generate multiple receipts in a single batch operation. Returns structured results with explicit success/error tracking.",
         "operationId": "batch_generate_receipts_api_v1_finance_receipts_batch_generate_post",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "db",
-            "required": false,
-            "schema": {
-              "title": "Db"
-            }
-          }
-        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -25837,14 +25827,6 @@
               "description": "Return as plain text response instead of JSON",
               "title": "As Text",
               "type": "boolean"
-            }
-          },
-          {
-            "in": "query",
-            "name": "db",
-            "required": false,
-            "schema": {
-              "title": "Db"
             }
           }
         ],

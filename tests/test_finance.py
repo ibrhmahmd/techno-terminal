@@ -258,7 +258,7 @@ class TestPaymentMethodNormalization:
 
     def test_cash_normalization(self):
         """Cash input variants all normalize to 'cash'."""
-        from app.api.schemas.finance.receipt import CreateReceiptRequest
+        from app.modules.finance.api.schemas.receipt import CreateReceiptRequest
         from app.shared.constants import PAYMENT_METHOD_MAP
 
         for variant in [v for v in PAYMENT_METHOD_MAP if PAYMENT_METHOD_MAP[v] == "cash"]:
@@ -267,7 +267,7 @@ class TestPaymentMethodNormalization:
 
     def test_card_normalization(self):
         """Card input variants all normalize to 'card'."""
-        from app.api.schemas.finance.receipt import CreateReceiptRequest
+        from app.modules.finance.api.schemas.receipt import CreateReceiptRequest
         from app.shared.constants import PAYMENT_METHOD_MAP
 
         for variant in [v for v in PAYMENT_METHOD_MAP if PAYMENT_METHOD_MAP[v] == "card"]:
@@ -276,7 +276,7 @@ class TestPaymentMethodNormalization:
 
     def test_transfer_normalization(self):
         """Transfer input variants all normalize to 'transfer'."""
-        from app.api.schemas.finance.receipt import CreateReceiptRequest
+        from app.modules.finance.api.schemas.receipt import CreateReceiptRequest
         from app.shared.constants import PAYMENT_METHOD_MAP
 
         for variant in [v for v in PAYMENT_METHOD_MAP if PAYMENT_METHOD_MAP[v] == "transfer"]:
@@ -285,7 +285,7 @@ class TestPaymentMethodNormalization:
 
     def test_online_normalization(self):
         """Online input variants all normalize to 'online'."""
-        from app.api.schemas.finance.receipt import CreateReceiptRequest
+        from app.modules.finance.api.schemas.receipt import CreateReceiptRequest
         from app.shared.constants import PAYMENT_METHOD_MAP
 
         for variant in [v for v in PAYMENT_METHOD_MAP if PAYMENT_METHOD_MAP[v] == "online"]:
@@ -294,7 +294,7 @@ class TestPaymentMethodNormalization:
 
     def test_ewallet_normalization(self):
         """E-Wallet input variants all normalize to 'ewallet'."""
-        from app.api.schemas.finance.receipt import CreateReceiptRequest
+        from app.modules.finance.api.schemas.receipt import CreateReceiptRequest
         from app.shared.constants import PAYMENT_METHOD_MAP
 
         for variant in [v for v in PAYMENT_METHOD_MAP if PAYMENT_METHOD_MAP[v] == "ewallet"]:
@@ -303,7 +303,7 @@ class TestPaymentMethodNormalization:
 
     def test_instapay_normalization(self):
         """instaPay input variants all normalize to 'instapay'."""
-        from app.api.schemas.finance.receipt import CreateReceiptRequest
+        from app.modules.finance.api.schemas.receipt import CreateReceiptRequest
         from app.shared.constants import PAYMENT_METHOD_MAP
 
         for variant in [v for v in PAYMENT_METHOD_MAP if PAYMENT_METHOD_MAP[v] == "instapay"]:
@@ -312,7 +312,7 @@ class TestPaymentMethodNormalization:
 
     def test_other_normalization(self):
         """Other input variants all normalize to 'other'."""
-        from app.api.schemas.finance.receipt import CreateReceiptRequest
+        from app.modules.finance.api.schemas.receipt import CreateReceiptRequest
         from app.shared.constants import PAYMENT_METHOD_MAP
 
         for variant in [v for v in PAYMENT_METHOD_MAP if PAYMENT_METHOD_MAP[v] == "other"]:
@@ -321,7 +321,7 @@ class TestPaymentMethodNormalization:
 
     def test_default_method_is_cash(self):
         """When method is omitted, default is 'cash'."""
-        from app.api.schemas.finance.receipt import CreateReceiptRequest
+        from app.modules.finance.api.schemas.receipt import CreateReceiptRequest
 
         dto_default = CreateReceiptRequest(lines=[])
         assert dto_default.method == "cash", f"Expected default 'cash', got {dto_default.method!r}"
@@ -331,7 +331,7 @@ class TestPaymentMethodNormalization:
 
     def test_case_insensitive_normalization(self):
         """Casing variations are normalized via PAYMENT_METHOD_MAP lookup."""
-        from app.api.schemas.finance.receipt import CreateReceiptRequest
+        from app.modules.finance.api.schemas.receipt import CreateReceiptRequest
 
         dto_upper = CreateReceiptRequest(method="CASH", lines=[])
         assert dto_upper.method == "cash"
@@ -345,7 +345,7 @@ class TestPaymentMethodNormalization:
     def test_invalid_method_raises_validationerror(self):
         """Unrecognized values return a 422-style validation error."""
         from pydantic import ValidationError
-        from app.api.schemas.finance.receipt import CreateReceiptRequest
+        from app.modules.finance.api.schemas.receipt import CreateReceiptRequest
 
         with pytest.raises(ValidationError) as exc_info:
             CreateReceiptRequest(method="cryptocurrency", lines=[])
@@ -356,7 +356,7 @@ class TestPaymentMethodNormalization:
     def test_invalid_method_typo_raises_validationerror(self):
         """Typo values (e.g., 'instapy') return 422."""
         from pydantic import ValidationError
-        from app.api.schemas.finance.receipt import CreateReceiptRequest
+        from app.modules.finance.api.schemas.receipt import CreateReceiptRequest
 
         with pytest.raises(ValidationError):
             CreateReceiptRequest(method="instapy", lines=[])
@@ -364,14 +364,14 @@ class TestPaymentMethodNormalization:
     def test_empty_method_string_invalid(self):
         """Empty string is not in the map and not a valid Literal value."""
         from pydantic import ValidationError
-        from app.api.schemas.finance.receipt import CreateReceiptRequest
+        from app.modules.finance.api.schemas.receipt import CreateReceiptRequest
 
         with pytest.raises(ValidationError):
             CreateReceiptRequest(method="", lines=[])
 
     def test_icon_name_mapping(self):
         """Material Icon names map to correct canonical values."""
-        from app.api.schemas.finance.receipt import CreateReceiptRequest
+        from app.modules.finance.api.schemas.receipt import CreateReceiptRequest
 
         dto = CreateReceiptRequest(method="payments", lines=[])
         assert dto.method == "cash"
