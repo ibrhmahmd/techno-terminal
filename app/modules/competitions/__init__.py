@@ -7,6 +7,7 @@ Other modules must import Competitions ONLY via this facade, except
 app.modules.competitions.models which anyone may import (ADR-0004).
 """
 
+from .ports import CompetitionNotifier
 from .services.competition_service import CompetitionService
 from .services.team_service import TeamService
 from .services.team_fee_service import TeamFeeService
@@ -38,6 +39,8 @@ __all__ = [
     "CompetitionService",
     "TeamService",
     "TeamFeeService",
+    # Ports
+    "CompetitionNotifier",
     # Models
     "Competition",
     "Team",

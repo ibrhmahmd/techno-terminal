@@ -8,7 +8,7 @@ Handles: Team lifecycle, members, payments, placement
 
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.schemas.common import ApiResponse
 from app.modules.competitions.api.schemas.team_schemas import (
@@ -86,12 +86,11 @@ def list_teams(
 )
 def register_team(
     body: RegisterTeamInput,
-    background_tasks: BackgroundTasks,
     current_user: User = Depends(require_admin),
     svc: TeamService = Depends(get_team_service),
 ):
     """Register a team for a competition."""
-    reg_result = svc.register_team(body, current_user_id=current_user.id, background_tasks=background_tasks)
+    reg_result = svc.register_team(body, current_user_id=current_user.id)
     return ApiResponse(
         data=reg_result.result,
         message=reg_result.warning or "Team registered successfully."
@@ -238,7 +237,6 @@ def list_team_members(
 def add_team_member(
     team_id: int,
     body: AddTeamMemberInput,
-    background_tasks: BackgroundTasks,
     current_user: User = Depends(require_admin),
     svc: TeamService = Depends(get_team_service),
 ):
@@ -248,7 +246,6 @@ def add_team_member(
         student_id=body.student_id,
         amount_due=body.amount_due,
         current_user_id=current_user.id,
-        background_tasks=background_tasks,
     )
     return ApiResponse(
         data=add_result.result,
@@ -301,7 +298,6 @@ def remove_team_member(
 def update_team_placement(
     team_id: int,
     body: PlacementUpdateInput,
-    background_tasks: BackgroundTasks,
     current_user: User = Depends(require_admin),
     svc: TeamService = Depends(get_team_service),
 ):
@@ -311,7 +307,6 @@ def update_team_placement(
         placement_rank=body.placement_rank,
         placement_label=body.placement_label,
         current_user_id=current_user.id,
-        background_tasks=background_tasks,
     )
     return ApiResponse(data=result, message="Placement updated successfully.")
 

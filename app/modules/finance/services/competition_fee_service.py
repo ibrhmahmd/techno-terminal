@@ -88,7 +88,8 @@ class CompetitionFeeService:
                     received_by_user_id=cmd.received_by_user_id,
                     allow_credit=False,
                     notes=f"Competition fee — Team #{cmd.team_id}",
-                )
+                ),
+                commit=False,
             )
             payment_id = result.payment_ids[0]
 

@@ -2,8 +2,7 @@
 
 from fastapi import Depends
 
-from app.api.dependencies import get_notification_service
-from app.modules.competitions import CompetitionService, TeamService
+from app.modules.competitions import CompetitionNotifier, CompetitionService, TeamService
 
 
 def get_competition_service() -> CompetitionService:
@@ -11,8 +10,13 @@ def get_competition_service() -> CompetitionService:
     return CompetitionService()
 
 
+def get_competition_notifier() -> CompetitionNotifier:
+    """CompetitionNotifier provider — overridden in create_app() with the real adapter."""
+    raise NotImplementedError("wired in create_app()")
+
+
 def get_team_service(
-    notification_svc: "NotificationService" = Depends(get_notification_service),
+    notifier: CompetitionNotifier = Depends(get_competition_notifier),
 ) -> TeamService:
-    """Returns a fresh TeamService instance with notification support."""
-    return TeamService(notification_svc=notification_svc)
+    """Returns a fresh TeamService instance with the notifier port."""
+    return TeamService(notifier=notifier)

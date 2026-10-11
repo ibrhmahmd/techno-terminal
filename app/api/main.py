@@ -43,6 +43,8 @@ from app.modules.auth.api import auth_router
 from app.modules.auth.api.deps import get_auth_notifier as auth_deps_get_auth_notifier
 from app.modules.notifications.adapters import get_auth_notifier as notif_adapters_get_auth_notifier
 from app.modules.notifications.adapters import get_enrollment_notifier as notif_adapters_get_enrollment_notifier
+from app.modules.notifications.adapters import get_competition_notifier as notif_adapters_get_competition_notifier
+from app.modules.competitions.api.deps import get_competition_notifier as competitions_deps_get_competition_notifier
 from app.modules.enrollments.api.deps import get_enrollment_notifier as enrollments_deps_get_enrollment_notifier
 from app.modules.attendance.api import router as attendance_router
 from app.modules.enrollments.api import (
@@ -215,6 +217,7 @@ def create_app() -> FastAPI:
     # 6. Dependency overrides (composition root)
     app.dependency_overrides[auth_deps_get_auth_notifier] = notif_adapters_get_auth_notifier
     app.dependency_overrides[enrollments_deps_get_enrollment_notifier] = notif_adapters_get_enrollment_notifier
+    app.dependency_overrides[competitions_deps_get_competition_notifier] = notif_adapters_get_competition_notifier
 
     return app
 

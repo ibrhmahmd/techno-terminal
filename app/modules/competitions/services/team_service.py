@@ -1,9 +1,9 @@
 import logging
 from datetime import date
 from decimal import Decimal
-from typing import Optional, TYPE_CHECKING
+from typing import Optional
 from sqlmodel import select
-from fastapi import BackgroundTasks, HTTPException
+from fastapi import HTTPException
 from app.db.connection import get_session
 from app.db.uow import UnitOfWork
 import app.modules.competitions.repositories.team_repository as team_repo
@@ -23,12 +23,10 @@ from app.modules.competitions.schemas.team_schemas import (
 )
 from app.modules.competitions.schemas.competition_schemas import CompetitionDTO
 from app.modules.competitions.models.team_models import Team
+from app.modules.competitions.ports import CompetitionNotifier
 from app.modules.crm import StudentActivityService, LogCompetitionRegistrationDTO, LogPaymentDTO
 from app.modules.crm.models.student_models import Student
 from app.modules.crm.models.parent_models import Parent
-
-if TYPE_CHECKING:
-    from app.modules.notifications.services.notification_service import NotificationService
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +34,17 @@ logger = logging.getLogger(__name__)
 class TeamService:
     """Service layer for managing Teams with 3-table schema."""
 
-    def __init__(self, notification_svc: Optional["NotificationService"] = None) -> None:
-        self._notification_svc = notification_svc
+    def __init__(self, notifier: Optional[CompetitionNotifier] = None) -> None:
+        self._notifier = notifier
+
+    def _notify(self, method: str, **kwargs) -> None:
+        """Call the notifier after commit; failures are logged, never raised."""
+        if self._notifier is None:
+            return
+        try:
+            getattr(self._notifier, method)(**kwargs)
+        except Exception:
+            logger.exception("Competition notifier %s failed", method)
 
 
     def get_student_competitions(self, student_id: int) -> list[StudentCompetitionDTO]:
@@ -73,7 +80,6 @@ class TeamService:
 
     def register_team(
         self, cmd: RegisterTeamInput, current_user_id: Optional[int] = None,
-        background_tasks: Optional[BackgroundTasks] = None,
     ) -> TeamRegistrationResultWithWarningDTO:
         """
         Creates a team and adds all listed students as members.
@@ -173,17 +179,16 @@ class TeamService:
             # Commit first so data is visible to the background task's fresh session
             db.commit()
             db.refresh(team)
-            if self._notification_svc and background_tasks:
-                for sid in student_ids:
-                    self._notification_svc.competition.notify_team_registration(
-                        student_id=sid,
-                        team_id=team.id,
-                        team_name=team.team_name,
-                        competition_name=comp.name,
-                        category=cmd.category,
-                        subcategory=cmd.subcategory,
-                        background_tasks=background_tasks,
-                    )
+            for sid in student_ids:
+                self._notify(
+                    "team_registration",
+                    student_id=sid,
+                    team_id=team.id,
+                    team_name=team.team_name,
+                    competition_name=comp.name,
+                    category=cmd.category,
+                    subcategory=cmd.subcategory,
+                )
 
 
             warning = "; ".join(duplicate_warnings) if duplicate_warnings else None
@@ -446,7 +451,6 @@ class TeamService:
         placement_rank: int,
         placement_label: Optional[str] = None,
         current_user_id: Optional[int] = None,
-        background_tasks: Optional[BackgroundTasks] = None,
     ) -> TeamDTO:
         """
         Update team placement after competition.
@@ -493,17 +497,16 @@ class TeamService:
                 # Commit first so data is visible to the background task's fresh session
                 db.commit()
                 db.refresh(team)
-                if self._notification_svc and background_tasks:
-                    for m in members:
-                        self._notification_svc.competition.notify_placement_announcement(
-                            student_id=m.student_id,
-                            team_id=team_id,
-                            team_name=team.team_name,
-                            competition_name=comp.name if comp else "Unknown",
-                            placement_rank=placement_rank,
-                            placement_label=placement_label,
-                            background_tasks=background_tasks,
-                        )
+                for m in members:
+                    self._notify(
+                        "placement_announcement",
+                        student_id=m.student_id,
+                        team_id=team_id,
+                        team_name=team.team_name,
+                        competition_name=comp.name if comp else "Unknown",
+                        placement_rank=placement_rank,
+                        placement_label=placement_label,
+                    )
 
 
             return TeamDTO.model_validate(team) if team else None
@@ -514,7 +517,6 @@ class TeamService:
         student_id: int,
         amount_due: Optional[float] = None,
         current_user_id: Optional[int] = None,
-        background_tasks: Optional[BackgroundTasks] = None,
     ) -> AddTeamMemberResultWithWarningDTO:
         """Add a student to an existing team. Returns (result, warning_or_None)."""
         with get_session() as db:
@@ -562,16 +564,15 @@ class TeamService:
             # Commit first so data is visible to the background task's fresh session
             db.commit()
             db.refresh(m)
-            if self._notification_svc and background_tasks:
-                self._notification_svc.competition.notify_team_registration(
-                    student_id=student_id,
-                    team_id=team_id,
-                    team_name=team.team_name,
-                    competition_name=comp.name if comp else "Unknown",
-                    category=team.category,
-                    subcategory=team.subcategory,
-                    background_tasks=background_tasks,
-                )
+            self._notify(
+                "team_registration",
+                student_id=student_id,
+                team_id=team_id,
+                team_name=team.team_name,
+                competition_name=comp.name if comp else "Unknown",
+                category=team.category,
+                subcategory=team.subcategory,
+            )
 
 
             return AddTeamMemberResultWithWarningDTO(
