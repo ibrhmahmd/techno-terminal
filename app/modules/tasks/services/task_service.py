@@ -2,13 +2,16 @@
 
 Business logic and access control rules for tasks.
 """
+import logging
 import uuid
 from datetime import date
 from typing import Optional
 
 from app.modules.tasks.models import Task, TaskSubtask, TaskComment, TaskTimeLog, TaskStatus, TaskPriority
-from app.modules.tasks.repository import TasksUnitOfWork
-from app.modules.tasks.schemas import (
+from app.db.uow import UnitOfWork
+from app.modules.tasks.ports import TaskNotifier
+from app.modules.tasks.repositories.task_repository import TaskRepository
+from app.modules.tasks.schemas.task_schemas import (
     CreateTaskInput,
     UpdateTaskInput,
     CreateTaskSubtaskInput,
@@ -19,12 +22,14 @@ from app.modules.tasks.schemas import (
     TaskDetailDTO,
 )
 from app.modules.auth.models.auth_models import User
-from app.shared.exceptions import AuthError, NotFoundError, BusinessRuleError
+from app.modules.hr.models.employee_models import Employee
+from app.shared.exceptions import AuthError, NotFoundError
 from app.shared.datetime_utils import utc_now
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from app.modules.notifications.services.notification_service import NotificationService
-    from fastapi import BackgroundTasks
+from sqlmodel import select
+from datetime import datetime, timedelta
+from app.modules.tasks.models import Task, TaskSubtask
+from datetime import timezone
+logger = logging.getLogger(__name__)
 
 
 class TaskService:
@@ -32,11 +37,21 @@ class TaskService:
 
     def __init__(
         self,
-        uow: TasksUnitOfWork,
-        notification_service: Optional["NotificationService"] = None,
+        uow: UnitOfWork,
+        notifier: Optional[TaskNotifier] = None,
     ):
         self._uow = uow
-        self._notif = notification_service
+        self._notifier = notifier
+        self._tasks = TaskRepository(uow.session)
+
+    def _notify(self, method: str, **kwargs) -> None:
+        """Call the notifier after commit; failures are logged, never raised."""
+        if self._notifier is None:
+            return
+        try:
+            getattr(self._notifier, method)(**kwargs)
+        except Exception:
+            logger.exception("Task notifier %s failed", method)
 
     def _is_admin(self, user: User) -> bool:
         return user.role in ("admin", "system_admin")
@@ -45,7 +60,6 @@ class TaskService:
         self,
         dto: CreateTaskInput,
         current_user: User,
-        background_tasks: Optional["BackgroundTasks"] = None,
     ) -> TaskDetailDTO:
         """Create a new task (Admin only)."""
         if not self._is_admin(current_user):
@@ -60,27 +74,23 @@ class TaskService:
             if not emp:
                 raise NotFoundError(f"Employee {dto.assigned_to} not found.")
 
-        task = self._uow.tasks.create_task(dto, current_user.id)
+        task = self._tasks.create_task(dto, current_user.id)
         self._uow.flush()
         
         # Build initial subtasks if any were passed (none in basic Task creation, but good to have)
         self._uow.commit()
 
-        detail = self._uow.tasks.get_task_dto(task.id)
+        detail = self._tasks.get_task_dto(task.id)
         if not detail:
             raise NotFoundError("Failed to fetch created task details.")
 
         # Trigger assigned notification if employee was set
-        if (
-            self._notif is not None
-            and background_tasks is not None
-            and dto.assigned_to
-        ):
-            self._notif.task.notify_task_assigned(
-                task_id=str(task.id),
+        if dto.assigned_to:
+            self._notify(
+                "task_assigned",
+                task_id=task.id,
                 employee_id=dto.assigned_to,
                 assigned_by_user_id=current_user.id,
-                background_tasks=background_tasks,
             )
 
         return detail
@@ -90,10 +100,9 @@ class TaskService:
         task_id: uuid.UUID,
         dto: UpdateTaskInput,
         current_user: User,
-        background_tasks: Optional["BackgroundTasks"] = None,
     ) -> TaskDetailDTO:
         """Update a task with role-based checks."""
-        task = self._uow.tasks.get_task_by_id(task_id)
+        task = self._tasks.get_task_by_id(task_id)
         if not task:
             raise NotFoundError(f"Task {task_id} not found.")
 
@@ -112,36 +121,31 @@ class TaskService:
                 raise AuthError("Employees can only update task status.")
 
         # Perform the update
-        self._uow.tasks.update_task(task_id, dto)
+        self._tasks.update_task(task_id, dto)
         self._uow.flush()
         self._uow.commit()
 
-        detail = self._uow.tasks.get_task_dto(task_id)
+        detail = self._tasks.get_task_dto(task_id)
         if not detail:
             raise NotFoundError(f"Task {task_id} not found after update.")
 
         # Trigger status-change notification
         new_status = dto.model_dump(exclude_unset=True).get("status")
-        if (
-            self._notif is not None
-            and background_tasks is not None
-            and new_status is not None
-            and new_status != old_status
-        ):
-            self._notif.task.notify_task_status_changed(
-                task_id=str(task_id),
+        if new_status is not None and new_status != old_status:
+            self._notify(
+                "task_status_changed",
+                task_id=task_id,
                 employee_id=task.assigned_to,
                 old_status=old_status,
                 new_status=new_status,
                 changed_by_user_id=current_user.id,
-                background_tasks=background_tasks,
             )
 
         return detail
 
     def get_task(self, task_id: uuid.UUID, current_user: User) -> TaskDetailDTO:
         """Get task detail by ID (Colleague read-only allowed)."""
-        detail = self._uow.tasks.get_task_dto(task_id)
+        detail = self._tasks.get_task_dto(task_id)
         if not detail:
             raise NotFoundError(f"Task {task_id} not found.")
         return detail
@@ -155,7 +159,7 @@ class TaskService:
         is_recurring: Optional[bool] = None,
     ) -> list[TaskReadDTO]:
         """List tasks with optional filters."""
-        return self._uow.tasks.list_tasks(
+        return self._tasks.list_tasks(
             status=status,
             priority=priority,
             assigned_to=assigned_to,
@@ -167,11 +171,11 @@ class TaskService:
         if not self._is_admin(current_user):
             raise AuthError("Only admins can delete tasks.")
 
-        task = self._uow.tasks.get_task_by_id(task_id)
+        task = self._tasks.get_task_by_id(task_id)
         if not task:
             raise NotFoundError(f"Task {task_id} not found.")
 
-        self._uow.tasks.soft_delete(task_id, current_user.id)
+        self._tasks.soft_delete(task_id, current_user.id)
         self._uow.commit()
 
     # --- Subtask Methods ---
@@ -180,21 +184,21 @@ class TaskService:
         if not self._is_admin(current_user):
             raise AuthError("Only admins can add subtasks.")
 
-        task = self._uow.tasks.get_task_by_id(task_id)
+        task = self._tasks.get_task_by_id(task_id)
         if not task:
             raise NotFoundError(f"Task {task_id} not found.")
 
-        subtask = self._uow.tasks.create_subtask(task_id, dto)
+        subtask = self._tasks.create_subtask(task_id, dto)
         self._uow.commit()
         return subtask
 
     def update_subtask(self, subtask_id: uuid.UUID, dto: UpdateTaskSubtaskInput, current_user: User) -> TaskSubtask:
         """Update subtask (Admin or assigned employee)."""
-        subtask = self._uow.tasks.get_subtask_by_id(subtask_id)
+        subtask = self._tasks.get_subtask_by_id(subtask_id)
         if not subtask:
             raise NotFoundError(f"Subtask {subtask_id} not found.")
 
-        task = self._uow.tasks.get_task_by_id(subtask.task_id)
+        task = self._tasks.get_task_by_id(subtask.task_id)
         if not task:
             raise NotFoundError("Associated task not found.")
 
@@ -210,7 +214,7 @@ class TaskService:
             if non_done_fields:
                 raise AuthError("Employees can only toggle subtask completion status.")
 
-        updated = self._uow.tasks.update_subtask(subtask_id, dto)
+        updated = self._tasks.update_subtask(subtask_id, dto)
         if not updated:
             raise NotFoundError("Failed to update subtask.")
         self._uow.commit()
@@ -221,11 +225,11 @@ class TaskService:
         if not self._is_admin(current_user):
             raise AuthError("Only admins can delete subtasks.")
 
-        subtask = self._uow.tasks.get_subtask_by_id(subtask_id)
+        subtask = self._tasks.get_subtask_by_id(subtask_id)
         if not subtask:
             raise NotFoundError(f"Subtask {subtask_id} not found.")
 
-        self._uow.tasks.delete_subtask(subtask_id)
+        self._tasks.delete_subtask(subtask_id)
         self._uow.commit()
 
     # --- Comment Methods ---
@@ -234,10 +238,9 @@ class TaskService:
         task_id: uuid.UUID,
         dto: CreateTaskCommentInput,
         current_user: User,
-        background_tasks: Optional["BackgroundTasks"] = None,
     ) -> TaskComment:
         """Add a comment (Admin or assigned employee)."""
-        task = self._uow.tasks.get_task_by_id(task_id)
+        task = self._tasks.get_task_by_id(task_id)
         if not task:
             raise NotFoundError(f"Task {task_id} not found.")
 
@@ -246,27 +249,23 @@ class TaskService:
             if current_user.employee_id is None or task.assigned_to != current_user.employee_id:
                 raise AuthError("You can only comment on tasks assigned to you.")
 
-        comment = self._uow.tasks.create_comment(task_id, current_user.id, dto)
+        comment = self._tasks.create_comment(task_id, current_user.id, dto)
         self._uow.commit()
 
         # Notify assigned employee when someone else comments
-        if (
-            self._notif is not None
-            and background_tasks is not None
-            and task.assigned_to is not None
-        ):
-            self._notif.task.notify_task_comment_added(
-                task_id=str(task_id),
-                comment_id=str(comment.id),
+        if task.assigned_to is not None:
+            self._notify(
+                "task_comment_added",
+                task_id=task_id,
+                comment_id=comment.id,
                 author_user_id=current_user.id,
-                background_tasks=background_tasks,
             )
 
         return comment
 
     def delete_comment(self, comment_id: uuid.UUID, current_user: User) -> None:
         """Delete comment (Author or admin only)."""
-        comment = self._uow.tasks.get_comment_by_id(comment_id)
+        comment = self._tasks.get_comment_by_id(comment_id)
         if not comment:
             raise NotFoundError(f"Comment {comment_id} not found.")
 
@@ -274,28 +273,25 @@ class TaskService:
         if not is_admin and comment.author_id != current_user.id:
             raise AuthError("You can only delete your own comments.")
 
-        self._uow.tasks.delete_comment(comment_id)
+        self._tasks.delete_comment(comment_id)
         self._uow.commit()
 
     # --- Time Log Methods ---
     def add_time_log(self, task_id: uuid.UUID, dto: CreateTaskTimeLogInput, current_user: User) -> TaskTimeLog:
         """Add time log (Assigned employee only)."""
-        task = self._uow.tasks.get_task_by_id(task_id)
+        task = self._tasks.get_task_by_id(task_id)
         if not task:
             raise NotFoundError(f"Task {task_id} not found.")
 
         if current_user.employee_id is None or task.assigned_to != current_user.employee_id:
             raise AuthError("You can only log time on tasks assigned to you.")
 
-        log = self._uow.tasks.create_time_log(task_id, current_user.employee_id, dto)
+        log = self._tasks.create_time_log(task_id, current_user.employee_id, dto)
         self._uow.commit()
         return log
 
     def spawn_recurring_tasks(self, target_date: date) -> int:
         """Spawn child tasks from active recurring task templates for target_date."""
-        from sqlmodel import select
-        from datetime import datetime, timedelta
-        from app.modules.tasks.models import Task, TaskSubtask
         
         # 1. Fetch all active templates
         stmt = select(Task).where(Task.is_recurring == True, Task.deleted_at == None)
@@ -350,7 +346,6 @@ class TaskService:
                 continue
                 
             # Create child task
-            from datetime import timezone
             child_created = datetime.combine(target_date, datetime.now(timezone.utc).time()).replace(tzinfo=timezone.utc)
             child = Task(
                 title=parent.title,
@@ -397,7 +392,4 @@ class TaskService:
             
         return spawned_count
 
-
-# Lazy resolve Employee model import to prevent circular dependencies
-from app.modules.hr.models.employee_models import Employee
 

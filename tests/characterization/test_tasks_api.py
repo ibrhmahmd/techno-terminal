@@ -282,13 +282,15 @@ def test_delete_task_not_found(client_with_uow, override_auth, mock_admin_header
 # ── Subtasks ──────────────────────────────────────────────────────────────────
 
 
-def _seed_subtask(db_session, task_id: str):
+def _seed_subtask(session, task_id: str):
+    """Insert a subtask through the uow fixture's session (the tasks created through the API
+    live in that transaction, so a separate committed session could not see them)."""
     from app.modules.tasks.models import TaskSubtask
 
     sub = TaskSubtask(task_id=uuid.UUID(task_id), title=f"sub {_short()}", is_done=False)
-    db_session.add(sub)
-    db_session.commit()
-    db_session.refresh(sub)
+    session.add(sub)
+    session.flush()
+    session.refresh(sub)
     return sub
 
 
@@ -304,9 +306,9 @@ def test_add_subtask(client_with_uow, override_auth, mock_admin_headers, noop_no
     assert sub["is_done"] is False and sub["task_id"] == t["id"] and sub["title"] == "step 1"
 
 
-def test_update_subtask(client_with_uow, override_auth, mock_admin_headers, db_session, noop_notifications):
+def test_update_subtask(client_with_uow, override_auth, mock_admin_headers, uow, noop_notifications):
     t = _create(client_with_uow, mock_admin_headers).json()["data"]
-    sub = _seed_subtask(db_session, t["id"])
+    sub = _seed_subtask(uow.session, t["id"])
 
     r = client_with_uow.patch(
         f"/api/v1/tasks/subtasks/{sub.id}", headers=mock_admin_headers, json={"is_done": True, "title": "renamed"}
@@ -317,25 +319,25 @@ def test_update_subtask(client_with_uow, override_auth, mock_admin_headers, db_s
     assert r.json()["data"]["is_done"] is True and r.json()["data"]["title"] == "renamed"
 
 
-def test_task_detail_with_subtasks_crashes_with_500(app, client_with_uow, override_auth, mock_admin_headers, db_session, noop_notifications):
+def test_task_detail_with_subtasks_crashes_with_500(app, client_with_uow, override_auth, mock_admin_headers, uow, noop_notifications):
     """current behaviour (pinned, not endorsed): reading a task that has subtasks fails with 500,
     because the repository selects with ``sqlalchemy.select`` through a SQLModel session and the
     subtask rows come back as Row tuples that the detail DTO cannot validate."""
     from fastapi.testclient import TestClient
 
     t = _create(client_with_uow, mock_admin_headers).json()["data"]
-    _seed_subtask(db_session, t["id"])
+    _seed_subtask(uow.session, t["id"])
 
     r = TestClient(app, raise_server_exceptions=False).get(f"/api/v1/tasks/{t['id']}", headers=mock_admin_headers)
 
     assert r.status_code == 500
 
 
-def test_delete_subtask(app, client_with_uow, override_auth, mock_admin_headers, db_session, noop_notifications):
+def test_delete_subtask(app, client_with_uow, override_auth, mock_admin_headers, uow, noop_notifications):
     from fastapi.testclient import TestClient
 
     t = _create(client_with_uow, mock_admin_headers).json()["data"]
-    sub = _seed_subtask(db_session, t["id"])
+    sub = _seed_subtask(uow.session, t["id"])
 
     r = TestClient(app, raise_server_exceptions=False).delete(
         f"/api/v1/tasks/subtasks/{sub.id}", headers=mock_admin_headers

@@ -291,8 +291,9 @@ class TestTasksCRUD:
         assert sub_resp.status_code == 200
         
         # Get TaskService to run spawning
-        from app.api.dependencies import get_task_service
-        service = get_task_service(db_session)
+        from app.db.uow import UnitOfWork
+        from app.modules.tasks import TaskService
+        service = TaskService(UnitOfWork(db_session))
         
         # Target date
         target_date = date(2026, 7, 16)

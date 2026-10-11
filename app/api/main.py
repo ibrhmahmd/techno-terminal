@@ -45,6 +45,8 @@ from app.modules.notifications.adapters import get_auth_notifier as notif_adapte
 from app.modules.notifications.adapters import get_enrollment_notifier as notif_adapters_get_enrollment_notifier
 from app.modules.notifications.adapters import get_competition_notifier as notif_adapters_get_competition_notifier
 from app.modules.notifications.adapters import get_payment_notifier as notif_adapters_get_payment_notifier
+from app.modules.notifications.adapters import get_task_notifier as notif_adapters_get_task_notifier
+from app.modules.tasks.api.deps import get_task_notifier as tasks_deps_get_task_notifier
 from app.modules.finance.api.deps import get_payment_notifier as finance_deps_get_payment_notifier
 from app.modules.competitions.api.deps import get_competition_notifier as competitions_deps_get_competition_notifier
 from app.modules.enrollments.api.deps import get_enrollment_notifier as enrollments_deps_get_enrollment_notifier
@@ -78,7 +80,7 @@ from app.api.routers.analytics import (
 )
 from app.modules.finance.api import receipt_router, finance_router, reporting_router, student_payments_router, competition_fees_router
 from app.modules.auth.api import admin_auth_router
-from app.api.routers.tasks import router as tasks_router
+from app.modules.tasks.api import router as tasks_router
 
 
 def create_app() -> FastAPI:
@@ -91,14 +93,9 @@ def create_app() -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        from app.modules.tasks.scheduler import start_task_scheduler
-        from app.modules.tasks import TaskService, TasksUnitOfWork
+        from app.modules.tasks import TaskService, start_task_scheduler
 
-        def _make_task_service() -> TaskService:
-            session = Session(get_engine(), expire_on_commit=False)
-            return TaskService(TasksUnitOfWork(session))
-
-        task_spawner_task = asyncio.create_task(start_task_scheduler(_make_task_service))
+        task_spawner_task = asyncio.create_task(start_task_scheduler(TaskService))
         metrics_task = asyncio.create_task(run_metrics_collector(interval_seconds=60))
         yield
         task_spawner_task.cancel()
@@ -221,6 +218,7 @@ def create_app() -> FastAPI:
     app.dependency_overrides[enrollments_deps_get_enrollment_notifier] = notif_adapters_get_enrollment_notifier
     app.dependency_overrides[competitions_deps_get_competition_notifier] = notif_adapters_get_competition_notifier
     app.dependency_overrides[finance_deps_get_payment_notifier] = notif_adapters_get_payment_notifier
+    app.dependency_overrides[tasks_deps_get_task_notifier] = notif_adapters_get_task_notifier
 
     return app
 
