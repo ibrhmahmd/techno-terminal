@@ -32,10 +32,17 @@ if TYPE_CHECKING:
     from app.modules.notifications.services.notification_service import NotificationService
 
 
-class EnrollmentCoreService:
+class EnrollmentService:
     def __init__(self, activity_svc: Optional["StudentActivityService"] = None, notification_svc: Optional["NotificationService"] = None) -> None:
         self._activity_svc = activity_svc
         self._notification_svc = notification_svc
+
+    @staticmethod
+    def get_active_enrollment(
+        session, student_id: int, group_id: int
+    ) -> Optional[Enrollment]:
+        """Read-only lookup exposed for cross-module callers (facade method)."""
+        return repo.get_active_enrollment(session, student_id, group_id)
 
     def enroll_student(
         self,

@@ -137,11 +137,8 @@ from app.modules.auth import AuthService
 # Note: CRM service factories moved to app/modules/crm/api/deps.py
 # Import StudentActivityService for use by other modules' factories
 from app.modules.crm import StudentActivityService
-from app.db.uow import UnitOfWork
 
-from app.modules.enrollments.core.service import EnrollmentCoreService as EnrollmentService
-from app.modules.enrollments.directory.service import EnrollmentDirectoryService
-from app.modules.enrollments.lifecycle.service import EnrollmentLifecycleService as EnrollmentMigrationService
+# Note: Enrollments service factories moved to app/modules/enrollments/api/deps.py
 
 def get_notification_service() -> Generator["NotificationService", None, None]:
     from app.modules.notifications.repositories.notification_repository import NotificationRepository
@@ -151,30 +148,6 @@ def get_notification_service() -> Generator["NotificationService", None, None]:
     with get_session() as session:
         yield NotificationService(NotificationRepository(session))
         session.commit()
-
-def get_enrollment_service(
-    session: Session = Depends(get_db),
-    notification_svc: "NotificationService" = Depends(get_notification_service),
-) -> EnrollmentService:
-    """Returns an EnrollmentService with activity logging and notifications."""
-    uow = UnitOfWork(session)
-    activity_svc = StudentActivityService(uow)
-    return EnrollmentService(
-        activity_svc=activity_svc,
-        notification_svc=notification_svc
-    )
-
-
-def get_enrollment_directory_service() -> EnrollmentDirectoryService:
-    """Returns an EnrollmentDirectoryService for read-only enrollment queries."""
-    return EnrollmentDirectoryService()
-
-
-def get_enrollment_migration_service(
-    notification_svc: "NotificationService" = Depends(get_notification_service),
-) -> EnrollmentMigrationService:
-    """Returns an EnrollmentMigrationService with notification support."""
-    return EnrollmentMigrationService(notification_svc=notification_svc)
 
 
 # ── Finance Service Factories (SOLID Refactored) ──────────────────────────────

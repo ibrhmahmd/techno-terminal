@@ -14,23 +14,23 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 
 from app.api.schemas.common import ApiResponse
-from app.api.schemas.enrollments.enrollment import EnrollmentPublic, StudentEnrollmentSummaryPublic
-from app.api.dependencies import require_admin, require_any, get_enrollment_service, get_enrollment_directory_service
+from app.modules.enrollments.api.schemas.enrollment import EnrollmentPublic, StudentEnrollmentSummaryPublic
+from app.api.dependencies import require_admin, require_any
 from app.modules.academics import ProgressLevelDTO
 from app.modules.academics.api.schemas.group import ProgressGroupLevelRequest, ProgressGroupLevelResult
 from app.modules.enrollments.core.schemas import EnrollStudentInput, TransferStudentInput, UpdateEnrollmentInput
 from app.modules.auth import User
-from app.modules.enrollments.core.service import EnrollmentCoreService as EnrollmentService
+from app.modules.enrollments.api.deps import (
+    get_enrollment_service,
+    get_enrollment_directory_service,
+    get_enrollment_lifecycle_service,
+)
+from app.modules.enrollments.core.service import EnrollmentService
 from app.modules.enrollments.directory.service import EnrollmentDirectoryService
 from app.modules.enrollments.lifecycle.service import EnrollmentLifecycleService
 
 router = APIRouter(tags=["Enrollments"])
 progress_router = APIRouter(tags=["Academics — Groups"])
-
-
-def get_enrollment_lifecycle_service() -> EnrollmentLifecycleService:
-    """Dependency provider for the group level progression use case."""
-    return EnrollmentLifecycleService()
 
 # enroll a student in a group
 @router.post(

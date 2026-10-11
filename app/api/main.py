@@ -43,7 +43,10 @@ from app.modules.auth.api import auth_router
 from app.modules.auth.api.deps import get_auth_notifier as auth_deps_get_auth_notifier
 from app.modules.notifications.adapters import get_auth_notifier as notif_adapters_get_auth_notifier
 from app.api.routers import attendance_router
-from app.api.routers import enrollments_router
+from app.modules.enrollments.api import (
+    enrollments_router,
+    enrollments_progress_router,
+)
 from app.api.routers.notifications import router as notifications_router
 from app.api.routers.competitions import competitions_router, teams_router
 from app.modules.hr.api import hr_router
@@ -155,10 +158,10 @@ def create_app() -> FastAPI:
     app.include_router(attendance_router.router, prefix="/api/v1", tags=["Attendance"])
     # Transactions
     app.include_router(
-        enrollments_router.router, prefix="/api/v1", tags=["Enrollments"]
+        enrollments_router, prefix="/api/v1", tags=["Enrollments"]
     )
     app.include_router(
-        enrollments_router.progress_router,
+        enrollments_progress_router,
         prefix="/api/v1",
         tags=["Academics — Groups"],
     )
