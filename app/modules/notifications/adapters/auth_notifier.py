@@ -3,7 +3,7 @@
 import logging
 from fastapi import BackgroundTasks, Depends
 
-from app.api.dependencies import get_notification_service
+from app.modules.notifications.api.deps import get_notification_service
 from app.modules.auth import AuthNotifier
 from app.modules.notifications.services.notification_service import NotificationService
 

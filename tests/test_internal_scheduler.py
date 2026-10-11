@@ -8,7 +8,7 @@ import logfire
 import pytest
 from sqlmodel import delete, select
 
-from app.api.dependencies import get_notification_service
+from app.modules.notifications.api.deps import get_notification_service
 from app.core.config import settings
 from app.db.connection import get_session
 from app.modules.notifications.interfaces.i_report_delivery_ledger import (
@@ -579,7 +579,7 @@ class TestInternalSchedulerEndpoints:
         configured_secret,
         notification_service_override,
     ):
-        from app.api.routers.notifications.internal_scheduler_router import (
+        from app.modules.notifications.api.internal_scheduler_router import (
             _get_yesterday_cairo,
         )
 

@@ -50,7 +50,7 @@ class _Noop:
 
 @pytest.fixture
 def noop_notifications(app):
-    from app.api.dependencies import get_notification_service
+    from app.modules.notifications.api.deps import get_notification_service
 
     svc = _Noop()
     app.dependency_overrides[get_notification_service] = lambda: svc

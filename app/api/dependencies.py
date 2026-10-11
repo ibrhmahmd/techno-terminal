@@ -140,16 +140,6 @@ from app.modules.crm import StudentActivityService
 
 # Note: Enrollments service factories moved to app/modules/enrollments/api/deps.py
 
-def get_notification_service() -> Generator["NotificationService", None, None]:
-    from app.modules.notifications.repositories.notification_repository import NotificationRepository
-    from app.modules.notifications.services.notification_service import NotificationService
-    from app.db.connection import get_session
-
-    with get_session() as session:
-        yield NotificationService(NotificationRepository(session))
-        session.commit()
-
-
 # ── Additional Service Factories (Standardizing DI pattern) ─────────────────────
 
 # ── Coach Read-Only Guard ─────────────────────────────────────────────────────

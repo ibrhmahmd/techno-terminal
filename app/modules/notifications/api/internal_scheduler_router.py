@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse
 import logfire
 import zoneinfo
 
-from app.api.dependencies import get_notification_service
+from app.modules.notifications.api.deps import get_notification_service
 from app.core.config import settings
 from app.modules.notifications.schemas.report_dto import ReportDeliveryResult
 from app.modules.notifications.services.notification_service import NotificationService
