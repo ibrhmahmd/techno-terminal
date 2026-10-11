@@ -10,8 +10,8 @@ from app.shared.datetime_utils import utc_now
 from app.modules.academics.models.group_level_models import (
     GroupLevel,
     GroupCourseHistory,
-    EnrollmentLevelHistory,
 )
+from app.modules.enrollments.models import EnrollmentLevelHistory
 from app.modules.hr.models import Employee
 from app.modules.crm.models.student_models import Student
 from app.modules.academics.constants import (

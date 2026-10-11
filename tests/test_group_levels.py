@@ -1,7 +1,7 @@
 import pytest
 from app.modules.academics.models import GroupLevel, Group, Course
 from app.modules.enrollments.models.enrollment_models import Enrollment
-from app.modules.academics.models.group_level_models import EnrollmentLevelHistory
+from app.modules.enrollments.models import EnrollmentLevelHistory
 from app.modules.academics.models.session_models import CourseSession
 from tests.utils.db_helpers import create_test_course, create_test_group, create_test_employee
 from datetime import date

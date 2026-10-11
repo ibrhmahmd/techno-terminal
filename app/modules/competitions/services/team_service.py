@@ -207,7 +207,7 @@ class TeamService:
         group_ids: list[int] = []
         if cmd.group_id:
             from app.modules.academics.models.group_models import Group
-            from app.modules.enrollments.directory.repository import list_enrollments
+            from app.modules.enrollments.models import Enrollment
 
             group = db.get(Group, cmd.group_id)
             if not group:
@@ -216,7 +216,13 @@ class TeamService:
                 raise BusinessRuleError(f"Group '{group.name}' is not active.")
 
             # Fetch active enrollments at the group's current level
-            enrollments = list_enrollments(db, group_id=cmd.group_id, level_number=group.level_number, status="active")
+            enrollments = db.exec(
+                select(Enrollment).where(
+                    Enrollment.group_id == cmd.group_id,
+                    Enrollment.level_number == group.level_number,
+                    Enrollment.status == "active",
+                )
+            ).all()
             group_ids = [e.student_id for e in enrollments]
             if not group_ids:
                 raise BusinessRuleError(
