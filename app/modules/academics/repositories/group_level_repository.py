@@ -6,29 +6,11 @@ Repository functions for Group Levels (OTS Levels).
 from typing import Sequence, Optional
 from sqlmodel import Session, select, func
 from app.shared.datetime_utils import utc_now
-from app.shared.audit_utils import apply_create_audit, apply_update_audit
+from app.shared.audit_utils import apply_update_audit
 from app.modules.academics.models.group_level_models import GroupLevel
-from app.modules.academics.models.session_models import CourseSession
 from app.modules.academics.constants import (
-    LEVEL_STATUS_ACTIVE, LEVEL_STATUS_COMPLETED, LEVEL_STATUS_CANCELLED,
-    ENROLLMENT_STATUS_ACTIVE,
+    LEVEL_STATUS_ACTIVE, LEVEL_STATUS_COMPLETED,
 )
-from app.modules.enrollments.models.enrollment_models import Enrollment
-from app.modules.attendance.models.attendance_models import Attendance
-from app.modules.finance.models.payment import Payment
-
-
-def create_group_level(session: Session, level: GroupLevel) -> GroupLevel:
-    """Create a new group level snapshot."""
-    apply_create_audit(level)
-    session.add(level)
-    session.flush()
-    return level
-
-
-def get_group_level_by_id(session: Session, level_id: int) -> GroupLevel | None:
-    """Get a specific group level by its ID."""
-    return session.get(GroupLevel, level_id)
 
 
 def get_group_level_by_number(
@@ -123,20 +105,6 @@ def complete_group_level(
     return level
 
 
-def cancel_group_level(
-    session: Session, group_id: int, level_number: int
-) -> GroupLevel | None:
-    """Mark a group level as cancelled."""
-    level = get_group_level_by_number(session, group_id, level_number)
-    if level:
-        level.status = LEVEL_STATUS_CANCELLED
-        level.effective_to = utc_now()
-        apply_update_audit(level)
-        session.add(level)
-        session.flush()
-    return level
-
-
 def get_current_group_level(session: Session, group_id: int) -> GroupLevel | None:
     """Get the currently active level for a group."""
     stmt = (
@@ -146,44 +114,6 @@ def get_current_group_level(session: Session, group_id: int) -> GroupLevel | Non
         .order_by(GroupLevel.level_number.desc())
     )
     return session.exec(stmt).first()
-
-
-def has_sessions_for_level(session: Session, group_id: int, level_number: int) -> bool:
-    """Check if any sessions exist for this group level."""
-    stmt = (
-        select(func.count())
-        .select_from(CourseSession)
-        .where(CourseSession.group_id == group_id)
-        .where(CourseSession.level_number == level_number)
-    )
-    count = session.exec(stmt).one()
-    return count > 0
-
-
-def has_enrollments_for_level(session: Session, group_id: int, level_number: int) -> bool:
-    """Check if any active enrollments exist at this level."""
-    stmt = (
-        select(func.count())
-        .select_from(Enrollment)
-        .where(Enrollment.group_id == group_id)
-        .where(Enrollment.level_number == level_number)
-        .where(Enrollment.status == ENROLLMENT_STATUS_ACTIVE)
-    )
-    count = session.exec(stmt).one()
-    return count > 0
-
-
-def delete_group_level(
-    session: Session, group_id: int, level_number: int
-) -> GroupLevel | None:
-    """
-    Hard delete a level.
-    """
-    level = get_group_level_by_number(session, group_id, level_number)
-    if level:
-        session.delete(level)
-        session.flush()
-    return level
 
 
 def get_previous_active_level(
@@ -199,32 +129,4 @@ def get_previous_active_level(
     )
     return session.exec(stmt).first()
 
-
-def count_payments_for_level(
-    session: Session, group_id: int, level_number: int
-) -> int:
-    """Count how many payments exist for students enrolled at this level."""
-    stmt = (
-        select(func.count(Payment.id))
-        .select_from(Payment)
-        .join(Enrollment, Payment.enrollment_id == Enrollment.id)
-        .where(Enrollment.group_id == group_id)
-        .where(Enrollment.level_number == level_number)
-        .where(Payment.deleted_at.is_(None))
-    )
-    return session.exec(stmt).one()
-
-
-def count_attendance_for_level(
-    session: Session, group_id: int, level_number: int
-) -> int:
-    """Count how many attendance records exist for sessions at this level."""
-    stmt = (
-        select(func.count(Attendance.id))
-        .select_from(Attendance)
-        .join(CourseSession, Attendance.session_id == CourseSession.id)
-        .where(CourseSession.group_id == group_id)
-        .where(CourseSession.level_number == level_number)
-    )
-    return session.exec(stmt).one()
 

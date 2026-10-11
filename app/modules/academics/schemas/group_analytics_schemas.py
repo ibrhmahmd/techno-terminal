@@ -69,16 +69,6 @@ class GroupLevelHistoryItemDTO(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class GroupLevelHistoryResponseDTO(BaseModel):
-    """Complete level progression history for a group."""
-    group_id: int
-    group_name: str
-    total_levels: int
-    completed_levels: int
-    active_level: Optional[int] = None
-    levels: list[GroupLevelHistoryItemDTO]
-
-
 # ════════════════════════════════════════════════════════════
 # Enrollment History DTOs
 # ════════════════════════════════════════════════════════════

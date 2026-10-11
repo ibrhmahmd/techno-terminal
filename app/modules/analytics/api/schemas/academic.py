@@ -39,21 +39,6 @@ class UnpaidAttendeeItem(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class GroupRosterItem(BaseModel):
-    """Student enrollment details for a group roster."""
-    student_id: int
-    student_name: str
-    enrollment_id: int
-    enrollment_status: str
-    balance: float
-    sessions_attended: int
-    sessions_missed: int
-    total_sessions: int
-    attendance_pct: float
-
-    model_config = {"from_attributes": True}
-
-
 class AttendanceHeatmapItem(BaseModel):
     """Single attendance record in heatmap format."""
     student_id: int

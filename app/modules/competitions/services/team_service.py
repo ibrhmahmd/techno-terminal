@@ -10,11 +10,6 @@ from app.modules.competitions.services.team_base import TeamServiceBase
 class TeamService(TeamServiceBase):
     """Team queries and CRUD."""
 
-    def get_team_by_id(self, team_id: int) -> TeamDTO | None:
-        """Get a single team by ID."""
-        team = self._teams.get_team(team_id)
-        return TeamDTO.model_validate(team) if team else None
-
     def get_team_for_user(
         self, team_id: int, current_user
     ) -> TeamDTO | None:
@@ -94,32 +89,6 @@ class TeamService(TeamServiceBase):
         """Get team members for a team."""
         members = self._teams.list_team_members(team_id)
         return [TeamMemberDTO.model_validate(m) for m in members]
-
-    def get_teams_with_members(
-        self,
-        competition_id: int,
-        category: Optional[str] = None,
-        subcategory: Optional[str] = None,
-    ) -> list[TeamWithMembersDTO]:
-        """Returns all teams with their members. Uses batch loading."""
-        batch = self._teams.list_teams_with_members_batch(competition_id)
-        teams, members_by_team = batch.teams, batch.members_by_team
-
-        if category:
-            teams = [t for t in teams if t.category == category]
-        if subcategory:
-            teams = [t for t in teams if t.subcategory == subcategory]
-
-        result = []
-        for team in teams:
-            member_rows = members_by_team.get(team.id, [])
-            result.append(
-                TeamWithMembersDTO(
-                    team=TeamDTO.model_validate(team),
-                    members=[mwr.member for mwr in member_rows]
-                )
-            )
-        return result
 
     def update_team(self, team_id: int, **kwargs) -> TeamDTO | None:
         """Update team fields."""

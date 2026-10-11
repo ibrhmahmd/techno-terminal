@@ -132,18 +132,6 @@ class BusinessMetricsCollector:
             logger.warning(f"Metric query failed: {sql[:80]}... — {e}")
             return None
 
-    def _safe_scalar_int(self, session: Session, sql: str) -> Optional[int]:
-        """Execute SQL and return integer scalar value, or None on failure."""
-        try:
-            result = session.exec(text(sql)).first()
-            if result is None:
-                return None
-            val = result[0] if hasattr(result, '__getitem__') else result
-            return int(val) if val is not None else None
-        except Exception as e:
-            logger.warning(f"Metric query failed: {sql[:80]}... — {e}")
-            return None
-
     def collect_once(self) -> None:
         """Run one collection cycle: query all metrics and emit to Logfire."""
         self._init_metrics()

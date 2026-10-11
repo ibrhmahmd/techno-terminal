@@ -30,13 +30,6 @@ def get_enrollment_directory_service(
     return EnrollmentDirectoryService(uow)
 
 
-def get_enrollment_migration_service(
-    uow: UoW,
-) -> EnrollmentLifecycleService:
-    """Returns an EnrollmentLifecycleService for enrollment migration."""
-    return EnrollmentLifecycleService(uow)
-
-
 def get_enrollment_lifecycle_service(
     uow: UoW,
 ) -> EnrollmentLifecycleService:

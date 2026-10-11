@@ -17,10 +17,6 @@ class ParentRepository:
     def get_by_id(self, parent_id: int) -> Optional[Parent]:
         return self._session.get(Parent, parent_id)
 
-    def get_by_phone(self, phone: str) -> Optional[Parent]:
-        stmt = select(Parent).where(Parent.phone_primary == phone)
-        return self._session.exec(stmt).first()
-
     def get_all(self, skip: int, limit: int) -> list[Parent]:
         stmt = select(Parent).offset(skip).limit(limit)
         return list(self._session.exec(stmt).all())

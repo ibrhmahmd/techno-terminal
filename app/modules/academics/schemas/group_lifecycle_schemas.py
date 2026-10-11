@@ -7,10 +7,10 @@ These DTOs support the decomposed service architecture:
 - SessionService  
 - GroupLifecycleService (orchestrator)
 """
-from datetime import date, time
+from datetime import date
 from decimal import Decimal
-from typing import Literal, Optional, List
-from pydantic import BaseModel, Field, model_validator
+from typing import Optional, List
+from pydantic import BaseModel, Field
 
 from app.modules.academics.constants import DEFAULT_SESSIONS_PER_LEVEL
 from app.modules.academics.constants import LEVEL_STATUS_ACTIVE
@@ -62,22 +62,6 @@ class CreateGroupWithLevelDTO(BaseModel):
 # Output/Result DTOs
 # ═══════════════════════════════════════════════════════════════════════════════
 
-class GroupResult(BaseModel):
-    """Output for single group operations."""
-    group_id: int
-    group_name: str
-    message: Optional[str] = None
-
-
-class GroupLevelResult(BaseModel):
-    """Output for level creation."""
-    level_id: int
-    group_id: int
-    level_number: int
-    sessions_count: int
-    status: str
-
-
 class SessionSummaryDTO(BaseModel):
     """Summary of a session for result DTOs."""
     id: int
@@ -86,16 +70,6 @@ class SessionSummaryDTO(BaseModel):
     start_time: Optional[str] = None
     end_time: Optional[str] = None
     status: str
-
-
-class SessionGenerationResult(BaseModel):
-    """Output for session generation."""
-    sessions: List[SessionSummaryDTO]
-    count: int
-    group_id: int
-    level_number: int
-    start_date: date
-    end_date: date
 
 
 class NextLevelCreationResult(BaseModel):

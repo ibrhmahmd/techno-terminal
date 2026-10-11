@@ -4,7 +4,6 @@ app/modules/academics/repositories/session_repository.py
 Repository functions for the Session slice.
 """
 from typing import Sequence
-from datetime import date
 from sqlmodel import Session, select, func
 from app.modules.academics.models import CourseSession
 from app.modules.academics.models.group_level_models import GroupLevel
@@ -61,19 +60,6 @@ def get_next_session_number(session: Session, group_id: int, level_number: int) 
     )
     max_num = session.exec(stmt).first()
     return (max_num or 0) + 1
-
-
-def get_todays_sessions(
-    session: Session, specific_date: date | None = None
-) -> Sequence[CourseSession]:
-    """Returns sessions for today or a specific date."""
-    target_date = specific_date or date.today()
-    stmt = (
-        select(CourseSession)
-        .where(CourseSession.session_date == target_date)
-        .order_by(CourseSession.start_time)
-    )
-    return session.exec(stmt).all()
 
 
 def delete_session(session: Session, session_id: int) -> bool:
