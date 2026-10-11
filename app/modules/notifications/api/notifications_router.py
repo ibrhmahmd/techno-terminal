@@ -3,9 +3,10 @@ from datetime import date
 from typing import List, Optional
 from fastapi import APIRouter, Depends, BackgroundTasks, Query
 
-from app.api.dependencies import require_admin, get_notification_service
+from app.api.dependencies import require_admin
+from app.modules.notifications.api.deps import get_notification_service
 from app.api.schemas.common import ApiResponse, PaginatedResponse
-from app.api.schemas.notifications.report_request import DailyReportRequest, WeeklyReportRequest, MonthlyReportRequest
+from app.modules.notifications.api.schemas.report_request import DailyReportRequest, WeeklyReportRequest, MonthlyReportRequest
 from app.modules.auth.models import User
 from app.modules.notifications.services.notification_service import NotificationService
 from app.modules.notifications.schemas.send_request import SendAbsenceRequest

@@ -48,7 +48,7 @@ def _short() -> str:
 @pytest.fixture
 def fake_svc(app):
     """A MagicMock NotificationService: nothing can be dispatched through it."""
-    from app.api.dependencies import get_notification_service
+    from app.modules.notifications.api.deps import get_notification_service
 
     svc = MagicMock()
     svc.report.send_weekly_report = AsyncMock()

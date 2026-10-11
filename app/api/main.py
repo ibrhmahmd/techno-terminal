@@ -41,11 +41,11 @@ def instrument_fastapi_app(app: FastAPI) -> None:
 
 from app.modules.auth.api import auth_router
 from app.modules.auth.api.deps import get_auth_notifier as auth_deps_get_auth_notifier
-from app.modules.notifications.adapters import get_auth_notifier as notif_adapters_get_auth_notifier
-from app.modules.notifications.adapters import get_enrollment_notifier as notif_adapters_get_enrollment_notifier
-from app.modules.notifications.adapters import get_competition_notifier as notif_adapters_get_competition_notifier
-from app.modules.notifications.adapters import get_payment_notifier as notif_adapters_get_payment_notifier
-from app.modules.notifications.adapters import get_task_notifier as notif_adapters_get_task_notifier
+from app.modules.notifications import get_auth_notifier as notif_adapters_get_auth_notifier
+from app.modules.notifications import get_enrollment_notifier as notif_adapters_get_enrollment_notifier
+from app.modules.notifications import get_competition_notifier as notif_adapters_get_competition_notifier
+from app.modules.notifications import get_payment_notifier as notif_adapters_get_payment_notifier
+from app.modules.notifications import get_task_notifier as notif_adapters_get_task_notifier
 from app.modules.tasks.api.deps import get_task_notifier as tasks_deps_get_task_notifier
 from app.modules.finance.api.deps import get_payment_notifier as finance_deps_get_payment_notifier
 from app.modules.competitions.api.deps import get_competition_notifier as competitions_deps_get_competition_notifier
@@ -55,7 +55,7 @@ from app.modules.enrollments.api import (
     enrollments_router,
     enrollments_progress_router,
 )
-from app.api.routers.notifications import router as notifications_router
+from app.modules.notifications.api import router as notifications_router
 from app.modules.competitions.api import competitions_router, teams_router
 from app.modules.hr.api import hr_router
 from app.modules.crm.api import (

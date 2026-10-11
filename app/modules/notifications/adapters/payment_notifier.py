@@ -4,7 +4,7 @@ from decimal import Decimal
 
 from fastapi import BackgroundTasks, Depends
 
-from app.api.dependencies import get_notification_service
+from app.modules.notifications.api.deps import get_notification_service
 from app.modules.finance import PaymentNotifier
 from app.modules.notifications.services.notification_service import NotificationService
 

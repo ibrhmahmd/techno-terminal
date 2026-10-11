@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 def send_test_email(recipient: str, report_date: date, save_pdf: bool = False) -> None:
-    from app.modules.notifications.services.report_notifications import ReportNotificationService
+    from app.modules.notifications import ReportNotificationService
     from app.modules.notifications.repositories.notification_repository import NotificationRepository
     from app.db.connection import get_session
 

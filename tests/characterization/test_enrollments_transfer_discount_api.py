@@ -85,7 +85,7 @@ class _NoopNotificationService:
 @pytest.fixture
 def noop_notifications(app):
     """Replace the notification service so no Gmail/Twilio dispatch can run."""
-    from app.api.dependencies import get_notification_service
+    from app.modules.notifications.api.deps import get_notification_service
 
     svc = _NoopNotificationService()
     app.dependency_overrides[get_notification_service] = lambda: svc
