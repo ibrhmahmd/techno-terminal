@@ -371,7 +371,7 @@ class TestLifecycleService:
             complete_current_level=True,
             session_start_date=date.today() + timedelta(days=30),
         )
-        prog_result = EnrollmentLifecycleService().progress_group_level(progress)
+        prog_result = EnrollmentLifecycleService(UnitOfWork(db_session)).progress_group_level(progress)
 
         stmt = select(CourseSession).where(
             CourseSession.group_id == result.group_id,

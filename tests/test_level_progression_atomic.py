@@ -26,6 +26,7 @@ import pytest
 from sqlmodel import delete, select
 
 from app.db.connection import get_session
+from app.db.uow import UnitOfWork
 from app.modules.academics import ProgressLevelDTO
 from app.modules.academics.models import Group, CourseSession
 from app.modules.academics.models.course_models import Course
@@ -91,7 +92,7 @@ def _progress_data(group: Group) -> ProgressLevelDTO:
 
 
 def test_migration_failure_rolls_back_new_level_and_sessions(
-    group_with_level_one, monkeypatch
+    group_with_level_one, db_session, monkeypatch
 ):
     """A failure in the enrollment-migration step must roll back the new level."""
     _course, group = group_with_level_one
@@ -106,7 +107,11 @@ def test_migration_failure_rolls_back_new_level_and_sessions(
     )
 
     with pytest.raises(RuntimeError, match="migration boom"):
-        EnrollmentLifecycleService().progress_group_level(_progress_data(group))
+        EnrollmentLifecycleService(UnitOfWork(db_session)).progress_group_level(_progress_data(group))
+
+    # The service was handed a bare session (no unit_of_work() context), so
+    # release the aborted transaction here before another connection reads.
+    db_session.rollback()
 
     with get_session() as session:
         levels = session.exec(
@@ -123,11 +128,11 @@ def test_migration_failure_rolls_back_new_level_and_sessions(
         assert session.get(Group, group.id).level_number == 1
 
 
-def test_success_persists_new_level_and_sessions(group_with_level_one):
+def test_success_persists_new_level_and_sessions(group_with_level_one, db_session):
     """A successful run commits both the new level and its sessions."""
     _course, group = group_with_level_one
 
-    result = EnrollmentLifecycleService().progress_group_level(_progress_data(group))
+    result = EnrollmentLifecycleService(UnitOfWork(db_session)).progress_group_level(_progress_data(group))
 
     assert result.old_level_number == 1
     assert result.new_level_number == 2
