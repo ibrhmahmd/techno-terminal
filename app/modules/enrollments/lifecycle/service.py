@@ -1,19 +1,105 @@
+from __future__ import annotations
+
 from datetime import date
-from typing import Any, List, Optional
+from typing import TYPE_CHECKING, Any, List, Optional
 from sqlmodel import Session, select
+from app.db.connection import get_session
 from app.modules.academics.models import Course, Group
 from app.modules.enrollments.models.enrollment_models import Enrollment
 from app.modules.enrollments.lifecycle.schemas import (
     MigrateEnrollmentsDTO,
     EnrollmentMigrationResult,
+    LevelProgressionResult,
 )
 from app.shared.exceptions import NotFoundError
 from app.shared.datetime_utils import utc_now
+
+if TYPE_CHECKING:
+    from app.modules.academics import ProgressLevelDTO
 
 
 class EnrollmentLifecycleService:
     def __init__(self, notification_svc: Optional[Any] = None):
         self._notification_svc = notification_svc
+
+    def progress_group_level(
+        self,
+        data: ProgressLevelDTO,
+    ) -> LevelProgressionResult:
+        """
+        Progress a group to its next level, migrating enrolments in one transaction.
+
+        Asks academics (via its facade) to create the next level and sessions,
+        then migrates the active enrolments to that level. Both steps share one
+        session and commit once, so a failure in either step rolls back both.
+        """
+        from app.db.uow import UnitOfWork
+        from app.modules.academics import GroupLifecycleService
+        from app.modules.crm import StudentActivityService
+
+        with get_session() as session:
+            created = GroupLifecycleService().create_next_level(session, data)
+
+            enrollments_migrated = 0
+            if data.auto_migrate_enrollments:
+                migration_data = MigrateEnrollmentsDTO(
+                    group_id=created.group_id,
+                    from_level=created.old_level_number,
+                    to_level=created.new_level_number,
+                    price_override=data.price_override,
+                    preserve_discounts=True,
+                )
+                migration_result = self.migrate_enrollments_to_next_level(
+                    session, migration_data
+                )
+                enrollments_migrated = migration_result.count
+
+                if migration_result.new_enrollment_ids:
+                    activity_svc = StudentActivityService(UnitOfWork(session))
+                    stmt = select(Enrollment).where(
+                        Enrollment.id.in_(migration_result.new_enrollment_ids)
+                    )
+                    for enrollment in session.exec(stmt).all():
+                        activity_svc.log_activity(
+                            student_id=enrollment.student_id,
+                            activity_type="academic",
+                            activity_subtype="level_started",
+                            reference_type="enrollment",
+                            reference_id=enrollment.id,
+                            description=(
+                                f"Progressed to Level {created.new_level_number} "
+                                f"in Group {created.group_name}"
+                            ),
+                            metadata={
+                                "notes": (
+                                    f"Automatic progression from Level "
+                                    f"{created.old_level_number} to {created.new_level_number}"
+                                )
+                            },
+                            performed_by=None,
+                        )
+
+            session.commit()
+
+        action_desc = "progressed" if data.complete_current_level else "added"
+        migration_desc = (
+            f", {enrollments_migrated} enrollments migrated"
+            if data.auto_migrate_enrollments
+            else ", no enrollments migrated"
+        )
+        name_desc = ", name updated" if data.group_name else ""
+        course_desc = f", course changed to {data.course_id}" if data.course_id else ""
+        instructor_desc = ", instructor updated" if data.instructor_id else ""
+
+        return LevelProgressionResult(
+            old_level_number=created.old_level_number,
+            new_level_number=created.new_level_number,
+            new_level_id=created.new_level_id,
+            sessions_created=created.sessions_created,
+            enrollments_migrated=enrollments_migrated,
+            message=f"Group {action_desc} from level {created.old_level_number} to {created.new_level_number}. "
+                   f"{created.sessions_created} sessions created{migration_desc}{name_desc}{course_desc}{instructor_desc}.",
+        )
 
     def migrate_enrollments_to_next_level(
         self,

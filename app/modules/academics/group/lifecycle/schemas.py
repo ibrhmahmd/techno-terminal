@@ -98,14 +98,14 @@ class SessionGenerationResult(BaseModel):
     end_date: date
 
 
-class LevelProgressionResult(BaseModel):
-    """Output for level progression workflow."""
+class NextLevelCreationResult(BaseModel):
+    """Output of academics' half of level progression: the new level + sessions."""
+    group_id: int
+    group_name: str
     old_level_number: int
     new_level_number: int
     new_level_id: int
     sessions_created: int
-    enrollments_migrated: int
-    message: str
 
 
 class GroupCreationResult(BaseModel):

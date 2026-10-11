@@ -11,6 +11,7 @@ from app.modules.enrollments.lifecycle.service import EnrollmentLifecycleService
 from app.modules.enrollments.lifecycle.schemas import (
     MigrateEnrollmentsDTO,
     EnrollmentMigrationResult,
+    LevelProgressionResult,
 )
 from app.modules.enrollments.analytics.service import EnrollmentAnalyticsService
 from app.modules.enrollments.analytics.schemas import (
@@ -28,6 +29,7 @@ __all__ = [
     "GroupEnrollmentDTO",
     "MigrateEnrollmentsDTO",
     "EnrollmentMigrationResult",
+    "LevelProgressionResult",
     "EnrollmentCoreService",
     "EnrollmentDirectoryService",
     "EnrollmentLifecycleService",

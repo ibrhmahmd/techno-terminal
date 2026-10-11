@@ -32,7 +32,7 @@ from .group.lifecycle.schemas import (
     CreateGroupLevelDTO,
     ProgressLevelDTO,
     GroupCreationResult,
-    LevelProgressionResult,
+    NextLevelCreationResult,
     SessionSummaryDTO,
 )
 from .group.details.schemas import (
@@ -90,7 +90,7 @@ __all__ = [
     "CourseStatsDTO",
     "EnrichedGroupDTO",
     "GroupCreationResult",
-    "LevelProgressionResult",
+    "NextLevelCreationResult",
     "SessionSummaryDTO",
     # Group Details DTOs
     "LevelDeleteResultDTO",

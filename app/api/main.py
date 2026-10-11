@@ -157,6 +157,11 @@ def create_app() -> FastAPI:
     app.include_router(
         enrollments_router.router, prefix="/api/v1", tags=["Enrollments"]
     )
+    app.include_router(
+        enrollments_router.progress_router,
+        prefix="/api/v1",
+        tags=["Academics — Groups"],
+    )
     # Finance routers (Receipts, Finance, Finance — Reporting)
     app.include_router(receipt_router, prefix="/api/v1", tags=["Receipts"])
     app.include_router(finance_router, prefix="/api/v1", tags=["Finance"])
