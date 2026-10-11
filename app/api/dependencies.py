@@ -161,38 +161,3 @@ async def require_coach_or_admin(
     raise HTTPException(status_code=403, detail="Access denied. Admin or team coach required.")
 
 
-# Analytics services
-from app.modules.analytics.services.academic_service import AcademicAnalyticsService
-from app.modules.analytics.services.financial_service import FinancialAnalyticsService
-from app.modules.analytics.services.bi_service import BIAnalyticsService
-from app.modules.analytics.services.dashboard_service import DashboardService
-
-def get_academic_analytics_service() -> AcademicAnalyticsService:
-    """Returns a fresh AcademicAnalyticsService instance per request."""
-    return AcademicAnalyticsService()
-
-
-def get_dashboard_service() -> DashboardService:
-    """Returns a fresh DashboardService instance per request."""
-    return DashboardService()
-
-
-def get_financial_analytics_service() -> FinancialAnalyticsService:
-    """Returns a fresh FinancialAnalyticsService instance per request."""
-    return FinancialAnalyticsService()
-
-
-def get_bi_analytics_service() -> BIAnalyticsService:
-    """Returns a fresh BIAnalyticsService instance per request."""
-    return BIAnalyticsService()
-
-
-# Competition Analytics service
-from app.modules.analytics.services.competition_service import CompetitionAnalyticsService
-
-def get_competition_analytics_service() -> CompetitionAnalyticsService:
-    """Returns a fresh CompetitionAnalyticsService instance per request."""
-    return CompetitionAnalyticsService()
-
-
-
