@@ -1,18 +1,19 @@
-from app.db.connection import get_session
 from app.db.uow import UnitOfWork
-from app.modules.academics.models.session_models import CourseSession
 from app.modules.attendance.models.attendance_models import Attendance
+from app.modules.attendance.repositories.attendance_repository import AttendanceRepository
 from app.modules.attendance.schemas.attendance_schemas import (
-    SessionAttendanceRowDTO,
-    EnrollmentAttendanceSummaryDTO,
     MarkAttendanceResponseDTO,
+    SessionAttendanceRowDTO,
     StudentAttendanceItem,
 )
 from app.shared.exceptions import NotFoundError
-import app.modules.attendance.repositories.attendance_repository as repo
 
 
 class AttendanceService:
+    def __init__(self, uow: UnitOfWork) -> None:
+        self._uow = uow
+        self._attendance = AttendanceRepository(uow.session)
+
     def mark_session_attendance(
         self,
         session_id: int,
@@ -22,50 +23,38 @@ class AttendanceService:
         """
         Marks attendance for a whole session in one operation.
         """
-        # Local import: the enrollments facade transitively imports academics,
-        # which imports attendance, so a module-level facade import would cycle.
-        from app.modules.enrollments import EnrollmentService
+        course_session = self._attendance.get_course_session(session_id)
+        if not course_session:
+            raise NotFoundError(f"Session ID {session_id} not found.")
 
-        with get_session() as session:
-            course_session = session.get(CourseSession, session_id)
-            if not course_session:
-                raise NotFoundError(f"Session ID {session_id} not found.")
+        group_id = course_session.group_id
+        level_number = course_session.level_number
 
-            group_id = course_session.group_id
-            level_number = course_session.level_number
-            enrollment_svc = EnrollmentService(UnitOfWork(session))
+        marked = 0
+        skipped = []
 
-            marked = 0
-            skipped = []
+        for entry in entries:
+            enrollment = self._attendance.get_active_enrollment(entry.student_id, group_id)
+            if not enrollment or enrollment.level_number != level_number:
+                skipped.append(entry.student_id)
+                continue
 
-            for entry in entries:
-                enrollment = enrollment_svc.get_active_enrollment(entry.student_id, group_id)
-                if not enrollment or enrollment.level_number != level_number:
-                    skipped.append(entry.student_id)
-                    continue
+            record = Attendance(
+                student_id=entry.student_id,
+                session_id=session_id,
+                enrollment_id=enrollment.id,
+                status=entry.status,
+                marked_by=marked_by_user_id,
+            )
+            self._attendance.upsert_attendance(record)
+            marked += 1
 
-                record = Attendance(
-                    student_id=entry.student_id,
-                    session_id=session_id,
-                    enrollment_id=enrollment.id,
-                    status=entry.status,
-                    marked_by=marked_by_user_id,
-                )
-                repo.upsert_attendance(session, record)
-                marked += 1
-
-            session.commit()
-            return MarkAttendanceResponseDTO(marked=marked, skipped=skipped)
+        self._uow.commit()
+        return MarkAttendanceResponseDTO(marked=marked, skipped=skipped)
 
     def get_session_roster_with_attendance(self, session_id: int) -> list[SessionAttendanceRowDTO]:
         """
         Returns existing attendance rows for a session as securely typed DTOs.
         """
-        with get_session() as session:
-            rows = repo.get_session_attendance(session, session_id)
-            return [SessionAttendanceRowDTO(student_id=r.student_id, status=r.status) for r in rows]
-
-    def get_attendance_summary(self, enrollment_id: int) -> EnrollmentAttendanceSummaryDTO:
-        """Returns sessions_attended and sessions_missed wrapped in a DTO."""
-        with get_session() as session:
-            return repo.get_enrollment_attendance(session, enrollment_id)
+        rows = self._attendance.get_session_attendance(session_id)
+        return [SessionAttendanceRowDTO(student_id=r.student_id, status=r.status) for r in rows]

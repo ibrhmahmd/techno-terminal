@@ -211,14 +211,6 @@ def get_reporting_service(
 
 # ── Additional Service Factories (Standardizing DI pattern) ─────────────────────
 
-# Attendance service
-from app.modules.attendance.services.attendance_service import AttendanceService
-
-def get_attendance_service() -> AttendanceService:
-    """Returns a fresh AttendanceService instance per request."""
-    return AttendanceService()
-
-
 # Competition services
 from app.modules.competitions import CompetitionService, TeamService
 
