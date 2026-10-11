@@ -5,12 +5,22 @@ Payment notification handlers.
 """
 from app.db.uow import unit_of_work
 import logging
-from typing import Optional
 from fastapi import BackgroundTasks
 
 from app.modules.notifications.repositories.reports_repository import ReportsRepository
 from app.modules.notifications.services.base_notification_service import BaseNotificationService
 from app.modules.notifications.repositories.notification_repository import NotificationRepository
+from app.modules.finance.models.receipt import Receipt
+from app.modules.finance.models.payment import Payment
+from app.modules.crm.models.student_models import Student
+from app.modules.academics.models.group_models import Group
+from app.modules.enrollments.models.enrollment_models import Enrollment
+from sqlmodel import select
+from datetime import datetime
+from app.modules.auth.models.auth_models import User
+from app.modules.hr.models.employee_models import Employee
+from app.modules.finance import build_receipt_pdf
+from app.modules.hr.models import Employee
 
 logger = logging.getLogger(__name__)
 
@@ -34,12 +44,6 @@ class PaymentNotificationService(BaseNotificationService):
     
     async def _process_received(self, receipt_id: int, student_id: int,
                                  amount: str, receipt_number: str) -> None:
-        from app.modules.finance.models.receipt import Receipt
-        from app.modules.finance.models.payment import Payment
-        from app.modules.crm.models.student_models import Student
-        from app.modules.academics.models.group_models import Group
-        from app.modules.enrollments.models.enrollment_models import Enrollment
-        from sqlmodel import select
 
         template = self._get_template_by_name("payment_receipt")
         if not template or not template.is_active:
@@ -83,7 +87,6 @@ class PaymentNotificationService(BaseNotificationService):
                         if group:
                             group_name = group.name
                             if group.instructor_id:
-                                from app.modules.hr.models import Employee
                                 instructor = session.get(Employee, group.instructor_id)
                                 if instructor:
                                     instructor_name = instructor.full_name
@@ -92,7 +95,6 @@ class PaymentNotificationService(BaseNotificationService):
             actual_receipt_number = receipt.receipt_number or f"REC-{receipt.id}"
             actual_receipt_id = receipt.id
             
-            from datetime import datetime
             dt_obj = receipt.paid_at or receipt.created_at or datetime.now()
             payment_date = dt_obj.strftime("%Y-%m-%d")
             payment_time = dt_obj.strftime("%H:%M")
@@ -117,8 +119,6 @@ class PaymentNotificationService(BaseNotificationService):
             # Fetch Processed By Info
             processed_by_name = "System Auto"
             processed_by_role = "System"
-            from app.modules.auth.models.auth_models import User
-            from app.modules.hr.models.employee_models import Employee
             if receipt.received_by:
                 user = session.get(User, receipt.received_by)
                 if user:
@@ -143,7 +143,6 @@ class PaymentNotificationService(BaseNotificationService):
             # Generate PDF attachment
             pdf_bytes = None
             try:
-                from app.modules.finance import build_receipt_pdf
                 pdf_bytes = build_receipt_pdf(
                     receipt=receipt,
                     lines=payment_lines,

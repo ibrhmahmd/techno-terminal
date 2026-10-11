@@ -16,6 +16,11 @@ from fastapi import BackgroundTasks
 
 from app.modules.notifications.services.base_notification_service import BaseNotificationService
 from app.modules.notifications.repositories.notification_repository import NotificationRepository
+from app.modules.tasks.models.task import Task
+from app.modules.hr.models.employee_models import Employee
+from app.modules.auth.models.auth_models import User
+import uuid as _uuid
+from app.modules.tasks.models.task import Task, TaskComment
 
 logger = logging.getLogger(__name__)
 
@@ -75,9 +80,6 @@ class TaskNotificationService(BaseNotificationService):
         employee_id: int,
         assigned_by_user_id: Optional[int],
     ) -> None:
-        from app.modules.tasks.models.task import Task
-        from app.modules.hr.models.employee_models import Employee
-        from app.modules.auth.models.auth_models import User
 
         template = self._get_template_by_name("task_assigned")
         if not template or not template.is_active:
@@ -86,7 +88,6 @@ class TaskNotificationService(BaseNotificationService):
 
         with unit_of_work(keep_loaded=True) as _uow:
             session = _uow.session
-            import uuid as _uuid
             task = session.get(Task, _uuid.UUID(task_id))
             if not task:
                 logger.error("task_assigned: Task %s not found", task_id)
@@ -129,9 +130,6 @@ class TaskNotificationService(BaseNotificationService):
         new_status: str,
         changed_by_user_id: Optional[int],
     ) -> None:
-        from app.modules.tasks.models.task import Task
-        from app.modules.hr.models.employee_models import Employee
-        from app.modules.auth.models.auth_models import User
 
         template = self._get_template_by_name("task_status_changed")
         if not template or not template.is_active:
@@ -140,7 +138,6 @@ class TaskNotificationService(BaseNotificationService):
 
         with unit_of_work(keep_loaded=True) as _uow:
             session = _uow.session
-            import uuid as _uuid
             task = session.get(Task, _uuid.UUID(task_id))
             if not task:
                 logger.error("task_status_changed: Task %s not found", task_id)
@@ -205,9 +202,6 @@ class TaskNotificationService(BaseNotificationService):
         comment_id: str,
         author_user_id: int,
     ) -> None:
-        from app.modules.tasks.models.task import Task, TaskComment
-        from app.modules.hr.models.employee_models import Employee
-        from app.modules.auth.models.auth_models import User
 
         template = self._get_template_by_name("task_comment_added")
         if not template or not template.is_active:
@@ -216,7 +210,6 @@ class TaskNotificationService(BaseNotificationService):
 
         with unit_of_work(keep_loaded=True) as _uow:
             session = _uow.session
-            import uuid as _uuid
             task = session.get(Task, _uuid.UUID(task_id))
             if not task or not task.assigned_to:
                 return

@@ -137,7 +137,6 @@ class ReportsRepository:
 
         payment_details.sort(key=lambda x: x.amount, reverse=True)
 
-        from itertools import groupby
         payments_by_type: list[PaymentTypeGroup] = []
         payment_details_by_type = sorted(payment_details, key=lambda x: x.payment_type)
         for ptype, group in groupby(payment_details_by_type, key=lambda x: x.payment_type):

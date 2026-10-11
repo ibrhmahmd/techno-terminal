@@ -19,7 +19,11 @@ from app.modules.notifications.services.payment_notifications import PaymentNoti
 from app.modules.notifications.services.report_notifications import ReportNotificationService
 from app.modules.notifications.schemas.send_request import SendAbsenceRequest
 from app.modules.notifications.schemas.notification_dto import NotificationLogDTO
-from app.modules.notifications.schemas.report_dto import DailyReportAggregateDTO
+from datetime import datetime, time
+from fastapi import HTTPException
+from fastapi import HTTPException, status
+from datetime import timedelta
+import calendar
 
 router = APIRouter()
 
@@ -63,7 +67,6 @@ def get_logs(
     svc: NotificationLogService = Depends(get_log_service)
 ):
     # Convert date to datetime if provided
-    from datetime import datetime, time
     start_dt = datetime.combine(start_date, time.min) if start_date else None
     end_dt = datetime.combine(end_date, time.max) if end_date else None
 
@@ -116,7 +119,6 @@ async def trigger_daily_report(
 ):
     report_date = target_date or date.today()
     if report_date > date.today():
-        from fastapi import HTTPException
         raise HTTPException(status_code=400, detail="Report date cannot be in the future")
     svc_report = svc
 
@@ -135,7 +137,6 @@ async def trigger_daily_report(
             svc_report.get_daily_report_pdf_base64, report_date
         )
     except Exception:
-        from fastapi import HTTPException, status
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"No data found for {report_date}",
@@ -152,12 +153,10 @@ async def get_daily_report_data(
 ):
     report_date = target_date or date.today()
     if report_date > date.today():
-        from fastapi import HTTPException
         raise HTTPException(status_code=400, detail="Report date cannot be in the future")
     try:
         aggregates = await asyncio.to_thread(svc.get_daily_report_data, report_date)
     except Exception:
-        from fastapi import HTTPException, status
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"No data found for {report_date}",
@@ -174,7 +173,6 @@ async def trigger_weekly_report(
 ):
     report_date = target_date or date.today()
     if report_date > date.today():
-        from fastapi import HTTPException
         raise HTTPException(status_code=400, detail="Report date cannot be in the future")
     
     # We trigger the standard dispatch. Weekly report uses email only.
@@ -190,16 +188,13 @@ async def get_weekly_report_data(
 ):
     report_date = target_date or date.today()
     if report_date > date.today():
-        from fastapi import HTTPException
         raise HTTPException(status_code=400, detail="Report date cannot be in the future")
     try:
-        from datetime import timedelta
         week_start = report_date - timedelta(days=report_date.weekday())
         completed_week_end = week_start + timedelta(days=6)
         week_end = completed_week_end if completed_week_end < date.today() else report_date
         aggregates = await asyncio.to_thread(svc._fetch_weekly_aggregates, week_start, week_end)
     except Exception:
-        from fastapi import HTTPException, status
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"No data found for {report_date}",
@@ -216,7 +211,6 @@ async def trigger_monthly_report(
 ):
     report_date = target_date or date.today()
     if report_date > date.today():
-        from fastapi import HTTPException
         raise HTTPException(status_code=400, detail="Report date cannot be in the future")
     
     await svc.send_monthly_report(target_date=report_date, force=True)
@@ -231,17 +225,14 @@ async def get_monthly_report_data(
 ):
     report_date = target_date or date.today()
     if report_date > date.today():
-        from fastapi import HTTPException
         raise HTTPException(status_code=400, detail="Report date cannot be in the future")
     try:
-        import calendar
         month_start = report_date.replace(day=1)
         last_day = calendar.monthrange(month_start.year, month_start.month)[1]
         completed_month_end = date(month_start.year, month_start.month, last_day)
         month_end = completed_month_end if completed_month_end < date.today() else report_date
         aggregates = await asyncio.to_thread(svc._fetch_monthly_aggregates, month_start, month_end)
     except Exception:
-        from fastapi import HTTPException, status
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"No data found for {report_date}",

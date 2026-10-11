@@ -15,6 +15,7 @@ from sqlmodel import Session, select, col
 
 from app.modules.notifications.models.notification_template import NotificationTemplate
 from app.modules.notifications.models.notification_log import NotificationLog
+from sqlalchemy import func
 
 
 class NotificationRepository:
@@ -181,7 +182,6 @@ class NotificationRepository:
         end_date: Optional[datetime] = None,
         template_id: Optional[int] = None,
     ) -> int:
-        from sqlalchemy import func
         stmt = select(func.count()).select_from(NotificationLog)
         if recipient_type:
             stmt = stmt.where(NotificationLog.recipient_type == recipient_type)

@@ -14,6 +14,7 @@ from twilio.base.exceptions import TwilioRestException
 
 from app.core.config import settings
 from app.modules.notifications.dispatchers.i_dispatcher import IMessageDispatcher
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,6 @@ class TwilioWhatsAppDispatcher(IMessageDispatcher):
         Returns:
             (True, None) on success, (False, error_message) on failure.
         """
-        import os
         if "TESTING" in os.environ or "PYTEST_CURRENT_TEST" in os.environ:
             logger.info("Test mode: WhatsApp send skipped for %s", recipient)
             return True, None

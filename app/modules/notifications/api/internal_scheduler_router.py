@@ -20,6 +20,7 @@ from app.modules.notifications.api.deps import get_report_service
 from app.core.config import settings
 from app.modules.notifications.schemas.report_dto import ReportDeliveryResult
 from app.modules.notifications.services.report_notifications import ReportNotificationService
+from datetime import datetime
 
 router = APIRouter(prefix="/internal/reports", tags=["Internal — Scheduled Reports"])
 
@@ -52,7 +53,6 @@ def _verify_internal_secret(x_internal_trigger_secret: Optional[str] = Header(de
 
 def _get_yesterday_cairo() -> date:
     """Get yesterday's date in Cairo timezone."""
-    from datetime import datetime
     now_cairo = datetime.now(CAIRO_TZ).date()
     return now_cairo - timedelta(days=1)
 

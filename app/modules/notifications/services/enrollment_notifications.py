@@ -11,6 +11,11 @@ from fastapi import BackgroundTasks
 
 from app.modules.notifications.services.base_notification_service import BaseNotificationService
 from app.modules.notifications.repositories.notification_repository import NotificationRepository
+from app.modules.auth.models.auth_models import User
+from app.modules.hr.models.employee_models import Employee
+from app.modules.academics.models.group_models import Group
+from app.modules.academics.models.course_models import Course
+from app.modules.enrollments.models.enrollment_models import Enrollment
 
 logger = logging.getLogger(__name__)
 
@@ -68,8 +73,6 @@ class EnrollmentNotificationService(BaseNotificationService):
         if not admin_id:
             return {"name": "System Action", "email": "system@technofuture.com"}
         try:
-            from app.modules.auth.models.auth_models import User
-            from app.modules.hr.models.employee_models import Employee
             with self._new_session() as session:
                 user = session.get(User, admin_id)
                 if user:
@@ -90,8 +93,6 @@ class EnrollmentNotificationService(BaseNotificationService):
         
     def _get_course_name(self, group_id: int) -> str:
         try:
-            from app.modules.academics.models.group_models import Group
-            from app.modules.academics.models.course_models import Course
             with self._new_session() as session:
                 group = session.get(Group, group_id)
                 if group and group.course_id:
@@ -104,8 +105,6 @@ class EnrollmentNotificationService(BaseNotificationService):
     
     async def _process_created(self, student_id: int, enrollment_id: int, 
                                group_id: int, level_number: int) -> None:
-        from app.modules.academics.models.group_models import Group
-        from app.modules.enrollments.models.enrollment_models import Enrollment
         
         template = self._get_template_by_name("enrollment_confirmation")
         if not template or not template.is_active:

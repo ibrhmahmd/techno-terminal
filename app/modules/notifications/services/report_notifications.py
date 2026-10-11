@@ -5,9 +5,7 @@ Scheduled report notifications for employees.
 """
 from datetime import date, timedelta
 from typing import Optional
-from decimal import Decimal
 import logging
-from pydantic import BaseModel, ConfigDict
 
 from app.modules.notifications.services.base_notification_service import BaseNotificationService
 from app.modules.notifications.interfaces.i_report_delivery_ledger import (
@@ -21,14 +19,12 @@ from app.db.uow import unit_of_work
 from app.modules.notifications.schemas.report_dto import (
     PeriodReportAggregateDTO,
     DailyReportAggregateDTO,
-    PaymentTypeGroup,
-    SessionDetailItem,
-    InstructorSummaryItem,
-    PaymentDetailItem,
     ReportDeliveryResult,
-    TopDebtorItem,
-    UnpaidAttendeeItem,
 )
+from app.modules.notifications.pdf.daily_report_pdf import generate_daily_report_pdf
+import calendar
+from base64 import b64encode
+from app.shared.exceptions import NotFoundError
 
 
 logger = logging.getLogger(__name__)
@@ -80,7 +76,6 @@ class ReportNotificationService(BaseNotificationService):
         # Generate PDF attachment
         pdf_bytes = None
         try:
-            from app.modules.notifications.pdf.daily_report_pdf import generate_daily_report_pdf
             pdf_bytes = generate_daily_report_pdf(
                 date_str=report_date.strftime("%Y-%m-%d"),
                 aggregates=aggregates
@@ -186,7 +181,6 @@ class ReportNotificationService(BaseNotificationService):
                 outcome="disabled",
             )
 
-        import calendar
         month_start = period_start
         last_day = calendar.monthrange(month_start.year, month_start.month)[1]
         completed_month_end = date(month_start.year, month_start.month, last_day)
@@ -311,12 +305,9 @@ class ReportNotificationService(BaseNotificationService):
 
     def get_daily_report_pdf_base64(self, target_date: date) -> tuple[str, str]:
         """Generate PDF and return (date_str, base64_encoded_pdf)."""
-        from base64 import b64encode
-        from app.modules.notifications.pdf.daily_report_pdf import generate_daily_report_pdf
         aggregates = self._fetch_daily_aggregates(target_date)
         has_data = self._has_data(aggregates)
         if not has_data:
-            from app.shared.exceptions import NotFoundError
             raise NotFoundError(f"No data found for {target_date}")
         pdf_bytes = generate_daily_report_pdf(
             date_str=target_date.isoformat(),
@@ -328,11 +319,9 @@ class ReportNotificationService(BaseNotificationService):
         self, target_date: date
     ) -> tuple[list[tuple[str, bytes, str]], dict, object]:
         """Build PDF bytes + variables + template for async dispatch. Raises NotFoundError if no data."""
-        from app.modules.notifications.pdf.daily_report_pdf import generate_daily_report_pdf
         aggregates = self._fetch_daily_aggregates(target_date)
         has_data = self._has_data(aggregates)
         if not has_data:
-            from app.shared.exceptions import NotFoundError
             raise NotFoundError(f"No data found for {target_date}")
 
         pdf_bytes = generate_daily_report_pdf(
@@ -350,7 +339,6 @@ class ReportNotificationService(BaseNotificationService):
         aggregates = self._fetch_daily_aggregates(target_date)
         has_data = self._has_data(aggregates)
         if not has_data:
-            from app.shared.exceptions import NotFoundError
             raise NotFoundError(f"No data found for {target_date}")
         return aggregates
 
