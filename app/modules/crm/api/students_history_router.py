@@ -29,6 +29,7 @@ from app.modules.crm.api.schemas import (
 )
 from app.modules.auth.models import User
 from app.modules.crm.services import StudentActivityService
+from app.modules.crm.schemas import TimelineFilterDTO
 
 
 router = APIRouter(prefix="/crm", tags=["Student History"])
@@ -58,8 +59,6 @@ def get_student_history(
     - Date range
     - Pagination (limit/offset)
     """
-    from app.modules.crm.interfaces.dtos.timeline_filter_dto import TimelineFilterDTO
-
     filters = TimelineFilterDTO(
         start_date=date_from,
         end_date=date_to,

@@ -10,18 +10,18 @@ from decimal import Decimal
 
 from app.db.uow import UnitOfWork
 from app.modules.crm.repositories.activity_repository import ActivityRepository
-from app.modules.crm.interfaces.dtos.activity_log_dto import ActivityLogDTO
-from app.modules.crm.interfaces.dtos.timeline_filter_dto import TimelineFilterDTO
-from app.modules.crm.interfaces.dtos.activity_summary_dto import ActivitySummaryDTO
-from app.modules.crm.interfaces.dtos.log_registration_dto import LogRegistrationDTO
-from app.modules.crm.interfaces.dtos.log_status_change_dto import LogStatusChangeDTO
-from app.modules.crm.interfaces.dtos.log_enrollment_dto import LogEnrollmentDTO
-from app.modules.crm.interfaces.dtos.log_enrollment_change_dto import LogEnrollmentChangeDTO
-from app.modules.crm.interfaces.dtos.log_payment_dto import LogPaymentDTO
-from app.modules.crm.interfaces.dtos.log_deletion_dto import LogDeletionDTO
-from app.modules.crm.interfaces.dtos.log_note_added_dto import LogNoteAddedDTO
-from app.modules.crm.interfaces.dtos.log_competition_registration_dto import LogCompetitionRegistrationDTO
-from app.modules.crm.interfaces.dtos import (
+from app.modules.crm.schemas import (
+    ActivityLogDTO,
+    TimelineFilterDTO,
+    ActivitySummaryDTO,
+    LogRegistrationDTO,
+    LogStatusChangeDTO,
+    LogEnrollmentDTO,
+    LogEnrollmentChangeDTO,
+    LogPaymentDTO,
+    LogDeletionDTO,
+    LogNoteAddedDTO,
+    LogCompetitionRegistrationDTO,
     EnrollmentHistoryDTO,
     StatusHistoryDTO,
     CompetitionHistoryDTO,

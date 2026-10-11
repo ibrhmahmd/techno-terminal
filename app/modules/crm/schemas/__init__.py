@@ -1,3 +1,10 @@
+"""
+CRM Module DTOs
+
+All DTOs are frozen Pydantic BaseModels for immutability.
+Each DTO is defined in its own file with filename matching the class name in snake_case.
+"""
+
 from .parent_schemas import (
     RegisterParentInput,
     UpdateParentDTO,
@@ -18,8 +25,61 @@ from .student_schemas import (
 
 from .waiting_list import WaitingListStudentDTO
 
+from .attendance_dtos import (
+    SessionAttendanceRecord,
+    StudentEnrollmentAttendanceDTO,
+)
+
+from .student_summary_dto import StudentSummaryDTO
+from .student_grouped_result_dto import StudentGroupedResultDTO
+from .student_group_bucket_dto import StudentGroupBucketDTO
+from .student_balance_summary_dto import StudentBalanceSummaryDTO
+from .attendance_stats_dto import AttendanceStatsDTO
+from .activity_log_dto import ActivityLogDTO
+from .timeline_filter_dto import TimelineFilterDTO
+from .activity_summary_dto import ActivitySummaryDTO
+from .log_registration_dto import LogRegistrationDTO
+from .log_status_change_dto import LogStatusChangeDTO
+from .log_enrollment_dto import LogEnrollmentDTO
+from .log_enrollment_change_dto import LogEnrollmentChangeDTO
+from .log_payment_dto import LogPaymentDTO
+from .log_deletion_dto import LogDeletionDTO
+from .log_note_added_dto import LogNoteAddedDTO
+from .log_competition_registration_dto import LogCompetitionRegistrationDTO
+from .enrollment_history_dto import EnrollmentHistoryDTO
+from .status_history_dto import StatusHistoryDTO
+from .competition_history_dto import CompetitionHistoryDTO
+from .student_filter_dto import StudentFilterDTO
+from .student_filter_result_dto import StudentFilterResultDTO, StudentFilterItemDTO
+
 
 __all__ = [
+    # Student DTOs
+    "StudentSummaryDTO",
+    "StudentGroupedResultDTO",
+    "StudentGroupBucketDTO",
+    "StudentBalanceSummaryDTO",
+    "AttendanceStatsDTO",
+    "StudentFilterDTO",
+    "StudentFilterResultDTO",
+    "StudentFilterItemDTO",
+    # Activity DTOs
+    "ActivityLogDTO",
+    "TimelineFilterDTO",
+    "ActivitySummaryDTO",
+    "LogRegistrationDTO",
+    "LogStatusChangeDTO",
+    "LogEnrollmentDTO",
+    "LogEnrollmentChangeDTO",
+    "LogPaymentDTO",
+    "LogDeletionDTO",
+    "LogNoteAddedDTO",
+    "LogCompetitionRegistrationDTO",
+    # History DTOs
+    "EnrollmentHistoryDTO",
+    "StatusHistoryDTO",
+    "CompetitionHistoryDTO",
+    # Parent/Student schemas
     "RegisterParentInput",
     "UpdateParentDTO",
     "RegisterStudentDTO",
@@ -33,4 +93,7 @@ __all__ = [
     "StudentSiblingDTO",
     "RegisterStudentResultDTO",
     "WaitingListStudentDTO",
+    # Attendance DTOs
+    "SessionAttendanceRecord",
+    "StudentEnrollmentAttendanceDTO",
 ]

@@ -29,7 +29,7 @@ from app.modules.crm.services import (
 )
 
 # DTOs (via facade only)
-from app.modules.crm.interfaces.dtos import (
+from app.modules.crm.schemas import (
     LogEnrollmentDTO,
     LogEnrollmentChangeDTO,
     LogStatusChangeDTO,

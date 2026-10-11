@@ -20,7 +20,7 @@ from app.modules.crm.api.schemas import (
     StudentWithDetails,
     SiblingInfo,
 )
-from app.modules.crm.interfaces.dtos import StudentGroupedResultDTO, StudentFilterDTO, StudentFilterResultDTO
+from app.modules.crm.schemas import StudentGroupedResultDTO, StudentFilterDTO, StudentFilterResultDTO
 from app.modules.crm.api.deps import (
     get_student_profile_service,
     get_student_search_service,

@@ -8,6 +8,11 @@ from typing import Optional, List
 from app.shared.datetime_utils import date_at_utc_midnight
 from app.modules.crm.models.student_models import Student, StudentStatus
 from app.modules.crm.schemas.student_schemas import UpdateStudentDTO, RegisterStudentCommandDTO, RegisterStudentResultDTO, StudentSiblingDTO
+from app.modules.crm.schemas import (
+    LogRegistrationDTO,
+    LogStatusChangeDTO,
+    LogDeletionDTO,
+)
 from app.db.uow import UnitOfWork
 from app.modules.crm.repositories.student_repository import StudentRepository
 from app.modules.crm.repositories.parent_repository import ParentRepository
@@ -89,7 +94,6 @@ class StudentCrudService:
 
         # Log registration activity (before commit, part of the same transaction)
         if self._activity_svc:
-            from app.modules.crm.interfaces.dtos.log_registration_dto import LogRegistrationDTO
             self._activity_svc.log_registration(
                 LogRegistrationDTO(
                     student_id=created_student.id,
@@ -147,7 +151,6 @@ class StudentCrudService:
 
         # Log status change activity
         if self._activity_svc:
-            from app.modules.crm.interfaces.dtos.log_status_change_dto import LogStatusChangeDTO
             self._activity_svc.log_status_change(
                 LogStatusChangeDTO(
                     student_id=student.id,
@@ -181,7 +184,6 @@ class StudentCrudService:
 
         # Log status change activity
         if self._activity_svc:
-            from app.modules.crm.interfaces.dtos.log_status_change_dto import LogStatusChangeDTO
             self._activity_svc.log_status_change(
                 LogStatusChangeDTO(
                     student_id=student.id,
@@ -242,7 +244,6 @@ class StudentCrudService:
 
         # Log deletion activity BEFORE deleting (to satisfy FK constraint)
         if self._activity_svc:
-            from app.modules.crm.interfaces.dtos.log_deletion_dto import LogDeletionDTO
             self._activity_svc.log_deletion(
                 LogDeletionDTO(
                     student_id=student_id,
@@ -286,7 +287,7 @@ class StudentCrudService:
                 ))
         return siblings
     
-    def get_student_parents(self, student_id: int) -> list:
+    def get_student_parents(self, student_id: int) -> List["StudentParent"]:
         """Get all parent links for a student."""
         return list(self._students.get_student_parents(student_id))
 
@@ -312,7 +313,6 @@ class StudentCrudService:
 
             # Log soft deletion activity
             if self._activity_svc:
-                from app.modules.crm.interfaces.dtos.log_deletion_dto import LogDeletionDTO
                 self._activity_svc.log_deletion(
                     LogDeletionDTO(
                         student_id=student_id,
@@ -339,7 +339,6 @@ class StudentCrudService:
 
             # Log restoration activity
             if self._activity_svc:
-                from app.modules.crm.interfaces.dtos.log_registration_dto import LogRegistrationDTO
                 self._activity_svc.log_registration(
                     LogRegistrationDTO(
                         student_id=student_id,

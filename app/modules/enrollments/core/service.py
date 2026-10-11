@@ -6,6 +6,13 @@ from app.db.uow import UnitOfWork, unit_of_work
 from app.shared.audit_utils import apply_create_audit
 from app.shared.datetime_utils import utc_now
 from app.modules.crm.models.student_models import StudentStatus
+from app.modules.crm import (
+    StudentCrudService,
+    StudentActivityService,
+    LogStatusChangeDTO,
+    LogEnrollmentDTO,
+    LogEnrollmentChangeDTO,
+)
 from app.modules.academics.group.core.service import GroupCoreService
 from app.modules.academics.models.group_models import Group
 from app.modules.enrollments.models.enrollment_models import Enrollment
@@ -23,13 +30,6 @@ from app.shared.exceptions import NotFoundError, BusinessRuleError, ConflictErro
 
 if TYPE_CHECKING:
     from app.modules.notifications.services.notification_service import NotificationService
-    from app.modules.crm import (
-        StudentCrudService,
-        StudentActivityService,
-        LogStatusChangeDTO,
-        LogEnrollmentDTO,
-        LogEnrollmentChangeDTO,
-    )
 
 
 class EnrollmentCoreService:
@@ -42,8 +42,6 @@ class EnrollmentCoreService:
         data: EnrollStudentInput,
         background_tasks: Optional[BackgroundTasks] = None,
     ) -> EnrollmentCoreResult:
-        from app.modules.crm import StudentCrudService
-
         with unit_of_work() as uow:
             student_svc = StudentCrudService(uow, self._activity_svc)
             student = student_svc.get_by_id(data.student_id)
@@ -87,7 +85,6 @@ class EnrollmentCoreService:
                     session.add(merged_student)
 
                     if self._activity_svc:
-                        from app.modules.crm import LogStatusChangeDTO
                         self._activity_svc.log_status_change(
                             LogStatusChangeDTO(
                                 student_id=student.id,
@@ -98,7 +95,6 @@ class EnrollmentCoreService:
                         )
 
                 if self._activity_svc:
-                    from app.modules.crm import LogEnrollmentDTO
                     self._activity_svc.log_enrollment(
                         LogEnrollmentDTO(
                             student_id=created.student_id,
@@ -200,7 +196,6 @@ class EnrollmentCoreService:
                 updated = repo.update_enrollment_fields(session, enrollment_id, updates)
                 
                 if self._activity_svc:
-                    from app.modules.crm import LogEnrollmentChangeDTO
                     self._activity_svc.log_enrollment_change(
                         LogEnrollmentChangeDTO(
                             student_id=updated.student_id,
@@ -275,7 +270,6 @@ class EnrollmentCoreService:
             created = repo.create_enrollment(session, new_enrollment)
 
             if self._activity_svc:
-                from app.modules.crm import LogEnrollmentChangeDTO
                 self._activity_svc.log_enrollment_change(
                     LogEnrollmentChangeDTO(
                         student_id=source.student_id,
@@ -320,7 +314,6 @@ class EnrollmentCoreService:
             updated = repo.update_enrollment_status(session, enrollment_id, "dropped")
 
             if self._activity_svc:
-                from app.modules.crm import LogEnrollmentChangeDTO
                 self._activity_svc.log_enrollment_change(
                     LogEnrollmentChangeDTO(
                         student_id=enrollment.student_id,
