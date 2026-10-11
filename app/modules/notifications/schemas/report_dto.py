@@ -1,3 +1,4 @@
+from decimal import Decimal
 from datetime import date
 from typing import Literal
 
@@ -109,3 +110,27 @@ class ReportDeliveryResult(BaseModel):
     failed: int = 0
     skipped: int = 0
     errors: list[str] = []
+
+
+class PeriodReportAggregateDTO(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    total_revenue: Decimal = Decimal("0.00")
+    new_students: int = 0
+    attendance_rate: float = 0.0
+    new_enrollments: int = 0
+    active_students: int = 0
+    total_sessions: int = 0
+    debtor_count: int = 0
+    total_debt: float = 0.0
+    dropped_enrollments: int = 0
+    top_groups: str = ""
+    revenue_by_course: str = ""
+    top_courses: str = ""
+    revenue_breakdown: str = ""
+    top_instructors: str = ""
+    course_performance_matrix: str = ""
+    session_details: list[SessionDetailItem] = []
+    payment_details: list[PaymentDetailItem] = []
+    payments_by_type: list[PaymentTypeGroup] = []
+    cumulative_unpaid_debtors: list[UnpaidAttendeeItem] = []
+    top_debtors: list[TopDebtorItem] = []
