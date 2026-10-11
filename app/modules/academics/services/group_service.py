@@ -1,5 +1,5 @@
 """
-app/modules/academics/group/core/service.py
+app/modules/academics/services/group_service.py
 ──────────────────────────────────────
 Service class for Group Core business logic.
 """
@@ -7,16 +7,16 @@ from app.db.connection import get_session
 from app.shared.audit_utils import apply_update_audit
 from app.shared.exceptions import NotFoundError
 from app.modules.academics.models import Group
-from app.modules.academics.group.core.schemas import ScheduleGroupInput, UpdateGroupDTO
-import app.modules.academics.group.core.repository as repo
-import app.modules.academics.course.repository as course_repo
+from app.modules.academics.schemas.group_schemas import ScheduleGroupInput, UpdateGroupDTO
+import app.modules.academics.repositories.group_repository as repo
+import app.modules.academics.repositories.course_repository as course_repo
 from app.modules.hr.models import Employee
 
 
 class GroupCoreService:
     def schedule_group(self, data: ScheduleGroupInput) -> Group:
         """Schedules a new standalone group."""
-        from app.modules.academics.helpers.time_helpers import fmt_12h
+        from app.shared.time_helpers import fmt_12h
         with get_session() as session:
             # Validate FKs
             course = course_repo.get_course_by_id(session, data.course_id)

@@ -1,5 +1,5 @@
 """
-app/modules/academics/helpers/time_helpers.py
+app/shared/time_helpers.py
 ──────────────────────────────────────────────
 Pure time/date utility functions for the Academics module.
 No imports from service or repository layers (clean dependency direction).

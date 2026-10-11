@@ -1,5 +1,5 @@
 """
-app/modules/academics/group/directory/schemas.py
+app/modules/academics/schemas/group_directory_schemas.py
 ────────────────────────────────────────────────
 Internal DTOs for Grouped Groups and Group Filtering.
 """
@@ -8,7 +8,7 @@ from typing import List, Literal, Optional
 
 from pydantic import BaseModel, field_validator
 
-from app.modules.academics.group.core.schemas import EnrichedGroupDTO
+from app.modules.academics.schemas.group_schemas import EnrichedGroupDTO
 
 
 class GroupedItemDTO(BaseModel):

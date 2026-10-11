@@ -12,10 +12,10 @@ from app.db.connection import get_session
 from app.modules.academics.models import Course, Group, CourseSession
 from app.modules.academics.models.group_level_models import GroupLevel, GroupCourseHistory
 from app.modules.hr.models import Employee
-import app.modules.academics.group.level.repository as repo
+import app.modules.academics.repositories.group_level_repository as repo
 from app.shared.exceptions import BusinessRuleError
 from app.shared.audit_utils import apply_create_audit, apply_update_audit
-from app.modules.academics.group.lifecycle.schemas import (
+from app.modules.academics.schemas.group_lifecycle_schemas import (
     CreateGroupWithLevelDTO,
     CreateGroupLevelDTO,
     ProgressLevelDTO,
@@ -25,8 +25,8 @@ from app.modules.academics.group.lifecycle.schemas import (
     SessionSummaryDTO,
     DeleteLevelResult,
 )
-from app.modules.academics.group.core.schemas import ScheduleGroupInput as CreateGroupDTO
-from app.modules.academics.helpers.time_helpers import next_weekday
+from app.modules.academics.schemas.group_schemas import ScheduleGroupInput as CreateGroupDTO
+from app.shared.time_helpers import next_weekday
 from app.modules.academics.constants import GROUP_STATUS_ACTIVE
 from app.modules.academics.constants import DEFAULT_SESSIONS_PER_LEVEL
 from app.shared.datetime_utils import utc_now
@@ -105,7 +105,7 @@ class GroupLifecycleService:
                 )
 
             # Phase 4: Generate sessions
-            from app.modules.academics.helpers.session_planning import create_sessions_in_session
+            from app.modules.academics.services.session_planning import create_sessions_in_session
             
             sessions = create_sessions_in_session(
                 session=session,
@@ -227,7 +227,7 @@ class GroupLifecycleService:
         session.flush()
 
         # Phase 6: Generate sessions for new level
-        from app.modules.academics.helpers.session_planning import create_sessions_in_session
+        from app.modules.academics.services.session_planning import create_sessions_in_session
 
         sessions = create_sessions_in_session(
             session=session,
@@ -307,7 +307,7 @@ class GroupLifecycleService:
             session.flush()
 
             # Generate sessions
-            from app.modules.academics.helpers.session_planning import create_sessions_in_session
+            from app.modules.academics.services.session_planning import create_sessions_in_session
             
             sessions = create_sessions_in_session(
                 session=session,
@@ -337,7 +337,7 @@ class GroupLifecycleService:
 
     def _generate_group_name(self, data: CreateGroupDTO, course_name: str) -> str:
         """Generate auto-name for a group."""
-        from app.modules.academics.helpers.time_helpers import fmt_12h
+        from app.shared.time_helpers import fmt_12h
         return f"{course_name} - {data.schedule.day} {fmt_12h(data.schedule.time_start)}"
 
 

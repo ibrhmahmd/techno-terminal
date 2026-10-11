@@ -1,5 +1,5 @@
 """
-app/modules/academics/session/service.py
+app/modules/academics/services/session_service.py
 ──────────────────────────────────────
 Service class for Session-related business logic.
 """
@@ -10,21 +10,21 @@ from app.shared.exceptions import NotFoundError, BusinessRuleError
 from app.modules.academics.models import Course, Group
 from app.modules.academics.models import CourseSession
 from app.modules.hr.models import Employee
-from app.modules.academics.session.schemas import UpdateSessionDTO, AddExtraSessionInput
-from app.modules.academics.session.schemas import GenerateLevelSessionsInput
-from app.modules.academics.helpers.time_helpers import next_weekday
-from app.modules.academics.helpers.session_planning import create_sessions_in_session
+from app.modules.academics.schemas.session_schemas import UpdateSessionDTO, AddExtraSessionInput
+from app.modules.academics.schemas.session_schemas import GenerateLevelSessionsInput
+from app.shared.time_helpers import next_weekday
+from app.modules.academics.services.session_planning import create_sessions_in_session
 from app.modules.academics.constants import (
     SESSION_STATUS_CANCELLED, SESSION_STATUS_SCHEDULED,
 )
 from app.modules.attendance.models.attendance_models import Attendance
 
-import app.modules.academics.session.repository as repo
+import app.modules.academics.repositories.session_repository as repo
 # Note: In a fully isolated slice, fetching group info should ideally go through 
 # the group core interface. Since session planning is tightly coupled with group
 # defaults, we temporarily import the group repository here as per the migration plan.
-import app.modules.academics.group.core.repository as group_repo
-import app.modules.academics.group.level.repository as level_repo
+import app.modules.academics.repositories.group_repository as group_repo
+import app.modules.academics.repositories.group_level_repository as level_repo
 
 
 class SessionService:

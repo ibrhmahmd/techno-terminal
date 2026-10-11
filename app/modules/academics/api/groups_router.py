@@ -23,11 +23,11 @@ from app.api.dependencies import (
     require_any,
 )
 from app.modules.academics.api.deps import get_group_service, get_session_service
-from app.modules.academics.group.core.schemas import ScheduleGroupInput, UpdateGroupDTO
+from app.modules.academics.schemas.group_schemas import ScheduleGroupInput, UpdateGroupDTO
 from app.modules.auth import User
-from app.modules.academics.group.core.service import GroupCoreService
-from app.modules.academics.session.service import SessionService
-from app.modules.academics.group.lifecycle.service import GroupLifecycleService
+from app.modules.academics.services.group_service import GroupCoreService
+from app.modules.academics.services.session_service import SessionService
+from app.modules.academics.services.group_lifecycle_service import GroupLifecycleService
 
 router = APIRouter(tags=["Academics — Groups"])
 
@@ -70,7 +70,7 @@ def create_group(
     Atomic operation: creates a new group, its Level 1, and the initial sessions
     all in a single transaction. Uses course.sessions_per_level for session count.
     """
-    from app.modules.academics.group.lifecycle.schemas import CreateGroupWithLevelDTO
+    from app.modules.academics.schemas.group_lifecycle_schemas import CreateGroupWithLevelDTO
     from app.modules.academics.models import Group
     from app.db.connection import get_session
 
@@ -181,7 +181,7 @@ def generate_level_sessions(
     _user: User = Depends(require_admin),
     svc: SessionService = Depends(get_session_service),
 ):
-    from app.modules.academics.session.schemas import GenerateLevelSessionsInput
+    from app.modules.academics.schemas.session_schemas import GenerateLevelSessionsInput
 
     data = GenerateLevelSessionsInput(
         group_id=group_id,

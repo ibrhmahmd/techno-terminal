@@ -1,5 +1,5 @@
 """
-app/modules/academics/group/core/schemas.py
+app/modules/academics/schemas/group_schemas.py
 ───────────────────────────────────────────────
 Input DTOs for the Group entity.
 """
@@ -23,7 +23,7 @@ class ScheduleInput(BaseModel):
 
     @model_validator(mode="after")
     def validate_time_window(self) -> "ScheduleInput":
-        from app.modules.academics.helpers.time_helpers import validate_times
+        from app.shared.time_helpers import validate_times
         validate_times(self.time_start, self.time_end)
         return self
 

@@ -19,8 +19,8 @@ from app.modules.academics.api.schemas.grouped import GroupedGroupsResponse, Gro
 from app.api.dependencies import require_any
 from app.modules.academics.api.deps import get_group_directory_service
 from app.modules.auth import User
-from app.modules.academics.group.directory.service import GroupDirectoryService
-from app.modules.academics.group.directory.schemas import GroupFilterDTO, GroupFilterResultDTO
+from app.modules.academics.services.group_directory_service import GroupDirectoryService
+from app.modules.academics.schemas.group_directory_schemas import GroupFilterDTO, GroupFilterResultDTO
 from app.shared.constants import DAY_ABBREV_MAP
 
 router = APIRouter(tags=["Academics — Group Directory"])

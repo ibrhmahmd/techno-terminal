@@ -1,5 +1,5 @@
 """
-app/modules/academics/course/service.py
+app/modules/academics/services/course_service.py
 ──────────────────────────────────────
 Service class for Course-related business logic.
 """
@@ -9,8 +9,8 @@ from app.shared.audit_utils import apply_update_audit
 from app.shared.exceptions import ConflictError, NotFoundError
 from app.shared.validators import validate_positive_amount
 from app.modules.academics.models import Course
-from app.modules.academics.course.schemas import AddNewCourseInput, UpdateCourseDTO, CourseStatsDTO
-import app.modules.academics.course.repository as repo
+from app.modules.academics.schemas.course_schemas import AddNewCourseInput, UpdateCourseDTO, CourseStatsDTO
+import app.modules.academics.repositories.course_repository as repo
 
 
 class CourseService:

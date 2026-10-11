@@ -12,9 +12,9 @@ from app.api.schemas.common import ApiResponse
 from app.modules.academics.api.schemas.session import SessionPublic
 from app.api.dependencies import require_admin, require_any
 from app.modules.academics.api.deps import get_session_service
-from app.modules.academics.session.schemas import AddExtraSessionInput, UpdateSessionDTO
+from app.modules.academics.schemas.session_schemas import AddExtraSessionInput, UpdateSessionDTO
 from app.modules.auth import User
-from app.modules.academics.session.service import SessionService
+from app.modules.academics.services.session_service import SessionService
 
 router = APIRouter(tags=["Academics — Sessions"])
 

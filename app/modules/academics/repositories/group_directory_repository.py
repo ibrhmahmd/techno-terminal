@@ -1,5 +1,5 @@
 """
-app/modules/academics/group/directory/repository.py
+app/modules/academics/repositories/group_directory_repository.py
 ────────────────────────────────────────
 Repository functions for the Group Directory slice.
 """
@@ -7,8 +7,8 @@ from typing import Any, Sequence
 from sqlmodel import Session, select, func
 from sqlalchemy import text
 from app.modules.academics.models import Group
-from app.modules.academics.group.core.schemas import EnrichedGroupDTO
-from app.modules.academics.group.directory.schemas import GroupFilterDTO
+from app.modules.academics.schemas.group_schemas import EnrichedGroupDTO
+from app.modules.academics.schemas.group_directory_schemas import GroupFilterDTO
 from app.modules.academics.constants import (
     GROUP_STATUS_ACTIVE, INSTRUCTOR_PLACEHOLDER,
     ENROLLMENT_STATUS_ACTIVE,

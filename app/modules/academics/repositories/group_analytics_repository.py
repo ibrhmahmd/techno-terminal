@@ -22,7 +22,7 @@ from app.modules.academics.constants import (
     ENROLLMENT_STATUS_ACTIVE, ENROLLMENT_STATUS_COMPLETED, ENROLLMENT_STATUS_DROPPED,
     TRANSACTION_TYPE_PAYMENT,
 )
-from app.modules.academics.group.details.schemas import EnrollmentStatsDTO, PaymentStatsDTO
+from app.modules.academics.schemas.group_details_schemas import EnrollmentStatsDTO, PaymentStatsDTO
 
 
 def record_course_assignment(

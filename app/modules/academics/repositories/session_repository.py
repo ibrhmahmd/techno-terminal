@@ -1,5 +1,5 @@
 """
-app/modules/academics/session/repository.py
+app/modules/academics/repositories/session_repository.py
 ─────────────────────────────────────────
 Repository functions for the Session slice.
 """

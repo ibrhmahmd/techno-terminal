@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from app.modules.academics.constants import DEFAULT_SESSIONS_PER_LEVEL
 from app.modules.academics.constants import LEVEL_STATUS_ACTIVE
-from app.modules.academics.group.core.schemas import ScheduleGroupInput
+from app.modules.academics.schemas.group_schemas import ScheduleGroupInput
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

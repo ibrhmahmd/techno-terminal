@@ -8,14 +8,14 @@ Import from this module or from specific submodules:
   - from app.modules.academics.schemas import UpdateSessionDTO
 """
 # ── Service Classes ─────────────────────────────────────────────────────────
-from .course.service import CourseService
-from .group.core.service import GroupCoreService
-from .session.service import SessionService
-from .group.lifecycle.service import GroupLifecycleService
-from .group.details.service import GroupDetailsService
-from .group.level.service import GroupLevelService
-from .group.directory.service import GroupDirectoryService
-from .group.analytics.service import GroupAnalyticsService
+from .services.course_service import CourseService
+from .services.group_service import GroupCoreService
+from .services.session_service import SessionService
+from .services.group_lifecycle_service import GroupLifecycleService
+from .services.group_details_service import GroupDetailsService
+from .services.group_level_service import GroupLevelService
+from .services.group_directory_service import GroupDirectoryService
+from .services.group_analytics_service import GroupAnalyticsService
 
 # ── Models ───────────────────────────────────────────────────────────────────
 from .models.course_models import Course
@@ -24,10 +24,10 @@ from .models.session_models import CourseSession
 from .models.group_level_models import GroupLevel
 
 # ── Schemas (DTOs) ───────────────────────────────────────────────────────────
-from .course.schemas import AddNewCourseInput, UpdateCourseDTO, CourseStatsDTO
-from .group.core.schemas import ScheduleGroupInput, UpdateGroupDTO, EnrichedGroupDTO
-from .session.schemas import AddExtraSessionInput, GenerateLevelSessionsInput, UpdateSessionDTO
-from .group.lifecycle.schemas import (
+from .schemas.course_schemas import AddNewCourseInput, UpdateCourseDTO, CourseStatsDTO
+from .schemas.group_schemas import ScheduleGroupInput, UpdateGroupDTO, EnrichedGroupDTO
+from .schemas.session_schemas import AddExtraSessionInput, GenerateLevelSessionsInput, UpdateSessionDTO
+from .schemas.group_lifecycle_schemas import (
     CreateGroupWithLevelDTO as CreateGroupDTO,
     CreateGroupLevelDTO,
     ProgressLevelDTO,
@@ -35,7 +35,7 @@ from .group.lifecycle.schemas import (
     NextLevelCreationResult,
     SessionSummaryDTO,
 )
-from .group.details.schemas import (
+from .schemas.group_details_schemas import (
     LevelDeleteResultDTO,
     CourseLookupDTO,
     InstructorLookupDTO,

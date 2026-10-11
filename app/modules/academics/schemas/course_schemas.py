@@ -1,5 +1,5 @@
 """
-app/modules/academics/course/schemas.py
+app/modules/academics/schemas/course_schemas.py
 ────────────────────────────────────────────────
 Input DTOs and typed read models for the Course entity.
 """

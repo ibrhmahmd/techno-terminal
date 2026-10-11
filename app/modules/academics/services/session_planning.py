@@ -1,5 +1,5 @@
 """
-app/modules/academics/helpers/session_planning.py
+app/modules/academics/services/session_planning.py
 ──────────────────────────────────────────────────
 Session generation helper — extracted from academics_service.py.
 Pure orchestration: builds CourseSession instances within a given DB session.

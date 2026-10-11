@@ -1,19 +1,19 @@
 """
-app/modules/academics/group/directory/service.py
+app/modules/academics/services/group_directory_service.py
 ──────────────────────────────────────
 Service class for Group Directory business logic.
 """
 from datetime import date
 from app.db.connection import get_session
 from app.modules.academics.constants import DAY_ORDER
-from app.modules.academics.group.core.schemas import EnrichedGroupDTO
-from app.modules.academics.group.directory.schemas import (
+from app.modules.academics.schemas.group_schemas import EnrichedGroupDTO
+from app.modules.academics.schemas.group_directory_schemas import (
     GroupedItemDTO,
     GroupedGroupsResult,
     GroupFilterDTO,
     GroupFilterResultDTO,
 )
-import app.modules.academics.group.directory.repository as repo
+import app.modules.academics.repositories.group_directory_repository as repo
 
 
 class GroupDirectoryService:

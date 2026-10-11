@@ -9,7 +9,7 @@ from app.db.connection import get_session
 from app.modules.academics.models import CourseSession
 from app.modules.academics.models.course_models import Course
 from app.modules.hr.models import Employee
-from app.modules.academics.group.details.schemas import (
+from app.modules.academics.schemas.group_details_schemas import (
     CourseLookupDTO,
     InstructorLookupDTO,
     StudentLookupDTO,
@@ -37,11 +37,11 @@ from app.modules.finance.repositories.payment_repository import PaymentRepositor
 from app.shared.datetime_utils import utc_now
 from app.shared.exceptions import ConflictError
 
-import app.modules.academics.group.level.repository as level_repo
-from app.modules.academics.group.level.repository import list_group_levels
-import app.modules.academics.session.repository as session_repo
-import app.modules.academics.group.directory.repository as group_repo
-from app.modules.academics.group.analytics.repository import (
+import app.modules.academics.repositories.group_level_repository as level_repo
+from app.modules.academics.repositories.group_level_repository import list_group_levels
+import app.modules.academics.repositories.session_repository as session_repo
+import app.modules.academics.repositories.group_directory_repository as group_repo
+from app.modules.academics.repositories.group_analytics_repository import (
     get_enrollment_stats_by_levels,
     get_payment_stats_by_levels,
 )

@@ -6,13 +6,13 @@ Service for group analytics and history endpoints.
 from datetime import datetime
 
 from app.db.connection import get_session
-from app.modules.academics.group.analytics.schemas import (
+from app.modules.academics.schemas.group_analytics_schemas import (
     EnrollmentHistoryItemDTO,
     GroupEnrollmentHistoryResponseDTO,
     InstructorHistoryItemDTO,
     GroupInstructorHistoryResponseDTO,
 )
-from app.modules.academics.group.analytics.repository import (
+from app.modules.academics.repositories.group_analytics_repository import (
     get_group_enrollments_with_details,
     get_group_enrollment_stats,
     get_enrollment_payments,

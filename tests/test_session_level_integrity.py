@@ -7,19 +7,19 @@ def _unique(name: str) -> str:
     return f"{name}-{_time.time_ns()}"
 from app.modules.academics.models import Course, Group, CourseSession
 from app.modules.academics.models.group_level_models import GroupLevel
-from app.modules.academics.helpers.session_planning import create_sessions_in_session
-from app.modules.academics.session.repository import (
+from app.modules.academics.services.session_planning import create_sessions_in_session
+from app.modules.academics.repositories.session_repository import (
     get_group_level_id, list_sessions_by_group_level,
 )
-from app.modules.academics.session.service import SessionService
-from app.modules.academics.group.lifecycle.service import GroupLifecycleService
-from app.modules.academics.group.lifecycle.schemas import (
+from app.modules.academics.services.session_service import SessionService
+from app.modules.academics.services.group_lifecycle_service import GroupLifecycleService
+from app.modules.academics.schemas.group_lifecycle_schemas import (
     CreateGroupWithLevelDTO, ProgressLevelDTO, CreateGroupLevelDTO,
 )
-from app.modules.academics.group.core.schemas import ScheduleGroupInput
-from app.modules.academics.group.details.service import GroupDetailsService
-from app.modules.academics.course.schemas import AddNewCourseInput, UpdateCourseDTO, MAX_SESSIONS_PER_LEVEL, MAX_LEVELS
-from app.modules.academics.course.service import CourseService
+from app.modules.academics.schemas.group_schemas import ScheduleGroupInput
+from app.modules.academics.services.group_details_service import GroupDetailsService
+from app.modules.academics.schemas.course_schemas import AddNewCourseInput, UpdateCourseDTO, MAX_SESSIONS_PER_LEVEL, MAX_LEVELS
+from app.modules.academics.services.course_service import CourseService
 from app.shared.exceptions import ValidationError
 from sqlmodel import Session, select
 

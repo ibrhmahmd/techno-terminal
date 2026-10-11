@@ -255,7 +255,7 @@ For each slice (bottom-up, from least-dependent to most-dependent):
 ### Phase N+1 — Router Import Updates
 
 Update all routers to import through the module root `__init__.py`.  
-Never let routers import from internal slice paths (`from app.modules.academics.group.lifecycle.service import ...`).
+Never let routers import from internal slice paths (`from app.modules.academics.services.group_lifecycle_service import ...`).
 
 ### Phase N+2 — Module `__init__.py` Rebuild
 
@@ -392,7 +392,7 @@ from app.api.schemas.academics.group_analytics import GroupAnalyticsDTO  # WRONG
 **Good:**
 ```python
 # group/analytics/service.py
-from app.modules.academics.group.analytics.schemas import GroupAnalyticsDTO  # CORRECT
+from app.modules.academics.schemas.group_analytics_schemas import GroupAnalyticsDTO  # CORRECT
 ```
 
 ---
@@ -410,8 +410,8 @@ from .session_repository import create_session, list_sessions, ...
 **Good (direct slice imports):**
 ```python
 # In service file
-from app.modules.academics.group.core.repository import get_group_by_id
-from app.modules.academics.session.repository import create_session
+from app.modules.academics.repositories.group_repository import get_group_by_id
+from app.modules.academics.repositories.session_repository import create_session
 ```
 
 ---
@@ -466,7 +466,7 @@ WeekDay = Literal["Monday", "Tuesday", ...]  # DUPLICATE
 
 **Good:** Define once in the most foundational schema file (`group/core/schemas.py`). All other files import it:
 ```python
-from app.modules.academics.group.core.schemas import WeekDay
+from app.modules.academics.schemas.group_schemas import WeekDay
 ```
 
 ---
@@ -569,7 +569,7 @@ class GroupLifecycleService:
 **Bad:**
 ```python
 # groups_router.py
-from app.modules.academics.group.lifecycle.service import GroupLifecycleService
+from app.modules.academics.services.group_lifecycle_service import GroupLifecycleService
 ```
 
 **Good:**

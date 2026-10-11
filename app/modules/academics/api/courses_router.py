@@ -9,13 +9,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.schemas.common import ApiResponse, PaginatedResponse
 from app.modules.academics.api.schemas import CoursePublic
-from app.modules.academics.group.directory.schemas import GroupFilterResultDTO
+from app.modules.academics.schemas.group_directory_schemas import GroupFilterResultDTO
 from app.api.dependencies import require_admin, require_any
 from app.modules.academics.api.deps import get_course_service, get_group_directory_service
-from app.modules.academics.course.schemas import AddNewCourseInput, UpdateCourseDTO, CourseStatsDTO
+from app.modules.academics.schemas.course_schemas import AddNewCourseInput, UpdateCourseDTO, CourseStatsDTO
 from app.modules.auth import User
-from app.modules.academics.course.service import CourseService
-from app.modules.academics.group.directory.service import GroupDirectoryService
+from app.modules.academics.services.course_service import CourseService
+from app.modules.academics.services.group_directory_service import GroupDirectoryService
 
 router = APIRouter(tags=["Academics — Courses"])
 

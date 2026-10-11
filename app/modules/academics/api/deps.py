@@ -1,11 +1,11 @@
 """Academics HTTP-layer service factories (ADR-0002: api/ → services/)."""
 
-from app.modules.academics.course.service import CourseService
-from app.modules.academics.group.core.service import GroupCoreService
-from app.modules.academics.group.directory.service import GroupDirectoryService
-from app.modules.academics.group.level.service import GroupLevelService
-from app.modules.academics.session.service import SessionService
-from app.modules.academics.group.analytics.service import GroupAnalyticsService
+from app.modules.academics.services.course_service import CourseService
+from app.modules.academics.services.group_service import GroupCoreService
+from app.modules.academics.services.group_directory_service import GroupDirectoryService
+from app.modules.academics.services.group_level_service import GroupLevelService
+from app.modules.academics.services.session_service import SessionService
+from app.modules.academics.services.group_analytics_service import GroupAnalyticsService
 
 
 def get_course_service() -> CourseService:

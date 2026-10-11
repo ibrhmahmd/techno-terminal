@@ -9,8 +9,8 @@ from typing import List, Optional
 
 from app.db.connection import get_session
 from app.modules.academics.models import Group, GroupLevel, Course
-import app.modules.academics.group.level.repository as repo
-from app.modules.academics.group.level.schemas import (
+import app.modules.academics.repositories.group_level_repository as repo
+from app.modules.academics.schemas.group_level_schemas import (
     GroupLevelReadDTO,
     GroupLevelDetailDTO,
     UpdateLevelInput,

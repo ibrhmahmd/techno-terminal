@@ -1,5 +1,5 @@
 """
-app/modules/academics/group/analytics/schemas.py
+app/modules/academics/schemas/group_analytics_schemas.py
 ───────────────────────────────────────────────
 DTOs for group analytics and history endpoints.
 """

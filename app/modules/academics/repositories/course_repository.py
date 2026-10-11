@@ -1,5 +1,5 @@
 """
-app/modules/academics/course/repository.py
+app/modules/academics/repositories/course_repository.py
 ────────────────────────────────────────
 Repository functions for the Course slice.
 """
@@ -7,7 +7,7 @@ from typing import Sequence
 from sqlmodel import Session, select
 from sqlalchemy import text
 from app.modules.academics.models import Course
-from app.modules.academics.course.schemas import CourseStatsDTO
+from app.modules.academics.schemas.course_schemas import CourseStatsDTO
 from app.modules.academics.constants import VIEW_COURSE_STATS
 
 

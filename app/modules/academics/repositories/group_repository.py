@@ -1,5 +1,5 @@
 """
-app/modules/academics/group/core/repository.py
+app/modules/academics/repositories/group_repository.py
 ────────────────────────────────────────
 Repository functions for the Group Core slice.
 """
