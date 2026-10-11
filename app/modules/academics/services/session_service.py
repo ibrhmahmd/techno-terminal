@@ -3,9 +3,12 @@ app/modules/academics/services/session_service.py
 ──────────────────────────────────────
 Service class for Session-related business logic.
 """
+from datetime import timedelta
+
+from sqlmodel import select
+
 from app.db.uow import UnitOfWork
-from app.shared.audit_utils import apply_update_audit
-from app.shared.datetime_utils import utc_now
+from app.shared.audit_utils import apply_create_audit, apply_update_audit
 from app.shared.exceptions import NotFoundError, BusinessRuleError
 from app.modules.academics.models import Course, Group
 from app.modules.academics.models import CourseSession
@@ -113,7 +116,6 @@ class SessionService:
             notes=data.notes,
             group_level_id=gl_id,
         )
-        from app.shared.audit_utils import apply_create_audit
         apply_create_audit(cs)
         result = repo.create_session(self._uow.session, cs)
         self._uow.commit()
@@ -157,8 +159,6 @@ class SessionService:
         return count >= course.sessions_per_level
 
     def cancel_session(self, session_id: int) -> CourseSession:
-        from sqlmodel import select
-        from datetime import timedelta
 
         cs = repo.get_session_by_id(self._uow.session, session_id)
         if not cs:
@@ -210,7 +210,6 @@ class SessionService:
             status=SESSION_STATUS_SCHEDULED,
             group_level_id=repl_gl_id,
         )
-        from app.shared.audit_utils import apply_create_audit, apply_update_audit
         apply_create_audit(replacement)
         apply_update_audit(cs)
         self._uow.session.add(replacement)
@@ -220,7 +219,6 @@ class SessionService:
         return cs
 
     def reactivate_session(self, session_id: int) -> CourseSession:
-        from sqlmodel import select
 
         cs = repo.get_session_by_id(self._uow.session, session_id)
         if not cs:
@@ -263,7 +261,6 @@ class SessionService:
 
         cs.session_number = expected_number
         cs.status = SESSION_STATUS_SCHEDULED
-        from app.shared.audit_utils import apply_update_audit
         apply_update_audit(cs)
         self._uow.session.add(cs)
 

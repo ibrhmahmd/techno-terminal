@@ -6,7 +6,45 @@ DTOs for group analytics and history endpoints.
 from datetime import date, datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict
+
+
+# ════════════════════════════════════════════════════════════
+# Repository Row DTOs
+# ════════════════════════════════════════════════════════════
+
+class GroupEnrollmentStatsDTO(BaseModel):
+    """Enrollment counts for a whole group."""
+    model_config = ConfigDict(from_attributes=True)
+    total: int = 0
+    active: int = 0
+    completed: int = 0
+    dropped: int = 0
+
+
+class GroupEnrollmentDetailDTO(BaseModel):
+    """One enrollment row with the joining student's name and phone."""
+    model_config = ConfigDict(from_attributes=True)
+    enrollment_id: int
+    student_id: int
+    student_name: str
+    student_phone: Optional[str] = None
+    level_number: int
+    enrolled_at: Optional[date] = None
+    status: str
+    amount_due: float = 0.0
+    discount_applied: float = 0.0
+
+
+class GroupInstructorSummaryDTO(BaseModel):
+    """Per-instructor assignment summary for a group."""
+    model_config = ConfigDict(from_attributes=True)
+    instructor_id: int
+    instructor_name: str
+    first_assigned: datetime
+    last_assigned: datetime
+    levels_count: int
+    is_current: bool
 
 
 # ════════════════════════════════════════════════════════════

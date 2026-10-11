@@ -5,8 +5,71 @@ Typed DTOs for Group Details API endpoints.
 
 Follows dashboard API patterns with lookup tables and strict typing.
 """
+from datetime import date, datetime
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Repository Row DTOs (academics-owned copies of foreign read models)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class GroupRosterEntryDTO(BaseModel):
+    """One active-enrollment row in an attendance roster."""
+    model_config = ConfigDict(from_attributes=True)
+    enrollment_id: int
+    student_id: int
+    student_name: str
+    billing_status: str
+    balance: float
+    joined_at: Optional[datetime] = None
+
+
+class GroupEnrollmentDTO(BaseModel):
+    """One enrollment row with student and payment detail."""
+    model_config = ConfigDict(from_attributes=True)
+    enrollment_id: int
+    student_id: int
+    student_name: str
+    student_phone: Optional[str] = None
+    parent_name: Optional[str] = None
+    level_number: int
+    status: str
+    enrolled_at: Optional[date] = None
+    sessions_attended: int
+    sessions_total: int
+    payment_status: str
+    amount_due: float
+    amount_paid: float
+    discount_applied: float
+    can_transfer: bool
+    can_drop: bool
+
+
+class GroupPaymentRowDTO(BaseModel):
+    """One payment row for a group, with its level and course context.
+
+    ``receipt_id`` is intentionally never populated: the source query selects
+    ``p.receipt_id`` but the projection dropped it, so callers always saw
+    ``None``. That behaviour is preserved.
+    """
+    model_config = ConfigDict(from_attributes=True)
+    payment_id: int
+    student_id: int
+    student_name: str
+    enrollment_id: int
+    level_number: int
+    amount: float
+    discount_amount: float
+    payment_date: Optional[datetime] = None
+    payment_method: str
+    status: str
+    receipt_number: Optional[str] = None
+    receipt_id: Optional[int] = None
+    transaction_type: str
+    course_name: str
+    amount_due: float
+    discount_applied: float
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

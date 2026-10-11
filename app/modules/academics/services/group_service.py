@@ -4,13 +4,15 @@ app/modules/academics/services/group_service.py
 Service class for Group Core business logic.
 """
 from app.db.uow import UnitOfWork
-from app.shared.audit_utils import apply_update_audit
+from app.shared.audit_utils import apply_create_audit, apply_update_audit
 from app.shared.exceptions import NotFoundError
 from app.modules.academics.models import Group
 from app.modules.academics.schemas.group_schemas import ScheduleGroupInput, UpdateGroupDTO
 from app.modules.academics.repositories.group_repository import GroupRepository
 from app.modules.academics.repositories.course_repository import CourseRepository
 from app.modules.hr.models import Employee
+from app.shared.time_helpers import fmt_12h
+from app.modules.academics.constants import GROUP_STATUS_COMPLETED, GROUP_STATUS_INACTIVE
 
 
 class GroupCoreService:
@@ -21,7 +23,6 @@ class GroupCoreService:
 
     def schedule_group(self, data: ScheduleGroupInput) -> Group:
         """Schedules a new standalone group."""
-        from app.shared.time_helpers import fmt_12h
         # Validate FKs
         course = self._course_repo.get_course_by_id(data.course_id)
         if not course:
@@ -44,7 +45,6 @@ class GroupCoreService:
             max_capacity=data.max_capacity,
             notes=data.notes,
         )
-        from app.shared.audit_utils import apply_create_audit
         apply_create_audit(group)
         return self._repo.create_group(group)
 
@@ -80,7 +80,6 @@ class GroupCoreService:
         Archive a group. The group has finished its lifecycle and is kept for
         historical reference. Enrollments remain — status becomes 'archived'.
         """
-        from app.modules.academics.constants import GROUP_STATUS_COMPLETED
         group = self._repo.get_group_by_id(group_id)
         if not group:
             raise NotFoundError(f"Group {group_id} not found.")
@@ -96,7 +95,6 @@ class GroupCoreService:
         Deactivate a group. Different from archiving — the group is suspended
         (e.g. on hold, no new sessions). Status becomes 'inactive'.
         """
-        from app.modules.academics.constants import GROUP_STATUS_INACTIVE
         group = self._repo.get_group_by_id(group_id)
         if not group:
             raise NotFoundError(f"Group {group_id} not found.")

@@ -8,10 +8,11 @@ These are read-only operations served by GroupDirectoryService.
 
 Auth: all endpoints require at least require_any (any authenticated user).
 """
-from fastapi import APIRouter, Depends, Query, Path
+from fastapi import APIRouter, Depends, HTTPException, Query
+from datetime import date as _date, time as _time
 from typing import List, Optional
 
-from app.api.schemas.common import ApiResponse, PaginatedResponse
+from app.api.schemas.common import ApiResponse
 from app.modules.academics.api.schemas.group import (
     EnrichedGroupPublic,
 )
@@ -115,9 +116,6 @@ def filter_groups(
     svc: GroupDirectoryService = Depends(get_group_directory_service),
 ):
     """Filter groups by multiple criteria with pagination."""
-    from datetime import date as _date, time as _time
-    from fastapi import HTTPException
-
     # Parse date/time strings
     parsed_start_date_from = None
     parsed_start_date_to = None
@@ -185,7 +183,6 @@ def get_enriched_group(
     _user: User = Depends(require_any),
     svc: GroupDirectoryService = Depends(get_group_directory_service),
 ):
-    from fastapi import HTTPException
     group = svc.get_enriched_group_by_id(group_id)
     if not group:
         raise HTTPException(status_code=404, detail=f"Group {group_id} not found")

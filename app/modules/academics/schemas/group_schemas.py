@@ -3,11 +3,10 @@ app/modules/academics/schemas/group_schemas.py
 ───────────────────────────────────────────────
 Input DTOs for the Group entity.
 """
-from datetime import date, time
-from decimal import Decimal
+from datetime import time
 from typing import Literal, Optional
 from pydantic import BaseModel, model_validator
-from app.modules.academics.constants import WEEKDAYS
+from app.shared.time_helpers import validate_times
 
 WeekDay = Literal[
     "Monday", "Tuesday", "Wednesday", "Thursday",
@@ -23,7 +22,6 @@ class ScheduleInput(BaseModel):
 
     @model_validator(mode="after")
     def validate_time_window(self) -> "ScheduleInput":
-        from app.shared.time_helpers import validate_times
         validate_times(self.time_start, self.time_end)
         return self
 

@@ -13,7 +13,7 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, Query
 
-from app.api.schemas.common import ApiResponse, PaginatedResponse
+from app.api.schemas.common import ApiResponse
 from app.modules.academics.api.schemas.group import (
     GroupPublic,
 )
@@ -28,6 +28,8 @@ from app.modules.academics.api.deps import (
     get_lifecycle_service,
 )
 from app.modules.academics.schemas.group_schemas import ScheduleGroupInput, UpdateGroupDTO
+from app.modules.academics.schemas.group_lifecycle_schemas import CreateGroupWithLevelDTO
+from app.modules.academics.schemas.session_schemas import GenerateLevelSessionsInput
 from app.modules.auth import User
 from app.modules.academics.services.group_service import GroupCoreService
 from app.modules.academics.services.session_service import SessionService
@@ -70,8 +72,6 @@ def create_group(
     Atomic operation: creates a new group, its Level 1, and the initial sessions
     all in a single transaction. Uses course.sessions_per_level for session count.
     """
-    from app.modules.academics.schemas.group_lifecycle_schemas import CreateGroupWithLevelDTO
-
     create_data = CreateGroupWithLevelDTO(group_input=body)
     result = lifecycle_svc.create_group_with_first_level(create_data)
 
@@ -178,8 +178,6 @@ def generate_level_sessions(
     _user: User = Depends(require_admin),
     svc: SessionService = Depends(get_session_service),
 ):
-    from app.modules.academics.schemas.session_schemas import GenerateLevelSessionsInput
-
     data = GenerateLevelSessionsInput(
         group_id=group_id,
         level_number=body.level_number,

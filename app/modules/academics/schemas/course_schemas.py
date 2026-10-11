@@ -4,9 +4,10 @@ app/modules/academics/schemas/course_schemas.py
 Input DTOs and typed read models for the Course entity.
 """
 
-from typing import Optional, Literal
+from typing import Optional
 from pydantic import BaseModel, field_validator
 from app.shared.validators import validate_positive_amount
+from app.shared.exceptions import ValidationError
 
 
 MAX_SESSIONS_PER_LEVEL = 100
@@ -16,10 +17,8 @@ MAX_LEVELS = 100
 def _validate_max_levels(v: int | None) -> int | None:
     if v is not None:
         if v < 1:
-            from app.shared.exceptions import ValidationError
             raise ValidationError("max_levels must be at least 1.")
         if v > MAX_LEVELS:
-            from app.shared.exceptions import ValidationError
             raise ValidationError(f"max_levels must not exceed {MAX_LEVELS}.")
     return v
 
@@ -50,7 +49,6 @@ class AddNewCourseInput(BaseModel):
         if v is not None:
             allowed = {"software", "hardware", "steam", "other"}
             if v not in allowed:
-                from app.shared.exceptions import ValidationError
 
                 raise ValidationError(
                     f"Category must be one of: {', '.join(sorted(allowed))}"
@@ -67,11 +65,9 @@ class AddNewCourseInput(BaseModel):
     @classmethod
     def sessions_positive(cls, v: int) -> int:
         if v <= 0:
-            from app.shared.exceptions import ValidationError
 
             raise ValidationError("Sessions per level must be at least 1.")
         if v > MAX_SESSIONS_PER_LEVEL:
-            from app.shared.exceptions import ValidationError
 
             raise ValidationError(
                 f"Sessions per level must not exceed {MAX_SESSIONS_PER_LEVEL}."
@@ -103,7 +99,6 @@ class UpdateCourseDTO(BaseModel):
         if v is not None:
             allowed = {"software", "hardware", "steam", "other"}
             if v not in allowed:
-                from app.shared.exceptions import ValidationError
 
                 raise ValidationError(
                     f"Category must be one of: {', '.join(sorted(allowed))}"
@@ -122,11 +117,9 @@ class UpdateCourseDTO(BaseModel):
     def sessions_positive(cls, v: Optional[int]) -> Optional[int]:
         if v is not None:
             if v <= 0:
-                from app.shared.exceptions import ValidationError
 
                 raise ValidationError("Sessions per level must be at least 1.")
             if v > MAX_SESSIONS_PER_LEVEL:
-                from app.shared.exceptions import ValidationError
 
                 raise ValidationError(
                     f"Sessions per level must not exceed {MAX_SESSIONS_PER_LEVEL}."

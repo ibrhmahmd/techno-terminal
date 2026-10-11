@@ -4,8 +4,7 @@ app/modules/academics/services/group_level_service.py
 Service class for Group Level (OTS) management.
 """
 
-from datetime import date
-from typing import List, Optional
+from typing import Optional
 
 from app.db.uow import UnitOfWork
 from app.modules.academics.models import Group, GroupLevel, Course
@@ -16,8 +15,9 @@ from app.modules.academics.schemas.group_level_schemas import (
     UpdateLevelInput,
 )
 from app.modules.hr.models import Employee
-from app.modules.academics.constants import DEFAULT_SESSIONS_PER_LEVEL
 from app.shared.datetime_utils import utc_now
+from app.shared.audit_utils import apply_update_audit
+from app.shared.exceptions import NotFoundError, BusinessRuleError
 
 
 class GroupLevelService:
@@ -42,7 +42,6 @@ class GroupLevelService:
         Raises:
             ValueError: If level not found
         """
-        from app.shared.exceptions import NotFoundError
         session = self._uow.session
         level = repo.get_group_level_by_number(session, group_id, level_number)
         if not level:
@@ -133,9 +132,6 @@ class GroupLevelService:
         """
         Update mutable fields of a level (active levels only).
         """
-        from app.shared.exceptions import NotFoundError, BusinessRuleError
-        from app.modules.hr.models import Employee
-        from app.modules.academics.models import Course
 
         session = self._uow.session
         # 1. Fetch level
@@ -178,8 +174,6 @@ class GroupLevelService:
         self, group_id: int, level_number: int, reason: Optional[str] = None
     ) -> GroupLevel:
         """Cancel a level (admin only operation)."""
-        from app.shared.exceptions import NotFoundError
-        from app.modules.academics.models import Group
 
         session = self._uow.session
         # 1. Fetch level first
@@ -196,7 +190,6 @@ class GroupLevelService:
         # 3. Cancel it
         level.status = "cancelled"
         level.effective_to = utc_now()
-        from app.shared.audit_utils import apply_update_audit
         apply_update_audit(level)
 
         if reason:

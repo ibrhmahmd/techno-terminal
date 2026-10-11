@@ -45,6 +45,8 @@ Optional PDF/receipt settings in `app/core/config.py`.
 
 `app/` is mid-migration to a target shape recorded in `docs/adr/`. Read the relevant ADR before writing, moving, or reviewing code under `app/modules` or `app/api`. New and migrated code follows the target; legacy code is converted one module per ticket, bottom-up.
 
+Architecture: modular monolith per the `modular-architecture` skill, tier full; decisions in `docs/adr/` (0001–0008, which win over the skill's defaults); module order bottom→top: auth, hr, crm, academics, enrollments, attendance, competitions, finance, tasks, notifications, analytics. Declined defaults: none.
+
 ### Target shape (ADRs)
 
 | ADR | Rule |

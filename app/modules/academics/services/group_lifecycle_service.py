@@ -6,28 +6,33 @@ Coordinates group, level, and session work for a group's lifecycle.
 """
 from datetime import date
 
+from sqlmodel import select, delete
+
 from app.db.uow import UnitOfWork
 from app.modules.academics.models import Course, Group, CourseSession
-from app.modules.academics.models.group_level_models import GroupLevel, GroupCourseHistory
+from app.modules.academics.models.group_level_models import (
+    GroupLevel, GroupCourseHistory, EnrollmentLevelHistory,
+)
 from app.modules.hr.models import Employee
 import app.modules.academics.repositories.group_level_repository as repo
-from app.shared.exceptions import BusinessRuleError
+from app.shared.exceptions import BusinessRuleError, NotFoundError
 from app.shared.audit_utils import apply_create_audit, apply_update_audit
+from app.modules.academics.services.session_planning import create_sessions_in_session
 from app.modules.academics.schemas.group_lifecycle_schemas import (
     CreateGroupWithLevelDTO,
-    CreateGroupLevelDTO,
     ProgressLevelDTO,
     GroupCreationResult,
     NextLevelCreationResult,
-    GroupLevelResult,
     SessionSummaryDTO,
     DeleteLevelResult,
 )
 from app.modules.academics.schemas.group_schemas import ScheduleGroupInput as CreateGroupDTO
-from app.shared.time_helpers import next_weekday
-from app.modules.academics.constants import GROUP_STATUS_ACTIVE
-from app.modules.academics.constants import DEFAULT_SESSIONS_PER_LEVEL
+from app.shared.time_helpers import next_weekday, fmt_12h
 from app.shared.datetime_utils import utc_now
+from app.modules.enrollments.models.enrollment_models import Enrollment
+from app.modules.finance.models.payment import Payment
+from app.modules.attendance.models.attendance_models import Attendance
+from app.modules.crm.models.activity_models import StudentActivityLog
 
 
 class GroupLifecycleService:
@@ -106,7 +111,6 @@ class GroupLifecycleService:
             )
 
         # Phase 4: Generate sessions
-        from app.modules.academics.services.session_planning import create_sessions_in_session
             
         sessions = create_sessions_in_session(
             session=session,
@@ -228,7 +232,6 @@ class GroupLifecycleService:
         session.flush()
 
         # Phase 6: Generate sessions for new level
-        from app.modules.academics.services.session_planning import create_sessions_in_session
 
         sessions = create_sessions_in_session(
             session=session,
@@ -257,88 +260,8 @@ class GroupLifecycleService:
             sessions_created=len(sessions),
         )
 
-    def add_level_to_existing_group(
-        self,
-        data: CreateGroupLevelDTO
-    ) -> GroupLevelResult:
-        """
-        Add a new level to an existing group with sessions.
-        
-        Args:
-            data: Level creation parameters
-            
-        Returns:
-            GroupLevelResult with level details and session count
-        """
-        session = self._uow.session
-        # Validate group exists and is active
-        group = session.get(Group, data.group_id)
-        if not group:
-            raise ValueError(f"Group {data.group_id} not found")
-        if group.status != GROUP_STATUS_ACTIVE:
-            raise BusinessRuleError(f"Group {data.group_id} is not active")
-
-        # Check level doesn't exist
-        existing = repo.get_group_level_by_number(
-            session, data.group_id, data.level_number
-        )
-        if existing:
-            raise ValueError(
-                f"Level {data.level_number} already exists for group {data.group_id}"
-            )
-
-        # Determine course and pricing
-        course = session.get(Course, data.course_id or group.course_id)
-        price_override = data.price_override
-        if price_override is None or price_override == 0:
-            price_override = None
-
-        # Create level
-        level = GroupLevel(
-            group_id=data.group_id,
-            level_number=data.level_number,
-            course_id=data.course_id or group.course_id,
-            instructor_id=data.instructor_id or group.instructor_id,
-            sessions_planned=data.sessions_planned,
-            price_override=price_override,
-            status=data.status,
-        )
-        apply_create_audit(level)
-        session.add(level)
-        session.flush()
-
-        # Generate sessions
-        from app.modules.academics.services.session_planning import create_sessions_in_session
-            
-        sessions = create_sessions_in_session(
-            session=session,
-            group=group,
-            sessions_count=data.sessions_planned,
-            start_date=data.start_date or (
-                next_weekday(date.today(), group.default_day) if group.default_day else date.today()
-            ),
-            level_number=data.level_number,
-            group_level_id=level.id,
-        )
-
-        # Update group's level_number to match the new level
-        group.level_number = data.level_number
-        apply_update_audit(group)
-        session.add(group)
-
-        self._uow.commit()
-
-        return GroupLevelResult(
-            level_id=level.id,
-            group_id=group.id,
-            level_number=level.level_number,
-            sessions_count=len(sessions),
-            status=level.status,
-        )
-
     def _generate_group_name(self, data: CreateGroupDTO, course_name: str) -> str:
         """Generate auto-name for a group."""
-        from app.shared.time_helpers import fmt_12h
         return f"{course_name} - {data.schedule.day} {fmt_12h(data.schedule.time_start)}"
 
 
@@ -357,13 +280,6 @@ class GroupLifecycleService:
         """
         Delete a level and cascade-remove all related records.
         """
-        from app.shared.exceptions import NotFoundError, BusinessRuleError
-        from app.modules.academics.models import GroupLevel, Group, CourseSession
-        from app.modules.enrollments.models.enrollment_models import Enrollment
-        from app.modules.academics.models.group_level_models import EnrollmentLevelHistory
-        from app.modules.finance.models.payment import Payment
-        from app.modules.attendance.models.attendance_models import Attendance
-        from sqlmodel import select, delete
 
         session = self._uow.session
         # 1. Fetch group
@@ -422,7 +338,6 @@ class GroupLifecycleService:
 
         # Delete student activity log entries matching 'level_started' reference to these enrollments
         if new_enrollment_ids:
-            from app.modules.crm.models.activity_models import StudentActivityLog
             del_act_stmt = delete(StudentActivityLog).where(
                 StudentActivityLog.activity_subtype == "level_started",
                 StudentActivityLog.reference_type == "enrollment",
@@ -470,7 +385,6 @@ class GroupLifecycleService:
             session.delete(s)
 
         # Delete latest group course history entry if course was changed during this level progression
-        from app.modules.academics.models.group_level_models import GroupCourseHistory
         history_stmt = (
             select(GroupCourseHistory)
             .where(GroupCourseHistory.group_id == group_id)

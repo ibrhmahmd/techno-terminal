@@ -31,11 +31,14 @@ from app.modules.academics.schemas.group_details_schemas import (
     EnrollmentInLevelDTO,
     LevelEnrollmentSummaryDTO,
     TransferOptionDTO,
+    GroupEnrollmentDTO,
+    GroupPaymentRowDTO,
 )
 from collections import defaultdict
-from app.modules.finance.repositories.payment_repository import PaymentRepository
+from sqlmodel import select, func
+from app.modules.academics.constants import ENROLLMENT_STATUS_ACTIVE
+from app.modules.enrollments.models.enrollment_models import Enrollment
 from app.shared.datetime_utils import utc_now
-from app.shared.exceptions import ConflictError
 
 import app.modules.academics.repositories.group_level_repository as level_repo
 from app.modules.academics.repositories.group_level_repository import list_group_levels
@@ -45,11 +48,9 @@ from app.modules.academics.repositories.group_analytics_repository import (
     get_enrollment_stats_by_levels,
     get_payment_stats_by_levels,
 )
-from app.modules.enrollments.analytics.repository import (
-    get_roster_for_group_level,
-    get_enrollments_by_group_with_students,
+from app.modules.academics.repositories.group_details_repository import (
+    GroupDetailsRepository,
 )
-from app.modules.enrollments.analytics.schemas import GroupEnrollmentDTO
 
 
 class GroupDetailsService:
@@ -231,7 +232,7 @@ class GroupDetailsService:
 
     def _build_courses_lookup(
         self, session, course_ids: list[int]
-    ) -> dict[int, CourseLookupDTO]: #TODO remove Dict and write a typed DTO class
+    ) -> dict[int, CourseLookupDTO]:
         """Build lookup table for courses."""
         lookup: dict[int, CourseLookupDTO] = {}
         for cid in course_ids:
@@ -245,7 +246,7 @@ class GroupDetailsService:
 
     def _build_instructors_lookup(
         self, session, instructor_ids: list[int]
-    ) -> dict[int, InstructorLookupDTO]: #TODO remove Dict and write a typed DTO class
+    ) -> dict[int, InstructorLookupDTO]:
         """Build lookup table for instructors."""
         lookup: dict[int, InstructorLookupDTO] = {}
         for iid in instructor_ids:
@@ -270,12 +271,11 @@ class GroupDetailsService:
         Returns roster + sessions with attendance map.
         Uses 3-query pattern similar to dashboard.
         """
-        import app.modules.attendance.repositories.attendance_repository as attendance_repo
-        
         session = self._uow.session
+        details_repo = GroupDetailsRepository(session)
         # Query 1: Get roster (active enrollments with billing status)
-        roster_data = get_roster_for_group_level(
-            session, group_id, level_number
+        roster_data = details_repo.get_roster_for_group_level(
+            group_id, level_number
         )
             
         # Query 2: Get sessions for this level
@@ -284,8 +284,8 @@ class GroupDetailsService:
         )
             
         # Query 3: Get all attendance records for these sessions
-        attendance_records = attendance_repo.get_attendance_for_group_level(
-            session, group_id, level_number
+        attendance_records = details_repo.get_attendance_for_group_level(
+            group_id, level_number
         )
             
         # Build roster DTOs
@@ -355,13 +355,13 @@ class GroupDetailsService:
         levels = list_group_levels(session, group_id, include_inactive=True)
             
         # Get all payments with level info
-        payment_repo = PaymentRepository(session)
-        payments_data = payment_repo.get_payments_by_group_with_levels(group_id)
+        details_repo = GroupDetailsRepository(session)
+        payments_data = details_repo.get_payments_by_group_with_levels(group_id)
             
         # Group payments by level
-        payments_by_level: dict[int, list[dict]] = defaultdict(list)
+        payments_by_level: dict[int, list[GroupPaymentRowDTO]] = defaultdict(list)
         for p in payments_data:
-            payments_by_level[p["level_number"]].append(p)
+            payments_by_level[p.level_number].append(p)
             
         # Build per-level summaries
         by_level: list[LevelPaymentSummaryDTO] = []
@@ -374,16 +374,13 @@ class GroupDetailsService:
             level_payments = payments_by_level.get(ln, [])
                 
             # Calculate aggregates
-            expected = sum(p["amount_due"] - p["discount_applied"] for p in level_payments)
-            collected = sum(p["amount"] for p in level_payments if p["transaction_type"] != "refund")
-            refunds = sum(p["amount"] for p in level_payments if p["transaction_type"] == "refund")
+            expected = sum(p.amount_due - p.discount_applied for p in level_payments)
+            collected = sum(p.amount for p in level_payments if p.transaction_type != "refund")
+            refunds = sum(p.amount for p in level_payments if p.transaction_type == "refund")
             net_collected = collected - refunds
             due = max(0, expected - net_collected)
                 
             # Get actual enrolled student count for this level (not just those with payments)
-            from app.modules.enrollments.models.enrollment_models import Enrollment
-            from sqlmodel import select, func
-                
             enrolled_stmt = select(func.count(Enrollment.id)).where(
                 Enrollment.group_id == group_id,
                 Enrollment.level_number == ln,
@@ -393,8 +390,8 @@ class GroupDetailsService:
                 
             # Count unique students who paid
             paid_students = set(
-                p["student_id"] for p in level_payments 
-                if p["transaction_type"] != "refund"
+                p.student_id for p in level_payments 
+                if p.transaction_type != "refund"
             )
                 
             # Get course name
@@ -404,17 +401,17 @@ class GroupDetailsService:
             # Build payment DTOs
             payment_dtos = [
                 PaymentInLevelDTO(
-                    payment_id=p["payment_id"],
-                    student_id=p["student_id"],
-                    student_name=p["student_name"],
-                    amount=p["amount"],
-                    discount_amount=p["discount_amount"],
-                    payment_date=str(p["payment_date"])[:10] if p["payment_date"] else "",
-                    payment_method=p["payment_method"],
-                    status=p["status"],
-                    receipt_number=p["receipt_number"],
-                    receipt_id=p.get("receipt_id"),
-                    transaction_type=p["transaction_type"],
+                    payment_id=p.payment_id,
+                    student_id=p.student_id,
+                    student_name=p.student_name,
+                    amount=p.amount,
+                    discount_amount=p.discount_amount,
+                    payment_date=str(p.payment_date)[:10] if p.payment_date else "",
+                    payment_method=p.payment_method,
+                    status=p.status,
+                    receipt_number=p.receipt_number,
+                    receipt_id=p.receipt_id,
+                    transaction_type=p.transaction_type,
                 )
                 for p in level_payments
             ]
@@ -472,9 +469,9 @@ class GroupDetailsService:
         levels = list_group_levels(session, group_id, include_inactive=True)
             
         # Get all enrollments with student details
-        enrollments_data = get_enrollments_by_group_with_students(
-            session, group_id
-        )
+        enrollments_data = GroupDetailsRepository(
+            session
+        ).get_enrollments_by_group_with_students(group_id)
             
         # Get transfer options (exclude current group)
         transfer_options_data = group_repo.get_transfer_options(
@@ -560,9 +557,6 @@ class GroupDetailsService:
             course = session.get(Course, t.course_id) if t.course_id else None
             course_name = course.name if course else "Unknown"
             # Calculate available slots
-            from app.modules.enrollments.models.enrollment_models import Enrollment
-            from app.modules.academics.constants import ENROLLMENT_STATUS_ACTIVE
-            from sqlmodel import select, func
             enrolled_count_stmt = select(func.count(Enrollment.id)).where(
                 Enrollment.group_id == t.id,
                 Enrollment.level_number == t.level_number,

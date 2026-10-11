@@ -5,6 +5,7 @@ Repository functions for the Group Core slice.
 """
 from sqlmodel import Session
 from app.modules.academics.models import Group
+from app.shared.audit_utils import apply_update_audit
 
 
 class GroupRepository:
@@ -29,7 +30,6 @@ class GroupRepository:
         group = self._session.get(Group, group_id)
         if group:
             group.status = status
-            from app.shared.audit_utils import apply_update_audit
             apply_update_audit(group)
             self._session.add(group)
         return group
@@ -38,7 +38,6 @@ class GroupRepository:
         group = self._session.get(Group, group_id)
         if group:
             group.level_number += 1
-            from app.shared.audit_utils import apply_update_audit
             apply_update_audit(group)
             self._session.add(group)
         return group

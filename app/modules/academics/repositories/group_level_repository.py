@@ -6,16 +6,20 @@ Repository functions for Group Levels (OTS Levels).
 from typing import Sequence, Optional
 from sqlmodel import Session, select, func
 from app.shared.datetime_utils import utc_now
+from app.shared.audit_utils import apply_create_audit, apply_update_audit
 from app.modules.academics.models.group_level_models import GroupLevel
+from app.modules.academics.models.session_models import CourseSession
 from app.modules.academics.constants import (
     LEVEL_STATUS_ACTIVE, LEVEL_STATUS_COMPLETED, LEVEL_STATUS_CANCELLED,
     ENROLLMENT_STATUS_ACTIVE,
 )
+from app.modules.enrollments.models.enrollment_models import Enrollment
+from app.modules.attendance.models.attendance_models import Attendance
+from app.modules.finance.models.payment import Payment
 
 
 def create_group_level(session: Session, level: GroupLevel) -> GroupLevel:
     """Create a new group level snapshot."""
-    from app.shared.audit_utils import apply_create_audit
     apply_create_audit(level)
     session.add(level)
     session.flush()
@@ -99,7 +103,6 @@ def get_levels_by_group(
 
 def update_group_level(session: Session, level: GroupLevel) -> GroupLevel:
     """Update a group level (limited fields allowed)."""
-    from app.shared.audit_utils import apply_update_audit
     apply_update_audit(level)
     session.add(level)
     session.flush()
@@ -114,7 +117,6 @@ def complete_group_level(
     if level:
         level.status = LEVEL_STATUS_COMPLETED
         level.effective_to = utc_now()
-        from app.shared.audit_utils import apply_update_audit
         apply_update_audit(level)
         session.add(level)
         session.flush()
@@ -129,7 +131,6 @@ def cancel_group_level(
     if level:
         level.status = LEVEL_STATUS_CANCELLED
         level.effective_to = utc_now()
-        from app.shared.audit_utils import apply_update_audit
         apply_update_audit(level)
         session.add(level)
         session.flush()
@@ -149,7 +150,6 @@ def get_current_group_level(session: Session, group_id: int) -> GroupLevel | Non
 
 def has_sessions_for_level(session: Session, group_id: int, level_number: int) -> bool:
     """Check if any sessions exist for this group level."""
-    from app.modules.academics.models.session_models import CourseSession
     stmt = (
         select(func.count())
         .select_from(CourseSession)
@@ -162,7 +162,6 @@ def has_sessions_for_level(session: Session, group_id: int, level_number: int) -
 
 def has_enrollments_for_level(session: Session, group_id: int, level_number: int) -> bool:
     """Check if any active enrollments exist at this level."""
-    from app.modules.enrollments.models.enrollment_models import Enrollment
     stmt = (
         select(func.count())
         .select_from(Enrollment)
@@ -205,8 +204,6 @@ def count_payments_for_level(
     session: Session, group_id: int, level_number: int
 ) -> int:
     """Count how many payments exist for students enrolled at this level."""
-    from app.modules.finance.models.payment import Payment
-    from app.modules.enrollments.models.enrollment_models import Enrollment
     stmt = (
         select(func.count(Payment.id))
         .select_from(Payment)
@@ -222,8 +219,6 @@ def count_attendance_for_level(
     session: Session, group_id: int, level_number: int
 ) -> int:
     """Count how many attendance records exist for sessions at this level."""
-    from app.modules.attendance.models.attendance_models import Attendance
-    from app.modules.academics.models.session_models import CourseSession
     stmt = (
         select(func.count(Attendance.id))
         .select_from(Attendance)

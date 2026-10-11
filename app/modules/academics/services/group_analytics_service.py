@@ -3,8 +3,6 @@ app/modules/academics/services/group_analytics_service.py
 ───────────────────────────────────────────────────────
 Service for group analytics and history endpoints.
 """
-from datetime import datetime
-
 from app.db.uow import UnitOfWork
 from app.modules.academics.schemas.group_analytics_schemas import (
     EnrollmentHistoryItemDTO,
@@ -53,23 +51,23 @@ class GroupAnalyticsService:
 
         # Build enrollment DTOs
         enrollment_dtos = []
-        for enrollment, student_name, student_phone in enrollments_data:
+        for dto in enrollments_data:
             # Calculate payments
-            payments_made = get_enrollment_payments(session, enrollment.id)
-            amount_due = enrollment.amount_due or 0.0
-            discount_applied = enrollment.discount_applied or 0.0
+            payments_made = get_enrollment_payments(session, dto.enrollment_id)
+            amount_due = dto.amount_due
+            discount_applied = dto.discount_applied
             balance_remaining = amount_due - payments_made - discount_applied
 
             enrollment_dtos.append(EnrollmentHistoryItemDTO(
-                enrollment_id=enrollment.id,
-                student_id=enrollment.student_id,
-                student_name=student_name,
-                student_phone=student_phone,
-                level_number_at_enrollment=enrollment.level_number,
-                enrolled_at=enrollment.enrolled_at,
-                status=enrollment.status,
-                amount_due=enrollment.amount_due or 0.0,
-                discount_applied=enrollment.discount_applied or 0.0,
+                enrollment_id=dto.enrollment_id,
+                student_id=dto.student_id,
+                student_name=dto.student_name,
+                student_phone=dto.student_phone,
+                level_number_at_enrollment=dto.level_number,
+                enrolled_at=dto.enrolled_at,
+                status=dto.status,
+                amount_due=dto.amount_due,
+                discount_applied=dto.discount_applied,
                 payments_made=payments_made,
                 balance_remaining=balance_remaining,
             ))
@@ -77,10 +75,10 @@ class GroupAnalyticsService:
         return GroupEnrollmentHistoryResponseDTO(
             group_id=group_id,
             group_name=group_name,
-            total_enrollments=stats["total"],
-            active_enrollments=stats["active"],
-            completed_enrollments=stats["completed"],
-            dropped_enrollments=stats["dropped"],
+            total_enrollments=stats.total,
+            active_enrollments=stats.active,
+            completed_enrollments=stats.completed,
+            dropped_enrollments=stats.dropped,
             enrollments=enrollment_dtos
         )
 
@@ -101,25 +99,18 @@ class GroupAnalyticsService:
         instructor_dtos = []
         current_instructor = None
 
-        for (
-            instructor_id,
-            instructor_name,
-            first_assigned,
-            last_assigned,
-            levels_count,
-            is_current
-        ) in instructors_data:
+        for summary in instructors_data:
             dto = InstructorHistoryItemDTO(
-                instructor_id=instructor_id,
-                instructor_name=instructor_name,
-                is_current=is_current,
-                levels_taught_count=levels_count,
-                first_assigned_at=first_assigned,
-                last_assigned_at=last_assigned,
+                instructor_id=summary.instructor_id,
+                instructor_name=summary.instructor_name,
+                is_current=summary.is_current,
+                levels_taught_count=summary.levels_count,
+                first_assigned_at=summary.first_assigned,
+                last_assigned_at=summary.last_assigned,
             )
             instructor_dtos.append(dto)
 
-            if is_current:
+            if summary.is_current:
                 current_instructor = dto
 
         return GroupInstructorHistoryResponseDTO(

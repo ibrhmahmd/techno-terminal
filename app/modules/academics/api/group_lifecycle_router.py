@@ -15,6 +15,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query
 
 from app.api.schemas.common import ApiResponse
 from app.shared.exceptions import NotFoundError, BusinessRuleError
+from app.shared.datetime_utils import utc_now
 from app.api.dependencies import (
     require_any,
     require_admin,
@@ -80,7 +81,6 @@ def cancel_group_level_endpoint(
     """
     try:
         cancelled_level = svc.cancel_level(group_id, level_number, body.reason)
-        from app.shared.datetime_utils import utc_now
         return ApiResponse(
             data=CancelLevelResult(
                 level_id=cancelled_level.id,

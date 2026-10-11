@@ -303,14 +303,16 @@ class TestLifecycleService:
     _emp_counter = 0
 
     def _create_employee(self, db_session):
+        import uuid
         TestLifecycleService._emp_counter += 1
         counter = TestLifecycleService._emp_counter
         from app.modules.hr.models import Employee
         from datetime import datetime
+        token = uuid.uuid4().int
         emp = Employee(
             full_name=f"Test Instructor {counter}",
-            phone=f"+2010000000{counter:03d}",
-            national_id=f"{10000000000000 + counter}",
+            phone=f"+201{token % 10**9:09d}",
+            national_id=f"{token % 10**14:014d}",
             university="Test University",
             major="Computer Science",
             hired_at=datetime.now(tz=None),
