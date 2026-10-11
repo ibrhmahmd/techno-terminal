@@ -9,6 +9,8 @@ from app.modules.academics.services.group_directory_service import GroupDirector
 from app.modules.academics.services.group_level_service import GroupLevelService
 from app.modules.academics.services.session_service import SessionService
 from app.modules.academics.services.group_analytics_service import GroupAnalyticsService
+from app.modules.academics.services.group_details_service import GroupDetailsService
+from app.modules.academics.services.group_lifecycle_service import GroupLifecycleService
 
 
 def get_course_service(
@@ -51,3 +53,17 @@ def get_group_analytics_service(
 ) -> GroupAnalyticsService:
     """Returns a GroupAnalyticsService with request-scoped UnitOfWork."""
     return GroupAnalyticsService(uow)
+
+
+def get_group_details_service(
+    uow: UoW,
+) -> GroupDetailsService:
+    """Returns a GroupDetailsService with request-scoped UnitOfWork."""
+    return GroupDetailsService(uow)
+
+
+def get_lifecycle_service(
+    uow: UoW,
+) -> GroupLifecycleService:
+    """Returns a GroupLifecycleService with request-scoped UnitOfWork."""
+    return GroupLifecycleService(uow)

@@ -22,7 +22,11 @@ from app.api.dependencies import (
     require_admin,
     require_any,
 )
-from app.modules.academics.api.deps import get_group_service, get_session_service
+from app.modules.academics.api.deps import (
+    get_group_service,
+    get_session_service,
+    get_lifecycle_service,
+)
 from app.modules.academics.schemas.group_schemas import ScheduleGroupInput, UpdateGroupDTO
 from app.modules.auth import User
 from app.modules.academics.services.group_service import GroupCoreService
@@ -30,11 +34,6 @@ from app.modules.academics.services.session_service import SessionService
 from app.modules.academics.services.group_lifecycle_service import GroupLifecycleService
 
 router = APIRouter(tags=["Academics — Groups"])
-
-
-def get_lifecycle_service() -> GroupLifecycleService:
-    """Dependency provider for GroupLifecycleService."""
-    return GroupLifecycleService()
 
 
 # ── GET /academics/groups/{group_id} ─────────────────────────────────────────
@@ -65,20 +64,18 @@ def create_group(
     body: ScheduleGroupInput,
     _user: User = Depends(require_admin),
     lifecycle_svc: GroupLifecycleService = Depends(get_lifecycle_service),
+    svc: GroupCoreService = Depends(get_group_service),
 ):
     """
     Atomic operation: creates a new group, its Level 1, and the initial sessions
     all in a single transaction. Uses course.sessions_per_level for session count.
     """
     from app.modules.academics.schemas.group_lifecycle_schemas import CreateGroupWithLevelDTO
-    from app.modules.academics.models import Group
-    from app.db.connection import get_session
 
     create_data = CreateGroupWithLevelDTO(group_input=body)
     result = lifecycle_svc.create_group_with_first_level(create_data)
 
-    with get_session() as session:
-        group = session.get(Group, result.group_id)
+    group = svc.get_group_by_id(result.group_id)
 
     return ApiResponse(
         data=GroupPublic.model_validate(group),

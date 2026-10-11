@@ -6,9 +6,7 @@ Coordinates group, level, and session work for a group's lifecycle.
 """
 from datetime import date
 
-from sqlmodel import Session
-
-from app.db.connection import get_session
+from app.db.uow import UnitOfWork
 from app.modules.academics.models import Course, Group, CourseSession
 from app.modules.academics.models.group_level_models import GroupLevel, GroupCourseHistory
 from app.modules.hr.models import Employee
@@ -38,6 +36,9 @@ class GroupLifecycleService:
     This is the high-level API that routers should call.
     """
 
+    def __init__(self, uow: UnitOfWork) -> None:
+        self._uow = uow
+
     def create_group_with_first_level(
         self,
         data: CreateGroupWithLevelDTO
@@ -57,78 +58,77 @@ class GroupLifecycleService:
         Returns:
             GroupCreationResult with group, level, and session details
         """
-        with get_session() as session:
-            # Get course info
-            course = session.get(Course, data.group_input.course_id)
-            if not course:
-                raise ValueError(f"Course {data.group_input.course_id} not found")
+        session = self._uow.session
+        # Get course info
+        course = session.get(Course, data.group_input.course_id)
+        if not course:
+            raise ValueError(f"Course {data.group_input.course_id} not found")
             
-            sessions_per_level = course.sessions_per_level
+        sessions_per_level = course.sessions_per_level
             
-            # Phase 1: Create group
-            group = Group(
-                name=self._generate_group_name(data.group_input, course.name),
-                course_id=data.group_input.course_id,
-                instructor_id=data.group_input.instructor_id,
-                level_number=1,
-                max_capacity=data.group_input.max_capacity,
-                default_day=data.group_input.schedule.day,
-                default_time_start=data.group_input.schedule.time_start,
-                default_time_end=data.group_input.schedule.time_end,
-                notes=data.group_input.notes,
-                status="active",
+        # Phase 1: Create group
+        group = Group(
+            name=self._generate_group_name(data.group_input, course.name),
+            course_id=data.group_input.course_id,
+            instructor_id=data.group_input.instructor_id,
+            level_number=1,
+            max_capacity=data.group_input.max_capacity,
+            default_day=data.group_input.schedule.day,
+            default_time_start=data.group_input.schedule.time_start,
+            default_time_end=data.group_input.schedule.time_end,
+            notes=data.group_input.notes,
+            status="active",
+        )
+        apply_create_audit(group)
+        session.add(group)
+        session.flush()  # Get group.id without commit
+
+        # Phase 2: Create Level 1
+        level = GroupLevel(
+            group_id=group.id,
+            level_number=1,
+            course_id=group.course_id,
+            instructor_id=group.instructor_id,
+            sessions_planned=sessions_per_level,
+            price_override=None,  # Use course default
+            status="active",
+        )
+        apply_create_audit(level)
+        session.add(level)
+        session.flush()  # Get level.id for session linking
+
+        # Phase 3: Determine start date
+        start_date = data.start_date
+        if not start_date:
+            start_date = (
+                next_weekday(date.today(), group.default_day)
+                if group.default_day else date.today()
             )
-            apply_create_audit(group)
-            session.add(group)
-            session.flush()  # Get group.id without commit
 
-            # Phase 2: Create Level 1
-            level = GroupLevel(
-                group_id=group.id,
-                level_number=1,
-                course_id=group.course_id,
-                instructor_id=group.instructor_id,
-                sessions_planned=sessions_per_level,
-                price_override=None,  # Use course default
-                status="active",
-            )
-            apply_create_audit(level)
-            session.add(level)
-            session.flush()  # Get level.id for session linking
-
-            # Phase 3: Determine start date
-            start_date = data.start_date
-            if not start_date:
-                start_date = (
-                    next_weekday(date.today(), group.default_day)
-                    if group.default_day else date.today()
-                )
-
-            # Phase 4: Generate sessions
-            from app.modules.academics.services.session_planning import create_sessions_in_session
+        # Phase 4: Generate sessions
+        from app.modules.academics.services.session_planning import create_sessions_in_session
             
-            sessions = create_sessions_in_session(
-                session=session,
-                group=group,
-                sessions_count=sessions_per_level,
-                start_date=start_date,
-                group_level_id=level.id,
-            )
+        sessions = create_sessions_in_session(
+            session=session,
+            group=group,
+            sessions_count=sessions_per_level,
+            start_date=start_date,
+            group_level_id=level.id,
+        )
 
-            session.commit()
+        self._uow.commit()
 
-            return GroupCreationResult(
-                group_id=group.id,
-                group_name=group.name,
-                level_id=level.id,
-                level_number=1,
-                sessions_count=len(sessions),
-                sessions=[self._serialize_session(s) for s in sessions],
-            )
+        return GroupCreationResult(
+            group_id=group.id,
+            group_name=group.name,
+            level_id=level.id,
+            level_number=1,
+            sessions_count=len(sessions),
+            sessions=[self._serialize_session(s) for s in sessions],
+        )
 
     def create_next_level(
         self,
-        session: Session,
         data: ProgressLevelDTO,
     ) -> NextLevelCreationResult:
         """
@@ -140,12 +140,13 @@ class GroupLifecycleService:
         the caller owns the transaction and the enrollment migration step.
 
         Args:
-            session: the caller's session/transaction.
             data: Progression parameters including group_id and price override.
 
         Returns:
             NextLevelCreationResult with old/new level details and session count.
         """
+        session = self._uow.session
+
         # Phase 1: Get current active level
         current_level = repo.get_current_group_level(session, data.group_id)
         if not current_level:
@@ -269,71 +270,71 @@ class GroupLifecycleService:
         Returns:
             GroupLevelResult with level details and session count
         """
-        with get_session() as session:
-            # Validate group exists and is active
-            group = session.get(Group, data.group_id)
-            if not group:
-                raise ValueError(f"Group {data.group_id} not found")
-            if group.status != GROUP_STATUS_ACTIVE:
-                raise BusinessRuleError(f"Group {data.group_id} is not active")
+        session = self._uow.session
+        # Validate group exists and is active
+        group = session.get(Group, data.group_id)
+        if not group:
+            raise ValueError(f"Group {data.group_id} not found")
+        if group.status != GROUP_STATUS_ACTIVE:
+            raise BusinessRuleError(f"Group {data.group_id} is not active")
 
-            # Check level doesn't exist
-            existing = repo.get_group_level_by_number(
-                session, data.group_id, data.level_number
+        # Check level doesn't exist
+        existing = repo.get_group_level_by_number(
+            session, data.group_id, data.level_number
+        )
+        if existing:
+            raise ValueError(
+                f"Level {data.level_number} already exists for group {data.group_id}"
             )
-            if existing:
-                raise ValueError(
-                    f"Level {data.level_number} already exists for group {data.group_id}"
-                )
 
-            # Determine course and pricing
-            course = session.get(Course, data.course_id or group.course_id)
-            price_override = data.price_override
-            if price_override is None or price_override == 0:
-                price_override = None
+        # Determine course and pricing
+        course = session.get(Course, data.course_id or group.course_id)
+        price_override = data.price_override
+        if price_override is None or price_override == 0:
+            price_override = None
 
-            # Create level
-            level = GroupLevel(
-                group_id=data.group_id,
-                level_number=data.level_number,
-                course_id=data.course_id or group.course_id,
-                instructor_id=data.instructor_id or group.instructor_id,
-                sessions_planned=data.sessions_planned,
-                price_override=price_override,
-                status=data.status,
-            )
-            apply_create_audit(level)
-            session.add(level)
-            session.flush()
+        # Create level
+        level = GroupLevel(
+            group_id=data.group_id,
+            level_number=data.level_number,
+            course_id=data.course_id or group.course_id,
+            instructor_id=data.instructor_id or group.instructor_id,
+            sessions_planned=data.sessions_planned,
+            price_override=price_override,
+            status=data.status,
+        )
+        apply_create_audit(level)
+        session.add(level)
+        session.flush()
 
-            # Generate sessions
-            from app.modules.academics.services.session_planning import create_sessions_in_session
+        # Generate sessions
+        from app.modules.academics.services.session_planning import create_sessions_in_session
             
-            sessions = create_sessions_in_session(
-                session=session,
-                group=group,
-                sessions_count=data.sessions_planned,
-                start_date=data.start_date or (
-                    next_weekday(date.today(), group.default_day) if group.default_day else date.today()
-                ),
-                level_number=data.level_number,
-                group_level_id=level.id,
-            )
+        sessions = create_sessions_in_session(
+            session=session,
+            group=group,
+            sessions_count=data.sessions_planned,
+            start_date=data.start_date or (
+                next_weekday(date.today(), group.default_day) if group.default_day else date.today()
+            ),
+            level_number=data.level_number,
+            group_level_id=level.id,
+        )
 
-            # Update group's level_number to match the new level
-            group.level_number = data.level_number
-            apply_update_audit(group)
-            session.add(group)
+        # Update group's level_number to match the new level
+        group.level_number = data.level_number
+        apply_update_audit(group)
+        session.add(group)
 
-            session.commit()
+        self._uow.commit()
 
-            return GroupLevelResult(
-                level_id=level.id,
-                group_id=group.id,
-                level_number=level.level_number,
-                sessions_count=len(sessions),
-                status=level.status,
-            )
+        return GroupLevelResult(
+            level_id=level.id,
+            group_id=group.id,
+            level_number=level.level_number,
+            sessions_count=len(sessions),
+            status=level.status,
+        )
 
     def _generate_group_name(self, data: CreateGroupDTO, course_name: str) -> str:
         """Generate auto-name for a group."""
@@ -364,144 +365,144 @@ class GroupLifecycleService:
         from app.modules.attendance.models.attendance_models import Attendance
         from sqlmodel import select, delete
 
-        with get_session() as session:
-            # 1. Fetch group
-            group = session.get(Group, group_id)
-            if not group:
-                raise NotFoundError(f"Group {group_id} not found")
+        session = self._uow.session
+        # 1. Fetch group
+        group = session.get(Group, group_id)
+        if not group:
+            raise NotFoundError(f"Group {group_id} not found")
 
-            # 2. Fetch target level
-            level = repo.get_group_level_by_number(session, group_id, level_number)
-            if not level:
-                raise NotFoundError(f"Level {level_number} not found for group {group_id}")
+        # 2. Fetch target level
+        level = repo.get_group_level_by_number(session, group_id, level_number)
+        if not level:
+            raise NotFoundError(f"Level {level_number} not found for group {group_id}")
 
-            # 3. Check if it's the latest level
-            latest_level_stmt = (
-                select(GroupLevel.level_number)
-                .where(GroupLevel.group_id == group_id)
-                .order_by(GroupLevel.level_number.desc())
+        # 3. Check if it's the latest level
+        latest_level_stmt = (
+            select(GroupLevel.level_number)
+            .where(GroupLevel.group_id == group_id)
+            .order_by(GroupLevel.level_number.desc())
+        )
+        latest_level_number = session.exec(latest_level_stmt).first()
+        if latest_level_number != level_number:
+            raise BusinessRuleError(f"Can only delete the latest level {latest_level_number} for group {group_id}")
+
+        # 4. Check if it is the only level
+        if level_number == 1:
+            raise BusinessRuleError("Cannot delete the first/only level of a group")
+
+        # 5. Void payments for this level (soft-delete)
+        payments_stmt = (
+            select(Payment)
+            .join(Enrollment, Payment.enrollment_id == Enrollment.id)
+            .where(Enrollment.group_id == group_id)
+            .where(Enrollment.level_number == level_number)
+            .where(Payment.deleted_at.is_(None))
+        )
+        level_payments = list(session.exec(payments_stmt).all())
+        for p in level_payments:
+            p.deleted_at = utc_now()
+            session.add(p)
+        payments_voided_count = len(level_payments)
+
+        # 6. Execute Cascades in correct order:
+
+        # Phase A: Get enrollment IDs to delete/revert
+        new_enrollments_stmt = (
+            select(Enrollment)
+            .where(Enrollment.group_id == group_id)
+            .where(Enrollment.level_number == level_number)
+        )
+        new_enrollments = list(session.exec(new_enrollments_stmt).all())
+        new_enrollment_ids = [e.id for e in new_enrollments]
+
+        # Delete enrollment level history
+        if new_enrollment_ids:
+            del_elh_stmt = delete(EnrollmentLevelHistory).where(EnrollmentLevelHistory.enrollment_id.in_(new_enrollment_ids))
+            session.exec(del_elh_stmt)
+
+        # Delete student activity log entries matching 'level_started' reference to these enrollments
+        if new_enrollment_ids:
+            from app.modules.crm.models.activity_models import StudentActivityLog
+            del_act_stmt = delete(StudentActivityLog).where(
+                StudentActivityLog.activity_subtype == "level_started",
+                StudentActivityLog.reference_type == "enrollment",
+                StudentActivityLog.reference_id.in_(new_enrollment_ids)
             )
-            latest_level_number = session.exec(latest_level_stmt).first()
-            if latest_level_number != level_number:
-                raise BusinessRuleError(f"Can only delete the latest level {latest_level_number} for group {group_id}")
+            session.exec(del_act_stmt)
 
-            # 4. Check if it is the only level
-            if level_number == 1:
-                raise BusinessRuleError("Cannot delete the first/only level of a group")
+        # Delete attendance records for sessions at this level
+        # (ON DELETE RESTRICT on attendance.session_id blocks session deletion)
+        attendance_stmt = (
+            delete(Attendance)
+            .where(Attendance.session_id.in_(
+                select(CourseSession.id).where(CourseSession.group_level_id == level.id)
+            ))
+        )
+        session.exec(attendance_stmt)
 
-            # 5. Void payments for this level (soft-delete)
-            payments_stmt = (
-                select(Payment)
-                .join(Enrollment, Payment.enrollment_id == Enrollment.id)
-                .where(Enrollment.group_id == group_id)
-                .where(Enrollment.level_number == level_number)
-                .where(Payment.deleted_at.is_(None))
-            )
-            level_payments = list(session.exec(payments_stmt).all())
-            for p in level_payments:
-                p.deleted_at = utc_now()
-                session.add(p)
-            payments_voided_count = len(level_payments)
+        # Delete the new enrollments
+        if new_enrollment_ids:
+            del_enr_stmt = delete(Enrollment).where(Enrollment.id.in_(new_enrollment_ids))
+            session.exec(del_enr_stmt)
 
-            # 6. Execute Cascades in correct order:
+        # Reactivate old enrollments at the previous level
+        prev_level_number = level_number - 1
+        reactivate_stmt = (
+            select(Enrollment)
+            .where(Enrollment.group_id == group_id)
+            .where(Enrollment.level_number == prev_level_number)
+            .where(Enrollment.status == "completed")
+        )
+        old_enrollments = list(session.exec(reactivate_stmt).all())
+        for old_enr in old_enrollments:
+            old_enr.status = "active"
+            old_enr.updated_at = utc_now()
+            session.add(old_enr)
 
-            # Phase A: Get enrollment IDs to delete/revert
-            new_enrollments_stmt = (
-                select(Enrollment)
-                .where(Enrollment.group_id == group_id)
-                .where(Enrollment.level_number == level_number)
-            )
-            new_enrollments = list(session.exec(new_enrollments_stmt).all())
-            new_enrollment_ids = [e.id for e in new_enrollments]
+        # Delete sessions linked to this group_level_id
+        sessions_stmt = (
+            select(CourseSession)
+            .where(CourseSession.group_level_id == level.id)
+        )
+        level_sessions = list(session.exec(sessions_stmt).all())
+        sessions_deleted_count = len(level_sessions)
+        for s in level_sessions:
+            session.delete(s)
 
-            # Delete enrollment level history
-            if new_enrollment_ids:
-                del_elh_stmt = delete(EnrollmentLevelHistory).where(EnrollmentLevelHistory.enrollment_id.in_(new_enrollment_ids))
-                session.exec(del_elh_stmt)
+        # Delete latest group course history entry if course was changed during this level progression
+        from app.modules.academics.models.group_level_models import GroupCourseHistory
+        history_stmt = (
+            select(GroupCourseHistory)
+            .where(GroupCourseHistory.group_id == group_id)
+            .order_by(GroupCourseHistory.assigned_at.desc())
+        )
+        latest_history = session.exec(history_stmt).first()
+        if latest_history:
+            session.delete(latest_history)
 
-            # Delete student activity log entries matching 'level_started' reference to these enrollments
-            if new_enrollment_ids:
-                from app.modules.crm.models.activity_models import StudentActivityLog
-                del_act_stmt = delete(StudentActivityLog).where(
-                    StudentActivityLog.activity_subtype == "level_started",
-                    StudentActivityLog.reference_type == "enrollment",
-                    StudentActivityLog.reference_id.in_(new_enrollment_ids)
-                )
-                session.exec(del_act_stmt)
-
-            # Delete attendance records for sessions at this level
-            # (ON DELETE RESTRICT on attendance.session_id blocks session deletion)
-            attendance_stmt = (
-                delete(Attendance)
-                .where(Attendance.session_id.in_(
-                    select(CourseSession.id).where(CourseSession.group_level_id == level.id)
-                ))
-            )
-            session.exec(attendance_stmt)
-
-            # Delete the new enrollments
-            if new_enrollment_ids:
-                del_enr_stmt = delete(Enrollment).where(Enrollment.id.in_(new_enrollment_ids))
-                session.exec(del_enr_stmt)
-
-            # Reactivate old enrollments at the previous level
-            prev_level_number = level_number - 1
-            reactivate_stmt = (
-                select(Enrollment)
-                .where(Enrollment.group_id == group_id)
-                .where(Enrollment.level_number == prev_level_number)
-                .where(Enrollment.status == "completed")
-            )
-            old_enrollments = list(session.exec(reactivate_stmt).all())
-            for old_enr in old_enrollments:
-                old_enr.status = "active"
-                old_enr.updated_at = utc_now()
-                session.add(old_enr)
-
-            # Delete sessions linked to this group_level_id
-            sessions_stmt = (
-                select(CourseSession)
-                .where(CourseSession.group_level_id == level.id)
-            )
-            level_sessions = list(session.exec(sessions_stmt).all())
-            sessions_deleted_count = len(level_sessions)
-            for s in level_sessions:
-                session.delete(s)
-
-            # Delete latest group course history entry if course was changed during this level progression
-            from app.modules.academics.models.group_level_models import GroupCourseHistory
-            history_stmt = (
-                select(GroupCourseHistory)
-                .where(GroupCourseHistory.group_id == group_id)
-                .order_by(GroupCourseHistory.assigned_at.desc())
-            )
-            latest_history = session.exec(history_stmt).first()
-            if latest_history:
-                session.delete(latest_history)
-
-            # Revert group's level_number, and optionally course_id, back to the previous level's configuration
-            prev_level = repo.get_group_level_by_number(session, group_id, prev_level_number)
-            if prev_level:
-                group.course_id = prev_level.course_id
-                if prev_level.status == "completed":
-                    prev_level.status = "active"
-                    prev_level.effective_to = None
-                    session.add(prev_level)
+        # Revert group's level_number, and optionally course_id, back to the previous level's configuration
+        prev_level = repo.get_group_level_by_number(session, group_id, prev_level_number)
+        if prev_level:
+            group.course_id = prev_level.course_id
+            if prev_level.status == "completed":
+                prev_level.status = "active"
+                prev_level.effective_to = None
+                session.add(prev_level)
             
-            group.level_number = prev_level_number
-            session.add(group)
+        group.level_number = prev_level_number
+        session.add(group)
 
-            # Hard delete the level itself
-            session.delete(level)
+        # Hard delete the level itself
+        session.delete(level)
 
-            session.commit()
+        self._uow.commit()
 
-            return DeleteLevelResult(
-                level_number_deleted=level_number,
-                reverted_to_level=prev_level_number,
-                sessions_deleted=sessions_deleted_count,
-                enrollments_deleted=len(new_enrollment_ids),
-                enrollments_reactivated=len(old_enrollments),
-                payments_voided=payments_voided_count,
-                group_level_number_after=prev_level_number,
-            )
+        return DeleteLevelResult(
+            level_number_deleted=level_number,
+            reverted_to_level=prev_level_number,
+            sessions_deleted=sessions_deleted_count,
+            enrollments_deleted=len(new_enrollment_ids),
+            enrollments_reactivated=len(old_enrollments),
+            payments_voided=payments_voided_count,
+            group_level_number_after=prev_level_number,
+        )

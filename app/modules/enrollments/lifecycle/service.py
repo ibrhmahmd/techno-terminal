@@ -38,7 +38,7 @@ class EnrollmentLifecycleService:
         from app.modules.crm import StudentActivityService
 
         with get_session() as session:
-            created = GroupLifecycleService().create_next_level(session, data)
+            created = GroupLifecycleService(UnitOfWork(session)).create_next_level(data)
 
             enrollments_migrated = 0
             if data.auto_migrate_enrollments:

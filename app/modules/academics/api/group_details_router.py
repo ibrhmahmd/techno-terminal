@@ -16,6 +16,10 @@ from fastapi import APIRouter, Depends, Path, HTTPException, status, Query
 
 from app.api.schemas.common import ApiResponse
 from app.api.dependencies import require_any, require_admin
+from app.modules.academics.api.deps import (
+    get_group_details_service,
+    get_lifecycle_service,
+)
 from app.modules.academics.services.group_details_service import GroupDetailsService
 from app.modules.academics.schemas.group_details_schemas import (
     GroupLevelsDetailedResponseDTO,
@@ -28,16 +32,6 @@ from app.modules.academics.services.group_lifecycle_service import GroupLifecycl
 from app.modules.academics.schemas.group_lifecycle_schemas import DeleteLevelResult
 
 router = APIRouter(tags=["Academics — Group Details"])
-
-
-def get_group_details_service() -> GroupDetailsService:
-    """Dependency provider for GroupDetailsService."""
-    return GroupDetailsService()
-
-
-def get_lifecycle_service() -> GroupLifecycleService:
-    """Dependency provider for GroupLifecycleService."""
-    return GroupLifecycleService()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

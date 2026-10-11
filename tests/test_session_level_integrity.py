@@ -209,7 +209,7 @@ class TestGroupDetailsService:
         db_session.add(l2)
         db_session.commit()
 
-        details_svc = GroupDetailsService()
+        details_svc = GroupDetailsService(UnitOfWork(db_session))
         result = details_svc.get_levels_detailed(group.id)
 
         # Service now returns all levels when no specific level is requested
@@ -234,7 +234,7 @@ class TestGroupDetailsService:
         db_session.add(l2)
         db_session.commit()
 
-        details_svc = GroupDetailsService()
+        details_svc = GroupDetailsService(UnitOfWork(db_session))
         result = details_svc.get_levels_detailed(group.id, level_number=1)
 
         assert len(result.levels) == 1
@@ -336,7 +336,7 @@ class TestLifecycleService:
             ),
             start_date=date.today(),
         )
-        lifecycle = GroupLifecycleService()
+        lifecycle = GroupLifecycleService(UnitOfWork(db_session))
         result = lifecycle.create_group_with_first_level(inp)
 
         assert result.sessions_count > 0
@@ -359,7 +359,7 @@ class TestLifecycleService:
             ),
             start_date=date.today(),
         )
-        lifecycle = GroupLifecycleService()
+        lifecycle = GroupLifecycleService(UnitOfWork(db_session))
         result = lifecycle.create_group_with_first_level(inp)
 
         from datetime import timedelta
