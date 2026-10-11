@@ -1,9 +1,10 @@
 """
 app/modules/competitions/__init__.py
-───────────────────────────────────
-Public API Facade for the Competitions module.
-Exposes both service classes and shared schema types.
-UI components import the two singletons below.
+────────────────────────────────────
+Competitions Module Facade (ADR-0003)
+
+Other modules must import Competitions ONLY via this facade, except
+app.modules.competitions.models which anyone may import (ADR-0004).
 """
 
 from .services.competition_service import CompetitionService
@@ -20,6 +21,7 @@ from .schemas import (
     # Input Commands
     CreateCompetitionInput,
     RegisterTeamInput,
+    AddTeamMemberInput,
     PayCompetitionFeeInput,
     # Outputs
     StudentCompetitionDTO,
@@ -32,17 +34,10 @@ from .schemas import (
     TeamWithMembersDTO,
 )
 
-# ── UI Singletons (one per service class — correct, no patch) ─────────────────
-competition_service = CompetitionService()
-team_service        = TeamService()
-
 __all__ = [
     # Service Classes
     "CompetitionService",
     "TeamService",
-    # UI Singletons
-    "competition_service",
-    "team_service",
     # Models
     "Competition",
     "Team",
@@ -53,6 +48,7 @@ __all__ = [
     "TeamMemberDTO",
     "CreateCompetitionInput",
     "RegisterTeamInput",
+    "AddTeamMemberInput",
     "PayCompetitionFeeInput",
     "StudentCompetitionDTO",
     "TeamRegistrationResultDTO",

@@ -1,5 +1,5 @@
 """
-app/api/schemas/competitions/competition_schemas.py
+app/modules/competitions/api/schemas/competition_schemas.py
 ────────────────────────────────────────────────────
 API-facing Competition Response DTOs.
 """

@@ -1,5 +1,5 @@
 """
-app/api/routers/competitions/teams_router.py
+app/modules/competitions/api/teams_router.py
 ─────────────────────────────────────────
 Teams router for 3-table schema.
 
@@ -11,7 +11,7 @@ from typing import Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 
 from app.api.schemas.common import ApiResponse
-from app.api.schemas.competitions.team_schemas import (
+from app.modules.competitions.api.schemas.team_schemas import (
     UpdateTeamInput,
     PlacementUpdateInput,
     PayCompetitionFeeBody,
@@ -19,7 +19,8 @@ from app.api.schemas.competitions.team_schemas import (
     StudentCompetitionsResponse,
     RefundCompetitionFeeBody,
 )
-from app.api.dependencies import require_any, require_admin, get_team_service
+from app.api.dependencies import require_any, require_admin
+from app.modules.competitions.api.deps import get_team_service
 from app.modules.auth import User
 from app.modules.competitions import TeamService
 
