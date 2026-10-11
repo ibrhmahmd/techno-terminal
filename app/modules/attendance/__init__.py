@@ -1,39 +1,32 @@
 """
 app/modules/attendance/__init__.py
-───────────────────────────────────
-Public API Facade for the Attendance module.
-Maintains 100% backward compatibility for downstream UI imports while 
-routing method resolution to the new strictly-typed OOP services.
+──────────────────────────────────
+Attendance Module Facade (ADR-0003)
+
+Other modules must import Attendance ONLY via this facade, except
+app.modules.attendance.models which anyone may import (ADR-0004).
+
+Exports:
+- Models: Attendance
+- Services: AttendanceService
+- DTOs: AttendanceStatus, StudentAttendanceItem, SessionAttendanceRowDTO,
+        MarkAttendanceResponseDTO
 """
 
-from .services.attendance_service import AttendanceService
-from .models.attendance_models import Attendance
-from .schemas.attendance_schemas import (
+from app.modules.attendance.models.attendance_models import Attendance
+from app.modules.attendance.services.attendance_service import AttendanceService
+from app.modules.attendance.schemas.attendance_schemas import (
     AttendanceStatus,
-    MarkAttendanceInput,
-    SessionAttendanceRowDTO,
-    EnrollmentAttendanceSummaryDTO,
     MarkAttendanceResponseDTO,
-    SessionAttendanceRecord,
-    StudentEnrollmentAttendanceDTO,
+    SessionAttendanceRowDTO,
+    StudentAttendanceItem,
 )
-
-_attendance_svc = AttendanceService()
-
-mark_session_attendance = _attendance_svc.mark_session_attendance
-get_session_roster_with_attendance = _attendance_svc.get_session_roster_with_attendance
-get_attendance_summary = _attendance_svc.get_attendance_summary
 
 __all__ = [
     "Attendance",
+    "AttendanceService",
     "AttendanceStatus",
-    "MarkAttendanceInput",
-    "SessionAttendanceRowDTO",
-    "EnrollmentAttendanceSummaryDTO",
     "MarkAttendanceResponseDTO",
-    "SessionAttendanceRecord",
-    "StudentEnrollmentAttendanceDTO",
-    "mark_session_attendance",
-    "get_session_roster_with_attendance",
-    "get_attendance_summary",
+    "SessionAttendanceRowDTO",
+    "StudentAttendanceItem",
 ]

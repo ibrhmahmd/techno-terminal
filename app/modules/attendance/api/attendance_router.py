@@ -1,6 +1,6 @@
 """
-app/api/routers/attendance.py
-────────────────────────────────
+app/modules/attendance/api/attendance_router.py
+───────────────────────────────────────────────
 Attendance domain router — isolated from academics for clarity and future rate-limiting.
 
 Prefix: /api/v1  (mounted in main.py)
@@ -18,14 +18,15 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field, field_validator
 
 from app.api.schemas.common import ApiResponse
-from app.api.dependencies import require_admin, get_attendance_service
+from app.api.dependencies import require_admin
+from app.modules.attendance.api.deps import get_attendance_service
 from app.modules.auth import User
 from app.modules.attendance import (
     AttendanceService,
     SessionAttendanceRowDTO,
     MarkAttendanceResponseDTO,
+    StudentAttendanceItem,
 )
-from app.modules.attendance.schemas.attendance_schemas import StudentAttendanceItem
 
 router = APIRouter(tags=["Attendance"])
 

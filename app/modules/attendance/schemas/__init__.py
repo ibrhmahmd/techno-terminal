@@ -1,19 +1,13 @@
 from .attendance_schemas import (
     AttendanceStatus,
-    MarkAttendanceInput,
-    SessionAttendanceRowDTO,
-    EnrollmentAttendanceSummaryDTO,
     MarkAttendanceResponseDTO,
-    SessionAttendanceRecord,
-    StudentEnrollmentAttendanceDTO,
+    SessionAttendanceRowDTO,
+    StudentAttendanceItem,
 )
 
 __all__ = [
     "AttendanceStatus",
-    "MarkAttendanceInput",
-    "SessionAttendanceRowDTO",
-    "EnrollmentAttendanceSummaryDTO",
     "MarkAttendanceResponseDTO",
-    "SessionAttendanceRecord",
-    "StudentEnrollmentAttendanceDTO",
+    "SessionAttendanceRowDTO",
+    "StudentAttendanceItem",
 ]

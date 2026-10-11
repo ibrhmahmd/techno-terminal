@@ -44,7 +44,7 @@ from app.modules.auth.api.deps import get_auth_notifier as auth_deps_get_auth_no
 from app.modules.notifications.adapters import get_auth_notifier as notif_adapters_get_auth_notifier
 from app.modules.notifications.adapters import get_enrollment_notifier as notif_adapters_get_enrollment_notifier
 from app.modules.enrollments.api.deps import get_enrollment_notifier as enrollments_deps_get_enrollment_notifier
-from app.api.routers import attendance_router
+from app.modules.attendance.api import router as attendance_router
 from app.modules.enrollments.api import (
     enrollments_router,
     enrollments_progress_router,
@@ -157,7 +157,7 @@ def create_app() -> FastAPI:
     app.include_router(
         group_lifecycle_router, prefix="/api/v1", tags=["Academics — Group Lifecycle"]
     )
-    app.include_router(attendance_router.router, prefix="/api/v1", tags=["Attendance"])
+    app.include_router(attendance_router, prefix="/api/v1", tags=["Attendance"])
     # Transactions
     app.include_router(
         enrollments_router, prefix="/api/v1", tags=["Enrollments"]

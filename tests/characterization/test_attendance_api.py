@@ -65,7 +65,7 @@ def _mark(client, headers, session_id, entries):
 # ── POST /attendance/session/{session_id}/mark ────────────────────────────────
 
 
-def test_mark_attendance_happy_path(client_with_uow, override_auth, mock_admin_headers, db_session):
+def test_mark_attendance_happy_path(client_with_uow, override_auth, mock_admin_headers, db_session, uow):
     _, student, enrollment, session = _seed(db_session)
 
     r = _mark(client_with_uow, mock_admin_headers, session.id,
@@ -78,7 +78,9 @@ def test_mark_attendance_happy_path(client_with_uow, override_auth, mock_admin_h
     assert body["data"] == {"marked": 1, "skipped": []}
     assert body["message"] == "Attendance marked: 1 records updated."
 
-    row = db_session.exec(
+    # The use case commits through the injected UnitOfWork (a savepoint of the uow
+    # fixture's transaction), so read the result through that same session.
+    row = uow.session.exec(
         select(Attendance).where(Attendance.session_id == session.id)
     ).one()
     assert row.student_id == student.id
@@ -86,7 +88,7 @@ def test_mark_attendance_happy_path(client_with_uow, override_auth, mock_admin_h
     assert row.status == "present"
 
 
-def test_mark_attendance_upserts_existing_row(client_with_uow, override_auth, mock_admin_headers, db_session):
+def test_mark_attendance_upserts_existing_row(client_with_uow, override_auth, mock_admin_headers, db_session, uow):
     _, student, _, session = _seed(db_session)
 
     _mark(client_with_uow, mock_admin_headers, session.id,
@@ -96,11 +98,11 @@ def test_mark_attendance_upserts_existing_row(client_with_uow, override_auth, mo
 
     assert r.status_code == 200
     assert r.json()["data"] == {"marked": 1, "skipped": []}
-    rows = db_session.exec(
+    rows = uow.session.exec(
         select(Attendance).where(Attendance.session_id == session.id)
     ).all()
     assert len(rows) == 1
-    db_session.refresh(rows[0])
+    uow.session.refresh(rows[0])
     assert rows[0].status == "absent"
 
 
