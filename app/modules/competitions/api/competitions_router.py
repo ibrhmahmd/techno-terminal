@@ -1,5 +1,5 @@
 """
-app/api/routers/competitions/competitions_router.py
+app/modules/competitions/api/competitions_router.py
 ──────────────────────────────────────────────────
 Competitions domain router for 3-table schema.
 
@@ -9,12 +9,13 @@ Handles: Competition lifecycle (CRUD, restore, categories, summary)
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.schemas.common import ApiResponse
-from app.api.schemas.competitions.competition_schemas import (
+from app.modules.competitions.api.schemas.competition_schemas import (
     CategoryResponse,
     UpdateCompetitionInput,
     CompetitionSummaryResponse,
 )
-from app.api.dependencies import require_any, require_admin, get_competition_service
+from app.api.dependencies import require_any, require_admin
+from app.modules.competitions.api.deps import get_competition_service
 from app.modules.auth import User
 from app.modules.competitions import CompetitionService, CompetitionDTO, CreateCompetitionInput
 

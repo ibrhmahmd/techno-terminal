@@ -50,7 +50,7 @@ from app.modules.enrollments.api import (
     enrollments_progress_router,
 )
 from app.api.routers.notifications import router as notifications_router
-from app.api.routers.competitions import competitions_router, teams_router
+from app.modules.competitions.api import competitions_router, teams_router
 from app.modules.hr.api import hr_router
 from app.modules.crm.api import (
     students_router,

@@ -1,5 +1,5 @@
 """
-app/api/schemas/competitions/team_schemas.py
+app/modules/competitions/api/schemas/team_schemas.py
 ────────────────────────────────────────────
 API-facing Team Response DTOs.
 """
