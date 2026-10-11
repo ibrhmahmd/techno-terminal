@@ -10,7 +10,6 @@ from app.db.uow import UnitOfWork
 from app.modules.academics.models import Group, GroupLevel, Course
 import app.modules.academics.repositories.group_level_repository as repo
 from app.modules.academics.schemas.group_level_schemas import (
-    GroupLevelReadDTO,
     GroupLevelDetailDTO,
     UpdateLevelInput,
 )
@@ -71,60 +70,6 @@ class GroupLevelService:
             notes=level.notes,
             created_at=level.created_at,
         )
-
-    def get_paginated_levels(
-        self,
-        group_id: int,
-        status: Optional[str] = None,
-        include_inactive: bool = False,
-        skip: int = 0,
-        limit: int = 50,
-    ) -> tuple[list[GroupLevelReadDTO], int]:
-        """
-        Get paginated list of levels for a group.
-
-        Args:
-            group_id: The group ID
-            status: Filter by status (active, completed, cancelled)
-            include_inactive: Include inactive levels
-            skip: Number of records to skip
-            limit: Maximum records to return
-
-        Returns:
-            Tuple of (list of GroupLevelReadDTO, total count)
-        """
-        session = self._uow.session
-        levels, total = repo.get_levels_by_group(
-            session, group_id, status, include_inactive, skip, limit
-        )
-        return [GroupLevelReadDTO.model_validate(l) for l in levels], total
-
-    def get_level_history(self, group_id: int) -> list[GroupLevel]:
-        """Get all level snapshots for a group."""
-        session = self._uow.session
-        return list(
-            repo.list_group_levels(session, group_id, include_inactive=True)
-        )
-
-    def update_level_instructor(
-        self, group_id: int, level_number: int, instructor_id: int
-    ) -> GroupLevel:
-        """
-        Update instructor for a specific level.
-        Only allowed fields: instructor_id, price_override, status.
-        """
-        session = self._uow.session
-        level = repo.get_group_level_by_number(session, group_id, level_number)
-        if not level:
-            raise ValueError(f"Level {level_number} not found for group {group_id}")
-
-        level.instructor_id = instructor_id
-        level.updated_at = utc_now()
-
-        updated = repo.update_group_level(session, level)
-        self._uow.commit()
-        self._uow.session.refresh(updated)
-        return updated
 
     def update_level(
         self, group_id: int, level_number: int, data: UpdateLevelInput

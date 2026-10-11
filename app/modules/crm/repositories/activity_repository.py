@@ -6,7 +6,6 @@ Uses raw SQL for all queries (no ORM model instantiation).
 """
 from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime, timedelta
-from decimal import Decimal
 
 from sqlmodel import Session
 from sqlalchemy import text
@@ -368,40 +367,6 @@ class ActivityRepository:
         total = count_result.scalar() or 0
 
         return dtos, total
-
-    def get_payment_activities(
-        self, student_id: int, limit: int = 50
-    ) -> List[StudentActivityLog]:
-        """Get payment-related activity entries for a student using raw SQL."""
-        sql = """
-            SELECT id, student_id, activity_type, activity_subtype,
-                   reference_type, reference_id, description, meta,
-                   performed_by, created_at
-            FROM student_activity_log
-            WHERE student_id = :student_id
-              AND activity_type = 'payment'
-            ORDER BY created_at DESC
-            LIMIT :limit
-        """
-        result = self._session.exec(text(sql), params={
-            "student_id": student_id,
-            "limit": limit
-        })
-        return [
-            StudentActivityLog(
-                id=row.id,
-                student_id=row.student_id,
-                activity_type=row.activity_type,
-                activity_subtype=row.activity_subtype,
-                reference_type=row.reference_type,
-                reference_id=row.reference_id,
-                description=row.description,
-                meta=row.meta,
-                performed_by=row.performed_by,
-                created_at=row.created_at,
-            )
-            for row in result
-        ]
 
     def get_recent_activities(
         self,

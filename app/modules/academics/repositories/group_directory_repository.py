@@ -4,7 +4,7 @@ app/modules/academics/repositories/group_directory_repository.py
 Repository functions for the Group Directory slice.
 """
 from typing import Any, Sequence
-from sqlmodel import Session, select, func
+from sqlmodel import Session, select
 from sqlalchemy import text
 from app.modules.academics.models import Group
 from app.modules.academics.schemas.group_schemas import EnrichedGroupDTO
@@ -13,15 +13,6 @@ from app.modules.academics.constants import (
     GROUP_STATUS_ACTIVE, INSTRUCTOR_PLACEHOLDER,
     ENROLLMENT_STATUS_ACTIVE,
 )
-
-
-def list_all_active_groups(
-    session: Session, include_inactive: bool = False
-) -> Sequence[Group]:
-    stmt = select(Group)
-    if not include_inactive:
-        stmt = stmt.where(Group.status == GROUP_STATUS_ACTIVE)
-    return session.exec(stmt).all()
 
 
 def get_enriched_group_by_id(session: Session, group_id: int) -> EnrichedGroupDTO | None:

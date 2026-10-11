@@ -327,6 +327,3 @@ class TaskRepository:
         self._session.flush()
         return log
 
-    def get_time_log_by_id(self, log_id: uuid.UUID) -> Optional[TaskTimeLog]:
-        """Get a time log by ID."""
-        return self._session.get(TaskTimeLog, log_id)

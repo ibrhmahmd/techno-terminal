@@ -6,7 +6,6 @@ Integrates with CRM services for automatic activity tracking.
 """
 from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime
-from decimal import Decimal
 
 from app.db.uow import UnitOfWork
 from app.modules.crm.repositories.activity_repository import ActivityRepository
@@ -20,7 +19,6 @@ from app.modules.crm.schemas import (
     LogEnrollmentChangeDTO,
     LogPaymentDTO,
     LogDeletionDTO,
-    LogNoteAddedDTO,
     LogCompetitionRegistrationDTO,
     EnrollmentHistoryDTO,
     StatusHistoryDTO,
@@ -141,22 +139,6 @@ class StudentActivityService:
                 "student_id": dto.student_id,
                 "student_name": dto.student_name,
                 "deleted_at": datetime.utcnow().isoformat(),
-            },
-            performed_by=dto.performed_by,
-        )
-
-    def log_note_added(self, dto: LogNoteAddedDTO) -> StudentActivityLog:
-        """Log note/communication activity."""
-        return self._activities.create_activity_log(
-            student_id=dto.student_id,
-            activity_type="note",
-            activity_subtype=dto.note_type,
-            reference_type="note",
-            reference_id=dto.note_id,
-            description=f"{dto.note_type.capitalize()} note added",
-            metadata={
-                "note_id": dto.note_id,
-                "note_type": dto.note_type,
             },
             performed_by=dto.performed_by,
         )

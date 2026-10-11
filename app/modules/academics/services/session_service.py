@@ -10,7 +10,7 @@ from sqlmodel import select
 from app.db.uow import UnitOfWork
 from app.shared.audit_utils import apply_create_audit, apply_update_audit
 from app.shared.exceptions import NotFoundError, BusinessRuleError
-from app.modules.academics.models import Course, Group
+from app.modules.academics.models import Course
 from app.modules.academics.models import CourseSession
 from app.modules.hr.models import Employee
 from app.modules.academics.schemas.session_schemas import UpdateSessionDTO, AddExtraSessionInput
@@ -41,9 +41,6 @@ class SessionService:
         if not cs:
             raise NotFoundError(f"Session {session_id} not found")
         return cs
-
-    def get_sessions_by_group(self, group_id: int, include_cancelled: bool = False) -> list[CourseSession]:
-        return list(repo.list_sessions_by_group(self._uow.session, group_id, include_cancelled))
 
     def list_group_sessions(self, group_id: int, level_number: int | None = None) -> list[CourseSession]:
         """List sessions for a group, optionally filtered by level number.

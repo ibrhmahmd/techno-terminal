@@ -4,7 +4,7 @@ app/modules/crm/models/activity_models.py
 Activity and history tracking models for comprehensive student audit trails.
 """
 from datetime import datetime
-from typing import Optional, List, Any, Dict
+from typing import Optional, Any, Dict
 
 from sqlalchemy import Column as SAColumn, DateTime
 from sqlalchemy.dialects.postgresql import JSONB
@@ -58,17 +58,4 @@ class StudentActivityLogCreate(SQLModel):
 
 
 # ── DTOs for Activity Queries ─────────────────────────────────────────────
-
-class ActivityTimelineFilter(SQLModel):
-    """Filter parameters for activity timeline queries."""
-    student_id: Optional[int] = None
-    activity_types: Optional[List[str]] = None
-    date_from: Optional[datetime] = None
-    date_to: Optional[datetime] = None
-    performed_by: Optional[int] = None
-    reference_type: Optional[str] = None
-    reference_id: Optional[int] = None
-    skip: int = 0
-    limit: int = 50
-
 

@@ -26,28 +26,3 @@ class CancelLevelResult(BaseModel):
     reason: str | None
 
 
-class GroupLevelDTO(BaseModel):
-    """DTO for group level information."""
-    id: int
-    group_id: int
-    level_number: int
-    course_id: int
-    course_name: str | None
-    instructor_id: int | None
-    instructor_name: str | None
-    sessions_planned: int
-    price_override: float | None
-    status: str
-    effective_from: datetime
-    effective_to: datetime | None
-    created_at: datetime
-
-
-class UpdateGroupLevelDTO(BaseModel):
-    """Input schema for updating a group level."""
-    course_id: int | None = Field(None, gt=0)
-    instructor_id: int | None = Field(None, gt=0)
-    sessions_planned: int | None = Field(None, gt=0)
-    price_override: float | None = Field(None, ge=0)
-    start_date: datetime | None = None
-    end_date: datetime | None = None

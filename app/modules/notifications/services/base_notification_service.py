@@ -24,8 +24,6 @@ from app.modules.notifications.dispatchers.email_dispatcher import GmailEmailDis
 from app.modules.notifications.dispatchers.whatsapp_dispatcher import TwilioWhatsAppDispatcher
 from app.modules.notifications.models.notification_template import NotificationTemplate
 from app.modules.notifications.schemas.fallback_dto import FallbackAlertContext
-from app.modules.crm.models.parent_models import Parent
-from app.modules.crm.models.link_models import StudentParent
 from app.modules.crm.models.student_models import Student
 import asyncio
 from app.modules.academics.models import Group
@@ -74,42 +72,6 @@ class BaseNotificationService:
             return False
         pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         return bool(re.match(pattern, email.strip()))
-    
-    def _resolve_contact(
-        self, student_id: int, channel: str
-    ) -> Tuple[Optional[str], Optional[int], str, str]:
-        """
-        Resolve parent contact for student.
-        Returns: (contact, parent_id, parent_name, student_name)
-        """
-        with self._new_session() as session:
-            student = session.get(Student, student_id)
-            if not student:
-                return None, None, "", ""
-
-            # Get primary parent
-            stmt = select(Parent, StudentParent).join(StudentParent).where(
-                StudentParent.student_id == student_id,
-                StudentParent.is_primary.is_(True),
-            )
-            result = session.exec(stmt).first()
-
-            # Fallback to any parent
-            if not result:
-                stmt2 = select(Parent, StudentParent).join(StudentParent).where(
-                    StudentParent.student_id == student_id
-                )
-                result = session.exec(stmt2).first()
-
-            if result:
-                parent, _ = result
-                if channel == "EMAIL":
-                    contact = parent.email
-                else:
-                    contact = parent.phone_primary
-                return contact, parent.id, parent.full_name, student.full_name
-
-            return None, None, "", student.full_name
     
     def _resolve_notification_recipients(
         self,

@@ -73,17 +73,6 @@ class FlightRiskStudentItem(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class UserEngagementItem(BaseModel):
-    """Daily user engagement metrics."""
-    date: date
-    daily_active_users: int
-    total_sessions: int
-    avg_session_duration_minutes: float
-    feature_usage: dict[str, int] #TODO remove Dict and write a typed DTO class
-
-    model_config = {"from_attributes": True}
-
-
 class RetentionCohortItem(BaseModel):
     """Cohort-based retention analysis."""
     cohort_month: str

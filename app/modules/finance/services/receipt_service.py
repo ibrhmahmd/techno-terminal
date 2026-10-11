@@ -356,11 +356,6 @@ class ReceiptService:
 
         return enhanced
 
-    def mark_as_sent(self, receipt_id: int) -> None:
-        """Mark a receipt as sent (notification status)."""
-        # TODO: Implement when notification tracking is added
-        pass
-
     def _assess_overpayment_risk(self, lines: List[ReceiptLineInput]) -> List:
         """Internal: Check which lines would create credit."""
 

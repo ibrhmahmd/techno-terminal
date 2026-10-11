@@ -3,18 +3,9 @@ app/modules/academics/api/schemas/grouped.py
 ────────────────────────────────────────────
 Public-facing Grouped Groups DTOs.
 """
-from enum import Enum
 
 from pydantic import BaseModel
 from app.modules.academics.api.schemas.group import EnrichedGroupPublic
-
-
-class GroupByField(str, Enum):
-    """Fields that groups can be grouped by."""
-    DAY = "day"
-    COURSE = "course"
-    INSTRUCTOR = "instructor"
-    STATUS = "status"
 
 
 class GroupedItem(BaseModel):

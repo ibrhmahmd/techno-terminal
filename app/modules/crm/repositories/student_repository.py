@@ -1,13 +1,12 @@
-from typing import Optional, Sequence, Tuple, List
-from sqlmodel import Session, select, delete, func
+from typing import Optional, Tuple, List
+from sqlmodel import Session, select, func
 from sqlalchemy import or_, text
 from datetime import datetime
 from decimal import Decimal
 
-from app.modules.crm.schemas import StudentSummaryDTO, StudentBalanceSummaryDTO, AttendanceStatsDTO
+from app.modules.crm.schemas import StudentBalanceSummaryDTO, AttendanceStatsDTO
 from app.modules.crm.schemas.student_details import SiblingInfo
 from app.modules.crm.models import Student, StudentStatus, StudentParent, Parent
-from app.shared.audit_utils import apply_create_audit
 from app.shared.datetime_utils import utc_now
 
 class StudentRepository:
@@ -208,48 +207,6 @@ class StudentRepository:
         return True
 
 
-    def get_with_parent(self, student_id: int) -> Optional[tuple[Student, Optional[Parent]]]:
-        student = self._session.get(Student, student_id)
-        if not student:
-            return None
-        primary_link = self._session.exec(
-            select(StudentParent)
-            .where(StudentParent.student_id == student_id)
-            .where(StudentParent.is_primary.is_(True))
-        ).first()
-        parent = None
-        if primary_link and primary_link.parent_id:
-            parent = self._session.get(Parent, primary_link.parent_id)
-        return (student, parent)
-
-    def get_all_enriched(self, include_inactive: bool = False) -> list[StudentSummaryDTO]:
-        from app.modules.enrollments.models.enrollment_models import Enrollment
-        from app.modules.academics.models.group_models import Group
-        stmt = (
-            select(Student, Group)
-            .outerjoin(Enrollment, (Enrollment.student_id == Student.id) & (Enrollment.status == 'active'))
-            .outerjoin(Group, Enrollment.group_id == Group.id)
-        )
-        if not include_inactive:
-            stmt = stmt.where(Student.status == StudentStatus.ACTIVE)
-
-        results = self._session.exec(stmt).all()
-        # Ensure distinct by student ID
-        student_map = {}
-        for student, group in results:
-            if student.id not in student_map:
-                student_map[student.id] = StudentSummaryDTO(
-                    id=student.id,
-                    full_name=student.full_name,
-                    phone=student.phone,
-                    gender=student.gender,
-                    status=str(student.status) if student.status else "inactive",
-                    current_group_id=group.id if group else None,
-                    current_group_name=group.group_name if group else None,
-                    date_of_birth=student.date_of_birth.date() if hasattr(student.date_of_birth, 'date') else student.date_of_birth
-                )
-        return list(student_map.values())
-
     def get_student_balance_summary(self, student_id: int) -> StudentBalanceSummaryDTO:
         """
         Get total due, total discounts, total paid, net balance, enrollment count and unpaid enrollments
@@ -380,11 +337,6 @@ class StudentRepository:
         Returns list of CRM-owned DTOs with all session dates per group+level.
         Reads Attendance model directly per ADR-0004.
         """
-        from app.modules.attendance.models.attendance_models import Attendance
-        from app.modules.enrollments.models.enrollment_models import Enrollment
-        from app.modules.academics.models.group_models import Group
-        from app.modules.academics.models.course_models import Course
-        from app.modules.academics.models.session_models import CourseSession
         from app.modules.crm.schemas.attendance_dtos import (
             SessionAttendanceRecord,
             StudentEnrollmentAttendanceDTO,

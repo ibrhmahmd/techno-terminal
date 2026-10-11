@@ -8,7 +8,6 @@ from app.modules.auth import (
     UserRole,
     compensate_provisioned_login,
     provision_login,
-    update_login_status,
 )
 from app.modules.hr.models import Employee
 from app.db.uow import UnitOfWork
@@ -131,31 +130,6 @@ class StaffAccountService:
             )
             for link in links
         ]
-
-    def update_account_status(
-        self, user_id: int, is_active: bool, role: UserRole
-    ) -> bool:
-        """Update staff account status.
-
-        Args:
-            user_id: User ID to update
-            is_active: New active status
-            role: New role
-
-        Returns:
-            True on success
-
-        Raises:
-            NotFoundError: If user not found
-            ValidationError: If invalid role
-        """
-        if not isinstance(role, UserRole):
-            raise ValidationError(f"Invalid role: {role}")
-
-        update_login_status(self._uow, user_id, is_active, role.value)
-        self._staff_accounts.sync_employee_active(user_id, is_active)
-        self._uow.commit()
-        return True
 
     def _validate_account_creation(self, dto: CreateEmployeeAccountDTO) -> Employee:
         """Validate account creation request and resolve the target employee.

@@ -5,18 +5,14 @@ Repository functions for Group History and Lifecycle tracking.
 """
 from sqlmodel import Session, select, func
 from sqlalchemy import case
-from app.shared.datetime_utils import utc_now
 
 from app.modules.academics.models.group_level_models import (
     GroupLevel,
-    GroupCourseHistory,
 )
-from app.modules.enrollments.models import EnrollmentLevelHistory
 from app.modules.hr.models import Employee
 from app.modules.crm.models.student_models import Student
 from app.modules.academics.constants import (
-    LEVEL_STATUS_ACTIVE, LEVEL_STATUS_COMPLETED,
-    ENROLLMENT_STATUS_ACTIVE, ENROLLMENT_STATUS_COMPLETED, ENROLLMENT_STATUS_DROPPED,
+    LEVEL_STATUS_ACTIVE, ENROLLMENT_STATUS_ACTIVE, ENROLLMENT_STATUS_COMPLETED, ENROLLMENT_STATUS_DROPPED,
     TRANSACTION_TYPE_PAYMENT,
 )
 from app.modules.academics.schemas.group_details_schemas import EnrollmentStatsDTO, PaymentStatsDTO
@@ -27,85 +23,6 @@ from app.modules.academics.schemas.group_analytics_schemas import (
 )
 from app.modules.enrollments.models.enrollment_models import Enrollment
 from app.modules.finance.models.payment import Payment
-from app.shared.audit_utils import apply_create_audit
-
-
-def record_course_assignment(
-    session: Session,
-    group_id: int,
-    course_id: int,
-    assigned_by_user_id: int | None = None,
-    notes: str | None = None,
-) -> GroupCourseHistory:
-    """Record a new course assignment."""
-    history = GroupCourseHistory(
-        group_id=group_id,
-        course_id=course_id,
-        assigned_at=utc_now(),
-        assigned_by_user_id=assigned_by_user_id,
-        notes=notes,
-    )
-    apply_create_audit(history)
-    session.add(history)
-    session.flush()
-    return history
-
-
-def complete_course_assignment(
-    session: Session, group_id: int, course_id: int
-) -> GroupCourseHistory | None:
-    """Mark a course assignment as completed/removed."""
-    stmt = (
-        select(GroupCourseHistory)
-        .where(GroupCourseHistory.group_id == group_id)
-        .where(GroupCourseHistory.course_id == course_id)
-        .where(GroupCourseHistory.removed_at.is_(None))
-    )
-    record = session.exec(stmt).first()
-    if record:
-        record.removed_at = utc_now()
-        session.add(record)
-        session.flush()
-    return record
-
-
-def record_enrollment_level_transition(
-    session: Session,
-    enrollment_id: int,
-    group_level_id: int,
-    student_id: int,
-) -> EnrollmentLevelHistory:
-    """Record when a student enters a new level."""
-    transition = EnrollmentLevelHistory(
-        enrollment_id=enrollment_id,
-        group_level_id=group_level_id,
-        student_id=student_id,
-        level_entered_at=utc_now(),
-        status=LEVEL_STATUS_ACTIVE,
-    )
-    apply_create_audit(transition)
-    session.add(transition)
-    session.flush()
-    return transition
-
-
-def complete_enrollment_level(
-    session: Session, enrollment_id: int, group_level_id: int
-) -> EnrollmentLevelHistory | None:
-    """Mark an enrollment level as completed."""
-    stmt = (
-        select(EnrollmentLevelHistory)
-        .where(EnrollmentLevelHistory.enrollment_id == enrollment_id)
-        .where(EnrollmentLevelHistory.group_level_id == group_level_id)
-        .where(EnrollmentLevelHistory.level_completed_at.is_(None))
-    )
-    record = session.exec(stmt).first()
-    if record:
-        record.level_completed_at = utc_now()
-        record.status = LEVEL_STATUS_COMPLETED
-        session.add(record)
-        session.flush()
-    return record
 
 
 # ════════════════════════════════════════════════════════════

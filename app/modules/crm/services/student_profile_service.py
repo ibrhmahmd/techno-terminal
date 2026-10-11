@@ -185,15 +185,6 @@ class StudentProfileService:
 
         return self._students.get_student_siblings_with_details(student_id)
 
-    def get_balance_summary(self, student_id: int) -> StudentBalanceSummary:
-        """Get financial balance summary for a student."""
-        student = self._students.get_by_id(student_id)
-        if not student:
-            raise NotFoundError(f"Student {student_id} not found")
-
-        balance = self._students.get_student_balance_summary(student_id)
-        return balance if balance else StudentBalanceSummary()
-
     def get_attendance_stats(self, student_id: int) -> AttendanceStatsDTO:
         """Get attendance statistics for a student."""
         student = self._students.get_by_id(student_id)

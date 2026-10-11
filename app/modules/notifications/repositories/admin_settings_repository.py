@@ -4,12 +4,10 @@ app/modules/notifications/repositories/admin_settings_repository.py
 Repository for admin notification settings and additional recipients.
 """
 from typing import Optional, List
-from datetime import datetime
 
 from sqlalchemy import text
-from sqlmodel import Session, select
+from sqlmodel import Session
 
-from app.modules.auth.models.auth_models import User
 
 
 class AdminSettingsRepository:
@@ -176,15 +174,3 @@ class AdminSettingsRepository:
         self._session.commit()
         return result.rowcount > 0
 
-    def get_active_additional_recipients(
-        self, admin_id: int = None, notification_type: str = None
-    ) -> List[tuple[str, Optional[str]]]:
-        """Get (email, label) for active recipients who should receive this notification (global)."""
-        result = self._session.exec(
-            text("""SELECT email, label
-                FROM notification_additional_recipients
-                WHERE is_active = true
-                AND (notification_types IS NULL OR :notification_type = ANY(notification_types))"""),
-            params={"notification_type": notification_type}
-        ).all()
-        return [(r[0], r[1]) for r in result]

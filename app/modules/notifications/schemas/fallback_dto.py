@@ -17,10 +17,3 @@ class FallbackAlertContext(BaseModel):
     intended_recipients_count: int = 0
 
 
-class FallbackAlertResult(BaseModel):
-    """Result of sending fallback alert."""
-    model_config = ConfigDict(from_attributes=True)
-    
-    success: bool
-    message: str
-    recipient_email: str

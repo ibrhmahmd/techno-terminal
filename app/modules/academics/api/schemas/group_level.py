@@ -3,8 +3,7 @@ app/modules/academics/api/schemas/group_level.py
 ────────────────────────────────────────────────
 Public-facing Group Level DTOs.
 """
-from datetime import date, datetime
-from decimal import Decimal
+from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel
@@ -30,27 +29,3 @@ class GroupLevelPublic(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class GroupLevelScheduleResponse(BaseModel):
-    """Response for scheduling a new level."""
-    level: GroupLevelPublic
-    sessions_created: int
-    message: str
-
-
-class GroupLevelCompletionResponse(BaseModel):
-    """Response for completing a level — returns the completed and the newly created level."""
-    completed_level: "GroupLevelSummary"
-    new_level: "GroupLevelSummary"
-    message: str
-
-
-class GroupLevelSummary(BaseModel):
-    """Slim group level for list/nested responses."""
-    id: int
-    group_id: int
-    level_number: int
-    status: str
-    course_name: Optional[str] = None
-    instructor_name: Optional[str] = None
-
-    model_config = {"from_attributes": True}
