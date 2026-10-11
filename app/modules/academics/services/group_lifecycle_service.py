@@ -11,8 +11,9 @@ from sqlmodel import select, delete
 from app.db.uow import UnitOfWork
 from app.modules.academics.models import Course, Group, CourseSession
 from app.modules.academics.models.group_level_models import (
-    GroupLevel, GroupCourseHistory, EnrollmentLevelHistory,
+    GroupLevel, GroupCourseHistory,
 )
+from app.modules.enrollments.models import EnrollmentLevelHistory
 from app.modules.hr.models import Employee
 import app.modules.academics.repositories.group_level_repository as repo
 from app.shared.exceptions import BusinessRuleError, NotFoundError

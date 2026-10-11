@@ -2,24 +2,25 @@
 
 from fastapi import Depends
 
-from app.api.dependencies import UoW, get_notification_service
+from app.api.dependencies import UoW
 from app.modules.crm import StudentActivityService
+from app.modules.enrollments.ports import EnrollmentNotifier
 from app.modules.enrollments.services.enrollment_service import EnrollmentService
 from app.modules.enrollments.services.enrollment_directory_service import EnrollmentDirectoryService
 from app.modules.enrollments.services.enrollment_lifecycle_service import EnrollmentLifecycleService
 
 
+def get_enrollment_notifier() -> EnrollmentNotifier:
+    """EnrollmentNotifier provider — overridden in create_app() with the real adapter."""
+    raise NotImplementedError("wired in create_app()")
+
+
 def get_enrollment_service(
     uow: UoW,
-    notification_svc: "NotificationService" = Depends(get_notification_service),
+    notifier: EnrollmentNotifier = Depends(get_enrollment_notifier),
 ) -> EnrollmentService:
-    """Returns an EnrollmentService with activity logging and notifications."""
-    activity_svc = StudentActivityService(uow)
-    return EnrollmentService(
-        uow,
-        activity_svc=activity_svc,
-        notification_svc=notification_svc,
-    )
+    """Returns an EnrollmentService with activity logging and the notifier port."""
+    return EnrollmentService(uow, activity_svc=StudentActivityService(uow), notifier=notifier)
 
 
 def get_enrollment_directory_service(
@@ -31,10 +32,9 @@ def get_enrollment_directory_service(
 
 def get_enrollment_migration_service(
     uow: UoW,
-    notification_svc: "NotificationService" = Depends(get_notification_service),
 ) -> EnrollmentLifecycleService:
-    """Returns an EnrollmentLifecycleService with notification support."""
-    return EnrollmentLifecycleService(uow, notification_svc=notification_svc)
+    """Returns an EnrollmentLifecycleService for enrollment migration."""
+    return EnrollmentLifecycleService(uow)
 
 
 def get_enrollment_lifecycle_service(

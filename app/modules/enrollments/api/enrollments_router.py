@@ -11,13 +11,13 @@ Role policy:
   WRITE -> require_admin
 """
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.schemas.common import ApiResponse
 from app.modules.enrollments.api.schemas.enrollment import EnrollmentPublic, StudentEnrollmentSummaryPublic
 from app.api.dependencies import require_admin, require_any
 from app.modules.academics import ProgressLevelDTO
-from app.modules.academics.api.schemas.group import ProgressGroupLevelRequest, ProgressGroupLevelResult
+from app.modules.enrollments.api.schemas.progress import ProgressGroupLevelRequest, ProgressGroupLevelResult
 from app.modules.enrollments.schemas.enrollment_schemas import EnrollStudentInput, TransferStudentInput, UpdateEnrollmentInput
 from app.modules.auth import User
 from app.modules.enrollments.api.deps import (
@@ -41,12 +41,11 @@ progress_router = APIRouter(tags=["Academics — Groups"])
 )
 def enroll_student(
     body: EnrollStudentInput,
-    background_tasks: BackgroundTasks,
     current_user: User = Depends(require_admin),
     svc: EnrollmentService = Depends(get_enrollment_service),
 ):
     enrollment_data = body.model_copy(update={"created_by": current_user.id})
-    result = svc.enroll_student(enrollment_data, background_tasks=background_tasks)
+    result = svc.enroll_student(enrollment_data)
     
     msg = "Student enrolled successfully."
     if result.capacity_exceeded:
@@ -66,14 +65,12 @@ def enroll_student(
 def update_enrollment(
     enrollment_id: int,
     body: UpdateEnrollmentInput,
-    background_tasks: BackgroundTasks,
     current_user: User = Depends(require_admin),
     svc: EnrollmentService = Depends(get_enrollment_service),
 ):
     result = svc.update_enrollment(
         enrollment_id, body,
         performed_by=current_user.id,
-        background_tasks=background_tasks,
     )
     msg = "Enrollment updated successfully."
     if result.warnings:
@@ -92,7 +89,6 @@ def update_enrollment(
 )
 def drop_enrollment(
     enrollment_id: int,
-    background_tasks: BackgroundTasks,
     reason: Optional[str] = None,
     _user: User = Depends(require_admin),
     svc: EnrollmentService = Depends(get_enrollment_service),
@@ -101,7 +97,6 @@ def drop_enrollment(
         enrollment_id,
         performed_by=_user.id,
         reason=reason,
-        background_tasks=background_tasks,
     )
     return ApiResponse(
         data=EnrollmentPublic.model_validate(enr),
@@ -117,12 +112,11 @@ def drop_enrollment(
 )
 def transfer_student(
     body: TransferStudentInput,
-    background_tasks: BackgroundTasks,
     current_user: User = Depends(require_admin),
     svc: EnrollmentService = Depends(get_enrollment_service),
 ):
     transfer_data = body.model_copy(update={"created_by": current_user.id})
-    new_enr = svc.transfer_student(transfer_data, background_tasks=background_tasks)
+    new_enr = svc.transfer_student(transfer_data)
     
     return ApiResponse(
         data=EnrollmentPublic.model_validate(new_enr),

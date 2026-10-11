@@ -7,7 +7,8 @@ Other modules must import Enrollments ONLY via this facade, except
 app.modules.enrollments.models which anyone may import (ADR-0004).
 
 Exports:
-- Models: Enrollment, EnrollmentBase
+- Models: Enrollment, EnrollmentBase, EnrollmentLevelHistory
+- Ports: EnrollmentNotifier
 - Services: EnrollmentService, EnrollmentDirectoryService,
             EnrollmentLifecycleService, EnrollmentAnalyticsService
 - DTOs: EnrollStudentInput, TransferStudentInput, UpdateEnrollmentInput,
@@ -17,7 +18,10 @@ Exports:
 """
 
 # Models (ADR-0004: anyone may import models directly)
-from app.modules.enrollments.models import Enrollment, EnrollmentBase
+from app.modules.enrollments.models import Enrollment, EnrollmentBase, EnrollmentLevelHistory
+
+# Ports (ADR-0007)
+from app.modules.enrollments.ports import EnrollmentNotifier
 
 # Services (via facade only)
 from app.modules.enrollments.services.enrollment_service import EnrollmentService
@@ -49,6 +53,9 @@ __all__ = [
     # Models
     "Enrollment",
     "EnrollmentBase",
+    "EnrollmentLevelHistory",
+    # Ports
+    "EnrollmentNotifier",
     # Services
     "EnrollmentService",
     "EnrollmentDirectoryService",

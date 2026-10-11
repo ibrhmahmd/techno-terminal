@@ -4,7 +4,9 @@ from datetime import date
 from typing import TYPE_CHECKING, Any, List, Optional
 from sqlmodel import select
 from app.db.uow import UnitOfWork
+from app.modules.academics import GroupLifecycleService
 from app.modules.academics.models import Course, Group
+from app.modules.crm import StudentActivityService
 from app.modules.enrollments.models.enrollment_models import Enrollment
 from app.modules.enrollments.schemas.enrollment_lifecycle_schemas import (
     MigrateEnrollmentsDTO,
@@ -19,9 +21,8 @@ if TYPE_CHECKING:
 
 
 class EnrollmentLifecycleService:
-    def __init__(self, uow: UnitOfWork, notification_svc: Optional[Any] = None):
+    def __init__(self, uow: UnitOfWork):
         self._uow = uow
-        self._notification_svc = notification_svc
 
     def progress_group_level(
         self,
@@ -34,9 +35,6 @@ class EnrollmentLifecycleService:
         then migrates the active enrolments to that level. Both steps share one
         session and commit once, so a failure in either step rolls back both.
         """
-        from app.modules.academics import GroupLifecycleService
-        from app.modules.crm import StudentActivityService
-
         session = self._uow.session
         created = GroupLifecycleService(self._uow).create_next_level(data)
 

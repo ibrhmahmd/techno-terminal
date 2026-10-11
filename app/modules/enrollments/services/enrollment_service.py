@@ -1,6 +1,6 @@
-from typing import Any, Optional, TYPE_CHECKING
+import logging
+from typing import Optional
 from sqlalchemy.exc import IntegrityError
-from fastapi import BackgroundTasks
 from app.db.uow import UnitOfWork
 from app.shared.audit_utils import apply_create_audit
 from app.shared.datetime_utils import utc_now
@@ -15,6 +15,7 @@ from app.modules.crm import (
 from app.modules.academics import GroupCoreService
 from app.modules.academics.models.group_models import Group
 from app.modules.enrollments.models.enrollment_models import Enrollment
+from app.modules.enrollments.ports import EnrollmentNotifier
 from app.modules.enrollments.schemas.enrollment_schemas import (
     EnrollStudentInput,
     TransferStudentInput,
@@ -31,8 +32,7 @@ from app.modules.enrollments.repositories.enrollment_directory_repository import
 )
 from app.shared.exceptions import NotFoundError, BusinessRuleError, ConflictError
 
-if TYPE_CHECKING:
-    from app.modules.notifications.services.notification_service import NotificationService
+logger = logging.getLogger(__name__)
 
 
 class EnrollmentService:
@@ -40,15 +40,24 @@ class EnrollmentService:
         self,
         uow: UnitOfWork,
         activity_svc: Optional["StudentActivityService"] = None,
-        notification_svc: Optional["NotificationService"] = None,
+        notifier: Optional[EnrollmentNotifier] = None,
     ) -> None:
         self._uow = uow
         self._activity_svc = (
             activity_svc if activity_svc is not None else StudentActivityService(uow)
         )
-        self._notification_svc = notification_svc
+        self._notifier = notifier
         self._enrollments = EnrollmentRepository(uow.session)
         self._directory = EnrollmentDirectoryRepository(uow.session)
+
+    def _notify(self, method: str, **kwargs) -> None:
+        """Call the notifier after commit; failures are logged, never raised."""
+        if self._notifier is None:
+            return
+        try:
+            getattr(self._notifier, method)(**kwargs)
+        except Exception:
+            logger.exception("Enrollment notifier %s failed", method)
 
     def get_active_enrollment(
         self, student_id: int, group_id: int
@@ -59,7 +68,6 @@ class EnrollmentService:
     def enroll_student(
         self,
         data: EnrollStudentInput,
-        background_tasks: Optional[BackgroundTasks] = None,
     ) -> EnrollmentCoreResult:
         uow = self._uow
         session = uow.session
@@ -127,14 +135,13 @@ class EnrollmentService:
 
             uow.commit()
             session.refresh(created)
-            if self._notification_svc and background_tasks:
-                self._notification_svc.enrollment.notify_enrollment_created(
-                    student_id=student.id,
-                    enrollment_id=created.id,
-                    group_id=group.id,
-                    level_number=group.level_number,
-                    background_tasks=background_tasks,
-                )
+            self._notify(
+                "enrollment_created",
+                student_id=student.id,
+                enrollment_id=created.id,
+                group_id=group.id,
+                level_number=group.level_number,
+            )
 
             return EnrollmentCoreResult(
                 enrollment=EnrollmentDTO.model_validate(created),
@@ -148,7 +155,6 @@ class EnrollmentService:
         enrollment_id: int,
         data: UpdateEnrollmentInput,
         performed_by: Optional[int] = None,
-        background_tasks: Optional[BackgroundTasks] = None,
     ) -> UpdateEnrollmentResult:
         session = self._uow.session
         enrollment = self._enrollments.get_enrollment(enrollment_id)
@@ -178,10 +184,7 @@ class EnrollmentService:
 
         # Check for financial conflicts if financial fields are changing
         if "amount_due" in updates or "discount_applied" in updates:
-            from app.modules.finance.models.payment import Payment
-            from sqlmodel import select
-            payment = session.exec(select(Payment).where(Payment.enrollment_id == enrollment_id)).first()
-            if payment:
+            if self._enrollments.has_payments(enrollment_id):
                 warnings.append("Note: Payments already exist for this enrollment. Verify if adjustments are needed.")
 
         # Audit logging
@@ -228,14 +231,14 @@ class EnrollmentService:
             self._uow.commit()
             session.refresh(updated)
 
-            if ("amount_due" in changes or "discount_applied" in changes) and self._notification_svc and background_tasks:
-                self._notification_svc.enrollment.notify_enrollment_updated(
+            if "amount_due" in changes or "discount_applied" in changes:
+                self._notify(
+                    "enrollment_updated",
                     student_id=updated.student_id,
                     enrollment_id=updated.id,
                     group_id=updated.group_id,
                     changes_summary="<br>".join(changes_summary_parts),
                     performed_by=performed_by,
-                    background_tasks=background_tasks,
                 )
             return UpdateEnrollmentResult(enrollment=EnrollmentDTO.model_validate(updated), warnings=warnings)
 
@@ -258,7 +261,6 @@ class EnrollmentService:
     def transfer_student(
         self,
         data: TransferStudentInput,
-        background_tasks: Optional[Any] = None,
     ) -> EnrollmentDTO:
         uow = self._uow
         session = uow.session
@@ -301,16 +303,15 @@ class EnrollmentService:
 
         uow.commit()
         session.refresh(created)
-        if self._notification_svc and background_tasks:
-            self._notification_svc.enrollment.notify_enrollment_transferred(
-                student_id=source.student_id,
-                from_enrollment_id=data.from_enrollment_id,
-                to_enrollment_id=created.id,
-                from_group_id=source.group_id,
-                to_group_id=data.to_group_id,
-                transferred_by=data.created_by,
-                background_tasks=background_tasks,
-            )
+        self._notify(
+            "enrollment_transferred",
+            student_id=source.student_id,
+            from_enrollment_id=data.from_enrollment_id,
+            to_enrollment_id=created.id,
+            from_group_id=source.group_id,
+            to_group_id=data.to_group_id,
+            transferred_by=data.created_by,
+        )
 
         return EnrollmentDTO.model_validate(created)
 
@@ -319,7 +320,6 @@ class EnrollmentService:
         enrollment_id: int,
         performed_by: Optional[int] = None,
         reason: Optional[str] = None,
-        background_tasks: Optional[Any] = None,
     ) -> EnrollmentDTO:
         session = self._uow.session
         enrollment = self._enrollments.get_enrollment(enrollment_id)
@@ -344,14 +344,13 @@ class EnrollmentService:
 
         self._uow.commit()
         session.refresh(updated)
-        if self._notification_svc and background_tasks:
-            self._notification_svc.enrollment.notify_enrollment_dropped(
-                student_id=student_id,
-                enrollment_id=enrollment_id,
-                group_id=group_id,
-                reason=reason,
-                dropped_by=performed_by,
-                background_tasks=background_tasks,
-            )
+        self._notify(
+            "enrollment_dropped",
+            student_id=student_id,
+            enrollment_id=enrollment_id,
+            group_id=group_id,
+            reason=reason,
+            dropped_by=performed_by,
+        )
 
         return EnrollmentDTO.model_validate(updated)

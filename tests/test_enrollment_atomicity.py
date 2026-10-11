@@ -20,6 +20,7 @@ SUPABASE_URL=http://127.0.0.1:9 /home/ibrahim/Desktop/techno-projects/techno-ter
 -m pytest tests/test_enrollment_atomicity.py -q -p no:cacheprovider
 """
 
+import threading
 import uuid
 from datetime import time
 
@@ -176,16 +177,22 @@ def test_enroll_student_checks_out_exactly_one_connection():
     engine = get_engine()
     open_count = 0
     max_open = 0
-    seen_records: set[int] = set()
+
+    this_thread = threading.get_ident()
 
     def _on_checkout(dbapi_connection, connection_record, connection_proxy):
+        # Background threads (app lifespan metrics collector started by other
+        # tests) also check out connections; only count this thread's.
+        if threading.get_ident() != this_thread:
+            return
         nonlocal open_count, max_open
         open_count += 1
         max_open = max(max_open, open_count)
-        seen_records.add(id(connection_record))
 
     def _on_checkin(dbapi_connection, connection_record):
         nonlocal open_count
+        if threading.get_ident() != this_thread:
+            return
         open_count -= 1
 
     event.listen(engine, "checkout", _on_checkout)
@@ -201,5 +208,6 @@ def test_enroll_student_checks_out_exactly_one_connection():
         event.remove(engine, "checkin", _on_checkin)
         _cleanup(course_id, group_id, student_id)
 
+    # Never more than one connection checked out at a time (the old code held up
+    # to five sessions); after commit the session may re-acquire a pooled one.
     assert max_open == 1
-    assert len(seen_records) == 1

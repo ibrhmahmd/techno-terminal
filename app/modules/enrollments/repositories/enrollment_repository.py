@@ -1,5 +1,6 @@
 from sqlmodel import Session, select
 from app.modules.enrollments.models.enrollment_models import Enrollment
+from app.modules.finance.models.payment import Payment
 from app.shared.audit_utils import apply_update_audit
 
 
@@ -14,6 +15,10 @@ class EnrollmentRepository:
 
     def get_enrollment(self, enrollment_id: int) -> Enrollment | None:
         return self._session.get(Enrollment, enrollment_id)
+
+    def has_payments(self, enrollment_id: int) -> bool:
+        stmt = select(Payment).where(Payment.enrollment_id == enrollment_id)
+        return self._session.exec(stmt).first() is not None
 
     def get_active_enrollment(
         self, student_id: int, group_id: int

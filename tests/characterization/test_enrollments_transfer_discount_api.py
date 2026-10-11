@@ -210,7 +210,7 @@ def test_transfer_student(
 
 
 def test_transfer_marks_source_transferred(
-    client_with_uow, override_auth, mock_admin_headers, db_session, noop_notifications
+    client_with_uow, override_auth, mock_admin_headers, db_session, uow, noop_notifications
 ):
     """POST /enrollments/transfer sets the OLD enrollment status to 'transferred'."""
     course = _make_course(db_session)
@@ -226,8 +226,9 @@ def test_transfer_marks_source_transferred(
     )
     assert r.status_code == 200
 
-    db_session.refresh(source)
-    assert source.status == "transferred"
+    # The use case now commits through the injected UnitOfWork (a savepoint of
+    # the uow fixture's transaction), so read the result through that same session.
+    assert uow.session.get(Enrollment, source.id).status == "transferred"
 
 
 def test_transfer_target_group_not_active(
