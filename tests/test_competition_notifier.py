@@ -7,7 +7,8 @@ import pytest
 from sqlalchemy import text
 
 from app.db.connection import get_session
-from app.modules.competitions import CompetitionNotifier, TeamService
+from app.db.uow import unit_of_work
+from app.modules.competitions import CompetitionNotifier, TeamRegistrationService
 from app.modules.competitions.api.deps import get_competition_notifier as competitions_deps_get_notifier
 from app.modules.competitions.models import Competition
 from app.modules.competitions.schemas import RegisterTeamInput
@@ -58,12 +59,13 @@ def test_create_app_overrides_the_notifier_with_the_adapter():
 
 def test_register_team_notifies_each_student_after_commit(seeded):
     fake = FakeCompetitionNotifier()
-    result = TeamService(notifier=fake).register_team(
-        RegisterTeamInput(
-            competition_id=seeded["comp"], team_name=f"T {_short()}", category="Robotics",
-            student_ids=[seeded["student"]],
+    with unit_of_work() as uow:
+        result = TeamRegistrationService(uow, notifier=fake).register_team(
+            RegisterTeamInput(
+                competition_id=seeded["comp"], team_name=f"T {_short()}", category="Robotics",
+                student_ids=[seeded["student"]],
+            )
         )
-    )
     assert [c[0] for c in fake.calls] == ["team_registration"]
     assert fake.calls[0][1]["student_id"] == seeded["student"]
     assert fake.calls[0][1]["team_id"] == result.result.team.id
@@ -71,10 +73,11 @@ def test_register_team_notifies_each_student_after_commit(seeded):
 
 def test_notifier_failure_never_fails_registration(seeded):
     fake = FakeCompetitionNotifier(should_raise=True)
-    result = TeamService(notifier=fake).register_team(
-        RegisterTeamInput(
-            competition_id=seeded["comp"], team_name=f"T {_short()}", category="Robotics",
-            student_ids=[seeded["student"]],
+    with unit_of_work() as uow:
+        result = TeamRegistrationService(uow, notifier=fake).register_team(
+            RegisterTeamInput(
+                competition_id=seeded["comp"], team_name=f"T {_short()}", category="Robotics",
+                student_ids=[seeded["student"]],
+            )
         )
-    )
     assert result.result.members_added == 1

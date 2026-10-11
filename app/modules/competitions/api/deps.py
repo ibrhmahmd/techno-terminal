@@ -2,12 +2,19 @@
 
 from fastapi import Depends
 
-from app.modules.competitions import CompetitionNotifier, CompetitionService, TeamService
+from app.api.dependencies import UoW
+from app.modules.competitions import (
+    CompetitionNotifier,
+    CompetitionService,
+    TeamPlacementService,
+    TeamRegistrationService,
+    TeamRosterService,
+    TeamService,
+)
 
 
-def get_competition_service() -> CompetitionService:
-    """Returns a fresh CompetitionService instance per request."""
-    return CompetitionService()
+def get_competition_service(uow: UoW) -> CompetitionService:
+    return CompetitionService(uow)
 
 
 def get_competition_notifier() -> CompetitionNotifier:
@@ -16,7 +23,29 @@ def get_competition_notifier() -> CompetitionNotifier:
 
 
 def get_team_service(
+    uow: UoW,
     notifier: CompetitionNotifier = Depends(get_competition_notifier),
 ) -> TeamService:
     """Returns a fresh TeamService instance with the notifier port."""
-    return TeamService(notifier=notifier)
+    return TeamService(uow, notifier=notifier)
+
+
+def get_team_registration_service(
+    uow: UoW,
+    notifier: CompetitionNotifier = Depends(get_competition_notifier),
+) -> TeamRegistrationService:
+    return TeamRegistrationService(uow, notifier=notifier)
+
+
+def get_team_roster_service(
+    uow: UoW,
+    notifier: CompetitionNotifier = Depends(get_competition_notifier),
+) -> TeamRosterService:
+    return TeamRosterService(uow, notifier=notifier)
+
+
+def get_team_placement_service(
+    uow: UoW,
+    notifier: CompetitionNotifier = Depends(get_competition_notifier),
+) -> TeamPlacementService:
+    return TeamPlacementService(uow, notifier=notifier)

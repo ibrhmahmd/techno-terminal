@@ -4,7 +4,7 @@ app/modules/competitions/schemas/team_schemas.py
 Typed DTOs for Teams, Team Members, and complex cross-entity responses.
 """
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 from pydantic import BaseModel, ConfigDict, field_validator
 from app.shared.validators import validate_non_empty_string
 from app.modules.competitions.schemas.competition_schemas import CompetitionDTO
@@ -146,6 +146,13 @@ class CompetitionSummaryDataDTO(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     competition: Optional[CompetitionDTO] = None
     teams: list[TeamDTO]
+    members_by_team: dict[int, list[TeamMemberWithNameDTO]]
+
+
+class TeamsWithMembersBatch(BaseModel):
+    """Teams of a competition plus their members, loaded in batch (repository result)."""
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    teams: list[Any]  # Team ORM rows
     members_by_team: dict[int, list[TeamMemberWithNameDTO]]
 
 
