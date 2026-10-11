@@ -1,5 +1,5 @@
 """
-app/api/routers/finance/competition_fees_router.py
+app/modules/finance/api/competition_fees_router.py
 ──────────────────────────────────────────────────
 Competition fee payment and refund endpoints, moved from the competitions teams
 router (ADR-0006: the workflow spans modules and lives in finance).
@@ -10,13 +10,9 @@ Paths, request bodies, responses and auth are unchanged:
 """
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
-from app.api.dependencies import (
-    UoW,
-    get_notification_service,
-    require_admin,
-)
+from app.api.dependencies import UoW, get_notification_service, require_admin
 from app.api.schemas.common import ApiResponse
-from app.api.schemas.finance.competition_fee import PayCompetitionFeeBody, RefundCompetitionFeeBody
+from app.modules.finance.api.schemas.competition_fee import PayCompetitionFeeBody, RefundCompetitionFeeBody
 from app.modules.auth import User
 from app.modules.finance.schemas.competition_fee import (
     PayCompetitionFeeInput,

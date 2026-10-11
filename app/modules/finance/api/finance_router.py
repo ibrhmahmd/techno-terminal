@@ -1,5 +1,5 @@
 """
-app/api/routers/finance/finance_router.py
+app/modules/finance/api/finance_router.py
 ───────────────────────────────────────
 Finance domain router with SOLID-compliant dependency injection.
 
@@ -20,32 +20,25 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query, status, BackgroundTasks, HTTPException
 
 from app.api.schemas.common import ApiResponse, PaginatedResponse
-from app.api.schemas.finance.receipt import (
+from app.modules.finance.api.schemas.receipt import (
     ReceiptCreationResponse,
     RefundResponse,
     CreateReceiptRequest,
     IssueRefundRequest,
 )
-from app.api.schemas.finance.risk import PreviewOverpaymentRequest, OverpaymentRiskResponse
-from app.api.schemas.finance.balance import (
+from app.modules.finance.api.schemas.risk import PreviewOverpaymentRequest, OverpaymentRiskResponse
+from app.modules.finance.api.schemas.balance import (
     StudentBalanceResponse,
     EnrollmentBalanceResponse,
     UnpaidEnrollmentItem,
 )
-from app.api.schemas.finance.payment import (
+from app.modules.finance.api.schemas.payment import (
     PaymentDetailsResponse,
     SendReceiptRequest,
     SendReceiptResponse,
 )
-from app.api.dependencies import (
-    require_admin,
-    require_any,
-    get_receipt_service,
-    get_refund_service,
-    get_balance_service,
-    get_reporting_service,
-    get_student_payment_service,
-)
+from app.api.dependencies import require_admin, require_any
+from app.modules.finance.api.deps import get_receipt_service, get_refund_service, get_balance_service, get_reporting_service, get_student_payment_service
 from app.modules.finance.services.student_payment_service import StudentPaymentService
 from app.modules.finance.services.receipt_service import ReceiptService
 from app.modules.finance.services.refund_service import RefundService
@@ -353,7 +346,7 @@ def get_payment_details(
         result = svc.get_payment_details(payment_id)
         
         # Import nested schemas
-        from app.api.schemas.finance.payment import ReceiptDetails, EnrollmentInfo, StudentSnapshot, ParentInfo
+        from app.modules.finance.api.schemas.payment import ReceiptDetails, EnrollmentInfo, StudentSnapshot, ParentInfo
         
         # Map to response schema
         return ApiResponse(

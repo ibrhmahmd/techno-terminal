@@ -13,7 +13,7 @@ from sqlmodel import select
 
 from app.db.connection import get_session
 from app.modules.finance import Receipt, Payment
-from app.api.schemas.finance.receipt import BatchGenerateResponse, BatchReceiptItem
+from app.modules.finance.schemas.receipt_generation import BatchGenerateResponse, BatchReceiptItem
 from app.modules.enrollments.models.enrollment_models import Enrollment
 from app.modules.academics.models.group_models import Group
 from app.modules.crm.models.student_models import Student

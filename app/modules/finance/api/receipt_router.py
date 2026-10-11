@@ -1,5 +1,5 @@
 """
-app/api/routers/finance/receipt_router.py
+app/modules/finance/api/receipt_router.py
 ─────────────────────────────────────────
 API endpoints for receipt generation and management.
 """
@@ -8,20 +8,17 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query, Response, HTTPException
 
-from app.api.dependencies import (
-    require_any,
-    require_admin,
-    get_receipt_service,
-)
+from app.api.dependencies import require_any, require_admin
+from app.modules.finance.api.deps import get_receipt_service
 from app.api.schemas.common import ApiResponse
-from app.api.schemas.finance.receipt import (
+from app.modules.finance.api.schemas.receipt import (
     BatchGenerateRequest,
     BatchReceiptItem,
     ReceiptGenerationResponse,
     ReceiptDetailResponse,
     ReceiptListItem,
 )
-from app.api.mappers.finance_mapper import to_receipt_list_item, to_receipt_detail_response
+from app.modules.finance.api.finance_mapper import to_receipt_list_item, to_receipt_detail_response
 from app.modules.auth.models import User
 from app.modules.finance.services.receipt_service import ReceiptService
 from app.modules.finance.services.receipt_generation_service import get_receipt_generation_service

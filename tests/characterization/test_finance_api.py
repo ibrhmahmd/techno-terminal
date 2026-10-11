@@ -1,7 +1,7 @@
 """Characterization tests for the Finance HTTP API (ticket #22).
 
 Pins status codes, envelopes and field shapes of the finance endpoints served by
-``app/api/routers/finance/{finance_router,receipt_router,reporting_router}.py``
+``app/modules/finance/api/``
 BEFORE the HTTP layer moves into ``app/modules/finance/api/``:
 
     POST /finance/receipts, POST /finance/refunds, GET /finance/competition-fees,

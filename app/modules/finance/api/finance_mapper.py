@@ -1,5 +1,5 @@
 """
-app/api/mappers/finance_mapper.py
+app/modules/finance/api/finance_mapper.py
 ──────────────────────────────────
 Mapping functions to convert internal finance service DTOs
 to API response DTOs.
@@ -10,7 +10,7 @@ keeping the conversion logic separate from routers and services.
 
 from app.modules.finance import ReceiptSearchItem
 from app.modules.finance.interfaces.dto import ReceiptDetailDTO
-from app.api.schemas.finance.receipt import (
+from app.modules.finance.api.schemas.receipt import (
     ReceiptListItem,
     ReceiptDetailResponse,
     ReceiptHeaderResponse,

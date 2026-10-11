@@ -1,5 +1,5 @@
 """
-app/api/routers/finance/reporting_router.py
+app/modules/finance/api/reporting_router.py
 ───────────────────────────────────────────
 Financial reporting router for daily collections and receipts.
 
@@ -16,7 +16,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query, status
 
 from app.api.schemas.common import ApiResponse
-from app.api.dependencies import require_admin, get_reporting_service
+from app.api.dependencies import require_admin
+from app.modules.finance.api.deps import get_reporting_service
 from app.modules.auth import User
 from app.modules.finance.services.reporting_service import ReportingService
 from app.modules.finance.schemas import DailyCollectionItem, DailyReceiptItem

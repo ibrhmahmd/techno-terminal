@@ -74,7 +74,7 @@ from app.api.routers.analytics import (
     bi_router,
     dashboard_router,
 )
-from app.api.routers.finance import receipt_router, finance_router, reporting_router, student_payments_router, competition_fees_router
+from app.modules.finance.api import receipt_router, finance_router, reporting_router, student_payments_router, competition_fees_router
 from app.modules.auth.api import admin_auth_router
 from app.api.routers.tasks import router as tasks_router
 

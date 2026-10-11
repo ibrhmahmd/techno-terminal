@@ -8,7 +8,7 @@ financial risk calculations, strictly separated from router logic.
 """
 from pydantic import BaseModel
 
-from app.api.schemas.finance.receipt import ReceiptLineRequest
+from app.modules.finance.api.schemas.receipt import ReceiptLineRequest
 
 
 class PreviewOverpaymentRequest(BaseModel):

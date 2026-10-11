@@ -10,6 +10,7 @@ from pydantic import BaseModel, field_validator
 
 from app.shared.constants import PaymentMethod, PAYMENT_METHOD_MAP
 from app.modules.finance import ReceiptLineInput
+from app.modules.finance.schemas.receipt_generation import BatchGenerateResponse, BatchReceiptItem  # noqa: F401
 
 
 class ReceiptCreationResponse(BaseModel):
@@ -119,15 +120,6 @@ class IssueRefundRequest(BaseModel):
     method: str = "cash"
 
 
-class BatchReceiptItem(BaseModel):
-    """Item in batch receipt generation response."""
-    receipt_id: int
-    success: bool
-    content: Optional[str] = None
-    error_message: Optional[str] = None
-    error_code: Optional[str] = None
-
-
 class MarkReceiptSentRequest(BaseModel):
     """Request to mark a receipt as sent."""
     pass
@@ -143,12 +135,3 @@ class ReceiptGenerationResponse(BaseModel):
     """Response for single receipt generation."""
     content: str
     content_type: str = "text/plain"
-
-
-class BatchGenerateResponse(BaseModel):
-    """Response for batch receipt generation."""
-    items: list[BatchReceiptItem]
-    total_count: int
-    success_count: int
-    failed_count: int
-

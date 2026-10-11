@@ -1,5 +1,5 @@
 """
-app/api/routers/finance/student_payments_router.py
+app/modules/finance/api/student_payments_router.py
 ──────────────────────────────────────────────────
 Student payments router (Finance module).
 
@@ -9,8 +9,9 @@ Moved from CRM module to Finance module per ADR-0006 (cross-module writes live i
 from fastapi import APIRouter, Depends, Query
 
 from app.api.schemas.common import PaginatedResponse
-from app.api.schemas.finance.payment import PaymentListItem
-from app.api.dependencies import require_any, get_student_payment_service
+from app.modules.finance.api.schemas.payment import PaymentListItem
+from app.api.dependencies import require_any
+from app.modules.finance.api.deps import get_student_payment_service
 from app.modules.finance.services.student_payment_service import StudentPaymentService
 from app.modules.auth import User
 
