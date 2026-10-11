@@ -27,7 +27,7 @@ from sqlmodel import select
 
 from app.modules.crm.models.student_models import Student, StudentStatus
 from app.modules.auth.models.auth_models import User as UserModel
-from app.modules.crm.repositories.unit_of_work import StudentUnitOfWork
+from app.db.uow import UnitOfWork, unit_of_work
 from app.db.connection import get_session
 
 
@@ -75,22 +75,23 @@ def _make_user(db_session, **overrides) -> UserModel:
 
 
 def _make_activity(db_session, student_id: int, **overrides) -> int:
-    """Insert a committed activity log via StudentUnitOfWork and return its ID."""
-    with StudentUnitOfWork(session=db_session) as uow:
-        activity = uow.activities.create_activity_log(
-            student_id=student_id,
-            activity_type=overrides.pop("activity_type", "note_added"),
-            activity_subtype=overrides.pop("activity_subtype", "general"),
-            reference_type=overrides.pop("reference_type", "student"),
-            reference_id=overrides.pop("reference_id", student_id),
-            description=overrides.pop("description", f"Activity {_short()}"),
-            metadata=overrides.pop("metadata", {}),
-            performed_by=overrides.pop("performed_by", 1),
-            created_at=overrides.pop("created_at", None),
-        )
-        uow.commit()
-        db_session.refresh(activity)
-        return activity.id
+    """Insert a committed activity log via UnitOfWork and return its ID."""
+    from app.modules.crm.repositories.activity_repository import ActivityRepository
+    activities = ActivityRepository(db_session)
+    activity = activities.create_activity_log(
+        student_id=student_id,
+        activity_type=overrides.pop("activity_type", "note_added"),
+        activity_subtype=overrides.pop("activity_subtype", "general"),
+        reference_type=overrides.pop("reference_type", "student"),
+        reference_id=overrides.pop("reference_id", student_id),
+        description=overrides.pop("description", f"Activity {_short()}"),
+        metadata=overrides.pop("metadata", {}),
+        performed_by=overrides.pop("performed_by", 1),
+        created_at=overrides.pop("created_at", None),
+    )
+    db_session.commit()
+    db_session.refresh(activity)
+    return activity.id
 
 
 # ── /api/v1/crm/students/{student_id}/history ──────────────────────────────
@@ -407,7 +408,7 @@ def test_update_manual_activity(client_with_uow, override_auth, mock_admin_heade
     unique1 = _short()
     unique2 = _short()
 
-    # Create activity via StudentUnitOfWork (visible to service's get_db session)
+    # Create activity via UnitOfWork (visible to service's get_db session)
     activity_id = _make_activity(db_session, student.id, description=f"Original {unique1}", metadata={"marker": unique1})
 
     payload = {

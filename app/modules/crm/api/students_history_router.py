@@ -29,6 +29,7 @@ from app.modules.crm.api.schemas import (
 )
 from app.modules.auth.models import User
 from app.modules.crm.services import StudentActivityService
+from app.modules.crm.schemas import TimelineFilterDTO
 
 
 router = APIRouter(prefix="/crm", tags=["Student History"])
@@ -58,8 +59,6 @@ def get_student_history(
     - Date range
     - Pagination (limit/offset)
     """
-    from app.modules.crm.interfaces.dtos.timeline_filter_dto import TimelineFilterDTO
-
     filters = TimelineFilterDTO(
         start_date=date_from,
         end_date=date_to,
@@ -258,6 +257,7 @@ def log_manual_activity(
         performed_by=current_user.id,
         created_at=request.created_at
     )
+    svc.commit()
     
     return ApiResponse(
         data=ManualActivityResponseDTO(
@@ -297,6 +297,7 @@ def update_manual_activity(
         metadata=request.metadata,
         created_at=request.created_at
     )
+    svc.commit()
     
     return ApiResponse(
         data=ManualActivityResponseDTO(
@@ -325,6 +326,7 @@ def delete_manual_activity(
 ):
     """Delete a manual activity log entry."""
     svc.delete_activity(student_id=student_id, activity_id=activity_id)
+    svc.commit()
     return ApiResponse(
         data=None,
         message="Activity deleted successfully"

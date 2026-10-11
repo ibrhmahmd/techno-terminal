@@ -1,10 +1,10 @@
 from typing import Optional, Sequence, Tuple, List
 from sqlmodel import Session, select, delete, func
-from sqlalchemy import or_
+from sqlalchemy import or_, text
 from datetime import datetime
 from decimal import Decimal
 
-from app.modules.crm.interfaces import StudentSummaryDTO, StudentBalanceSummaryDTO, AttendanceStatsDTO
+from app.modules.crm.schemas import StudentSummaryDTO, StudentBalanceSummaryDTO, AttendanceStatsDTO
 from app.modules.crm.schemas.student_details import SiblingInfo
 from app.modules.crm.models import Student, StudentStatus, StudentParent, Parent
 from app.shared.audit_utils import apply_create_audit
@@ -256,7 +256,7 @@ class StudentRepository:
         for a specific student based on their active and completed enrollments and competition memberships.
         """
         from app.modules.enrollments.models.enrollment_models import Enrollment
-        from app.modules.finance import Payment
+        from app.modules.finance.models.payment import Payment
         from app.modules.competitions.models.team_models import TeamMember
         
         enrollments = self._session.exec(
@@ -373,6 +373,83 @@ class StudentRepository:
             cancelled=cancelled,
             attendance_rate=round(attended / denom, 3) if denom > 0 else 0.0
         )
+
+    def get_student_attendance_summary(self, student_id: int):
+        """
+        Get attendance for a student grouped by enrollment.
+        Returns list of CRM-owned DTOs with all session dates per group+level.
+        Reads Attendance model directly per ADR-0004.
+        """
+        from app.modules.attendance.models.attendance_models import Attendance
+        from app.modules.enrollments.models.enrollment_models import Enrollment
+        from app.modules.academics.models.group_models import Group
+        from app.modules.academics.models.course_models import Course
+        from app.modules.academics.models.session_models import CourseSession
+        from app.modules.crm.schemas.attendance_dtos import (
+            SessionAttendanceRecord,
+            StudentEnrollmentAttendanceDTO,
+        )
+        import json
+
+        stmt = text("""
+            SELECT
+                e.id as enrollment_id,
+                g.id as group_id,
+                g.name as group_name,
+                c.name as course_name,
+                e.level_number,
+                COUNT(*) FILTER (WHERE a.status IN ('present', 'late')) as present_count,
+                COUNT(*) FILTER (WHERE a.status = 'absent') as absent_count,
+                COALESCE(
+                    json_agg(
+                        json_build_object(
+                            'session_date', s.session_date,
+                            'status', a.status
+                        ) ORDER BY s.session_date
+                    ) FILTER (WHERE s.session_date IS NOT NULL),
+                    '[]'
+                ) as sessions
+            FROM attendance a
+            JOIN sessions s ON a.session_id = s.id
+            JOIN enrollments e ON a.enrollment_id = e.id
+            JOIN groups g ON e.group_id = g.id
+            JOIN courses c ON g.course_id = c.id
+            WHERE a.student_id = :student_id
+            GROUP BY e.id, g.id, g.name, c.name, e.level_number
+            ORDER BY e.created_at DESC
+        """)
+
+        result = self._session.exec(stmt, params={"student_id": student_id})
+        rows = result.mappings().all()
+
+        dtos = []
+        for row in rows:
+            sessions_raw = row["sessions"]
+            if isinstance(sessions_raw, str):
+                sessions_list = json.loads(sessions_raw)
+            else:
+                sessions_list = sessions_raw or []
+
+            sessions = [
+                SessionAttendanceRecord(
+                    session_date=s["session_date"],
+                    status=s["status"]
+                )
+                for s in sessions_list
+            ]
+
+            dtos.append(StudentEnrollmentAttendanceDTO(
+                enrollment_id=row["enrollment_id"],
+                group_id=row["group_id"],
+                group_name=row["group_name"],
+                course_name=row["course_name"],
+                level_number=row["level_number"],
+                present_count=row["present_count"],
+                absent_count=row["absent_count"],
+                sessions=sessions
+            ))
+
+        return dtos
 
     def link_parent(
         self,

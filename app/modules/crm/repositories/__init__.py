@@ -1,9 +1,9 @@
 from .student_repository import StudentRepository
 from .parent_repository import ParentRepository
-from .unit_of_work import StudentUnitOfWork
+from .search_repository import SearchRepository
 
 __all__ = [
     "StudentRepository",
     "ParentRepository",
-    "StudentUnitOfWork",
+    "SearchRepository",
 ]

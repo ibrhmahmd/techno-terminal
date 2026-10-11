@@ -14,8 +14,6 @@ Exports:
 - DTOs: LogEnrollmentDTO, LogEnrollmentChangeDTO, LogStatusChangeDTO,
         LogPaymentDTO, LogCompetitionRegistrationDTO, TimelineFilterDTO,
         StudentFilterDTO, StudentFilterResultDTO, StudentGroupedResultDTO
-- TEMPORARY: StudentUnitOfWork (removed in ticket #31 when CRM moves
-             to the shared UnitOfWork)
 """
 
 # Models (ADR-0004: anyone may import models directly)
@@ -31,7 +29,7 @@ from app.modules.crm.services import (
 )
 
 # DTOs (via facade only)
-from app.modules.crm.interfaces.dtos import (
+from app.modules.crm.schemas import (
     LogEnrollmentDTO,
     LogEnrollmentChangeDTO,
     LogStatusChangeDTO,
@@ -42,10 +40,6 @@ from app.modules.crm.interfaces.dtos import (
     StudentFilterResultDTO,
     StudentGroupedResultDTO,
 )
-
-# TEMPORARY: StudentUnitOfWork — removed in ticket #31 when CRM moves
-# to the shared UnitOfWork (ADR-0001).
-from app.modules.crm.repositories.unit_of_work import StudentUnitOfWork
 
 # Legacy DTOs kept for backward compatibility (used by existing callers)
 from app.modules.crm.schemas import (
@@ -78,8 +72,6 @@ __all__ = [
     "StudentFilterDTO",
     "StudentFilterResultDTO",
     "StudentGroupedResultDTO",
-    # TEMPORARY
-    "StudentUnitOfWork",
     # Legacy DTOs (backward compatibility)
     "RegisterParentInput",
     "RegisterStudentDTO",

@@ -8,19 +8,20 @@ from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime
 from decimal import Decimal
 
-from app.modules.crm.repositories.unit_of_work import StudentUnitOfWork
-from app.modules.crm.interfaces.dtos.activity_log_dto import ActivityLogDTO
-from app.modules.crm.interfaces.dtos.timeline_filter_dto import TimelineFilterDTO
-from app.modules.crm.interfaces.dtos.activity_summary_dto import ActivitySummaryDTO
-from app.modules.crm.interfaces.dtos.log_registration_dto import LogRegistrationDTO
-from app.modules.crm.interfaces.dtos.log_status_change_dto import LogStatusChangeDTO
-from app.modules.crm.interfaces.dtos.log_enrollment_dto import LogEnrollmentDTO
-from app.modules.crm.interfaces.dtos.log_enrollment_change_dto import LogEnrollmentChangeDTO
-from app.modules.crm.interfaces.dtos.log_payment_dto import LogPaymentDTO
-from app.modules.crm.interfaces.dtos.log_deletion_dto import LogDeletionDTO
-from app.modules.crm.interfaces.dtos.log_note_added_dto import LogNoteAddedDTO
-from app.modules.crm.interfaces.dtos.log_competition_registration_dto import LogCompetitionRegistrationDTO
-from app.modules.crm.interfaces.dtos import (
+from app.db.uow import UnitOfWork
+from app.modules.crm.repositories.activity_repository import ActivityRepository
+from app.modules.crm.schemas import (
+    ActivityLogDTO,
+    TimelineFilterDTO,
+    ActivitySummaryDTO,
+    LogRegistrationDTO,
+    LogStatusChangeDTO,
+    LogEnrollmentDTO,
+    LogEnrollmentChangeDTO,
+    LogPaymentDTO,
+    LogDeletionDTO,
+    LogNoteAddedDTO,
+    LogCompetitionRegistrationDTO,
     EnrollmentHistoryDTO,
     StatusHistoryDTO,
     CompetitionHistoryDTO,
@@ -34,14 +35,15 @@ class StudentActivityService:
     Follows SOLID architecture with UnitOfWork pattern.
     """
 
-    def __init__(self, uow: StudentUnitOfWork) -> None:
+    def __init__(self, uow: UnitOfWork) -> None:
         self._uow = uow
+        self._activities = ActivityRepository(uow.session)
 
     # ── Logging Methods (Auto-called by other services) ────────────────────
 
     def log_registration(self, dto: LogRegistrationDTO) -> StudentActivityLog:
         """Log student registration activity."""
-        return self._uow.activities.create_activity_log(
+        return self._activities.create_activity_log(
             student_id=dto.student_id,
             activity_type="registration",
             activity_subtype="student_created",
@@ -54,7 +56,7 @@ class StudentActivityService:
 
     def log_status_change(self, dto: LogStatusChangeDTO) -> StudentActivityLog:
         """Log student status change."""
-        return self._uow.activities.create_activity_log(
+        return self._activities.create_activity_log(
             student_id=dto.student_id,
             activity_type="status_change",
             activity_subtype=f"{dto.old_status}_to_{dto.new_status}",
@@ -70,7 +72,7 @@ class StudentActivityService:
 
     def log_enrollment(self, dto: LogEnrollmentDTO) -> StudentActivityLog:
         """Log student enrollment activity."""
-        return self._uow.activities.create_activity_log(
+        return self._activities.create_activity_log(
             student_id=dto.student_id,
             activity_type="enrollment",
             activity_subtype="enrollment_created",
@@ -88,7 +90,7 @@ class StudentActivityService:
 
     def log_enrollment_change(self, dto: LogEnrollmentChangeDTO) -> StudentActivityLog:
         """Log enrollment lifecycle changes."""
-        return self._uow.activities.create_activity_log(
+        return self._activities.create_activity_log(
             student_id=dto.student_id,
             activity_type="enrollment_change",
             activity_subtype=dto.action,
@@ -115,7 +117,7 @@ class StudentActivityService:
         if dto.metadata:
             base_meta.update(dto.metadata)
 
-        return self._uow.activities.create_activity_log(
+        return self._activities.create_activity_log(
             student_id=dto.student_id,
             activity_type="payment",
             activity_subtype=dto.payment_type,
@@ -128,7 +130,7 @@ class StudentActivityService:
 
     def log_deletion(self, dto: LogDeletionDTO) -> StudentActivityLog:
         """Log student deletion activity."""
-        return self._uow.activities.create_activity_log(
+        return self._activities.create_activity_log(
             student_id=dto.student_id,
             activity_type="deletion",
             activity_subtype="student_deleted",
@@ -145,7 +147,7 @@ class StudentActivityService:
 
     def log_note_added(self, dto: LogNoteAddedDTO) -> StudentActivityLog:
         """Log note/communication activity."""
-        return self._uow.activities.create_activity_log(
+        return self._activities.create_activity_log(
             student_id=dto.student_id,
             activity_type="note",
             activity_subtype=dto.note_type,
@@ -161,7 +163,7 @@ class StudentActivityService:
 
     def log_competition_registration(self, dto: LogCompetitionRegistrationDTO) -> StudentActivityLog:
         """Log competition registration activity."""
-        return self._uow.activities.create_activity_log(
+        return self._activities.create_activity_log(
             student_id=dto.student_id,
             activity_type="competition",
             activity_subtype="registered",
@@ -188,7 +190,7 @@ class StudentActivityService:
         created_at: Optional[datetime] = None,
     ) -> StudentActivityLog:
         """Manually log a student activity."""
-        return self._uow.activities.create_activity_log(
+        return self._activities.create_activity_log(
             student_id=student_id,
             activity_type=activity_type,
             activity_subtype=activity_subtype,
@@ -213,13 +215,13 @@ class StudentActivityService:
         created_at: Optional[datetime] = None,
     ) -> StudentActivityLog:
         """Update a student activity log."""
-        log = self._uow.activities.get_activity_log_by_id(activity_id)
+        log = self._activities.get_activity_log_by_id(activity_id)
         if not log:
             raise ValueError(f"Activity log with ID {activity_id} not found")
         if log.student_id != student_id:
             raise ValueError(f"Activity log does not belong to student {student_id}")
 
-        return self._uow.activities.update_activity_log(
+        return self._activities.update_activity_log(
             activity_id=activity_id,
             activity_type=activity_type,
             activity_subtype=activity_subtype,
@@ -232,13 +234,17 @@ class StudentActivityService:
 
     def delete_activity(self, student_id: int, activity_id: int) -> None:
         """Delete a student activity log."""
-        log = self._uow.activities.get_activity_log_by_id(activity_id)
+        log = self._activities.get_activity_log_by_id(activity_id)
         if not log:
             raise ValueError(f"Activity log with ID {activity_id} not found")
         if log.student_id != student_id:
             raise ValueError(f"Activity log does not belong to student {student_id}")
 
-        self._uow.activities.delete_activity_log(activity_id)
+        self._activities.delete_activity_log(activity_id)
+
+    def commit(self) -> None:
+        """Commit the unit of work. For top-level use cases (public endpoints)."""
+        self._uow.commit()
 
     # ── Query Methods ───────────────────────────────────────────────────
 
@@ -248,7 +254,7 @@ class StudentActivityService:
         filters: TimelineFilterDTO,
     ) -> List[ActivityLogDTO]:
         """Get activity timeline for a student."""
-        logs = self._uow.activities.get_student_activity_timeline(
+        logs = self._activities.get_student_activity_timeline(
             student_id=student_id,
             start_date=filters.start_date,
             end_date=filters.end_date,
@@ -258,7 +264,7 @@ class StudentActivityService:
 
     def get_recent_activities(self, days: int = 7, limit: int = 100) -> List[ActivityLogDTO]:
         """Get recent activities across all students."""
-        logs = self._uow.activities.get_recent_activities(days=days, limit=limit)
+        logs = self._activities.get_recent_activities(days=days, limit=limit)
         return [self._map_to_dto(log) for log in logs]
 
     def search_activities(
@@ -272,7 +278,7 @@ class StudentActivityService:
         limit: int = 50,
     ) -> List[ActivityLogDTO]:
         """Search activity logs with filters."""
-        logs = self._uow.activities.search_activities(
+        logs = self._activities.search_activities(
             search_term=search_term,
             activity_types=activity_types,
             date_from=date_from,
@@ -285,25 +291,25 @@ class StudentActivityService:
 
     def get_activity_summary(self, student_id: int) -> ActivitySummaryDTO:
         """Get activity summary for a student."""
-        return self._uow.activities.get_activity_summary(student_id)
+        return self._activities.get_activity_summary(student_id)
 
     def get_enrollment_history(
         self, student_id: int, limit: int = 50, offset: int = 0
     ) -> Tuple[List[EnrollmentHistoryDTO], int]:
         """Get enrollment lifecycle history for a student with pagination."""
-        return self._uow.activities.get_enrollment_history_by_student(student_id, limit, offset)
+        return self._activities.get_enrollment_history_by_student(student_id, limit, offset)
 
     def get_status_history(
         self, student_id: int, limit: int = 50, offset: int = 0
     ) -> Tuple[List[StatusHistoryDTO], int]:
         """Get status change history for a student with pagination."""
-        return self._uow.activities.get_status_history_by_student(student_id, limit, offset)
+        return self._activities.get_status_history_by_student(student_id, limit, offset)
 
     def get_competition_history(
         self, student_id: int, limit: int = 50, offset: int = 0
     ) -> Tuple[List[CompetitionHistoryDTO], int]:
         """Get competition participation history for a student with pagination."""
-        return self._uow.activities.get_competition_history_by_student(student_id, limit, offset)
+        return self._activities.get_competition_history_by_student(student_id, limit, offset)
 
     # ── Private Helpers ──────────────────────────────────────────────────
 

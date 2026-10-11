@@ -5,6 +5,7 @@ from typing import Optional, TYPE_CHECKING
 from sqlmodel import select
 from fastapi import BackgroundTasks, HTTPException
 from app.db.connection import get_session
+from app.db.uow import UnitOfWork
 import app.modules.competitions.repositories.team_repository as team_repo
 import app.modules.competitions.repositories.competition_repository as comp_repo
 from app.shared.exceptions import NotFoundError, BusinessRuleError, ConflictError
@@ -24,7 +25,7 @@ from app.modules.competitions.schemas.team_schemas import (
 )
 from app.modules.competitions.schemas.competition_schemas import CompetitionDTO
 from app.modules.competitions.models.team_models import Team
-from app.modules.crm import StudentUnitOfWork, StudentActivityService, LogCompetitionRegistrationDTO, LogPaymentDTO
+from app.modules.crm import StudentActivityService, LogCompetitionRegistrationDTO, LogPaymentDTO
 from app.modules.crm.models.student_models import Student
 from app.modules.crm.models.parent_models import Parent
 from app.modules.finance.interfaces import CreateReceiptServiceDTO, IssueRefundDTO, RefundResultDTO
@@ -251,7 +252,7 @@ class TeamService:
         # Note: This is a simplified integration - in production you'd want to
         # share the same transaction/session
         try:
-            uow = StudentUnitOfWork(db)
+            uow = UnitOfWork(db)
             activity_svc = StudentActivityService(uow)
 
             for sid in student_ids:
@@ -295,7 +296,7 @@ class TeamService:
                     competition_id = team_obj.competition_id
                     team_name = team_obj.team_name
 
-            uow = StudentUnitOfWork(db)
+            uow = UnitOfWork(db)
             activity_svc = StudentActivityService(uow)
 
             activity_svc.log_payment(
@@ -329,7 +330,7 @@ class TeamService:
     ) -> None:
         """Log placement activity for competition result."""
         try:
-            uow = StudentUnitOfWork(db)
+            uow = UnitOfWork(db)
             activity_svc = StudentActivityService(uow)
 
             rank_display = placement_label if placement_label else f"{placement_rank} place"

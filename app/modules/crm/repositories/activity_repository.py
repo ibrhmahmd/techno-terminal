@@ -12,7 +12,7 @@ from sqlmodel import Session
 from sqlalchemy import text
 
 from app.modules.crm.models.activity_models import StudentActivityLog
-from app.modules.crm.interfaces.dtos import (
+from app.modules.crm.schemas import (
     ActivitySummaryDTO,
     EnrollmentHistoryDTO,
     StatusHistoryDTO,

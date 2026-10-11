@@ -135,8 +135,9 @@ require_any = get_current_user
 from app.modules.auth import AuthService
 
 # Note: CRM service factories moved to app/modules/crm/api/deps.py
-# Import StudentUnitOfWork and StudentActivityService for use by other modules' factories
-from app.modules.crm import StudentUnitOfWork, StudentActivityService
+# Import StudentActivityService for use by other modules' factories
+from app.modules.crm import StudentActivityService
+from app.db.uow import UnitOfWork
 
 from app.modules.academics.course.service import CourseService
 from app.modules.academics.group.core.service import GroupCoreService
@@ -186,12 +187,12 @@ def get_enrollment_service(
     notification_svc: "NotificationService" = Depends(get_notification_service),
 ) -> EnrollmentService:
     """Returns an EnrollmentService with activity logging and notifications."""
-    uow = StudentUnitOfWork(session=session)
+    uow = UnitOfWork(session)
     activity_svc = StudentActivityService(uow)
     return EnrollmentService(
         activity_svc=activity_svc,
-            notification_svc=notification_svc
-        )
+        notification_svc=notification_svc
+    )
 
 
 def get_enrollment_directory_service() -> EnrollmentDirectoryService:
@@ -230,7 +231,7 @@ def get_receipt_service(
 ) -> ReceiptService:
     """Returns a ReceiptService with activity logging and notifications."""
     finance_uow = FinanceUnitOfWork(session=session)
-    crm_uow = StudentUnitOfWork(session=session)
+    crm_uow = UnitOfWork(session)
     activity_svc = StudentActivityService(crm_uow)
     return ReceiptService(
         finance_uow, 
@@ -244,7 +245,7 @@ def get_refund_service(
 ) -> RefundService:
     """Returns a RefundService with activity logging."""
     finance_uow = FinanceUnitOfWork(session=session)
-    crm_uow = StudentUnitOfWork(session=session)
+    crm_uow = UnitOfWork(session)
     activity_svc = StudentActivityService(crm_uow)
     return RefundService(finance_uow, activity_svc=activity_svc)
 

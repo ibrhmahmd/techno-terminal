@@ -8,7 +8,14 @@ from typing import Optional, List
 from app.shared.datetime_utils import date_at_utc_midnight
 from app.modules.crm.models.student_models import Student, StudentStatus
 from app.modules.crm.schemas.student_schemas import UpdateStudentDTO, RegisterStudentCommandDTO, RegisterStudentResultDTO, StudentSiblingDTO
-from app.modules.crm.repositories.unit_of_work import StudentUnitOfWork
+from app.modules.crm.schemas import (
+    LogRegistrationDTO,
+    LogStatusChangeDTO,
+    LogDeletionDTO,
+)
+from app.db.uow import UnitOfWork
+from app.modules.crm.repositories.student_repository import StudentRepository
+from app.modules.crm.repositories.parent_repository import ParentRepository
 from app.modules.crm.services.activity_service import StudentActivityService
 from app.shared.audit_utils import apply_create_audit, apply_update_audit
 from app.shared.exceptions import NotFoundError, ConflictError
@@ -19,10 +26,12 @@ class StudentCrudService:
     
     def __init__(
         self,
-        uow: StudentUnitOfWork,
+        uow: UnitOfWork,
         activity_svc: Optional[StudentActivityService] = None,
     ) -> None:
         self._uow = uow
+        self._students = StudentRepository(uow.session)
+        self._parents = ParentRepository(uow.session)
         self._activity_svc = activity_svc
     
     def register_student(
@@ -35,7 +44,7 @@ class StudentCrudService:
         """
         # Validate parent exists if provided
         if command_dto.parent_id is not None:
-            parent = self._uow.parents.get_by_id(command_dto.parent_id)
+            parent = self._parents.get_by_id(command_dto.parent_id)
             if not parent:
                 raise NotFoundError(f"Parent with ID {command_dto.parent_id} not found.")
         
@@ -46,7 +55,7 @@ class StudentCrudService:
 
         # Check for duplicate student (exact case-insensitive full_name + date_of_birth)
         if dob is not None:
-            existing_student = self._uow.students.get_by_name_and_dob(
+            existing_student = self._students.get_by_name_and_dob(
                 command_dto.student_data.full_name, dob
             )
             if existing_student:
@@ -71,12 +80,12 @@ class StudentCrudService:
         apply_create_audit(student, user_id=command_dto.created_by_user_id)
         
         # Save student
-        created_student = self._uow.students.create(student)
+        created_student = self._students.create(student)
         self._uow.flush()
         
         # Link parent if provided
         if command_dto.parent_id is not None:
-            self._uow.students.link_parent(
+            self._students.link_parent(
                 student_id=created_student.id,
                 parent_id=command_dto.parent_id,
                 relationship=command_dto.relationship,
@@ -85,7 +94,6 @@ class StudentCrudService:
 
         # Log registration activity (before commit, part of the same transaction)
         if self._activity_svc:
-            from app.modules.crm.interfaces.dtos.log_registration_dto import LogRegistrationDTO
             self._activity_svc.log_registration(
                 LogRegistrationDTO(
                     student_id=created_student.id,
@@ -102,11 +110,11 @@ class StudentCrudService:
     
     def get_by_id(self, student_id: int) -> Optional[Student]:
         """Get a student by ID."""
-        return self._uow.students.get_by_id(student_id)
+        return self._students.get_by_id(student_id)
     
     def update_student(self, student_id: int, data: UpdateStudentDTO) -> Student:
         """Updates an existing student's fields."""
-        student = self._uow.students.get_by_id(student_id)
+        student = self._students.get_by_id(student_id)
         if not student:
             raise NotFoundError(f"Student with ID {student_id} not found.")
         
@@ -127,7 +135,7 @@ class StudentCrudService:
         changed_by_user_id: Optional[int] = None,
     ) -> Student:
         """Update student status with audit logging."""
-        student = self._uow.students.get_by_id(student_id)
+        student = self._students.get_by_id(student_id)
         if not student:
             raise NotFoundError(f"Student with ID {student_id} not found.")
         
@@ -143,7 +151,6 @@ class StudentCrudService:
 
         # Log status change activity
         if self._activity_svc:
-            from app.modules.crm.interfaces.dtos.log_status_change_dto import LogStatusChangeDTO
             self._activity_svc.log_status_change(
                 LogStatusChangeDTO(
                     student_id=student.id,
@@ -157,7 +164,7 @@ class StudentCrudService:
 
     def toggle_status(self, student_id: int, performed_by: Optional[int] = None) -> Student:
         """Toggle student between active and inactive."""
-        student = self._uow.students.get_by_id(student_id)
+        student = self._students.get_by_id(student_id)
         if not student:
             raise NotFoundError(f"Student with ID {student_id} not found.")
 
@@ -177,7 +184,6 @@ class StudentCrudService:
 
         # Log status change activity
         if self._activity_svc:
-            from app.modules.crm.interfaces.dtos.log_status_change_dto import LogStatusChangeDTO
             self._activity_svc.log_status_change(
                 LogStatusChangeDTO(
                     student_id=student.id,
@@ -196,7 +202,7 @@ class StudentCrudService:
         notes: Optional[str] = None,
     ) -> Student:
         """Set waiting list priority for a student."""
-        student = self._uow.students.get_by_id(student_id)
+        student = self._students.get_by_id(student_id)
         if not student:
             raise NotFoundError(f"Student with ID {student_id} not found.")
         
@@ -230,7 +236,7 @@ class StudentCrudService:
     
     def delete_student(self, student_id: int, performed_by: Optional[int] = None) -> bool:
         """Delete a student by ID."""
-        student = self._uow.students.get_by_id(student_id)
+        student = self._students.get_by_id(student_id)
         if not student:
             return False
 
@@ -238,7 +244,6 @@ class StudentCrudService:
 
         # Log deletion activity BEFORE deleting (to satisfy FK constraint)
         if self._activity_svc:
-            from app.modules.crm.interfaces.dtos.log_deletion_dto import LogDeletionDTO
             self._activity_svc.log_deletion(
                 LogDeletionDTO(
                     student_id=student_id,
@@ -247,7 +252,7 @@ class StudentCrudService:
                 )
             )
 
-        self._uow.students.delete(student_id)
+        self._students.delete(student_id)
         self._uow.commit()
 
         return True
@@ -255,7 +260,7 @@ class StudentCrudService:
     def find_siblings(self, student_id: int) -> List[StudentSiblingDTO]:
         """Find siblings for a student (share same parent)."""
         # Get student's parents
-        parent_links = list(self._uow.students.get_student_parents(student_id))
+        parent_links = list(self._students.get_student_parents(student_id))
         if not parent_links:
             return []
         
@@ -263,7 +268,7 @@ class StudentCrudService:
         sibling_ids = set()
         for link in parent_links:
             parent_id = link.parent_id
-            children = self._uow.parents.get_parent_students(parent_id)
+            children = self._parents.get_parent_students(parent_id)
             for child_link in children:
                 if child_link.student_id != student_id:
                     sibling_ids.add(child_link.student_id)
@@ -271,7 +276,7 @@ class StudentCrudService:
         # Get sibling details
         siblings = []
         for sid in sibling_ids:
-            sib = self._uow.students.get_by_id(sid)
+            sib = self._students.get_by_id(sid)
             if sib:
                 siblings.append(StudentSiblingDTO(
                     id=sib.id,
@@ -282,9 +287,9 @@ class StudentCrudService:
                 ))
         return siblings
     
-    def get_student_parents(self, student_id: int) -> list:
+    def get_student_parents(self, student_id: int) -> List["StudentParent"]:
         """Get all parent links for a student."""
-        return list(self._uow.students.get_student_parents(student_id))
+        return list(self._students.get_student_parents(student_id))
 
     # ── Soft Delete Methods ─────────────────────────────────────────────────────
 
@@ -293,7 +298,7 @@ class StudentCrudService:
         Soft delete a student (marks as deleted without removing from database).
         Also cascades soft-delete to related payments.
         """
-        student = self._uow.students.get_by_id(student_id)
+        student = self._students.get_by_id(student_id)
         if not student:
             return False
 
@@ -302,13 +307,12 @@ class StudentCrudService:
             return False
 
         # Perform soft delete
-        success = self._uow.students.soft_delete_student(student_id, deleted_by)
+        success = self._students.soft_delete_student(student_id, deleted_by)
         if success:
             self._uow.commit()
 
             # Log soft deletion activity
             if self._activity_svc:
-                from app.modules.crm.interfaces.dtos.log_deletion_dto import LogDeletionDTO
                 self._activity_svc.log_deletion(
                     LogDeletionDTO(
                         student_id=student_id,
@@ -321,7 +325,7 @@ class StudentCrudService:
 
     def restore_student(self, student_id: int, restored_by: Optional[int] = None) -> bool:
         """Restore a previously soft-deleted student and their payments."""
-        student = self._uow.students.get_by_id(student_id, include_deleted=True)
+        student = self._students.get_by_id(student_id, include_deleted=True)
         if not student:
             return False
 
@@ -329,13 +333,12 @@ class StudentCrudService:
         if getattr(student, 'deleted_at', None) is None:
             return False
 
-        success = self._uow.students.restore_student(student_id)
+        success = self._students.restore_student(student_id)
         if success:
             self._uow.commit()
 
             # Log restoration activity
             if self._activity_svc:
-                from app.modules.crm.interfaces.dtos.log_registration_dto import LogRegistrationDTO
                 self._activity_svc.log_registration(
                     LogRegistrationDTO(
                         student_id=student_id,
@@ -351,15 +354,15 @@ class StudentCrudService:
         Permanently delete a student and all related data.
         Admin-only operation - cannot be undone.
         """
-        student = self._uow.students.get_by_id(student_id, include_deleted=True)
+        student = self._students.get_by_id(student_id, include_deleted=True)
         if not student:
             return False
 
-        success = self._uow.students.hard_delete(student_id)
+        success = self._students.hard_delete(student_id)
         if success:
             self._uow.commit()
         return success
 
     def list_deleted_students(self, limit: int = 100, offset: int = 0) -> List[Student]:
         """List all soft-deleted students (for admin recovery)."""
-        return self._uow.students.get_deleted(limit=limit, offset=offset)
+        return self._students.get_deleted(limit=limit, offset=offset)

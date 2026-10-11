@@ -5,8 +5,10 @@ Replaces the deprecated ReportingService naming.
 from typing import Optional, List
 
 from app.modules.crm.models.student_models import Student
-from app.modules.crm.repositories.unit_of_work import StudentUnitOfWork
+from app.db.uow import UnitOfWork
+from app.modules.crm.repositories.student_repository import StudentRepository
 from app.modules.crm.validators.student_validator import StudentValidator
+from app.modules.crm.schemas import AttendanceStatsDTO
 from app.modules.crm.schemas.student_details import (
     StudentWithDetails,
     ParentInfo,
@@ -17,8 +19,7 @@ from app.modules.crm.schemas.student_details import (
     SessionAttendanceItem,
     EnrollmentInfo,
 )
-from app.modules.crm.interfaces.dtos import AttendanceStatsDTO
-from app.modules.attendance.schemas import StudentEnrollmentAttendanceDTO
+from app.modules.crm.schemas.attendance_dtos import StudentEnrollmentAttendanceDTO
 from app.shared.exceptions import NotFoundError
 
 
@@ -27,13 +28,14 @@ class StudentProfileService:
     Service for retrieving comprehensive student profile information.
     Handles: details, balance summary, siblings, attendance stats.
     """
-    
-    def __init__(self, uow: StudentUnitOfWork) -> None:
+
+    def __init__(self, uow: UnitOfWork) -> None:
         self._uow = uow
-    
+        self._students = StudentRepository(uow.session)
+
     def _get_current_enrollment_info(self, student_id: int) -> Optional[CurrentEnrollmentInfo]:
         """Fetch active enrollment with group, course, and instructor details."""
-        result = self._uow.students.get_active_enrollment_with_details(student_id)
+        result = self._students.get_active_enrollment_with_details(student_id)
         if not result:
             return None
 
@@ -56,18 +58,14 @@ class StudentProfileService:
 
     def _get_attendance_summary(self, student_id: int) -> List[StudentEnrollmentAttendanceDTO]:
         """Get attendance summary grouped by enrollment with all session records."""
-        from app.modules.attendance.repositories.attendance_repository import (
-            get_student_attendance_summary,
-        )
-
-        return get_student_attendance_summary(self._uow.session, student_id)
+        return self._students.get_student_attendance_summary(student_id)
 
     def get_student_details(self, student_id: int) -> StudentWithDetails:
         """
         Get complete student profile with parent, enrollments, balance, and siblings.
         """
         # Get student with primary parent
-        student, parent = self._uow.students.get_student_with_parent(student_id)
+        student, parent = self._students.get_student_with_parent(student_id)
         if not student:
             raise NotFoundError(f"Student {student_id} not found")
 
@@ -86,7 +84,7 @@ class StudentProfileService:
             )
 
         # Get enrollments
-        enrollments_data = self._uow.students.get_active_enrollment_with_details(student_id)
+        enrollments_data = self._students.get_active_enrollment_with_details(student_id)
 
         # Convert tuple to EnrollmentInfo list
         enrollments_list = []
@@ -105,13 +103,13 @@ class StudentProfileService:
             )]
 
         # Get balance summary
-        balance_data = self._uow.students.get_student_balance_summary(student_id)
+        balance_data = self._students.get_student_balance_summary(student_id)
 
         # Get siblings
-        siblings_data = self._uow.students.get_student_siblings_with_details(student_id)
+        siblings_data = self._students.get_student_siblings_with_details(student_id)
 
         # Get attendance stats (existing field)
-        attendance_stats = self._uow.students.get_attendance_stats(student_id)
+        attendance_stats = self._students.get_attendance_stats(student_id)
 
         # NEW: Current enrollment info
         current_enrollment = self._get_current_enrollment_info(student_id)
@@ -177,29 +175,29 @@ class StudentProfileService:
             attendance_stats=attendance_stats,
             enrollment_attendance=enrollment_attendance,
         )
-    
+
     def get_student_siblings(self, student_id: int) -> List[SiblingInfo]:
         """Get student's siblings (same parent)."""
         # Verify student exists
-        student = self._uow.students.get_by_id(student_id)
+        student = self._students.get_by_id(student_id)
         if not student:
             raise NotFoundError(f"Student {student_id} not found")
-        
-        return self._uow.students.get_student_siblings_with_details(student_id)
-    
+
+        return self._students.get_student_siblings_with_details(student_id)
+
     def get_balance_summary(self, student_id: int) -> StudentBalanceSummary:
         """Get financial balance summary for a student."""
-        student = self._uow.students.get_by_id(student_id)
+        student = self._students.get_by_id(student_id)
         if not student:
             raise NotFoundError(f"Student {student_id} not found")
-        
-        balance = self._uow.students.get_student_balance_summary(student_id)
+
+        balance = self._students.get_student_balance_summary(student_id)
         return balance if balance else StudentBalanceSummary()
-    
+
     def get_attendance_stats(self, student_id: int) -> AttendanceStatsDTO:
         """Get attendance statistics for a student."""
-        student = self._uow.students.get_by_id(student_id)
+        student = self._students.get_by_id(student_id)
         if not student:
             raise NotFoundError(f"Student {student_id} not found")
-        
-        return self._uow.students.get_attendance_stats(student_id)
+
+        return self._students.get_attendance_stats(student_id)
