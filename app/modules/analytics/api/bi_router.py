@@ -1,5 +1,5 @@
 """
-app/api/routers/analytics/bi.py
+app/modules/analytics/api/bi_router.py
 ─────────────────────────────────
 Business Intelligence (BI) analytics router.
 
@@ -20,7 +20,8 @@ from app.modules.analytics.schemas.bi_schemas import (
     FlightRiskStudentDTO,
     RetentionCohortDTO,
 )
-from app.api.dependencies import require_admin, get_bi_analytics_service
+from app.api.dependencies import require_admin
+from app.modules.analytics.api.deps import get_bi_analytics_service
 from app.modules.auth import User
 from app.modules.analytics.services.bi_service import BIAnalyticsService
 

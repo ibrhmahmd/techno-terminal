@@ -1,5 +1,5 @@
 """
-app/api/routers/analytics/financial.py
+app/modules/analytics/api/financial_router.py
 ──────────────────────────────────────
 Financial analytics router.
 
@@ -17,7 +17,8 @@ from app.modules.analytics.schemas.financial_schemas import (
     RevenueMetricsDTO,
     RevenueForecastDTO,
 )
-from app.api.dependencies import require_admin, get_financial_analytics_service
+from app.api.dependencies import require_admin
+from app.modules.analytics.api.deps import get_financial_analytics_service
 from app.modules.auth import User
 from app.modules.analytics.services.financial_service import FinancialAnalyticsService
 

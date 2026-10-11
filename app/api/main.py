@@ -71,7 +71,7 @@ from app.modules.academics.api import (
     group_lifecycle_router,
     group_details_router,
 )
-from app.api.routers.analytics import (
+from app.modules.analytics.api import (
     academic_router,
     financial_router,
     competition_router,
