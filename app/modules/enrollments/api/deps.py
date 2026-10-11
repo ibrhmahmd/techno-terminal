@@ -6,9 +6,9 @@ from sqlmodel import Session
 from app.api.dependencies import get_db, get_notification_service
 from app.db.uow import UnitOfWork
 from app.modules.crm import StudentActivityService
-from app.modules.enrollments.core.service import EnrollmentService
-from app.modules.enrollments.directory.service import EnrollmentDirectoryService
-from app.modules.enrollments.lifecycle.service import EnrollmentLifecycleService
+from app.modules.enrollments.services.enrollment_service import EnrollmentService
+from app.modules.enrollments.services.enrollment_directory_service import EnrollmentDirectoryService
+from app.modules.enrollments.services.enrollment_lifecycle_service import EnrollmentLifecycleService
 
 
 def get_enrollment_service(

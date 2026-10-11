@@ -16,7 +16,7 @@ from app.modules.crm import (
 from app.modules.academics import GroupCoreService
 from app.modules.academics.models.group_models import Group
 from app.modules.enrollments.models.enrollment_models import Enrollment
-from app.modules.enrollments.core.schemas import (
+from app.modules.enrollments.schemas.enrollment_schemas import (
     EnrollStudentInput,
     TransferStudentInput,
     UpdateEnrollmentInput,
@@ -24,8 +24,8 @@ from app.modules.enrollments.core.schemas import (
     EnrollmentDTO,
     EnrollmentCoreResult,
 )
-import app.modules.enrollments.core.repository as repo
-from app.modules.enrollments.directory.repository import list_enrollments
+import app.modules.enrollments.repositories.enrollment_repository as repo
+from app.modules.enrollments.repositories.enrollment_directory_repository import list_enrollments
 from app.shared.exceptions import NotFoundError, BusinessRuleError, ConflictError
 
 if TYPE_CHECKING:

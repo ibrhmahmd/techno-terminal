@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlalchemy import text
 from sqlmodel import Session
-from app.modules.enrollments.analytics.schemas import (
+from app.modules.enrollments.schemas.enrollment_analytics_schemas import (
     GroupRosterEntryDTO,
     GroupEnrollmentDTO,
 )

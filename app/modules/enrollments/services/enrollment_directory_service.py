@@ -1,9 +1,9 @@
 from app.db.connection import get_session
 from app.modules.academics.models.group_models import Group
 from app.modules.enrollments.models.enrollment_models import Enrollment
-from app.modules.enrollments.core.schemas import EnrollmentDTO
-from app.modules.enrollments.directory.schemas import StudentEnrollmentSummaryDTO
-import app.modules.enrollments.directory.repository as repo
+from app.modules.enrollments.schemas.enrollment_schemas import EnrollmentDTO
+from app.modules.enrollments.schemas.enrollment_directory_schemas import StudentEnrollmentSummaryDTO
+import app.modules.enrollments.repositories.enrollment_directory_repository as repo
 from app.modules.finance.repositories.payment_repository import PaymentRepository
 
 

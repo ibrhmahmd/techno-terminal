@@ -18,16 +18,16 @@ from app.modules.enrollments.api.schemas.enrollment import EnrollmentPublic, Stu
 from app.api.dependencies import require_admin, require_any
 from app.modules.academics import ProgressLevelDTO
 from app.modules.academics.api.schemas.group import ProgressGroupLevelRequest, ProgressGroupLevelResult
-from app.modules.enrollments.core.schemas import EnrollStudentInput, TransferStudentInput, UpdateEnrollmentInput
+from app.modules.enrollments.schemas.enrollment_schemas import EnrollStudentInput, TransferStudentInput, UpdateEnrollmentInput
 from app.modules.auth import User
 from app.modules.enrollments.api.deps import (
     get_enrollment_service,
     get_enrollment_directory_service,
     get_enrollment_lifecycle_service,
 )
-from app.modules.enrollments.core.service import EnrollmentService
-from app.modules.enrollments.directory.service import EnrollmentDirectoryService
-from app.modules.enrollments.lifecycle.service import EnrollmentLifecycleService
+from app.modules.enrollments.services.enrollment_service import EnrollmentService
+from app.modules.enrollments.services.enrollment_directory_service import EnrollmentDirectoryService
+from app.modules.enrollments.services.enrollment_lifecycle_service import EnrollmentLifecycleService
 
 router = APIRouter(tags=["Enrollments"])
 progress_router = APIRouter(tags=["Academics — Groups"])

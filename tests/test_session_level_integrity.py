@@ -365,7 +365,7 @@ class TestLifecycleService:
         result = lifecycle.create_group_with_first_level(inp)
 
         from datetime import timedelta
-        from app.modules.enrollments.lifecycle.service import EnrollmentLifecycleService
+        from app.modules.enrollments.services.enrollment_lifecycle_service import EnrollmentLifecycleService
         progress = ProgressLevelDTO(
             group_id=result.group_id, target_level=2,
             complete_current_level=True,

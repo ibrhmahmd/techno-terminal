@@ -6,7 +6,7 @@ from sqlmodel import Session, select
 from app.db.connection import get_session
 from app.modules.academics.models import Course, Group
 from app.modules.enrollments.models.enrollment_models import Enrollment
-from app.modules.enrollments.lifecycle.schemas import (
+from app.modules.enrollments.schemas.enrollment_lifecycle_schemas import (
     MigrateEnrollmentsDTO,
     EnrollmentMigrationResult,
     LevelProgressionResult,

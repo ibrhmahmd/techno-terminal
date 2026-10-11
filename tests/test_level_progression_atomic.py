@@ -33,7 +33,7 @@ from app.modules.academics.models.group_level_models import (
     GroupLevel,
     GroupCourseHistory,
 )
-from app.modules.enrollments.lifecycle.service import EnrollmentLifecycleService
+from app.modules.enrollments.services.enrollment_lifecycle_service import EnrollmentLifecycleService
 from tests.utils.db_helpers import (
     create_test_course,
     create_test_group,

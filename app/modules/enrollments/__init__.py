@@ -20,13 +20,13 @@ Exports:
 from app.modules.enrollments.models import Enrollment, EnrollmentBase
 
 # Services (via facade only)
-from app.modules.enrollments.core.service import EnrollmentService
-from app.modules.enrollments.directory.service import EnrollmentDirectoryService
-from app.modules.enrollments.lifecycle.service import EnrollmentLifecycleService
-from app.modules.enrollments.analytics.service import EnrollmentAnalyticsService
+from app.modules.enrollments.services.enrollment_service import EnrollmentService
+from app.modules.enrollments.services.enrollment_directory_service import EnrollmentDirectoryService
+from app.modules.enrollments.services.enrollment_lifecycle_service import EnrollmentLifecycleService
+from app.modules.enrollments.services.enrollment_analytics_service import EnrollmentAnalyticsService
 
 # DTOs (via facade only)
-from app.modules.enrollments.core.schemas import (
+from app.modules.enrollments.schemas.enrollment_schemas import (
     EnrollStudentInput,
     TransferStudentInput,
     UpdateEnrollmentInput,
@@ -34,13 +34,13 @@ from app.modules.enrollments.core.schemas import (
     EnrollmentDTO,
     EnrollmentCoreResult,
 )
-from app.modules.enrollments.directory.schemas import StudentEnrollmentSummaryDTO
-from app.modules.enrollments.lifecycle.schemas import (
+from app.modules.enrollments.schemas.enrollment_directory_schemas import StudentEnrollmentSummaryDTO
+from app.modules.enrollments.schemas.enrollment_lifecycle_schemas import (
     MigrateEnrollmentsDTO,
     EnrollmentMigrationResult,
     LevelProgressionResult,
 )
-from app.modules.enrollments.analytics.schemas import (
+from app.modules.enrollments.schemas.enrollment_analytics_schemas import (
     GroupRosterEntryDTO,
     GroupEnrollmentDTO,
 )

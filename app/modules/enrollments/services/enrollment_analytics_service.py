@@ -1,9 +1,9 @@
 from sqlmodel import Session
-from app.modules.enrollments.analytics.repository import (
+from app.modules.enrollments.repositories.enrollment_analytics_repository import (
     get_roster_for_group_level,
     get_enrollments_by_group_with_students,
 )
-from app.modules.enrollments.analytics.schemas import (
+from app.modules.enrollments.schemas.enrollment_analytics_schemas import (
     GroupRosterEntryDTO,
     GroupEnrollmentDTO,
 )
