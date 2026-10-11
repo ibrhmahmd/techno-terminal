@@ -17,7 +17,7 @@ Buckets
   through the committed ``db_session`` fixture (uuid-tagged) so the services'
   own sessions can see them, and their writes REALLY COMMIT.
 * Enrollment writes schedule notification background tasks. The
-  ``noop_notifications`` fixture overrides ``get_notification_service`` with an
+  ``noop_notifications`` fixture overrides the notifier port providers with an
   in-memory no-op so no real mail/SMS dispatch (Gmail/Twilio) can run.
 
 Pinned quirks (pinned, not endorsed)
@@ -69,32 +69,13 @@ def _short() -> str:
     return uuid.uuid4().hex[:10]
 
 
-class _NoopEnrollmentNotifier:
-    """Records nothing and schedules no background task."""
-
-    def __getattr__(self, name):
-        def _record(*args, **kwargs):
-            return None
-
-        return _record
-
-
-class _NoopNotificationService:
-    def __init__(self):
-        self.enrollment = _NoopEnrollmentNotifier()
-
-
 @pytest.fixture
 def noop_notifications(app):
-    """Replace the notification service so no Gmail/Twilio dispatch can run."""
-    from app.modules.notifications.api.deps import get_notification_service
+    """Replace every notifier port provider with a no-op so nothing can be dispatched."""
+    from tests.utils.noop_notifiers import noop_notifiers
 
-    svc = _NoopNotificationService()
-    app.dependency_overrides[get_notification_service] = lambda: svc
-    try:
-        yield svc
-    finally:
-        app.dependency_overrides.pop(get_notification_service, None)
+    with noop_notifiers(app) as stub:
+        yield stub
 
 
 def _make_course(db_session, **overrides) -> Course:

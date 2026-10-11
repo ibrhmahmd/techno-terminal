@@ -8,7 +8,7 @@ import logfire
 import pytest
 from sqlmodel import delete, select
 
-from app.modules.notifications.api.deps import get_notification_service
+from app.modules.notifications.api.deps import get_report_service
 from app.core.config import settings
 from app.db.connection import get_session
 from app.modules.notifications.interfaces.i_report_delivery_ledger import (
@@ -23,7 +23,6 @@ from app.modules.notifications.schemas.report_dto import (
     DailyReportAggregateDTO,
     ReportDeliveryResult,
 )
-from app.modules.notifications.services.notification_service import NotificationService
 from app.modules.notifications.services.report_notifications import (
     PeriodReportAggregateDTO,
     ReportNotificationService,
@@ -370,11 +369,11 @@ class TestInternalSchedulerEndpoints:
     @pytest.fixture
     def notification_service_override(self, app):
         service = Mock()
-        app.dependency_overrides[get_notification_service] = lambda: service
+        app.dependency_overrides[get_report_service] = lambda: service
         try:
             yield service
         finally:
-            app.dependency_overrides.pop(get_notification_service, None)
+            app.dependency_overrides.pop(get_report_service, None)
 
     @pytest.fixture
     def configured_secret(self, monkeypatch):
@@ -714,25 +713,3 @@ class TestSqlReportDeliveryLedger:
         assert rows_by_id[stale_id].error_message == "abandoned claim (stale PENDING)"
         assert rows_by_id[claim_id].status == "PENDING"
         assert rows_by_id[claim_id].report_period_start == ledger_case["period_start"]
-
-
-class TestNotificationServiceReportFacade:
-    @pytest.mark.anyio
-    async def test_facade_returns_delivery_result_and_forwards_force(self):
-        report_date = date(2026, 9, 25)
-        expected = ReportDeliveryResult(
-            report_type="weekly_report",
-            period_start=report_date - timedelta(days=4),
-            outcome="delivered",
-            sent=1,
-        )
-        service = NotificationService(MockNotificationRepository())
-        service.report.send_weekly_report = AsyncMock(return_value=expected)
-
-        result = await service.send_weekly_report(report_date, force=True)
-
-        assert result is expected
-        service.report.send_weekly_report.assert_awaited_once_with(
-            report_date,
-            force=True,
-        )

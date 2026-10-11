@@ -226,7 +226,7 @@ class TestAuditPersistence:
         mock_supabase.auth.sign_in_with_password.return_value = mock_resp
 
         with patch("app.modules.auth.api.auth_router.get_supabase_anon", return_value=mock_supabase):
-            with patch("app.modules.notifications.services.notification_service.NotificationService.notify_admin_login") as mock_notify:
+            with patch("app.modules.notifications.services.alert_notifications.AlertNotificationService.notify_admin_login") as mock_notify:
                 response = client.post(
                     "/api/v1/auth/login",
                     json={"email": "test_admin@test.com", "password": "password123456"},

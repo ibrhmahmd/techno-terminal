@@ -30,26 +30,13 @@ from app.modules.competitions.models import Competition, Team, TeamMember
 from app.modules.crm.models.student_models import Student
 
 
-class _Noop:
-    """Any attribute chain / call is a no-op (stands in for NotificationService)."""
-
-    def __getattr__(self, name):
-        return self
-
-    def __call__(self, *args, **kwargs):
-        return None
-
-
 @pytest.fixture
 def noop_notifications(app):
-    from app.modules.notifications.api.deps import get_notification_service
+    """Replace every notifier port provider with a no-op so nothing can be dispatched."""
+    from tests.utils.noop_notifiers import noop_notifiers
 
-    svc = _Noop()
-    app.dependency_overrides[get_notification_service] = lambda: svc
-    try:
-        yield svc
-    finally:
-        app.dependency_overrides.pop(get_notification_service, None)
+    with noop_notifiers(app) as stub:
+        yield stub
 
 
 def _short() -> str:

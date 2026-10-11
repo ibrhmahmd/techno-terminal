@@ -1,18 +1,18 @@
-"""Adapter implementing CompetitionNotifier using NotificationService (ADR-0007)."""
+"""Adapter implementing CompetitionNotifier using the notification services (ADR-0007)."""
 
 from typing import Optional
 
 from fastapi import BackgroundTasks, Depends
 
-from app.modules.notifications.api.deps import get_notification_service
+from app.modules.notifications.api.deps import get_competition_notification_service
 from app.modules.competitions import CompetitionNotifier
-from app.modules.notifications.services.notification_service import NotificationService
+from app.modules.notifications.services.competition_notifications import CompetitionNotificationService
 
 
 class NotificationServiceCompetitionNotifier:
-    """Adapts NotificationService to the CompetitionNotifier port."""
+    """Adapts the notification services to the CompetitionNotifier port."""
 
-    def __init__(self, background_tasks: BackgroundTasks, notif_svc: NotificationService):
+    def __init__(self, background_tasks: BackgroundTasks, notif_svc: CompetitionNotificationService):
         self._background_tasks = background_tasks
         self._notif_svc = notif_svc
 
@@ -26,7 +26,7 @@ class NotificationServiceCompetitionNotifier:
         category: str,
         subcategory: Optional[str],
     ) -> None:
-        self._notif_svc.competition.notify_team_registration(
+        self._notif_svc.notify_team_registration(
             student_id=student_id,
             team_id=team_id,
             team_name=team_name,
@@ -46,7 +46,7 @@ class NotificationServiceCompetitionNotifier:
         placement_rank: int,
         placement_label: Optional[str],
     ) -> None:
-        self._notif_svc.competition.notify_placement_announcement(
+        self._notif_svc.notify_placement_announcement(
             student_id=student_id,
             team_id=team_id,
             team_name=team_name,
@@ -59,7 +59,7 @@ class NotificationServiceCompetitionNotifier:
 
 def get_competition_notifier(
     background_tasks: BackgroundTasks,
-    notif_svc: NotificationService = Depends(get_notification_service),
+    notif_svc: CompetitionNotificationService = Depends(get_competition_notification_service),
 ) -> CompetitionNotifier:
     """FastAPI dependency factory for the CompetitionNotifier adapter."""
     return NotificationServiceCompetitionNotifier(

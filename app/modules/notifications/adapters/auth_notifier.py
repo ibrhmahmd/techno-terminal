@@ -1,19 +1,19 @@
-"""Adapter implementing AuthNotifier using NotificationService (ADR-0007)."""
+"""Adapter implementing AuthNotifier using the notification services (ADR-0007)."""
 
 import logging
 from fastapi import BackgroundTasks, Depends
 
-from app.modules.notifications.api.deps import get_notification_service
+from app.modules.notifications.api.deps import get_alert_service
 from app.modules.auth import AuthNotifier
-from app.modules.notifications.services.notification_service import NotificationService
+from app.modules.notifications.services.alert_notifications import AlertNotificationService
 
 logger = logging.getLogger(__name__)
 
 
 class NotificationServiceAuthNotifier:
-    """Adapts NotificationService to the AuthNotifier port."""
+    """Adapts the notification services to the AuthNotifier port."""
 
-    def __init__(self, background_tasks: BackgroundTasks, notif_svc: NotificationService):
+    def __init__(self, background_tasks: BackgroundTasks, notif_svc: AlertNotificationService):
         self._background_tasks = background_tasks
         self._notif_svc = notif_svc
 
@@ -40,7 +40,7 @@ class NotificationServiceAuthNotifier:
 
 def get_auth_notifier(
     background_tasks: BackgroundTasks,
-    notif_svc: NotificationService = Depends(get_notification_service),
+    notif_svc: AlertNotificationService = Depends(get_alert_service),
 ) -> AuthNotifier:
     """FastAPI dependency factory for the AuthNotifier adapter."""
     return NotificationServiceAuthNotifier(background_tasks=background_tasks, notif_svc=notif_svc)

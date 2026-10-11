@@ -11,8 +11,7 @@ Exports:
 - Adapter factories (for create_app() wiring, ADR-0007): get_auth_notifier,
   get_enrollment_notifier, get_competition_notifier, get_payment_notifier,
   get_task_notifier
-- Services: ReportNotificationService, NotificationService (temporary: deleted by
-  ticket #36)
+- Services: ReportNotificationService
 - DTOs: ReportDeliveryResult, DailyReportAggregateDTO
 """
 
@@ -23,7 +22,6 @@ from app.modules.notifications.schemas.report_dto import (
     ReportDeliveryResult,
 )
 from app.modules.notifications.services.report_notifications import ReportNotificationService
-from app.modules.notifications.services.notification_service import NotificationService
 from app.modules.notifications.adapters import (
     get_auth_notifier,
     get_competition_notifier,
@@ -38,7 +36,6 @@ __all__ = [
     "DailyReportAggregateDTO",
     "ReportDeliveryResult",
     "ReportNotificationService",
-    "NotificationService",
     "get_auth_notifier",
     "get_competition_notifier",
     "get_enrollment_notifier",

@@ -20,7 +20,7 @@ Buckets
 * Finance services use the request ``get_db`` session / ``FinanceUnitOfWork`` and
   really commit. Every test seeds committed, uuid-tagged rows through ``db_session``
   and reaches receipts/payments by creating them through the API.
-* Receipt creation can schedule notifications, so ``get_notification_service`` is
+* Receipt creation can schedule notifications, so the notifier port providers is
   replaced by a no-op (``noop_notifications``); no real mail/SMS can be sent.
 
 Pinned quirks (pinned, not endorsed)
@@ -40,24 +40,13 @@ from app.modules.crm.models.student_models import Student
 from app.modules.enrollments.models.enrollment_models import Enrollment
 
 
-class _Noop:
-    def __getattr__(self, name):
-        return self
-
-    def __call__(self, *args, **kwargs):
-        return None
-
-
 @pytest.fixture
 def noop_notifications(app):
-    from app.modules.notifications.api.deps import get_notification_service
+    """Replace every notifier port provider with a no-op so nothing can be dispatched."""
+    from tests.utils.noop_notifiers import noop_notifiers
 
-    svc = _Noop()
-    app.dependency_overrides[get_notification_service] = lambda: svc
-    try:
-        yield svc
-    finally:
-        app.dependency_overrides.pop(get_notification_service, None)
+    with noop_notifiers(app) as stub:
+        yield stub
 
 
 def _short() -> str:

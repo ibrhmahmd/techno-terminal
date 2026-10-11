@@ -6,17 +6,20 @@ No business logic - just contact resolution, template rendering, dispatch.
 """
 import logging
 import re
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from typing import List, Optional, Tuple
 from sqlmodel import select
 
 from app.core.config import settings
+from app.db.uow import unit_of_work
 
 # Fallback email configuration
 FALLBACK_EMAIL = settings.fallback_email
 FALLBACK_RECIPIENT_ID = -1  # Special ID to indicate fallback
 
 from app.modules.notifications.repositories.notification_repository import NotificationRepository
+from app.modules.notifications.repositories.reports_repository import ReportsRepository
 from app.modules.notifications.dispatchers.email_dispatcher import GmailEmailDispatcher
 from app.modules.notifications.dispatchers.whatsapp_dispatcher import TwilioWhatsAppDispatcher
 from app.modules.notifications.models.notification_template import NotificationTemplate
@@ -24,6 +27,10 @@ from app.modules.notifications.schemas.fallback_dto import FallbackAlertContext
 from app.modules.crm.models.parent_models import Parent
 from app.modules.crm.models.link_models import StudentParent
 from app.modules.crm.models.student_models import Student
+import asyncio
+from app.modules.academics.models import Group
+from app.modules.hr.models import Employee
+from app.modules.notifications.models.notification_log import NotificationLog
 
 
 logger = logging.getLogger(__name__)
@@ -40,12 +47,14 @@ class BaseNotificationService:
 
     # ── Session helper ───────────────────────────────────────────────────────
 
+    @contextmanager
     def _new_session(self):
         """Context manager that opens a fresh DB session independent of the request lifecycle.
         Use this inside background task processors so they don't rely on the
-        already-closed request session held in self._repo."""
-        from app.db.connection import get_session
-        return get_session()
+        already-closed request session held in self._repo (the ADR-0001 allowance for
+        non-HTTP entry points: a ``unit_of_work()``)."""
+        with unit_of_work(keep_loaded=True) as uow:
+            yield uow.session
 
     def _get_template_by_name(self, name: str) -> Optional["NotificationTemplate"]:
         """Fetch a notification template using a fresh session.
@@ -55,7 +64,6 @@ class BaseNotificationService:
         BackgroundTask runs.
         """
         with self._new_session() as session:
-            from app.modules.notifications.repositories.notification_repository import NotificationRepository
             fresh_repo = NotificationRepository(session)
             return fresh_repo.get_template_by_name(name)
 
@@ -122,25 +130,13 @@ class BaseNotificationService:
         Returns:
             List of (email, recipient_id, recipient_type) tuples
         """
-        from sqlalchemy import text
-
         recipients = []
         invalid_emails_found = []
 
         # Get all active additional recipients for this notification type where the admin has it enabled
         try:
-            stmt = text("""
-                SELECT nar.id, nar.email
-                FROM notification_additional_recipients nar
-                JOIN admin_notification_settings ans
-                    ON ans.admin_id = nar.admin_id
-                    AND ans.notification_type = :notification_type
-                    AND ans.is_enabled = true
-                WHERE nar.is_active = true
-                AND (nar.notification_types IS NULL OR :notification_type = ANY(nar.notification_types))
-            """)
             with self._new_session() as session:
-                result = session.execute(stmt, params={"notification_type": notification_type}).all()
+                result = ReportsRepository(session).get_enabled_additional_recipients(notification_type)
             for recipient_id, email in result:
                 if email and self._is_valid_email(email):
                     recipients.append((email, recipient_id, "EMPLOYEE"))
@@ -155,11 +151,7 @@ class BaseNotificationService:
             # If the admin has settings rows but all are disabled, respect that choice.
             try:
                 with self._new_session() as session:
-                    check = session.execute(
-                        text("SELECT 1 FROM admin_notification_settings WHERE notification_type = :t AND is_enabled = false"),
-                        {"t": notification_type},
-                    ).first()
-                    if check:
+                    if ReportsRepository(session).is_notification_type_disabled(notification_type):
                         logger.info("Notification type '%s' explicitly disabled — skipping fallback.", notification_type)
                         return []
             except Exception as e:
@@ -198,7 +190,6 @@ class BaseNotificationService:
                     intended_recipients_count=len(invalid_emails_found)
                 )
                 try:
-                    import asyncio
                     try:
                         loop = asyncio.get_running_loop()
                     except RuntimeError:
@@ -238,14 +229,11 @@ class BaseNotificationService:
         return body
     
     def _get_group_name(self, group_id: int) -> str:
-        from app.modules.academics.models import Group
         with self._new_session() as session:
             group = session.get(Group, group_id)
         return group.name if group else "Unknown Group"
 
     def _get_instructor_name(self, group_id: int) -> str:
-        from app.modules.academics.models import Group
-        from app.modules.hr.models import Employee
         with self._new_session() as session:
             group = session.get(Group, group_id)
             if group and group.instructor_id:
@@ -254,7 +242,6 @@ class BaseNotificationService:
         return "Unknown"
 
     def _get_student_name(self, student_id: int) -> str:
-        from app.modules.crm.models.student_models import Student
         with self._new_session() as session:
             student = session.get(Student, student_id)
         return student.full_name if student else f"Student #{student_id}"
@@ -267,7 +254,6 @@ class BaseNotificationService:
         Args:
             context: FallbackAlertContext containing notification details and entity info
         """
-        from app.modules.notifications.models.notification_log import NotificationLog
         
         subject = f"[ALERT] Notification Fallback Activated - {context.notification_type}"
         
@@ -368,7 +354,6 @@ class BaseNotificationService:
         # Create log entry in a fresh session (non-blocking — log failures won't block email delivery)
         log_id = None
         try:
-            from app.modules.notifications.repositories.notification_repository import NotificationRepository
             with self._new_session() as log_session:
                 log_repo = NotificationRepository(log_session)
                 log = log_repo.create_log(
@@ -397,7 +382,6 @@ class BaseNotificationService:
         if log_id:
             try:
                 with self._new_session() as log_session:
-                    from app.modules.notifications.repositories.notification_repository import NotificationRepository
                     log_repo = NotificationRepository(log_session)
                     status = "SENT" if success else "FAILED"
                     log_repo.update_log_status(log_id, status, error)

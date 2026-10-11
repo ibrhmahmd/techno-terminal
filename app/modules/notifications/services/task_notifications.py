@@ -7,8 +7,8 @@ Covers:
   - task_assigned          → notify assigned employee
   - task_status_changed    → notify assigned employee + admin recipients
   - task_comment_added     → notify assigned employee (if comment not by them)
-  - task_due_reminder      → notify assigned employee when task is overdue / 1-day away
 """
+from app.db.uow import unit_of_work
 import logging
 from datetime import datetime, timezone
 from typing import Optional
@@ -16,6 +16,11 @@ from fastapi import BackgroundTasks
 
 from app.modules.notifications.services.base_notification_service import BaseNotificationService
 from app.modules.notifications.repositories.notification_repository import NotificationRepository
+from app.modules.tasks.models.task import Task
+from app.modules.hr.models.employee_models import Employee
+from app.modules.auth.models.auth_models import User
+import uuid as _uuid
+from app.modules.tasks.models.task import Task, TaskComment
 
 logger = logging.getLogger(__name__)
 
@@ -67,18 +72,6 @@ class TaskNotificationService(BaseNotificationService):
             self._process_comment_added, task_id, comment_id, author_user_id
         )
 
-    def notify_task_due_reminder(
-        self,
-        task_id: str,
-        employee_id: int,
-        days_until_due: int,
-        background_tasks: BackgroundTasks,
-    ) -> None:
-        """Notify the assigned employee that a task is due soon / overdue."""
-        background_tasks.add_task(
-            self._process_due_reminder, task_id, employee_id, days_until_due
-        )
-
     # ── Private Processors ────────────────────────────────────────────────
 
     async def _process_task_assigned(
@@ -87,18 +80,14 @@ class TaskNotificationService(BaseNotificationService):
         employee_id: int,
         assigned_by_user_id: Optional[int],
     ) -> None:
-        from app.modules.tasks.models.task import Task
-        from app.modules.hr.models.employee_models import Employee
-        from app.modules.auth.models.auth_models import User
-        from app.db.connection import get_session
 
         template = self._get_template_by_name("task_assigned")
         if not template or not template.is_active:
             logger.warning("Template 'task_assigned' not found or inactive — skipping.")
             return
 
-        with get_session() as session:
-            import uuid as _uuid
+        with unit_of_work(keep_loaded=True) as _uow:
+            session = _uow.session
             task = session.get(Task, _uuid.UUID(task_id))
             if not task:
                 logger.error("task_assigned: Task %s not found", task_id)
@@ -141,18 +130,14 @@ class TaskNotificationService(BaseNotificationService):
         new_status: str,
         changed_by_user_id: Optional[int],
     ) -> None:
-        from app.modules.tasks.models.task import Task
-        from app.modules.hr.models.employee_models import Employee
-        from app.modules.auth.models.auth_models import User
-        from app.db.connection import get_session
 
         template = self._get_template_by_name("task_status_changed")
         if not template or not template.is_active:
             logger.warning("Template 'task_status_changed' not found or inactive — skipping.")
             return
 
-        with get_session() as session:
-            import uuid as _uuid
+        with unit_of_work(keep_loaded=True) as _uow:
+            session = _uow.session
             task = session.get(Task, _uuid.UUID(task_id))
             if not task:
                 logger.error("task_status_changed: Task %s not found", task_id)
@@ -217,18 +202,14 @@ class TaskNotificationService(BaseNotificationService):
         comment_id: str,
         author_user_id: int,
     ) -> None:
-        from app.modules.tasks.models.task import Task, TaskComment
-        from app.modules.hr.models.employee_models import Employee
-        from app.modules.auth.models.auth_models import User
-        from app.db.connection import get_session
 
         template = self._get_template_by_name("task_comment_added")
         if not template or not template.is_active:
             logger.warning("Template 'task_comment_added' not found or inactive — skipping.")
             return
 
-        with get_session() as session:
-            import uuid as _uuid
+        with unit_of_work(keep_loaded=True) as _uow:
+            session = _uow.session
             task = session.get(Task, _uuid.UUID(task_id))
             if not task or not task.assigned_to:
                 return
@@ -268,52 +249,3 @@ class TaskNotificationService(BaseNotificationService):
             variables=variables,
         )
 
-    async def _process_due_reminder(
-        self,
-        task_id: str,
-        employee_id: int,
-        days_until_due: int,
-    ) -> None:
-        from app.modules.tasks.models.task import Task
-        from app.modules.hr.models.employee_models import Employee
-        from app.db.connection import get_session
-
-        template = self._get_template_by_name("task_due_reminder")
-        if not template or not template.is_active:
-            logger.warning("Template 'task_due_reminder' not found or inactive — skipping.")
-            return
-
-        with get_session() as session:
-            import uuid as _uuid
-            task = session.get(Task, _uuid.UUID(task_id))
-            if not task:
-                return
-
-            employee = session.get(Employee, employee_id)
-            if not employee or not employee.email:
-                return
-
-            if days_until_due == 0:
-                days_label = "today"
-            elif days_until_due < 0:
-                days_label = f"{abs(days_until_due)} day(s) ago (overdue)"
-            else:
-                days_label = f"in {days_until_due} day(s)"
-
-            variables = {
-                "employee_name": employee.full_name,
-                "task_title": task.title,
-                "task_priority": (task.priority or "medium").capitalize(),
-                "task_status": (task.status or "todo").replace("_", " ").title(),
-                "due_date": task.due_date.strftime("%Y-%m-%d") if task.due_date else "—",
-                "days_until_due": days_label,
-            }
-
-        await self._dispatch(
-            template=template,
-            channel="EMAIL",
-            recipient_type="EMPLOYEE",
-            recipient_id=employee_id,
-            contact=employee.email,
-            variables=variables,
-        )

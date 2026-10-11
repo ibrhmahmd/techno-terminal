@@ -14,7 +14,6 @@ from app.modules.auth.api.deps import get_auth_notifier as auth_deps_get_auth_no
 from app.modules.auth.models.auth_models import User
 from app.modules.auth.models.audit_log import AuditLog, AuditLogEventType
 from app.modules.notifications.adapters import get_auth_notifier as notif_adapters_get_auth_notifier
-from app.modules.notifications.services.notification_service import NotificationService
 from tests.utils.auth_notifier_fake import FakeAuthNotifier
 
 
@@ -256,8 +255,8 @@ def test_real_wiring_schedules_notification(client_with_uow, db_session):
     fake_supabase.auth.sign_in_with_password.return_value = _anon_session(uid)
 
     # Use the real app (client_with_uow fixture uses create_app() which has the override)
-    # Patch NotificationService.notify_admin_login to verify it's called with BackgroundTasks
-    with patch("app.modules.notifications.services.notification_service.NotificationService.notify_admin_login") as mock_notify:
+    # Patch AlertNotificationService.notify_admin_login to verify it's called with BackgroundTasks
+    with patch("app.modules.notifications.services.alert_notifications.AlertNotificationService.notify_admin_login") as mock_notify:
         with patch("app.modules.auth.api.auth_router.get_supabase_anon", return_value=fake_supabase):
             r = client_with_uow.post(
                 "/api/v1/auth/login",

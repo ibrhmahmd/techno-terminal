@@ -1,25 +1,35 @@
-"""Adapter implementing PaymentNotifier using NotificationService (ADR-0007)."""
+"""Adapter implementing PaymentNotifier using the notification services (ADR-0007)."""
 
 from decimal import Decimal
 
 from fastapi import BackgroundTasks, Depends
 
-from app.modules.notifications.api.deps import get_notification_service
+from app.modules.notifications.api.deps import (
+    get_competition_notification_service,
+    get_payment_notification_service,
+)
 from app.modules.finance import PaymentNotifier
-from app.modules.notifications.services.notification_service import NotificationService
+from app.modules.notifications.services.competition_notifications import CompetitionNotificationService
+from app.modules.notifications.services.payment_notifications import PaymentNotificationService
 
 
 class NotificationServicePaymentNotifier:
-    """Adapts NotificationService to the PaymentNotifier port."""
+    """Adapts the notification services to the PaymentNotifier port."""
 
-    def __init__(self, background_tasks: BackgroundTasks, notif_svc: NotificationService):
+    def __init__(
+        self,
+        background_tasks: BackgroundTasks,
+        payments: PaymentNotificationService,
+        competitions: CompetitionNotificationService,
+    ):
         self._background_tasks = background_tasks
-        self._notif_svc = notif_svc
+        self._payments = payments
+        self._competitions = competitions
 
     def payment_received(
         self, *, receipt_id: int, student_id: int, amount: str, receipt_number: str
     ) -> None:
-        self._notif_svc.payment.notify_payment_received(
+        self._payments.notify_payment_received(
             receipt_id=receipt_id,
             student_id=student_id,
             amount=amount,
@@ -37,7 +47,7 @@ class NotificationServicePaymentNotifier:
         amount: Decimal,
         receipt_number: str,
     ) -> None:
-        self._notif_svc.competition.notify_competition_fee_paid(
+        self._competitions.notify_competition_fee_paid(
             student_id=student_id,
             team_id=team_id,
             team_name=team_name,
@@ -50,9 +60,10 @@ class NotificationServicePaymentNotifier:
 
 def get_payment_notifier(
     background_tasks: BackgroundTasks,
-    notif_svc: NotificationService = Depends(get_notification_service),
+    payments: PaymentNotificationService = Depends(get_payment_notification_service),
+    competitions: CompetitionNotificationService = Depends(get_competition_notification_service),
 ) -> PaymentNotifier:
     """FastAPI dependency factory for the PaymentNotifier adapter."""
     return NotificationServicePaymentNotifier(
-        background_tasks=background_tasks, notif_svc=notif_svc
+        background_tasks=background_tasks, payments=payments, competitions=competitions
     )

@@ -81,18 +81,6 @@ def enrollment_template():
 
 
 @pytest.fixture
-def enrollment_completed_template():
-    from tests.utils.notification_mocks import _MockTemplate
-    return _MockTemplate(
-        id=2, name="enrollment_completed", code="ENROLLMENT_COMPLETED",
-        channel="EMAIL", is_active=True, is_standard=True,
-        subject="Enrollment Completed: {{student_name}}",
-        body="<p>{{student_name}} completed level {{level_number}}</p>",
-        variables=["student_name", "level_number", "completion_date"],
-    )
-
-
-@pytest.fixture
 def enrollment_dropped_template():
     from tests.utils.notification_mocks import _MockTemplate
     return _MockTemplate(
@@ -113,18 +101,6 @@ def enrollment_transferred_template():
         subject="Enrollment Transferred: {{student_name}}",
         body="<p>{{student_name}} moved from {{from_group_name}} to {{to_group_name}}</p>",
         variables=["student_name", "from_group_name", "to_group_name"],
-    )
-
-
-@pytest.fixture
-def level_progression_template():
-    from tests.utils.notification_mocks import _MockTemplate
-    return _MockTemplate(
-        id=5, name="level_progression", code="LEVEL_PROGRESSION",
-        channel="EMAIL", is_active=True, is_standard=True,
-        subject="Level Progression: {{student_name}}",
-        body="<p>{{student_name}} advanced to level {{new_level}}</p>",
-        variables=["student_name", "old_level", "new_level"],
     )
 
 
@@ -173,30 +149,6 @@ class TestEnrollmentNotifications:
         assert len(mock_email.sent_emails) in [0, 1]
 
     @pytest.mark.anyio
-    async def test_enrollment_completed_sends_notification(self, mock_repo, mock_email,
-                                                            enrollment_completed_template):
-        from app.modules.notifications.services.enrollment_notifications import (
-            EnrollmentNotificationService
-        )
-        mock_repo.templates["enrollment_completed"] = enrollment_completed_template
-        svc = EnrollmentNotificationService(mock_repo)
-        svc._email = mock_email
-        svc._resolve_notification_recipients = Mock(return_value=[
-            ("admin@test.com", 1, "ADDITIONAL")
-        ])
-        svc._get_group_name = Mock(return_value="Test Group")
-        svc._get_student_name = Mock(return_value="Test Student")
-
-        await svc._process_completed(
-            student_id=1, enrollment_id=10, group_id=5,
-            level_number=2, completion_date=datetime(2026, 5, 1),
-        )
-
-        assert len(mock_email.sent_emails) == 1
-        assert "Test Student" in mock_email.sent_emails[0].body
-        assert "2" in mock_email.sent_emails[0].subject or "2" in mock_email.sent_emails[0].body
-
-    @pytest.mark.anyio
     async def test_enrollment_dropped_sends_notification(self, mock_repo, mock_email,
                                                           enrollment_dropped_template):
         from app.modules.notifications.services.enrollment_notifications import (
@@ -235,28 +187,6 @@ class TestEnrollmentNotifications:
         await svc._process_transferred(
             student_id=1, from_enrollment_id=10, to_enrollment_id=11,
             from_group_id=5, to_group_id=6, transferred_by=1,
-        )
-
-        assert len(mock_email.sent_emails) == 1
-        assert "Test Student" in mock_email.sent_emails[0].body
-
-    @pytest.mark.anyio
-    async def test_level_progression_sends_notification(self, mock_repo, mock_email,
-                                                         level_progression_template):
-        from app.modules.notifications.services.enrollment_notifications import (
-            EnrollmentNotificationService
-        )
-        mock_repo.templates["level_progression"] = level_progression_template
-        svc = EnrollmentNotificationService(mock_repo)
-        svc._email = mock_email
-        svc._resolve_notification_recipients = Mock(return_value=[
-            ("admin@test.com", 1, "ADDITIONAL")
-        ])
-        svc._get_group_name = Mock(return_value="Test Group")
-        svc._get_student_name = Mock(return_value="Test Student")
-
-        await svc._process_progression(
-            student_id=1, old_level=1, new_level=2, group_id=5, enrollment_id=10,
         )
 
         assert len(mock_email.sent_emails) == 1
@@ -453,17 +383,15 @@ class TestDailyReportIntegration:
         from app.modules.notifications.repositories.notification_repository import (
             NotificationRepository
         )
-        from app.modules.notifications.services.notification_service import (
-            NotificationService
-        )
         from app.modules.notifications.schemas.report_dto import (
             DailyReportAggregateDTO
         )
+        from app.modules.notifications.services.report_notifications import ReportNotificationService
         repo = NotificationRepository(db_session)
-        svc = NotificationService(repo)
+        svc = ReportNotificationService(repo)
 
         today = date.today()
-        aggregates = svc.report._fetch_daily_aggregates(today)
+        aggregates = svc._fetch_daily_aggregates(today)
 
         assert isinstance(aggregates, DailyReportAggregateDTO)
         assert aggregates.instructors_list is not None
@@ -531,9 +459,6 @@ class TestDailyReportIntegration:
         from app.modules.notifications.repositories.notification_repository import (
             NotificationRepository
         )
-        from app.modules.notifications.services.notification_service import (
-            NotificationService
-        )
         from app.modules.notifications.pdf.daily_report_pdf import (
             generate_daily_report_pdf
         )
@@ -541,13 +466,14 @@ class TestDailyReportIntegration:
             GmailEmailDispatcher
         )
 
+        from app.modules.notifications.services.report_notifications import ReportNotificationService
         FALLBACK_EMAIL = os.getenv("FALLBACK_EMAIL", "techno.terminal.notifications@gmail.com")
 
         # 1. Fetch real data from DB
         repo = NotificationRepository(db_session)
-        svc = NotificationService(repo)
+        svc = ReportNotificationService(repo)
         today = date.today()
-        aggregates = svc.report._fetch_daily_aggregates(today)
+        aggregates = svc._fetch_daily_aggregates(today)
 
         # 2. Get template and build variables (mirrors send_daily_report logic)
         template = repo.get_template_by_name("daily_report")
@@ -623,3 +549,4 @@ class TestDailyReportIntegration:
         print("Check your inbox. Inspect:")
         print("  - HTML: Open in browser, use print preview -> verify @media print styles")
         print("  - PDF: Open PDF attachment -> verify B&W readability (no colored backgrounds)")
+

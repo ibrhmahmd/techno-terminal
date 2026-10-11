@@ -4,7 +4,7 @@ app/modules/notifications/dispatchers/i_dispatcher.py
 Abstract message dispatcher interface.
 
 Any new channel (Telegram, Push, etc.) implements this protocol.
-Swap dispatchers without touching NotificationService.
+Swap dispatchers without touching the notification services.
 """
 from typing import Protocol, Optional, Tuple, runtime_checkable
 

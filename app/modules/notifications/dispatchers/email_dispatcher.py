@@ -19,6 +19,7 @@ import logfire
 
 from app.core.config import settings
 from app.modules.notifications.dispatchers.i_dispatcher import IMessageDispatcher
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +55,6 @@ class GmailEmailDispatcher(IMessageDispatcher):
         Returns:
             (True, None) on success, (False, error_message) on failure.
         """
-        import os
         if "TESTING" in os.environ or "PYTEST_CURRENT_TEST" in os.environ:
             original_recipient = recipient
             recipient = settings.fallback_email

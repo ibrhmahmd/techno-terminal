@@ -1,11 +1,10 @@
 """Database ledger for scheduled report delivery claims."""
+from app.db.uow import unit_of_work
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import col, select
-
-from app.db.connection import get_session
 from app.modules.notifications.models.notification_log import NotificationLog
 
 
@@ -24,7 +23,8 @@ class SqlReportDeliveryLedger:
         subject: Optional[str],
         body: str,
     ) -> Optional[int]:
-        with get_session() as session:
+        with unit_of_work(keep_loaded=True) as _uow:
+            session = _uow.session
             stale_cutoff = datetime.now(timezone.utc) - timedelta(minutes=15)
             stale_claims = session.exec(
                 select(NotificationLog).where(
@@ -63,7 +63,8 @@ class SqlReportDeliveryLedger:
             return claim.id
 
     def mark(self, log_id: int, status: str, error_message: Optional[str]) -> None:
-        with get_session() as session:
+        with unit_of_work(keep_loaded=True) as _uow:
+            session = _uow.session
             claim = session.get(NotificationLog, log_id)
             if claim:
                 claim.status = status
