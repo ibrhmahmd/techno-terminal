@@ -7,7 +7,7 @@ from decimal import Decimal
 from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from app.modules.crm.services.activity_service import StudentActivityService
+    from app.modules.crm import StudentActivityService
 
 from app.modules.finance.interfaces import (
     RefundResultDTO,
@@ -116,7 +116,7 @@ class RefundService:
 
         # Log refund activity
         if self._activity_svc and original.student_id:
-            from app.modules.crm.interfaces.dtos.log_payment_dto import LogPaymentDTO
+            from app.modules.crm import LogPaymentDTO
             self._activity_svc.log_payment(
                 LogPaymentDTO(
                     student_id=original.student_id,

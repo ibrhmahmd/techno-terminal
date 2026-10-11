@@ -136,8 +136,7 @@ from app.modules.auth import AuthService
 
 # Note: CRM service factories moved to app/modules/crm/api/deps.py
 # Import StudentUnitOfWork and StudentActivityService for use by other modules' factories
-from app.modules.crm.repositories.unit_of_work import StudentUnitOfWork
-from app.modules.crm.services import StudentActivityService
+from app.modules.crm import StudentUnitOfWork, StudentActivityService
 
 from app.modules.academics.course.service import CourseService
 from app.modules.academics.group.core.service import GroupCoreService

@@ -9,7 +9,7 @@ from typing import Optional, List, TYPE_CHECKING
 from fastapi import BackgroundTasks
 
 if TYPE_CHECKING:
-    from app.modules.crm.services.activity_service import StudentActivityService
+    from app.modules.crm import StudentActivityService
     from app.modules.notifications.services.notification_service import (
         NotificationService,
     )
@@ -128,7 +128,7 @@ class ReceiptService:
 
         # Log payment activities for each line
         if self._activity_svc:
-            from app.modules.crm.interfaces.dtos.log_payment_dto import LogPaymentDTO
+            from app.modules.crm import LogPaymentDTO
 
             for line in processed_lines:
                 if line.student_id:  # Only log if associated with a student

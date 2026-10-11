@@ -24,12 +24,9 @@ from app.modules.competitions.schemas.team_schemas import (
 )
 from app.modules.competitions.schemas.competition_schemas import CompetitionDTO
 from app.modules.competitions.models.team_models import Team
+from app.modules.crm import StudentUnitOfWork, StudentActivityService, LogCompetitionRegistrationDTO, LogPaymentDTO
 from app.modules.crm.models.student_models import Student
 from app.modules.crm.models.parent_models import Parent
-from app.modules.crm.repositories.unit_of_work import StudentUnitOfWork
-from app.modules.crm.services.activity_service import StudentActivityService
-from app.modules.crm.interfaces.dtos.log_competition_registration_dto import LogCompetitionRegistrationDTO
-from app.modules.crm.interfaces.dtos.log_payment_dto import LogPaymentDTO
 from app.modules.finance.interfaces import CreateReceiptServiceDTO, IssueRefundDTO, RefundResultDTO
 from app.modules.finance.repositories.unit_of_work import FinanceUnitOfWork
 from app.modules.finance.services.receipt_service import ReceiptService

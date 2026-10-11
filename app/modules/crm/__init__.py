@@ -2,18 +2,52 @@
 app/modules/crm/__init__.py
 ────────────────────────────
 
-CRM module exports — SOLID Architecture (no backward compatibility).
+CRM Module Facade (ADR-0003)
 
-Import patterns:
-    - Services via dependency injection (see app/api/dependencies.py)
-    - Models directly from app.modules.crm.models
-    - DTOs from app.modules.crm.schemas or app.api.schemas.crm
+Other modules must import CRM ONLY via this facade, except
+app.modules.crm.models which anyone may import (ADR-0004).
+
+Exports:
+- Models: Parent, Student, StudentParent, StudentStatus
+- Services: StudentCrudService, ParentCrudService, SearchService,
+            StudentProfileService, StudentActivityService
+- DTOs: LogEnrollmentDTO, LogEnrollmentChangeDTO, LogStatusChangeDTO,
+        LogPaymentDTO, LogCompetitionRegistrationDTO, TimelineFilterDTO,
+        StudentFilterDTO, StudentFilterResultDTO, StudentGroupedResultDTO
+- TEMPORARY: StudentUnitOfWork (removed in ticket #31 when CRM moves
+             to the shared UnitOfWork)
 """
 
-# Models
-from app.modules.crm.models import Parent, Student, StudentParent
+# Models (ADR-0004: anyone may import models directly)
+from app.modules.crm.models import Parent, Student, StudentParent, StudentStatus
 
-# DTOs (Pydantic schemas)
+# Services (via facade only)
+from app.modules.crm.services import (
+    StudentCrudService,
+    ParentCrudService,
+    SearchService,
+    StudentProfileService,
+    StudentActivityService,
+)
+
+# DTOs (via facade only)
+from app.modules.crm.interfaces.dtos import (
+    LogEnrollmentDTO,
+    LogEnrollmentChangeDTO,
+    LogStatusChangeDTO,
+    LogPaymentDTO,
+    LogCompetitionRegistrationDTO,
+    TimelineFilterDTO,
+    StudentFilterDTO,
+    StudentFilterResultDTO,
+    StudentGroupedResultDTO,
+)
+
+# TEMPORARY: StudentUnitOfWork — removed in ticket #31 when CRM moves
+# to the shared UnitOfWork (ADR-0001).
+from app.modules.crm.repositories.unit_of_work import StudentUnitOfWork
+
+# Legacy DTOs kept for backward compatibility (used by existing callers)
 from app.modules.crm.schemas import (
     RegisterParentInput,
     RegisterStudentDTO,
@@ -22,29 +56,34 @@ from app.modules.crm.schemas import (
     UpdateStudentDTO,
 )
 
-# Services (for type hints and direct use)
-from app.modules.crm.services import (
-    StudentCrudService,
-    ParentCrudService,
-    SearchService,
-    StudentProfileService,
-)
-
 __all__ = [
     # Models
     "Parent",
     "Student",
     "StudentParent",
+    "StudentStatus",
+    # Services
+    "StudentCrudService",
+    "ParentCrudService",
+    "SearchService",
+    "StudentProfileService",
+    "StudentActivityService",
     # DTOs
+    "LogEnrollmentDTO",
+    "LogEnrollmentChangeDTO",
+    "LogStatusChangeDTO",
+    "LogPaymentDTO",
+    "LogCompetitionRegistrationDTO",
+    "TimelineFilterDTO",
+    "StudentFilterDTO",
+    "StudentFilterResultDTO",
+    "StudentGroupedResultDTO",
+    # TEMPORARY
+    "StudentUnitOfWork",
+    # Legacy DTOs (backward compatibility)
     "RegisterParentInput",
     "RegisterStudentDTO",
     "RegisterStudentCommandDTO",
     "UpdateParentDTO",
     "UpdateStudentDTO",
-    # Services (SOLID)
-    "StudentCrudService",
-    "ParentCrudService",
-    "SearchService",
-    "StudentProfileService",
 ]
-
