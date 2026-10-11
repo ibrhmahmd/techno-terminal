@@ -1,332 +1,32 @@
-import logging
-from datetime import date
-from decimal import Decimal
 from typing import Optional
 from sqlmodel import select
 from fastapi import HTTPException
-from app.db.connection import get_session
-from app.db.uow import UnitOfWork
-import app.modules.competitions.repositories.team_repository as team_repo
-import app.modules.competitions.repositories.competition_repository as comp_repo
-from app.shared.exceptions import NotFoundError, BusinessRuleError, ConflictError
-from app.modules.competitions.schemas.team_schemas import (
-    RegisterTeamInput,
-    TeamDTO,
-    StudentCompetitionDTO,
-    TeamRegistrationResultDTO,
-    TeamRegistrationResultWithWarningDTO,
-    AddTeamMemberResultDTO,
-    AddTeamMemberResultWithWarningDTO,
-    TeamMemberRosterDTO,
-    TeamMemberDTO,
-    TeamWithMembersDTO,
-)
-from app.modules.competitions.schemas.competition_schemas import CompetitionDTO
+from app.shared.exceptions import BusinessRuleError
+from app.modules.competitions.schemas.team_schemas import TeamDTO, TeamMemberDTO, TeamWithMembersDTO
 from app.modules.competitions.models.team_models import Team
-from app.modules.competitions.ports import CompetitionNotifier
-from app.modules.crm import StudentActivityService, LogCompetitionRegistrationDTO, LogPaymentDTO
-from app.modules.crm.models.student_models import Student
-from app.modules.crm.models.parent_models import Parent
-
-logger = logging.getLogger(__name__)
+from app.modules.competitions.services.team_base import TeamServiceBase
 
 
-class TeamService:
-    """Service layer for managing Teams with 3-table schema."""
-
-    def __init__(self, notifier: Optional[CompetitionNotifier] = None) -> None:
-        self._notifier = notifier
-
-    def _notify(self, method: str, **kwargs) -> None:
-        """Call the notifier after commit; failures are logged, never raised."""
-        if self._notifier is None:
-            return
-        try:
-            getattr(self._notifier, method)(**kwargs)
-        except Exception:
-            logger.exception("Competition notifier %s failed", method)
-
-
-    def get_student_competitions(self, student_id: int) -> list[StudentCompetitionDTO]:
-        """
-        Returns all teams a student is in, nested with category and competition info.
-        Uses batch loading: single JOIN query instead of N+1.
-        """
-        with get_session() as db:
-            rows = team_repo.list_student_memberships_enriched(db, student_id)
-
-            result = []
-            for row in rows:
-                result.append(
-                    StudentCompetitionDTO(
-                        membership=row.membership,
-                        team=row.team,
-                        category=row.team.category,
-                        subcategory=row.team.subcategory,
-                        competition=row.competition
-                    )
-                )
-
-            # Sort by competition date descending
-            result.sort(
-                key=lambda x: (
-                    x.competition.competition_date
-                    if x.competition and x.competition.competition_date
-                    else date.min
-                ),
-                reverse=True,
-            )
-            return result
-
-    def register_team(
-        self, cmd: RegisterTeamInput, current_user_id: Optional[int] = None,
-    ) -> TeamRegistrationResultWithWarningDTO:
-        """
-        Creates a team and adds all listed students as members.
-        3-table schema: uses competition_id, category, subcategory directly.
-        Business rules:
-        - At least one student source required: group_id OR student_ids
-        - If group_id provided, pre-fills students from group's current level roster
-        - One student can only be in one team per competition
-        - If category has subcategories, must specify subcategory
-        """
-        with get_session() as db:
-            # Validate competition exists
-            comp = comp_repo.get_competition(db, cmd.competition_id)
-            if not comp:
-                raise NotFoundError(f"Competition {cmd.competition_id} not found.")
-
-            # Resolve student IDs: group pre-fill + manual list
-            student_ids = self._resolve_student_ids(db, cmd)
-
-            # Business rule: If category has subcategories, must specify subcategory
-            if cmd.subcategory is None:
-                has_subs = team_repo.check_category_has_subcategories(
-                    db, cmd.competition_id, cmd.category
-                )
-                if has_subs:
-                    raise BusinessRuleError(
-                        f"Category '{cmd.category}' has subcategories. "
-                        "Must specify a subcategory."
-                    )
-
-            # Validate team name uniqueness in this competition
-            existing_teams = team_repo.list_teams(db, cmd.competition_id, cmd.category, cmd.subcategory)
-            if any(t.team_name.lower() == cmd.team_name.lower() for t in existing_teams):
-                raise ConflictError(
-                    f"A team named '{cmd.team_name}' already exists in this category."
-                )
-
-            # Validate all students are active and collect duplicate warnings
-            duplicate_warnings = []
-            for sid in student_ids:
-                s = db.get(Student, sid)
-                if not s:
-                    raise NotFoundError(f"Student {sid} not found.")
-                if s.status != "active":
-                    raise BusinessRuleError(f"Student '{s.full_name}' is not active.")
-
-                # Business rule: Warn if student already in another team for this competition
-                already_enrolled = team_repo.check_student_in_competition(
-                    db, cmd.competition_id, sid
-                )
-                if already_enrolled:
-                    duplicate_warnings.append(
-                        f"Student '{s.full_name}' is already enrolled in another team "
-                        f"for this competition."
-                    )
-
-            # Create team (no team-level fee — fees are per-student on TeamMember)
-            team = team_repo.create_team(
-                db,
-                competition_id=cmd.competition_id,
-                team_name=cmd.team_name,
-                category=cmd.category,
-                subcategory=cmd.subcategory,
-                coach_id=cmd.coach_id,
-                group_id=cmd.group_id,
-                notes=cmd.notes,
-                project_name=cmd.project_name,
-                project_description=cmd.project_description,
-            )
-
-            # Add members with per-student fee from input (default to competition fee if not specified)
-            members_added = 0
-            for sid in student_ids:
-                amount_due = None
-                if cmd.student_fees and sid in cmd.student_fees:
-                    amount_due = cmd.student_fees[sid]
-                
-                if amount_due is None:
-                    amount_due = float(comp.fee_per_student or 0.0)
-
-                # Skip duplicates gracefully
-                existing = team_repo.get_team_member(db, team.id, sid)
-                if not existing:
-                    team_repo.add_team_member(db, team.id, sid, amount_due=amount_due)
-                    members_added += 1
-
-            # Log activity and notify for each student
-            self._log_team_registration_activity(
-                db=db,
-                team=team,
-                student_ids=student_ids,
-                competition_name=comp.name,
-                current_user_id=current_user_id,
-            )
-
-            # Notify: team registration per student
-            # Commit first so data is visible to the background task's fresh session
-            db.commit()
-            db.refresh(team)
-            for sid in student_ids:
-                self._notify(
-                    "team_registration",
-                    student_id=sid,
-                    team_id=team.id,
-                    team_name=team.team_name,
-                    competition_name=comp.name,
-                    category=cmd.category,
-                    subcategory=cmd.subcategory,
-                )
-
-
-            warning = "; ".join(duplicate_warnings) if duplicate_warnings else None
-            return TeamRegistrationResultWithWarningDTO(
-                result=TeamRegistrationResultDTO(
-                    team=TeamDTO.model_validate(team),
-                    members_added=members_added
-                ),
-                warning=warning,
-            )
-
-    def _resolve_student_ids(self, db, cmd: RegisterTeamInput) -> list[int]:
-        """Resolve final student IDs from group pre-fill and/or manual list."""
-        group_ids: list[int] = []
-        if cmd.group_id:
-            from app.modules.academics.models.group_models import Group
-            from app.modules.enrollments.models import Enrollment
-
-            group = db.get(Group, cmd.group_id)
-            if not group:
-                raise NotFoundError(f"Group {cmd.group_id} not found.")
-            if group.status != "active":
-                raise BusinessRuleError(f"Group '{group.name}' is not active.")
-
-            # Fetch active enrollments at the group's current level
-            enrollments = db.exec(
-                select(Enrollment).where(
-                    Enrollment.group_id == cmd.group_id,
-                    Enrollment.level_number == group.level_number,
-                    Enrollment.status == "active",
-                )
-            ).all()
-            group_ids = [e.student_id for e in enrollments]
-            if not group_ids:
-                raise BusinessRuleError(
-                    f"Group '{group.name}' has no active students at level {group.level_number}."
-                )
-
-        manual_ids = cmd.student_ids or []
-        # Merge: group roster + manual list (union, preserve order)
-        seen = set()
-        combined = []
-        for sid in group_ids + manual_ids:
-            if sid not in seen:
-                seen.add(sid)
-                combined.append(sid)
-
-        if not combined:
-            raise BusinessRuleError(
-                "At least one student is required. Provide student_ids or select a group with active students."
-            )
-
-        return combined
-
-    def _log_team_registration_activity(
-        self,
-        db,
-        team,
-        student_ids: list[int],
-        competition_name: str,
-        current_user_id: Optional[int],
-    ) -> None:
-        """Log competition registration activity for each team member."""
-        # Create UoW and activity service
-        # Note: This is a simplified integration - in production you'd want to
-        # share the same transaction/session
-        try:
-            uow = UnitOfWork(db)
-            activity_svc = StudentActivityService(uow)
-
-            for sid in student_ids:
-                activity_svc.log_competition_registration(
-                    LogCompetitionRegistrationDTO(
-                        student_id=sid,
-                        competition_id=team.competition_id,
-                        competition_name=competition_name,
-                        performed_by=current_user_id,
-                    )
-                )
-            uow.commit()
-        except Exception:
-            logger.exception("Failed to log competition registration activity for team %s", team.id)
-
-    def _log_placement_activity(
-        self,
-        db,
-        student_id: int,
-        competition_id: int,
-        competition_name: str,
-        placement_rank: int,
-        placement_label: Optional[str],
-        current_user_id: Optional[int],
-    ) -> None:
-        """Log placement activity for competition result."""
-        try:
-            uow = UnitOfWork(db)
-            activity_svc = StudentActivityService(uow)
-
-            rank_display = placement_label if placement_label else f"{placement_rank} place"
-
-            activity_svc._uow.activities.create_activity_log(
-                student_id=student_id,
-                activity_type="competition",
-                activity_subtype="placement",
-                reference_type="competition",
-                reference_id=competition_id,
-                description=f"Placed {rank_display} in '{competition_name}'",
-                metadata={
-                    "competition_id": competition_id,
-                    "competition_name": competition_name,
-                    "placement_rank": placement_rank,
-                    "placement_label": placement_label,
-                },
-                performed_by=current_user_id,
-            )
-            uow.commit()
-        except Exception:
-            logger.exception("Failed to log placement activity for student %s, competition %s", student_id, competition_id)
+class TeamService(TeamServiceBase):
+    """Team queries and CRUD."""
 
     def get_team_by_id(self, team_id: int) -> TeamDTO | None:
         """Get a single team by ID."""
-        with get_session() as db:
-            team = team_repo.get_team(db, team_id)
-            return TeamDTO.model_validate(team) if team else None
+        team = self._teams.get_team(team_id)
+        return TeamDTO.model_validate(team) if team else None
 
     def get_team_for_user(
         self, team_id: int, current_user
     ) -> TeamDTO | None:
         """Get a team, enforcing admin or coach access within the same session."""
-        with get_session() as db:
-            team = team_repo.get_team(db, team_id)
-            if not team:
-                return None
-            if current_user.is_admin:
-                return TeamDTO.model_validate(team)
-            if current_user.employee_id and team.coach_id == current_user.employee_id:
-                return TeamDTO.model_validate(team)
-            raise HTTPException(status_code=403, detail="Access denied. Admin or team coach required.")
+        team = self._teams.get_team(team_id)
+        if not team:
+            return None
+        if current_user.is_admin:
+            return TeamDTO.model_validate(team)
+        if current_user.employee_id and team.coach_id == current_user.employee_id:
+            return TeamDTO.model_validate(team)
+        raise HTTPException(status_code=403, detail="Access denied. Admin or team coach required.")
 
     def list_teams(
         self,
@@ -335,9 +35,8 @@ class TeamService:
         subcategory: Optional[str] = None,
     ) -> list[TeamDTO]:
         """List teams for a competition with optional filters."""
-        with get_session() as db:
-            teams = team_repo.list_teams(db, competition_id, category, subcategory)
-            return [TeamDTO.model_validate(t) for t in teams]
+        teams = self._teams.list_teams(competition_id, category, subcategory)
+        return [TeamDTO.model_validate(t) for t in teams]
 
     def list_teams_for_coach(
         self,
@@ -347,17 +46,17 @@ class TeamService:
         subcategory: Optional[str] = None,
     ) -> list[TeamDTO]:
         """List teams for a competition filtered by coach_id."""
-        with get_session() as db:
-            stmt = select(Team).where(
-                Team.competition_id == competition_id,
-                Team.coach_id == coach_id,
-            )
-            if category:
-                stmt = stmt.where(Team.category == category)
-            if subcategory:
-                stmt = stmt.where(Team.subcategory == subcategory)
-            teams = list(db.exec(stmt).all())
-            return [TeamDTO.model_validate(t) for t in teams]
+        db = self._uow.session
+        stmt = select(Team).where(
+            Team.competition_id == competition_id,
+            Team.coach_id == coach_id,
+        )
+        if category:
+            stmt = stmt.where(Team.category == category)
+        if subcategory:
+            stmt = stmt.where(Team.subcategory == subcategory)
+        teams = list(db.exec(stmt).all())
+        return [TeamDTO.model_validate(t) for t in teams]
 
     def list_teams_for_user(
         self,
@@ -393,9 +92,8 @@ class TeamService:
 
     def get_team_members_for_team(self, team_id: int) -> list[TeamMemberDTO]:
         """Get team members for a team."""
-        with get_session() as db:
-            members = team_repo.list_team_members(db, team_id)
-            return [TeamMemberDTO.model_validate(m) for m in members]
+        members = self._teams.list_team_members(team_id)
+        return [TeamMemberDTO.model_validate(m) for m in members]
 
     def get_teams_with_members(
         self,
@@ -404,221 +102,42 @@ class TeamService:
         subcategory: Optional[str] = None,
     ) -> list[TeamWithMembersDTO]:
         """Returns all teams with their members. Uses batch loading."""
-        with get_session() as db:
-            teams, members_by_team = team_repo.list_teams_with_members_batch(db, competition_id)
+        batch = self._teams.list_teams_with_members_batch(competition_id)
+        teams, members_by_team = batch.teams, batch.members_by_team
 
-            if category:
-                teams = [t for t in teams if t.category == category]
-            if subcategory:
-                teams = [t for t in teams if t.subcategory == subcategory]
+        if category:
+            teams = [t for t in teams if t.category == category]
+        if subcategory:
+            teams = [t for t in teams if t.subcategory == subcategory]
 
-            result = []
-            for team in teams:
-                member_rows = members_by_team.get(team.id, [])
-                result.append(
-                    TeamWithMembersDTO(
-                        team=TeamDTO.model_validate(team),
-                        members=[mwr.member for mwr in member_rows]
-                    )
+        result = []
+        for team in teams:
+            member_rows = members_by_team.get(team.id, [])
+            result.append(
+                TeamWithMembersDTO(
+                    team=TeamDTO.model_validate(team),
+                    members=[mwr.member for mwr in member_rows]
                 )
-            return result
+            )
+        return result
 
     def update_team(self, team_id: int, **kwargs) -> TeamDTO | None:
         """Update team fields."""
-        with get_session() as db:
-            team = team_repo.update_team(db, team_id, **kwargs)
-            if team:
-                db.commit()
-                db.refresh(team)
-            return TeamDTO.model_validate(team) if team else None
+        db = self._uow.session
+        team = self._teams.update_team(team_id, **kwargs)
+        if team:
+            self._uow.commit()
+            db.refresh(team)
+        return TeamDTO.model_validate(team) if team else None
 
     def delete_team(self, team_id: int) -> bool:
         """Hard delete a team."""
-        with get_session() as db:
-            members = team_repo.list_team_members(db, team_id)
-            for m in members:
-                if m.amount_paid > 0:
-                    raise BusinessRuleError(
-                        "Cannot delete team with members who have paid fees."
-                    )
-            result = team_repo.delete_team(db, team_id)
-            db.commit()
-            return result
-
-    def update_placement(
-        self,
-        team_id: int,
-        placement_rank: int,
-        placement_label: Optional[str] = None,
-        current_user_id: Optional[int] = None,
-    ) -> TeamDTO:
-        """
-        Update team placement after competition.
-        Can only be set after competition date has passed.
-        """
-        with get_session() as db:
-            team = team_repo.get_team(db, team_id)
-            if not team:
-                raise NotFoundError(f"Team {team_id} not found.")
-
-            comp = comp_repo.get_competition(db, team.competition_id)
-            if comp and comp.competition_date:
-                if comp.competition_date > date.today():
-                    raise BusinessRuleError(
-                        "Cannot set placement before competition date."
-                    )
-                if (date.today() - comp.competition_date).days > 30:
-                    raise BusinessRuleError(
-                        "Placement recording window closed. Placements must be "
-                        "recorded within 30 days of the competition date."
-                    )
-
-            team = team_repo.update_team(
-                db, team_id,
-                placement_rank=placement_rank,
-                placement_label=placement_label
-            )
-
-            # Log activity for each team member
-            if team:
-                members = team_repo.list_team_members(db, team_id)
-                for m in members:
-                    self._log_placement_activity(
-                        db=db,
-                        student_id=m.student_id,
-                        competition_id=team.competition_id,
-                        competition_name=comp.name if comp else "Unknown",
-                        placement_rank=placement_rank,
-                        placement_label=placement_label,
-                        current_user_id=current_user_id,
-                    )
-
-                # Notify: placement announcement per member
-                # Commit first so data is visible to the background task's fresh session
-                db.commit()
-                db.refresh(team)
-                for m in members:
-                    self._notify(
-                        "placement_announcement",
-                        student_id=m.student_id,
-                        team_id=team_id,
-                        team_name=team.team_name,
-                        competition_name=comp.name if comp else "Unknown",
-                        placement_rank=placement_rank,
-                        placement_label=placement_label,
-                    )
-
-
-            return TeamDTO.model_validate(team) if team else None
-
-    def add_team_member_to_existing(
-        self,
-        team_id: int,
-        student_id: int,
-        amount_due: Optional[float] = None,
-        current_user_id: Optional[int] = None,
-    ) -> AddTeamMemberResultWithWarningDTO:
-        """Add a student to an existing team. Returns (result, warning_or_None)."""
-        with get_session() as db:
-            team = team_repo.get_team(db, team_id)
-            if not team:
-                raise NotFoundError(f"Team {team_id} not found.")
-
-            warning = None
-            # Check if student already in this competition — warn but allow
-            already_enrolled = team_repo.check_student_in_competition(
-                db, team.competition_id, student_id
-            )
-            if already_enrolled:
-                s_check = db.get(Student, student_id)
-                warning = (
-                    f"Student '{s_check.full_name if s_check else student_id}' "
-                    "is already enrolled in another team for this competition."
-                )
-
-            s = db.get(Student, student_id)
-            if not s or not s.is_active:
-                raise NotFoundError(f"Student {student_id} not found or inactive.")
-
-            existing = team_repo.get_team_member(db, team_id, student_id)
-            if existing:
-                raise ConflictError("Student is already a member of this team.")
-
-            if amount_due is None:
-                comp = comp_repo.get_competition(db, team.competition_id)
-                amount_due = float(comp.fee_per_student or 0.0)
-
-            m = team_repo.add_team_member(db, team_id, student_id, amount_due=amount_due)
-
-            # Log activity for student joining team
-            comp = comp_repo.get_competition(db, team.competition_id)
-            self._log_team_registration_activity(
-                db=db,
-                team=team,
-                student_ids=[student_id],
-                competition_name=comp.name if comp else "Unknown",
-                current_user_id=current_user_id,
-            )
-
-            # Notify: team registration for added member
-            # Commit first so data is visible to the background task's fresh session
-            db.commit()
-            db.refresh(m)
-            self._notify(
-                "team_registration",
-                student_id=student_id,
-                team_id=team_id,
-                team_name=team.team_name,
-                competition_name=comp.name if comp else "Unknown",
-                category=team.category,
-                subcategory=team.subcategory,
-            )
-
-
-            return AddTeamMemberResultWithWarningDTO(
-                result=AddTeamMemberResultDTO(
-                    team_member_id=m.id,
-                    student_id=m.student_id,
-                    student_name=s.full_name,
-                ),
-                warning=warning,
-            )
-
-    def get_team_member(self, team_id: int, student_id: int) -> TeamMemberDTO | None:
-        """Returns a single team member by team_id and student_id, or None."""
-        with get_session() as db:
-            member = team_repo.get_team_member(db, team_id, student_id)
-            return TeamMemberDTO.model_validate(member) if member else None
-
-    def remove_team_member(self, team_id: int, student_id: int) -> bool:
-        with get_session() as db:
-            member = team_repo.get_team_member(db, team_id, student_id)
-            if member and member.amount_paid > 0:
+        members = self._teams.list_team_members(team_id)
+        for m in members:
+            if m.amount_paid > 0:
                 raise BusinessRuleError(
-                    "Cannot remove a team member who has already paid the competition fee."
+                    "Cannot delete team with members who have paid fees."
                 )
-            result = team_repo.remove_team_member(db, team_id, student_id)
-            db.commit()
-            return result
-
-    def list_team_members(self, team_id: int) -> list[TeamMemberRosterDTO]:
-        """Returns team members enriched with student name and fee status. Uses batch loading."""
-        with get_session() as db:
-            team = db.get(Team, team_id)
-            team_name = team.team_name if team else "Unknown"
-
-            members_by_team = team_repo.list_team_members_with_students(db, [team_id])
-            member_rows = members_by_team.get(team_id, [])
-
-            return [
-                TeamMemberRosterDTO(
-                    team_member_id=mwr.member.id,
-                    team_id=team_id,
-                    team_name=team_name,
-                    student_id=mwr.member.student_id,
-                    student_name=mwr.student_name,
-                    amount_due=mwr.member.amount_due,
-                    amount_paid=mwr.member.amount_paid,
-                )
-                for mwr in member_rows
-            ]
+        result = self._teams.delete_team(team_id)
+        self._uow.commit()
+        return result

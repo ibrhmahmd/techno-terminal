@@ -6,7 +6,7 @@ Competitions domain router for 3-table schema.
 Handles: Competition lifecycle (CRUD, restore, categories, summary)
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.schemas.common import ApiResponse
 from app.modules.competitions.api.schemas.competition_schemas import (

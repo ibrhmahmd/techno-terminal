@@ -10,6 +10,9 @@ app.modules.competitions.models which anyone may import (ADR-0004).
 from .ports import CompetitionNotifier
 from .services.competition_service import CompetitionService
 from .services.team_service import TeamService
+from .services.team_registration_service import TeamRegistrationService
+from .services.team_roster_service import TeamRosterService
+from .services.team_placement_service import TeamPlacementService
 from .services.team_fee_service import TeamFeeService
 
 from .models.competition_models import Competition
@@ -38,6 +41,9 @@ __all__ = [
     # Service Classes
     "CompetitionService",
     "TeamService",
+    "TeamRegistrationService",
+    "TeamRosterService",
+    "TeamPlacementService",
     "TeamFeeService",
     # Ports
     "CompetitionNotifier",

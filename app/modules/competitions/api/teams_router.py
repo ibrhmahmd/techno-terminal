@@ -18,9 +18,19 @@ from app.modules.competitions.api.schemas.team_schemas import (
     StudentCompetitionsResponse,
 )
 from app.api.dependencies import require_any, require_admin
-from app.modules.competitions.api.deps import get_team_service
+from app.modules.competitions.api.deps import (
+    get_team_placement_service,
+    get_team_registration_service,
+    get_team_roster_service,
+    get_team_service,
+)
 from app.modules.auth import User
-from app.modules.competitions import TeamService
+from app.modules.competitions import (
+    TeamPlacementService,
+    TeamRegistrationService,
+    TeamRosterService,
+    TeamService,
+)
 
 from app.modules.competitions.schemas import (
     RegisterTeamInput,
@@ -28,9 +38,7 @@ from app.modules.competitions.schemas import (
     TeamRegistrationResultDTO,
     TeamWithMembersDTO,
     TeamDTO,
-    TeamMemberDTO,
     AddTeamMemberResultDTO,
-    TeamMemberRosterDTO,
 )
 
 router = APIRouter(tags=["Teams"])
@@ -87,7 +95,7 @@ def list_teams(
 def register_team(
     body: RegisterTeamInput,
     current_user: User = Depends(require_admin),
-    svc: TeamService = Depends(get_team_service),
+    svc: TeamRegistrationService = Depends(get_team_registration_service),
 ):
     """Register a team for a competition."""
     reg_result = svc.register_team(body, current_user_id=current_user.id)
@@ -204,10 +212,11 @@ def list_team_members(
     team_id: int,
     current_user: User = Depends(require_any),
     svc: TeamService = Depends(get_team_service),
+    roster: TeamRosterService = Depends(get_team_roster_service),
 ):
     """List all members of a team (admin or coach only)."""
     svc.get_team_for_user(team_id, current_user)  # Auth check
-    members = svc.list_team_members(team_id)
+    members = roster.list_team_members(team_id)
     team_name = members[0].team_name if members else "Unknown"
     return ApiResponse(data=TeamMemberListResponse(
         team_id=team_id,
@@ -238,7 +247,7 @@ def add_team_member(
     team_id: int,
     body: AddTeamMemberInput,
     current_user: User = Depends(require_admin),
-    svc: TeamService = Depends(get_team_service),
+    svc: TeamRosterService = Depends(get_team_roster_service),
 ):
     """Add a member to an existing team."""
     add_result = svc.add_team_member_to_existing(
@@ -272,7 +281,7 @@ def remove_team_member(
     team_id: int,
     student_id: int,
     current_user: User = Depends(require_admin),
-    svc: TeamService = Depends(get_team_service),
+    svc: TeamRosterService = Depends(get_team_roster_service),
 ):
     """Remove a member from a team."""
     result = svc.remove_team_member(team_id, student_id)
@@ -299,7 +308,7 @@ def update_team_placement(
     team_id: int,
     body: PlacementUpdateInput,
     current_user: User = Depends(require_admin),
-    svc: TeamService = Depends(get_team_service),
+    svc: TeamPlacementService = Depends(get_team_placement_service),
 ):
     """Update team placement."""
     result = svc.update_placement(
@@ -325,7 +334,7 @@ def update_team_placement(
 def get_student_competitions(
     student_id: int,
     current_user: User = Depends(require_any),
-    svc: TeamService = Depends(get_team_service),
+    svc: TeamRosterService = Depends(get_team_roster_service),
 ):
     """Get all competitions for a student."""
     competitions = svc.get_student_competitions(student_id)
