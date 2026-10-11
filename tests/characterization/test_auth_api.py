@@ -157,7 +157,7 @@ def test_me(client_with_uow, override_auth, mock_admin_headers):
     assert body["role"] == "admin"
 
     # Drop the auth override so the unauthenticated path is exercised for real.
-    from app.api.dependencies import get_current_user
+    from app.api.deps import get_current_user
 
     client_with_uow.app.dependency_overrides.pop(get_current_user, None)
     no_token = client_with_uow.get("/api/v1/auth/me")

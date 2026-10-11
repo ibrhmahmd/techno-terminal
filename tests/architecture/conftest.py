@@ -262,7 +262,7 @@ def violations(import_graph):
 
 
 def pytest_terminal_summary(terminalreporter, exitstatus, config):
-    """Render the per-module / per-rule violation table (report-only counts)."""
+    """Render the per-module / per-rule violation table ."""
     if not _COMPUTED:
         return
     tw = terminalreporter
@@ -271,8 +271,7 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
         f"{'layers':>16}{'get_session':>14}{'total':>8}"
     )
     tw.write_line("")
-    tw.write_line("architecture contracts — violations per module (report-only; "
-                  "module fails only when in ENFORCED_MODULES)")
+    tw.write_line("architecture contracts — violations per module")
     tw.write_line(header)
     tw.write_line("-" * len(header))
     totals = {key: 0 for key in RULE_KEYS}

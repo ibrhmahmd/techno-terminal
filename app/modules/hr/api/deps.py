@@ -2,7 +2,7 @@
 
 from fastapi import Depends
 from sqlmodel import Session
-from app.api.dependencies import UoW, get_supabase_admin
+from app.api.deps import UoW, get_supabase_admin
 from app.modules.hr import EmployeeCrudService, StaffAccountService
 
 

@@ -1,25 +1,20 @@
 """Import-graph architecture contracts, mapped to ADRs.
 
-Report-only: each rule is parametrized over the eleven modules and reports
-violations, but a module only FAILS its tests once it is listed in
-``ENFORCED_MODULES``. Modules in this set must be violation-free.
+Every rule is parametrized over the eleven modules and fails on any violation: all
+modules are migrated, so nothing is report-only any more.
 """
 
 import pytest
 
 from tests.architecture.conftest import MODULES, RULE_KEYS
 
-# Modules that must be violation-free. Start empty: violations are reported,
-# never failing, until a module is migrated and added here.
-ENFORCED_MODULES: set[str] = {"auth", "hr", "crm", "academics", "enrollments", "attendance", "competitions", "finance", "tasks", "notifications", "analytics"}
-
 
 def _assert_clean(rule: str, module: str, violations: dict) -> None:
     offences = violations[rule][module]
-    if module in ENFORCED_MODULES and offences:
+    if offences:
         rendered = "\n".join(f"  - {o}" for o in offences)
         raise AssertionError(
-            f"{_rule_display_name(rule)} violations in enforced module '{module}':\n{rendered}"
+            f"{_rule_display_name(rule)} violations in module '{module}':\n{rendered}"
         )
 
 

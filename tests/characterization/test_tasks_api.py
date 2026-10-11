@@ -59,7 +59,7 @@ def _make_employee(db_session) -> Employee:
 @pytest.fixture
 def employee_auth(app, db_session):
     """Authenticate as a non-admin user bound to a fresh employee. Yields (employee, user)."""
-    from app.api.dependencies import get_current_user
+    from app.api.deps import get_current_user
 
     emp = _make_employee(db_session)
     admin = db_session.query(User).filter(User.supabase_uid == "test-admin-001").first()
@@ -208,7 +208,7 @@ def test_update_task_employee_may_change_status_only(
 ):
     emp = _make_employee(db_session)
     t = _create(client_with_uow, mock_admin_headers, assigned_to=emp.id).json()["data"]
-    from app.api.dependencies import get_current_user
+    from app.api.deps import get_current_user
     app = client_with_uow.app
     app.dependency_overrides[get_current_user] = _employee_override(db_session, emp)
     try:
@@ -238,7 +238,7 @@ def test_update_task_employee_not_assignee_is_401(client_with_uow, override_auth
     emp = _make_employee(db_session)
     other = _make_employee(db_session)
     t = _create(client_with_uow, mock_admin_headers, assigned_to=other.id).json()["data"]
-    from app.api.dependencies import get_current_user
+    from app.api.deps import get_current_user
     app = client_with_uow.app
     app.dependency_overrides[get_current_user] = _employee_override(db_session, emp)
     try:
@@ -386,7 +386,7 @@ def test_time_log_requires_assignee(client_with_uow, override_auth, mock_admin_h
 def test_time_log_by_assignee(client_with_uow, override_auth, mock_admin_headers, db_session, noop_notifications):
     emp = _make_employee(db_session)
     t = _create(client_with_uow, mock_admin_headers, assigned_to=emp.id).json()["data"]
-    from app.api.dependencies import get_current_user
+    from app.api.deps import get_current_user
     app = client_with_uow.app
     app.dependency_overrides[get_current_user] = _employee_override(db_session, emp)
     try:

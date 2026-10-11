@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 from app.api.schemas.common import ApiResponse, ErrorResponse
 from app.modules.analytics.schemas.dashboard_schemas import DashboardDailyOverviewDTO
-from app.api.dependencies import require_admin
+from app.api.deps import require_admin
 from app.modules.analytics.api.deps import get_dashboard_service
 from app.modules.auth import User
 from app.modules.analytics.services.dashboard_service import DashboardService

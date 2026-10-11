@@ -691,7 +691,7 @@ def test_list_student_payments_unknown_student(client_with_uow, override_auth, m
 
 def test_students_endpoints_require_auth(client_with_uow):
     """GET /crm/students without auth returns 401."""
-    from app.api.dependencies import get_current_user
+    from app.api.deps import get_current_user
 
     client_with_uow.app.dependency_overrides.pop(get_current_user, None)
     r = client_with_uow.get("/api/v1/crm/students")

@@ -339,7 +339,7 @@ def test_delete_parent_not_found(client_with_uow, override_auth, mock_admin_head
 
 def test_list_parents_requires_auth(client_with_uow):
     """GET /crm/parents without auth returns 401."""
-    from app.api.dependencies import get_current_user
+    from app.api.deps import get_current_user
 
     # Remove auth override
     client_with_uow.app.dependency_overrides.pop(get_current_user, None)

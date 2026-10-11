@@ -17,7 +17,7 @@ from app.modules.competitions.api.schemas.team_schemas import (
     TeamMemberListResponse,
     StudentCompetitionsResponse,
 )
-from app.api.dependencies import require_any, require_admin
+from app.api.deps import require_any, require_admin
 from app.modules.competitions.api.deps import (
     get_team_placement_service,
     get_team_registration_service,

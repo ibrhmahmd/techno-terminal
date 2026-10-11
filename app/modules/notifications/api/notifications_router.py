@@ -3,7 +3,7 @@ from datetime import date
 from typing import List, Optional
 from fastapi import APIRouter, Depends, BackgroundTasks, Query
 
-from app.api.dependencies import require_admin
+from app.api.deps import require_admin
 from app.modules.notifications.api.deps import (
     get_alert_service,
     get_log_service,

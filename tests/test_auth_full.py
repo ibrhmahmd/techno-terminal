@@ -16,7 +16,7 @@ from sqlmodel import select
 from tests.utils.jwt_mocks import generate_expired_token
 from tests.utils.auth_notifier_fake import FakeAuthNotifier
 from app.modules.auth.models.auth_models import User
-from app.api.dependencies import get_current_user
+from app.api.deps import get_current_user
 from app.modules.auth.api.deps import get_auth_notifier
 
 

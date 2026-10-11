@@ -15,7 +15,7 @@ Auth: GET=require_any, DELETE=require_admin
 from fastapi import APIRouter, Depends, Path, HTTPException, status, Query
 
 from app.api.schemas.common import ApiResponse
-from app.api.dependencies import require_any, require_admin
+from app.api.deps import require_any, require_admin
 from app.modules.academics.api.deps import (
     get_group_details_service,
     get_lifecycle_service,

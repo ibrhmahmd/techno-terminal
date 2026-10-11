@@ -1,6 +1,6 @@
 """Auth HTTP-layer service factories (ADR-0002: api/ → services/)."""
 
-from app.api.dependencies import UoW
+from app.api.deps import UoW
 from app.modules.auth import AuthService, AuditService, AuthNotifier
 
 

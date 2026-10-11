@@ -8,7 +8,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query, Response, HTTPException
 
-from app.api.dependencies import require_any, require_admin
+from app.api.deps import require_any, require_admin
 from app.modules.finance.api.deps import get_receipt_generation_service, get_receipt_service
 from app.api.schemas.common import ApiResponse
 from app.modules.finance.api.schemas.receipt import (

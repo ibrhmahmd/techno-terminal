@@ -36,7 +36,7 @@ from app.modules.hr import (
 )
 from app.shared.exceptions import NotFoundError, ConflictError, ValidationError
 from app.modules.hr.api.deps import get_employee_crud_service, get_staff_account_service
-from app.api.dependencies import require_admin
+from app.api.deps import require_admin
 from app.modules.auth import User
 
 router = APIRouter(tags=["HR"])

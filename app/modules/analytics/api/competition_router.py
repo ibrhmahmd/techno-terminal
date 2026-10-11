@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends
 
 from app.api.schemas.common import ApiResponse, ErrorResponse
 from app.modules.analytics.schemas.competition_schemas import CompetitionFeeSummaryDTO
-from app.api.dependencies import require_admin
+from app.api.deps import require_admin
 from app.modules.analytics.api.deps import get_competition_analytics_service
 from app.modules.auth import User
 from app.modules.analytics.services.competition_service import CompetitionAnalyticsService

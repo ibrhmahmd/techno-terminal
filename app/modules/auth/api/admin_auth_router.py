@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Query
 
-from app.api.dependencies import require_admin
+from app.api.deps import require_admin
 from app.modules.auth.api.deps import get_auth_service, get_audit_service
 from app.api.schemas.common import ApiResponse, PaginatedResponse
 from app.modules.auth.api.schemas import UpdateUserRequest, InviteUserRequest

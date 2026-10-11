@@ -31,7 +31,7 @@ from app.modules.hr.models.employee_models import Employee
 HR_ROUTER = "app.modules.hr.api.hr_router"
 STAFF_ACCOUNT_SERVICE = "app.modules.hr.services.staff_account_service"
 HR_SCHEMAS = "app.modules.hr.api.schemas"
-DEPENDENCIES = "app.api.dependencies"
+DEPENDENCIES = "app.api.deps"
 HR_DEPS = "app.modules.hr.api.deps"
 
 

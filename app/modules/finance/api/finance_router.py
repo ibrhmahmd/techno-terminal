@@ -37,7 +37,7 @@ from app.modules.finance.api.schemas.payment import (
     SendReceiptRequest,
     SendReceiptResponse,
 )
-from app.api.dependencies import require_admin, require_any
+from app.api.deps import require_admin, require_any
 from app.modules.finance.api.deps import get_receipt_service, get_refund_service, get_balance_service, get_reporting_service, get_student_payment_service
 from app.modules.finance.services.student_payment_service import StudentPaymentService
 from app.modules.finance.services.receipt_service import ReceiptService

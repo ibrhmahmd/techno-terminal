@@ -17,7 +17,7 @@ import uuid
 from fastapi import APIRouter
 from sqlalchemy import text
 
-from app.api.dependencies import UoW
+from app.api.deps import UoW
 from app.db.connection import get_engine
 from tests.conftest import app as _app_fixture
 from tests.conftest import client_with_uow as _client_with_uow_fixture

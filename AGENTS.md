@@ -35,15 +35,15 @@ Optional PDF/receipt settings in `app/core/config.py`.
 | DB init | `psql "$DATABASE_URL" -f db/schema.sql` |
 | Schema verify | `python scripts/verify_test_db.py` |
 | Get test JWT | `TESTING=true TEST_ENV_FILE=.env.test python scripts/get_test_jwt.py` |
-| Architecture contracts | `pytest tests/architecture -q` (report-only; snapshot regen: `UPDATE_OPENAPI_SNAPSHOT=1 pytest tests/architecture/test_openapi_snapshot.py`) |
+| Architecture contracts | `pytest tests/architecture -q` (snapshot regen: `UPDATE_OPENAPI_SNAPSHOT=1 pytest tests/architecture/test_openapi_snapshot.py`) |
 
 ### Architecture contracts
 
-`pytest tests/architecture` runs four import-graph rules against `app/modules` (module order and facades per ADR-0003, in-module layers per ADR-0002, no `get_session()` per ADR-0001) plus an OpenAPI spec snapshot. Violations are counted per module and printed in a summary table at the end of the run, but they only **fail** the suite once the module is added to `ENFORCED_MODULES` in `tests/architecture/test_module_rules.py` (report-only until then). The snapshot compares `create_app().openapi()` against `tests/snapshots/openapi.json`; regenerate it with `UPDATE_OPENAPI_SNAPSHOT=1` only for a ticket that names an API change.
+`pytest tests/architecture` runs four import-graph rules against `app/modules` (module order and facades per ADR-0003, in-module layers per ADR-0002, no `get_session()` per ADR-0001), a guard that every module imports standalone in a fresh interpreter (facades whose models are read from below load their services lazily), plus an OpenAPI spec snapshot. Every rule fails on any violation in any module; a summary table with the per-module counts is printed at the end of the run. The snapshot compares `create_app().openapi()` against `tests/snapshots/openapi.json`; regenerate it with `UPDATE_OPENAPI_SNAPSHOT=1` only for a ticket that names an API change.
 
 ## Architecture
 
-`app/` is mid-migration to a target shape recorded in `docs/adr/`. Read the relevant ADR before writing, moving, or reviewing code under `app/modules` or `app/api`. New and migrated code follows the target; legacy code is converted one module per ticket, bottom-up.
+`app/` follows the target shape recorded in `docs/adr/`. Read the relevant ADR before writing, moving, or reviewing code under `app/modules` or `app/api`. All eleven modules are migrated and enforced by `pytest tests/architecture`.
 
 Architecture: modular monolith per the `modular-architecture` skill ([ibrhmahmd/modular-architecture](https://github.com/ibrhmahmd/modular-architecture)), tier full; decisions in `docs/adr/` (they override the skill's defaults); module order as in ADR-0003. Load the skill for structural work: adding a module, moving code between modules or layers, migrating a module, cross-module workflows, reviewing such diffs.
 
@@ -62,23 +62,17 @@ Architecture: modular monolith per the `modular-architecture` skill ([ibrhmahmd/
 | [0009](docs/adr/0009-services-call-siblings-through-the-shared-unit-of-work.md) | A service may call a sibling service in its module only through the shared injected `UnitOfWork`; services never build their own dependencies or sessions. |
 | [0010](docs/adr/0010-validation-splits-between-schemas-and-services.md) | Format checks are Pydantic validators on schemas; DB/business-state rules live in services; no `validators/` layer. |
 
-Rules that hold in both legacy and target code:
+Rules that hold everywhere:
 - **Repositories**: pure SQLModel queries, zero business rules. Services hold business logic.
 - **DTO naming**: Input `{Operation}{Entity}Input`, Output `{Entity}{Operation}Result`, Read `{Entity}{Qualifier}DTO`.
 - **Typed Contracts**: services and repositories return named Pydantic DTOs or ORM models (`model_config = ConfigDict(from_attributes=True)`), never `dict`, `list[dict]` or `tuple`.
 - **HTTP schemas stay out of services**: services never import a router's request/response schemas.
 
-### Legacy shape (still present in unmigrated modules)
-
-- Routers in `app/api/routers/`, HTTP schemas in `app/api/schemas/`, all service factories in `app/api/dependencies.py`.
-- Two transaction styles: per-module UoWs over the request `get_db()` session (CRM, Finance) and services opening their own `get_session()` (everything else). One request can therefore span several non-atomic sessions. `get_db()` commits after the response is sent and still commits when a rolled-back exception is swallowed, so always re-raise after rollback.
-- `get_notification_service()` opens its own session; notification background tasks open fresh sessions because they run after the request closes.
-
 ## Auth Flow
 
 1. `Authorization: Bearer <jwt>` → `get_current_user()` validates via Supabase (`get_supabase_anon()`).
 2. Maps to local `User` via `lookup_user_by_supabase_uid()` (facade function that opens a short UoW).
-3. Role comes from the **local `users.role` column** (JWT only proves identity). Role guards in `app/api/dependencies.py:112-118`: `require_admin` (`admin` + `system_admin`), `require_system_admin`, `require_any` (alias for `get_current_user`), plus `require_coach_or_admin` (`dependencies.py:340`).
+3. Role comes from the **local `users.role` column** (JWT only proves identity). Role guards in `app/api/deps.py`: `require_admin` (`admin` + `system_admin`), `require_system_admin`, `require_any` (alias for `get_current_user`).
 
 **Test tokens**:
 - **Real Supabase JWT** — `admin_token` fixture in `tests/conftest.py`, expires ~1h, regen via `python scripts/get_test_jwt.py`.
@@ -101,10 +95,10 @@ Rules that hold in both legacy and target code:
 ## Gotchas
 
 ### Router Registration Order
-`group_directory_router` MUST register before `groups_router` — `/{group_id}` shadows `/enriched`. Confirmed in `app/api/main.py:116-120`.
+`group_directory_router` MUST register before `groups_router` — `/{group_id}` shadows `/enriched`. The router lives in `app/modules/academics/api/` and `app/api/main.py` registers it first.
 
 ### Lifespan Starts Background Tasks
-`app/api/main.py` lifespan starts the tasks scheduler (`app/modules/tasks/scheduler.py`) and the Logfire metrics collector (`app/observability/scheduler.py`). `TestClient(app)` used as a context manager triggers lifespan, so they run during tests too. Scheduled reports have no in-process scheduler: an external cron calls `/internal/reports/*` (`app/api/routers/notifications/internal_scheduler_router.py`), guarded by the `X-Internal-Trigger-Secret` header ↔ `settings.internal_trigger_secret` (an empty secret is always rejected).
+`app/api/main.py` lifespan starts the tasks scheduler (`app/modules/tasks/scheduler.py`) and the Logfire metrics collector (`app/observability/scheduler.py`). `TestClient(app)` used as a context manager triggers lifespan, so they run during tests too. Scheduled reports have no in-process scheduler: an external cron calls `/internal/reports/*` (`app/modules/notifications/api/internal_scheduler_router.py`), guarded by the `X-Internal-Trigger-Secret` header ↔ `settings.internal_trigger_secret` (an empty secret is always rejected).
 
 ### Migrations
 Plain SQL files in `db/migrations/`. Duplicate prefix numbers exist (`008`, `020`, `021`, `022`, `026`, `030`, `036`, `051`, `057`) — apply in **chronological order**, not numeric. Cleanup migrations: `042`–`049`. Schema: 18 modular files in `db/schema/` applied via `db/schema.sql`. There is no Alembic: migrations are plain SQL files applied by hand.
@@ -115,7 +109,7 @@ Plain SQL files in `db/migrations/`. Duplicate prefix numbers exist (`008`, `020
 ### Test Isolation
 `db_session` fixture uses `get_session()` context manager — rollback only happens if the test raises. Successful tests simply close without explicit rollback; uncommitted mutations are lost on session close. `seeded_session` fixture (module-scoped) explicitly rolls back on teardown for zero side effects between modules. 30+ test files total.
 
-`uow` and `client_with_uow` (tests/conftest.py) are the standard for new tests that write: the injected `UnitOfWork` commits against a SAVEPOINT inside an outer transaction that is rolled back at teardown, so even committed rows leave zero state (commit-safe, idempotent). `client_with_uow` overrides `get_uow` on the real app without starting lifespan schedulers. Legacy `db_session`/`seeded_session` stay as they are.
+`uow` and `client_with_uow` (tests/conftest.py) are the standard for new tests that write: the injected `UnitOfWork` commits against a SAVEPOINT inside an outer transaction that is rolled back at teardown, so even committed rows leave zero state (commit-safe, idempotent). `client_with_uow` overrides `get_uow` on the real app without starting lifespan schedulers. `db_session`/`seeded_session` remain for seeding committed rows that code opening its own session must see.
 
 ### Testing DB Policy (environment ladder)
 | Tier | Target | Allowed |

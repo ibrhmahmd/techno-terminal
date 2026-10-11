@@ -24,7 +24,7 @@ from app.modules.tasks import (
     CreateTaskTimeLogInput,
     TaskTimeLogReadDTO
 )
-from app.api.dependencies import require_admin, require_any
+from app.api.deps import require_admin, require_any
 from app.modules.tasks.api.deps import get_task_service
 from app.modules.auth import User
 from app.modules.hr.models import Employee
