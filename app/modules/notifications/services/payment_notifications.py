@@ -3,6 +3,7 @@ app/modules/notifications/services/payment_notifications.py
 ─────────────────────────────────────────────────────────────
 Payment notification handlers.
 """
+from app.db.uow import unit_of_work
 import logging
 from typing import Optional
 from fastapi import BackgroundTasks
@@ -39,7 +40,6 @@ class PaymentNotificationService(BaseNotificationService):
         from app.modules.academics.models.group_models import Group
         from app.modules.enrollments.models.enrollment_models import Enrollment
         from sqlmodel import select
-        from app.db.connection import get_session
 
         template = self._get_template_by_name("payment_receipt")
         if not template or not template.is_active:
@@ -55,7 +55,8 @@ class PaymentNotificationService(BaseNotificationService):
 
         # Open a fresh session — the request session is already closed by the time
         # this background task executes.
-        with get_session() as session:
+        with unit_of_work(keep_loaded=True) as _uow:
+            session = _uow.session
             # Fetch receipt
             receipt = session.get(Receipt, receipt_id)
             if not receipt:

@@ -6,11 +6,13 @@ No business logic - just contact resolution, template rendering, dispatch.
 """
 import logging
 import re
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from typing import List, Optional, Tuple
 from sqlmodel import select
 
 from app.core.config import settings
+from app.db.uow import unit_of_work
 
 # Fallback email configuration
 FALLBACK_EMAIL = settings.fallback_email
@@ -41,12 +43,14 @@ class BaseNotificationService:
 
     # ── Session helper ───────────────────────────────────────────────────────
 
+    @contextmanager
     def _new_session(self):
         """Context manager that opens a fresh DB session independent of the request lifecycle.
         Use this inside background task processors so they don't rely on the
-        already-closed request session held in self._repo."""
-        from app.db.connection import get_session
-        return get_session()
+        already-closed request session held in self._repo (the ADR-0001 allowance for
+        non-HTTP entry points: a ``unit_of_work()``)."""
+        with unit_of_work(keep_loaded=True) as uow:
+            yield uow.session
 
     def _get_template_by_name(self, name: str) -> Optional["NotificationTemplate"]:
         """Fetch a notification template using a fresh session.

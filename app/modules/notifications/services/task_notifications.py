@@ -8,6 +8,7 @@ Covers:
   - task_status_changed    → notify assigned employee + admin recipients
   - task_comment_added     → notify assigned employee (if comment not by them)
 """
+from app.db.uow import unit_of_work
 import logging
 from datetime import datetime, timezone
 from typing import Optional
@@ -77,14 +78,14 @@ class TaskNotificationService(BaseNotificationService):
         from app.modules.tasks.models.task import Task
         from app.modules.hr.models.employee_models import Employee
         from app.modules.auth.models.auth_models import User
-        from app.db.connection import get_session
 
         template = self._get_template_by_name("task_assigned")
         if not template or not template.is_active:
             logger.warning("Template 'task_assigned' not found or inactive — skipping.")
             return
 
-        with get_session() as session:
+        with unit_of_work(keep_loaded=True) as _uow:
+            session = _uow.session
             import uuid as _uuid
             task = session.get(Task, _uuid.UUID(task_id))
             if not task:
@@ -131,14 +132,14 @@ class TaskNotificationService(BaseNotificationService):
         from app.modules.tasks.models.task import Task
         from app.modules.hr.models.employee_models import Employee
         from app.modules.auth.models.auth_models import User
-        from app.db.connection import get_session
 
         template = self._get_template_by_name("task_status_changed")
         if not template or not template.is_active:
             logger.warning("Template 'task_status_changed' not found or inactive — skipping.")
             return
 
-        with get_session() as session:
+        with unit_of_work(keep_loaded=True) as _uow:
+            session = _uow.session
             import uuid as _uuid
             task = session.get(Task, _uuid.UUID(task_id))
             if not task:
@@ -207,14 +208,14 @@ class TaskNotificationService(BaseNotificationService):
         from app.modules.tasks.models.task import Task, TaskComment
         from app.modules.hr.models.employee_models import Employee
         from app.modules.auth.models.auth_models import User
-        from app.db.connection import get_session
 
         template = self._get_template_by_name("task_comment_added")
         if not template or not template.is_active:
             logger.warning("Template 'task_comment_added' not found or inactive — skipping.")
             return
 
-        with get_session() as session:
+        with unit_of_work(keep_loaded=True) as _uow:
+            session = _uow.session
             import uuid as _uuid
             task = session.get(Task, _uuid.UUID(task_id))
             if not task or not task.assigned_to:

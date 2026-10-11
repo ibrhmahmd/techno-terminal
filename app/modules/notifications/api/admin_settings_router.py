@@ -1,16 +1,16 @@
 """
-app/api/routers/notifications/admin_settings_router.py
+app/modules/notifications/api/admin_settings_router.py
 ───────────────────────────────────────────────────────────
 Admin notification settings API.
 Base path: /api/v1/notifications/admin
 """
+from app.db.uow import unit_of_work
 from typing import List, Dict
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import EmailStr
 
 from app.api.dependencies import require_admin, get_current_user
 from app.api.schemas import ApiResponse
-from app.db.connection import get_session
 from app.modules.auth.models.auth_models import User
 from app.modules.notifications.schemas.admin_settings_dto import (
     AdminNotificationSettingDTO,
@@ -34,7 +34,8 @@ router = APIRouter(prefix="/admin", tags=["Admin Notification Settings"])
 SYSTEM_ADMIN_ID = 1
 
 def get_settings_repo():
-    with get_session() as session:
+    with unit_of_work(keep_loaded=True) as _uow:
+        session = _uow.session
         yield AdminSettingsRepository(session)
 
 

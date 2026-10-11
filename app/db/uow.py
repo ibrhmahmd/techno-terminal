@@ -39,12 +39,17 @@ class UnitOfWork:
 
 
 @contextmanager
-def unit_of_work() -> Iterator[UnitOfWork]:
+def unit_of_work(*, keep_loaded: bool = False) -> Iterator[UnitOfWork]:
     """Open a UnitOfWork for non-HTTP entry points.
 
     Yields a UnitOfWork over a fresh session. On exit any uncommitted work
     is rolled back (and an exception is re-raised); the session is always
     closed. It never auto-commits.
+
+    ``keep_loaded=True`` is for short read helpers that return ORM objects out of the
+    ``with`` block: on a clean exit the session is just closed (uncommitted work is
+    discarded by the database), without the explicit rollback that would expire the
+    loaded attributes of the returned, now-detached objects.
     """
     with Session(get_engine(), expire_on_commit=False) as session:
         uow = UnitOfWork(session)
@@ -54,4 +59,5 @@ def unit_of_work() -> Iterator[UnitOfWork]:
             session.rollback()
             raise
         else:
-            session.rollback()
+            if not keep_loaded:
+                session.rollback()
