@@ -11,7 +11,7 @@ Buckets
 -------
 * The tasks service runs on the request ``get_db`` session and really commits, so
   tests create their tasks through the API and read them back through the API.
-* Writes can send notifications: ``get_notification_service`` is replaced by a
+* Writes can send notifications: the notifier port providers is replaced by a
   no-op so no real mail/SMS can go out.
 * Employee (non-admin) behaviour is exercised by overriding ``get_current_user`` with
   a detached ``User`` whose role is ``employee`` and whose ``employee_id`` points at
@@ -31,24 +31,13 @@ from app.modules.auth.models.auth_models import User
 from app.modules.hr.models import Employee
 
 
-class _Noop:
-    def __getattr__(self, name):
-        return self
-
-    def __call__(self, *args, **kwargs):
-        return None
-
-
 @pytest.fixture
 def noop_notifications(app):
-    from app.modules.notifications.api.deps import get_notification_service
+    """Replace every notifier port provider with a no-op so nothing can be dispatched."""
+    from tests.utils.noop_notifiers import noop_notifiers
 
-    svc = _Noop()
-    app.dependency_overrides[get_notification_service] = lambda: svc
-    try:
-        yield svc
-    finally:
-        app.dependency_overrides.pop(get_notification_service, None)
+    with noop_notifiers(app) as stub:
+        yield stub
 
 
 def _short() -> str:

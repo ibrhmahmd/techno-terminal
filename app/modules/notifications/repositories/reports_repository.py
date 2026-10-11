@@ -840,3 +840,39 @@ class ReportsRepository:
             logger.warning(f"Could not fetch monthly aggregates: {e}")
 
         return dto
+
+    # ── Recipient resolution / settings reads used by notification services ──
+
+    def get_enabled_additional_recipients(self, notification_type: str) -> list[tuple[int, str]]:
+        """(id, email) of active additional recipients subscribed to a notification type
+        whose admin has that type enabled."""
+        result = self._session.execute(
+            text("""
+                SELECT nar.id, nar.email
+                FROM notification_additional_recipients nar
+                JOIN admin_notification_settings ans
+                    ON ans.admin_id = nar.admin_id
+                    AND ans.notification_type = :notification_type
+                    AND ans.is_enabled = true
+                WHERE nar.is_active = true
+                AND (nar.notification_types IS NULL OR :notification_type = ANY(nar.notification_types))
+            """),
+            {"notification_type": notification_type},
+        ).all()
+        return [(row[0], row[1]) for row in result]
+
+    def is_notification_type_disabled(self, notification_type: str) -> bool:
+        """True when an admin has an explicit setting row disabling this type."""
+        check = self._session.execute(
+            text("SELECT 1 FROM admin_notification_settings WHERE notification_type = :t AND is_enabled = false"),
+            {"t": notification_type},
+        ).first()
+        return check is not None
+
+    def get_student_net_balance(self, student_id: int) -> float:
+        """Sum of v_enrollment_balance.balance for a student (0.0 when none)."""
+        result = self._session.execute(
+            text("SELECT COALESCE(SUM(balance), 0) FROM v_enrollment_balance WHERE student_id = :sid"),
+            {"sid": student_id},
+        ).first()
+        return float(result[0] or 0) if result else 0.0

@@ -16,10 +16,10 @@ from fastapi.responses import JSONResponse
 import logfire
 import zoneinfo
 
-from app.modules.notifications.api.deps import get_notification_service
+from app.modules.notifications.api.deps import get_report_service
 from app.core.config import settings
 from app.modules.notifications.schemas.report_dto import ReportDeliveryResult
-from app.modules.notifications.services.notification_service import NotificationService
+from app.modules.notifications.services.report_notifications import ReportNotificationService
 
 router = APIRouter(prefix="/internal/reports", tags=["Internal — Scheduled Reports"])
 
@@ -112,7 +112,7 @@ def _scheduled_report_response(result: ReportDeliveryResult) -> JSONResponse:
 async def trigger_daily_report(
     target_date: Optional[date] = Query(None, description="Report date (defaults to yesterday in Cairo timezone)"),
     _secret_ok: None = Depends(_verify_internal_secret),
-    svc: NotificationService = Depends(get_notification_service),
+    svc: ReportNotificationService = Depends(get_report_service),
 ):
     """Trigger the daily business report for a specific reporting period."""
     report_date = target_date or _get_yesterday_cairo()
@@ -124,7 +124,7 @@ async def trigger_daily_report(
 async def trigger_weekly_report(
     target_date: Optional[date] = Query(None, description="Report date (defaults to yesterday in Cairo timezone)"),
     _secret_ok: None = Depends(_verify_internal_secret),
-    svc: NotificationService = Depends(get_notification_service),
+    svc: ReportNotificationService = Depends(get_report_service),
 ):
     """Trigger the weekly business report for a specific reporting period."""
     report_date = target_date or _get_yesterday_cairo()
@@ -136,7 +136,7 @@ async def trigger_weekly_report(
 async def trigger_monthly_report(
     target_date: Optional[date] = Query(None, description="Report date (defaults to yesterday in Cairo timezone)"),
     _secret_ok: None = Depends(_verify_internal_secret),
-    svc: NotificationService = Depends(get_notification_service),
+    svc: ReportNotificationService = Depends(get_report_service),
 ):
     """Trigger the monthly business report for a specific reporting period."""
     report_date = target_date or _get_yesterday_cairo()

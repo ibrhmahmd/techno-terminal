@@ -15,8 +15,8 @@ Safety (read this before editing)
 ---------------------------------
 * Nothing here may send real email/SMS/WhatsApp. Every endpoint that would dispatch
   (absence, receipt, bulk, report triggers, template test, internal triggers) is exercised
-  against a ``MagicMock`` NotificationService installed through the
-  ``get_notification_service`` override; the tests assert what the ROUTER does with it.
+  against a ``MagicMock`` service installed through the
+  service-provider overrides; the tests assert what the ROUTER does with it.
   Endpoints that only read or edit database rows (logs, templates CRUD, admin settings,
   report ``/data``) run against the real service.
 * Admin settings are global rows (admin id 1). Tests that touch them restore the previous
@@ -47,24 +47,29 @@ def _short() -> str:
 
 @pytest.fixture
 def fake_svc(app):
-    """A MagicMock NotificationService: nothing can be dispatched through it."""
-    from app.modules.notifications.api.deps import get_notification_service
+    """A MagicMock standing in for every notification service the routers depend on:
+    nothing can be dispatched through it. Yields the single mock."""
+    from app.modules.notifications.api import deps
 
     svc = MagicMock()
-    svc.report.send_weekly_report = AsyncMock()
-    svc.report.send_monthly_report = AsyncMock()
-    svc.report._dispatch = AsyncMock()
-    svc.report.get_report_assets = MagicMock(return_value=([], {}, MagicMock()))
-    svc.report.get_daily_report_pdf_base64 = MagicMock(return_value=("2026-01-01", "UERG"))
-    svc.test_and_send_template = AsyncMock()
-    svc.send_daily_report = AsyncMock()
     svc.send_weekly_report = AsyncMock()
     svc.send_monthly_report = AsyncMock()
-    app.dependency_overrides[get_notification_service] = lambda: svc
+    svc.send_daily_report = AsyncMock()
+    svc._dispatch = AsyncMock()
+    svc.get_report_assets = MagicMock(return_value=([], {}, MagicMock()))
+    svc.get_daily_report_pdf_base64 = MagicMock(return_value=("2026-01-01", "UERG"))
+    svc.test_and_send_template = AsyncMock()
+    providers = [
+        deps.get_alert_service, deps.get_payment_notification_service,
+        deps.get_report_service, deps.get_template_service,
+    ]
+    for p in providers:
+        app.dependency_overrides[p] = lambda: svc
     try:
         yield svc
     finally:
-        app.dependency_overrides.pop(get_notification_service, None)
+        for p in providers:
+            app.dependency_overrides.pop(p, None)
 
 
 # ── POST /absence, POST /receipt/{id}, POST /bulk (router -> service hand-off) ─
@@ -94,7 +99,7 @@ def test_receipt_notification_queues_payment_notice(client_with_uow, override_au
 
     assert r.status_code == 200
     assert r.json()["data"] == "Payment receipt notification queued"
-    assert fake_svc.payment.notify_payment_received.call_args.args[:4] == (55, 3, "100.00", "R-1")
+    assert fake_svc.notify_payment_received.call_args.args[:4] == (55, 3, "100.00", "R-1")
 
 
 def test_receipt_notification_requires_query_params(client_with_uow, override_auth, mock_admin_headers, fake_svc):
@@ -187,7 +192,7 @@ def test_daily_report_trigger_with_recipients_queues_dispatch(
 
 
 def test_daily_report_trigger_no_data_is_404(client_with_uow, override_auth, mock_admin_headers, fake_svc):
-    fake_svc.report.get_daily_report_pdf_base64.side_effect = RuntimeError("nothing")
+    fake_svc.get_daily_report_pdf_base64.side_effect = RuntimeError("nothing")
 
     r = client_with_uow.post(f"{BASE}/reports/daily?target_date=2026-01-01", headers=mock_admin_headers)
 
@@ -212,8 +217,8 @@ def test_weekly_and_monthly_triggers_force_send(client_with_uow, override_auth, 
 
     assert w.status_code == 200 and w.json()["data"] == "Weekly report email queued successfully."
     assert m.status_code == 200 and m.json()["data"] == "Monthly report email queued successfully."
-    assert fake_svc.report.send_weekly_report.call_args.kwargs == {"target_date": date(2026, 1, 7), "force": True}
-    assert fake_svc.report.send_monthly_report.call_args.kwargs == {"target_date": date(2026, 1, 7), "force": True}
+    assert fake_svc.send_weekly_report.call_args.kwargs == {"target_date": date(2026, 1, 7), "force": True}
+    assert fake_svc.send_monthly_report.call_args.kwargs == {"target_date": date(2026, 1, 7), "force": True}
 
 
 def test_invalid_recipient_email_crashes_with_500(app, client_with_uow, override_auth, mock_admin_headers, fake_svc):

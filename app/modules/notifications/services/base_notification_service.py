@@ -17,6 +17,7 @@ FALLBACK_EMAIL = settings.fallback_email
 FALLBACK_RECIPIENT_ID = -1  # Special ID to indicate fallback
 
 from app.modules.notifications.repositories.notification_repository import NotificationRepository
+from app.modules.notifications.repositories.reports_repository import ReportsRepository
 from app.modules.notifications.dispatchers.email_dispatcher import GmailEmailDispatcher
 from app.modules.notifications.dispatchers.whatsapp_dispatcher import TwilioWhatsAppDispatcher
 from app.modules.notifications.models.notification_template import NotificationTemplate
@@ -122,25 +123,13 @@ class BaseNotificationService:
         Returns:
             List of (email, recipient_id, recipient_type) tuples
         """
-        from sqlalchemy import text
-
         recipients = []
         invalid_emails_found = []
 
         # Get all active additional recipients for this notification type where the admin has it enabled
         try:
-            stmt = text("""
-                SELECT nar.id, nar.email
-                FROM notification_additional_recipients nar
-                JOIN admin_notification_settings ans
-                    ON ans.admin_id = nar.admin_id
-                    AND ans.notification_type = :notification_type
-                    AND ans.is_enabled = true
-                WHERE nar.is_active = true
-                AND (nar.notification_types IS NULL OR :notification_type = ANY(nar.notification_types))
-            """)
             with self._new_session() as session:
-                result = session.execute(stmt, params={"notification_type": notification_type}).all()
+                result = ReportsRepository(session).get_enabled_additional_recipients(notification_type)
             for recipient_id, email in result:
                 if email and self._is_valid_email(email):
                     recipients.append((email, recipient_id, "EMPLOYEE"))
@@ -155,11 +144,7 @@ class BaseNotificationService:
             # If the admin has settings rows but all are disabled, respect that choice.
             try:
                 with self._new_session() as session:
-                    check = session.execute(
-                        text("SELECT 1 FROM admin_notification_settings WHERE notification_type = :t AND is_enabled = false"),
-                        {"t": notification_type},
-                    ).first()
-                    if check:
+                    if ReportsRepository(session).is_notification_type_disabled(notification_type):
                         logger.info("Notification type '%s' explicitly disabled — skipping fallback.", notification_type)
                         return []
             except Exception as e:

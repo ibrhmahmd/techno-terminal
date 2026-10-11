@@ -2,10 +2,10 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.dependencies import require_admin
-from app.modules.notifications.api.deps import get_notification_service
+from app.modules.notifications.api.deps import get_template_service
 from app.api.schemas.common import ApiResponse
 from app.modules.auth.models import User
-from app.modules.notifications.services.notification_service import NotificationService
+from app.modules.notifications.services.template_service import TemplateService
 from app.modules.notifications.schemas.template_dto import TemplateDTO, CreateTemplateRequest, UpdateTemplateRequest, TemplateTestResultDTO
 
 router = APIRouter()
@@ -13,7 +13,7 @@ router = APIRouter()
 @router.get("/templates", response_model=ApiResponse[List[TemplateDTO]], summary="List all templates")
 def list_templates(
     _user: User = Depends(require_admin),
-    svc: NotificationService = Depends(get_notification_service)
+    svc: TemplateService = Depends(get_template_service)
 ):
     templates = svc.get_all_templates()
     return ApiResponse(data=[TemplateDTO.model_validate(t) for t in templates])
@@ -22,7 +22,7 @@ def list_templates(
 def get_template(
     template_id: int,
     _user: User = Depends(require_admin),
-    svc: NotificationService = Depends(get_notification_service)
+    svc: TemplateService = Depends(get_template_service)
 ):
     template = svc.get_template_by_id(template_id)
     if not template:
@@ -33,7 +33,7 @@ def get_template(
 def create_template(
     body: CreateTemplateRequest,
     _user: User = Depends(require_admin),
-    svc: NotificationService = Depends(get_notification_service)
+    svc: TemplateService = Depends(get_template_service)
 ):
     template = svc.create_template(
         name=body.name,
@@ -50,7 +50,7 @@ def update_template(
     template_id: int,
     body: UpdateTemplateRequest,
     _user: User = Depends(require_admin),
-    svc: NotificationService = Depends(get_notification_service)
+    svc: TemplateService = Depends(get_template_service)
 ):
     template = svc.get_template_by_id(template_id)
     if not template:
@@ -70,7 +70,7 @@ def update_template(
 def delete_template(
     template_id: int,
     _user: User = Depends(require_admin),
-    svc: NotificationService = Depends(get_notification_service)
+    svc: TemplateService = Depends(get_template_service)
 ):
     template = svc.get_template_by_id(template_id)
     if not template:
@@ -93,7 +93,7 @@ def delete_template(
 async def test_template(
     template_id: int,
     _user: User = Depends(require_admin),
-    svc: NotificationService = Depends(get_notification_service),
+    svc: TemplateService = Depends(get_template_service),
 ):
     """
     Test a notification template by:

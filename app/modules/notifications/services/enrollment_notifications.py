@@ -42,16 +42,6 @@ class EnrollmentNotificationService(BaseNotificationService):
             self._process_updated, student_id, enrollment_id, group_id, changes_summary, performed_by
         )
     
-    def notify_enrollment_completed(
-        self, student_id: int, enrollment_id: int, group_id: int,
-        level_number: int, completion_date: datetime, background_tasks: BackgroundTasks
-    ) -> None:
-        """Enrollment finished successfully."""
-        background_tasks.add_task(
-            self._process_completed, student_id, enrollment_id, group_id, 
-            level_number, completion_date
-        )
-    
     def notify_enrollment_dropped(
         self, student_id: int, enrollment_id: int, group_id: int,
         reason: Optional[str], dropped_by: Optional[int], background_tasks: BackgroundTasks
@@ -70,15 +60,6 @@ class EnrollmentNotificationService(BaseNotificationService):
         background_tasks.add_task(
             self._process_transferred, student_id, from_enrollment_id, to_enrollment_id,
             from_group_id, to_group_id, transferred_by
-        )
-    
-    def notify_level_progression(
-        self, student_id: int, old_level: int, new_level: int,
-        group_id: int, enrollment_id: int, background_tasks: BackgroundTasks
-    ) -> None:
-        """Student progressed to next level."""
-        background_tasks.add_task(
-            self._process_progression, student_id, old_level, new_level, group_id, enrollment_id
         )
     
     # ── Private Processors ─────────────────────────────────────────────────
@@ -217,43 +198,6 @@ class EnrollmentNotificationService(BaseNotificationService):
         for email, recipient_id, recipient_type in recipients:
             await self._dispatch(template, "EMAIL", recipient_type, recipient_id, email, variables)
     
-    async def _process_completed(self, student_id: int, enrollment_id: int,
-                                  group_id: int, level_number: int, 
-                                  completion_date: datetime) -> None:
-        template = self._get_template_by_name("enrollment_completed")
-        if not template or not template.is_active:
-            logger.warning("enrollment_completed template not found or inactive — skipping")
-            return
-        
-        # Get notification recipients with entity context for fallback alert
-        recipients = self._resolve_notification_recipients(
-            "enrollment_completed",
-            entity_id=enrollment_id,
-            entity_description=f"Enrollment #{enrollment_id}"
-        )
-        
-        student_name = self._get_student_name(student_id)
-        admin_info = self._get_admin_info(None) # System action
-        
-        variables = {
-            "parent_name": "Admin",
-            "student_name": student_name,
-            "group_name": self._get_group_name(group_id),
-            "course_name": self._get_course_name(group_id),
-            "instructor_name": self._get_instructor_name(group_id),
-            "admin_name": admin_info["name"],
-            "admin_email": admin_info["email"],
-            "level_number": str(level_number),
-            "completion_date": completion_date.strftime("%Y-%m-%d"),
-            "enrollment_id": str(enrollment_id),
-            "date": datetime.now().strftime("%Y-%m-%d"),
-            "time": datetime.now().strftime("%I:%M %p"),
-        }
-        
-        # Send to all enabled recipients (admins + additional recipients)
-        for email, recipient_id, recipient_type in recipients:
-            await self._dispatch(template, "EMAIL", recipient_type, recipient_id, email, variables)
-    
     async def _process_dropped(self, student_id: int, enrollment_id: int,
                                 group_id: int, reason: Optional[str],
                                 dropped_by: Optional[int]) -> None:
@@ -327,42 +271,7 @@ class EnrollmentNotificationService(BaseNotificationService):
         for email, recipient_id, recipient_type in recipients:
             await self._dispatch(template, "EMAIL", recipient_type, recipient_id, email, variables)
     
-    async def _process_progression(self, student_id: int, old_level: int,
-                                    new_level: int, group_id: int, enrollment_id: int) -> None:
-        template = self._get_template_by_name("level_progression")
-        if not template or not template.is_active:
-            logger.warning("level_progression template not found or inactive — skipping")
-            return
-        
-        # Get notification recipients with entity context for fallback alert
-        recipients = self._resolve_notification_recipients(
-            "level_progression",
-            entity_id=enrollment_id,
-            entity_description=f"Enrollment #{enrollment_id} Level {old_level} -> {new_level}"
-        )
-        
-        student_name = self._get_student_name(student_id)
-        admin_info = self._get_admin_info(None) # System action
-        
-        variables = {
-            "parent_name": "Admin",
-            "student_name": student_name,
-            "old_level": str(old_level),
-            "new_level": str(new_level),
-            "group_name": self._get_group_name(group_id),
-            "course_name": self._get_course_name(group_id),
-            "instructor_name": self._get_instructor_name(group_id),
-            "admin_name": admin_info["name"],
-            "admin_email": admin_info["email"],
-            "enrollment_id": str(enrollment_id),
-            "date": datetime.now().strftime("%Y-%m-%d"),
-            "time": datetime.now().strftime("%I:%M %p"),
-        }
-        
-        # Send to all enabled recipients
-        for email, recipient_id, recipient_type in recipients:
-            await self._dispatch(template, "EMAIL", recipient_type, recipient_id, email, variables)
-    
     # ── Helpers ───────────────────────────────────────────────────────────
     # Inherited from BaseNotificationService:
     #   _get_group_name(), _get_instructor_name(), _get_student_name()
+
