@@ -51,24 +51,6 @@ class GroupInstructorSummaryDTO(BaseModel):
 # Level History DTOs
 # ════════════════════════════════════════════════════════════
 
-class GroupLevelHistoryItemDTO(BaseModel):
-    """Individual level snapshot with student count."""
-    level_id: int
-    level_number: int
-    status: str  # active, completed, cancelled
-    course_id: int
-    course_name: str
-    instructor_id: Optional[int] = None
-    instructor_name: Optional[str] = None
-    sessions_planned: int
-    sessions_completed: int = 0  # calculated from attendance
-    student_count: int = 0  # enrollments at this level
-    effective_from: datetime
-    effective_to: Optional[datetime] = None
-
-    model_config = {"from_attributes": True}
-
-
 # ════════════════════════════════════════════════════════════
 # Enrollment History DTOs
 # ════════════════════════════════════════════════════════════

@@ -1,7 +1,6 @@
 from typing import Optional
 from app.modules.competitions.schemas.team_schemas import (
     CategorySubcategoryDTO,
-    TeamsWithMembersBatch,
     TeamMemberWithNameDTO,
     StudentMembershipEnrichedDTO,
     TeamDTO,
@@ -209,22 +208,6 @@ class TeamRepository:
                 )
             )
         return result
-
-
-    def list_teams_with_members_batch(
-        self, competition_id: int
-    ) -> TeamsWithMembersBatch:
-        """
-        Batch-load all teams for a competition with their members and student names.
-        Returns the teams plus a mapping team_id -> list of TeamMemberWithNameDTO.
-        """
-        teams = self.list_teams(competition_id)
-        if not teams:
-            return TeamsWithMembersBatch(teams=[], members_by_team={})
-
-        team_ids = [t.id for t in teams]
-        members_by_team = self.list_team_members_with_students(team_ids)
-        return TeamsWithMembersBatch(teams=teams, members_by_team=members_by_team)
 
 
     def list_student_memberships_enriched(

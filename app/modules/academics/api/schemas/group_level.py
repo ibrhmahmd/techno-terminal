@@ -29,13 +29,3 @@ class GroupLevelPublic(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class GroupLevelSummary(BaseModel):
-    """Slim group level for list/nested responses."""
-    id: int
-    group_id: int
-    level_number: int
-    status: str
-    course_name: Optional[str] = None
-    instructor_name: Optional[str] = None
-
-    model_config = {"from_attributes": True}

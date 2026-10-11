@@ -2,7 +2,6 @@
 
 Handles cross-module User-Employee operations.
 """
-from typing import Optional
 
 from sqlalchemy import select
 from sqlmodel import Session
@@ -50,16 +49,3 @@ class StaffAccountRepository:
             for user, employee in results
         ]
 
-    def sync_employee_active(self, user_id: int, is_active: bool) -> None:
-        """Sync employee's is_active status with linked user.
-
-        Args:
-            user_id: User ID to check for linked employee
-            is_active: New active status to apply to employee if linked
-        """
-        user = self._session.get(User, user_id)
-        if user and user.employee_id:
-            emp = self._session.get(Employee, user.employee_id)
-            if emp:
-                emp.is_active = is_active
-                self._session.add(emp)
