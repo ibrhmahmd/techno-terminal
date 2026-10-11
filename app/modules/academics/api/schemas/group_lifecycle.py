@@ -1,6 +1,6 @@
 """
-app/api/schemas/academics/group_lifecycle.py
-───────────────────────────────────────────
+app/modules/academics/api/schemas/group_lifecycle.py
+────────────────────────────────────────────────────
 Pydantic models for group lifecycle API requests/responses.
 """
 

@@ -1,6 +1,6 @@
 """
-app/api/schemas/academics/group.py
-────────────────────────────────────
+app/modules/academics/api/schemas/group.py
+──────────────────────────────────────────
 Public-facing Group DTOs.
 """
 from datetime import date

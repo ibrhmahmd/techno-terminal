@@ -1,12 +1,12 @@
 """
-app/api/schemas/academics/grouped.py
-────────────────────────────────────
+app/modules/academics/api/schemas/grouped.py
+────────────────────────────────────────────
 Public-facing Grouped Groups DTOs.
 """
 from enum import Enum
 
 from pydantic import BaseModel
-from app.api.schemas.academics.group import EnrichedGroupPublic
+from app.modules.academics.api.schemas.group import EnrichedGroupPublic
 
 
 class GroupByField(str, Enum):

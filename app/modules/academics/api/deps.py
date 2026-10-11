@@ -1,0 +1,36 @@
+"""Academics HTTP-layer service factories (ADR-0002: api/ → services/)."""
+
+from app.modules.academics.course.service import CourseService
+from app.modules.academics.group.core.service import GroupCoreService
+from app.modules.academics.group.directory.service import GroupDirectoryService
+from app.modules.academics.group.level.service import GroupLevelService
+from app.modules.academics.session.service import SessionService
+from app.modules.academics.group.analytics.service import GroupAnalyticsService
+
+
+def get_course_service() -> CourseService:
+    return CourseService()
+
+
+def get_group_service() -> GroupCoreService:
+    """Returns a fresh GroupCoreService instance per request."""
+    return GroupCoreService()
+
+
+def get_group_directory_service() -> GroupDirectoryService:
+    """Returns a fresh GroupDirectoryService instance per request."""
+    return GroupDirectoryService()
+
+
+def get_group_level_service() -> GroupLevelService:
+    """Returns a fresh GroupLevelService instance per request."""
+    return GroupLevelService()
+
+
+def get_session_service() -> SessionService:
+    return SessionService()
+
+
+def get_group_analytics_service() -> GroupAnalyticsService:
+    """Returns a fresh GroupAnalyticsService instance per request."""
+    return GroupAnalyticsService()

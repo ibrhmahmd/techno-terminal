@@ -1,6 +1,6 @@
 """
-app/api/routers/academics/sessions.py
-─────────────────────────────────────
+app/modules/academics/api/sessions_router.py
+────────────────────────────────────────────
 Sessions router.
 
 Endpoints for session management.
@@ -9,8 +9,9 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from app.api.schemas.common import ApiResponse
-from app.api.schemas.academics.session import SessionPublic
-from app.api.dependencies import require_admin, require_any, get_session_service
+from app.modules.academics.api.schemas.session import SessionPublic
+from app.api.dependencies import require_admin, require_any
+from app.modules.academics.api.deps import get_session_service
 from app.modules.academics.session.schemas import AddExtraSessionInput, UpdateSessionDTO
 from app.modules.auth import User
 from app.modules.academics.session.service import SessionService

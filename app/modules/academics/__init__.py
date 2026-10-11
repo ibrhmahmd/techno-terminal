@@ -14,6 +14,8 @@ from .session.service import SessionService
 from .group.lifecycle.service import GroupLifecycleService
 from .group.details.service import GroupDetailsService
 from .group.level.service import GroupLevelService
+from .group.directory.service import GroupDirectoryService
+from .group.analytics.service import GroupAnalyticsService
 
 # ── Models ───────────────────────────────────────────────────────────────────
 from .models.course_models import Course
@@ -65,6 +67,8 @@ __all__ = [
     "GroupLifecycleService",
     "GroupDetailsService",
     "GroupLevelService",
+    "GroupDirectoryService",
+    "GroupAnalyticsService",
     # Models
     "Course",
     "Group",

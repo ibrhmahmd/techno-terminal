@@ -1,5 +1,5 @@
 """
-app/api/routers/academics/group_lifecycle_router.py
+app/modules/academics/api/group_lifecycle_router.py
 ───────────────────────────────────────────────────
 Router for group level lifecycle and analytics endpoints.
 
@@ -18,6 +18,8 @@ from app.shared.exceptions import NotFoundError, BusinessRuleError
 from app.api.dependencies import (
     require_any,
     require_admin,
+)
+from app.modules.academics.api.deps import (
     get_group_level_service,
     get_group_analytics_service,
 )
@@ -28,8 +30,8 @@ from app.modules.academics.group.analytics.schemas import (
     GroupEnrollmentHistoryResponseDTO,
     GroupInstructorHistoryResponseDTO,
 )
-from app.api.schemas.academics.group_lifecycle import CancelLevelInput, CancelLevelResult
-from app.api.schemas.academics.group_level import (
+from app.modules.academics.api.schemas.group_lifecycle import CancelLevelInput, CancelLevelResult
+from app.modules.academics.api.schemas.group_level import (
     GroupLevelPublic,
 )
 from app.modules.academics.group.level.schemas import UpdateLevelInput

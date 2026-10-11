@@ -1,6 +1,6 @@
 """
-app/api/schemas/academics/group_analytics.py
-───────────────────────────────────────────
+app/modules/academics/group/analytics/schemas.py
+───────────────────────────────────────────────
 DTOs for group analytics and history endpoints.
 """
 from datetime import date, datetime

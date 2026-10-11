@@ -1,5 +1,5 @@
 """
-app/api/routers/academics/group_directory_router.py
+app/modules/academics/api/group_directory_router.py
 ────────────────────────────────────────────────────
 Group Directory router.
 
@@ -12,11 +12,12 @@ from fastapi import APIRouter, Depends, Query, Path
 from typing import List, Optional
 
 from app.api.schemas.common import ApiResponse, PaginatedResponse
-from app.api.schemas.academics.group import (
+from app.modules.academics.api.schemas.group import (
     EnrichedGroupPublic,
 )
-from app.api.schemas.academics.grouped import GroupedGroupsResponse, GroupedItem
-from app.api.dependencies import require_any, get_group_directory_service
+from app.modules.academics.api.schemas.grouped import GroupedGroupsResponse, GroupedItem
+from app.api.dependencies import require_any
+from app.modules.academics.api.deps import get_group_directory_service
 from app.modules.auth import User
 from app.modules.academics.group.directory.service import GroupDirectoryService
 from app.modules.academics.group.directory.schemas import GroupFilterDTO, GroupFilterResultDTO

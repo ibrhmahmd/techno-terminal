@@ -1,5 +1,5 @@
 """
-app/api/schemas/academics/__init__.py
+app/modules/academics/api/schemas/__init__.py
 """
 from .course import CoursePublic
 from .group import GroupPublic
