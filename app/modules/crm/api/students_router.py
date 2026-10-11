@@ -1,7 +1,7 @@
 """
-app/api/routers/crm/students.py
-───────────────────────────────
-Students router.
+app/modules/crm/api/students_router.py
+──────────────────────────────────────
+Students router (CRM module).
 
 Endpoints for student management.
 """
@@ -11,18 +11,23 @@ from datetime import date
 from fastapi import APIRouter, Depends, Query, HTTPException
 
 from app.api.schemas.common import ApiResponse, PaginatedResponse
-from app.api.schemas.crm.student import StudentPublic, StudentListingDTO, StudentDeletionResult, WaitingStudentDTO
-from app.api.schemas.crm.parent import ParentPublic
-from app.api.schemas.crm.student_details import StudentWithDetails, SiblingInfo
+from app.modules.crm.api.schemas import (
+    StudentPublic,
+    StudentListingDTO,
+    StudentDeletionResult,
+    WaitingStudentDTO,
+    ParentPublic,
+    StudentWithDetails,
+    SiblingInfo,
+)
 from app.modules.crm.interfaces.dtos import StudentGroupedResultDTO, StudentFilterDTO, StudentFilterResultDTO
-from app.api.dependencies import (
-    require_any,
-    require_admin,
+from app.modules.crm.api.deps import (
     get_student_profile_service,
     get_student_search_service,
     get_student_crud_service,
     get_student_payment_service,
 )
+from app.api.dependencies import require_any, require_admin
 from app.modules.finance.services.student_payment_service import StudentPaymentService
 from app.api.schemas.finance.payment import PaymentListItem
 from app.modules.crm.services.student_profile_service import StudentProfileService

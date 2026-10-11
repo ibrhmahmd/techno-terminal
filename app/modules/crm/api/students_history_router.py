@@ -1,7 +1,7 @@
 """
-app/api/routers/crm/students_history.py
-───────────────────────────────────────
-API endpoints for student activity and history tracking.
+app/modules/crm/api/students_history_router.py
+──────────────────────────────────────────────
+API endpoints for student activity and history tracking (CRM module).
 Refactored to use CRM StudentActivityService (SOLID architecture).
 """
 from typing import Optional, List
@@ -9,9 +9,10 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query
 
-from app.api.dependencies import require_any, require_admin, get_student_activity_service
+from app.modules.crm.api.deps import get_student_activity_service
+from app.api.dependencies import require_any, require_admin
 from app.api.schemas.common import ApiResponse, PaginatedResponse
-from app.api.schemas.crm.history import (
+from app.modules.crm.api.schemas import (
     ActivityLogRequest,
     ActivityLogUpdateRequest,
     EnrollmentHistoryEntry,
@@ -19,14 +20,12 @@ from app.api.schemas.crm.history import (
     CompetitionHistoryEntry,
     ActivitySummaryItem,
     ActivitySearchParams,
-)
-from app.api.schemas.crm.activity import (
     ActivityLogResponseDTO,
     RecentActivityItemDTO,
     ManualActivityResponseDTO,
     ActivitySearchResultItemDTO,
     ActivityReferenceDTO,
-    ActivityActorDTO
+    ActivityActorDTO,
 )
 from app.modules.auth.models import User
 from app.modules.crm.services import StudentActivityService

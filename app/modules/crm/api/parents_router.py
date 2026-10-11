@@ -1,7 +1,7 @@
 """
-app/api/routers/crm/parents.py
-──────────────────────────────
-Parents router.
+app/modules/crm/api/parents_router.py
+─────────────────────────────────────
+Parents router (CRM module).
 
 Endpoints for parent management.
 """
@@ -10,8 +10,10 @@ from typing import List
 from fastapi import APIRouter, Depends, Query, HTTPException
 
 from app.api.schemas.common import ApiResponse, PaginatedResponse
-from app.api.schemas.crm.parent import ParentPublic, ParentListItem, RegisterParentInput, UpdateParentDTO
-from app.api.dependencies import require_admin, require_any, get_parent_crud_service
+from app.modules.crm.api.schemas import ParentPublic, ParentListItem
+from app.modules.crm.schemas import RegisterParentInput, UpdateParentDTO
+from app.modules.crm.api.deps import get_parent_crud_service
+from app.api.dependencies import require_admin, require_any
 from app.modules.auth import User
 from app.modules.crm.services.parent_crud_service import ParentCrudService
 from app.shared.exceptions import NotFoundError

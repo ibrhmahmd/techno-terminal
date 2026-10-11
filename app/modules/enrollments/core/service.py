@@ -4,9 +4,6 @@ from fastapi import BackgroundTasks
 from app.db.connection import get_session
 from app.shared.audit_utils import apply_create_audit
 from app.shared.datetime_utils import utc_now
-from app.modules.crm.repositories.unit_of_work import StudentUnitOfWork
-from app.modules.crm.services.student_crud_service import StudentCrudService
-from app.modules.crm.services.activity_service import StudentActivityService
 from app.modules.crm.models.student_models import StudentStatus
 from app.modules.academics.group.core.service import GroupCoreService
 from app.modules.academics.models.group_models import Group
@@ -25,10 +22,18 @@ from app.shared.exceptions import NotFoundError, BusinessRuleError, ConflictErro
 
 if TYPE_CHECKING:
     from app.modules.notifications.services.notification_service import NotificationService
+    from app.modules.crm import (
+        StudentUnitOfWork,
+        StudentCrudService,
+        StudentActivityService,
+        LogStatusChangeDTO,
+        LogEnrollmentDTO,
+        LogEnrollmentChangeDTO,
+    )
 
 
 class EnrollmentCoreService:
-    def __init__(self, activity_svc: Optional[StudentActivityService] = None, notification_svc: Optional["NotificationService"] = None) -> None:
+    def __init__(self, activity_svc: Optional["StudentActivityService"] = None, notification_svc: Optional["NotificationService"] = None) -> None:
         self._activity_svc = activity_svc
         self._notification_svc = notification_svc
 
@@ -37,6 +42,8 @@ class EnrollmentCoreService:
         data: EnrollStudentInput,
         background_tasks: Optional[BackgroundTasks] = None,
     ) -> EnrollmentCoreResult:
+        from app.modules.crm import StudentUnitOfWork, StudentCrudService
+
         with StudentUnitOfWork() as uow:
             student_svc = StudentCrudService(uow, self._activity_svc)
             student = student_svc.get_by_id(data.student_id)
@@ -80,7 +87,7 @@ class EnrollmentCoreService:
                     session.add(merged_student)
 
                     if self._activity_svc:
-                        from app.modules.crm.interfaces.dtos.log_status_change_dto import LogStatusChangeDTO
+                        from app.modules.crm import LogStatusChangeDTO
                         self._activity_svc.log_status_change(
                             LogStatusChangeDTO(
                                 student_id=student.id,
@@ -91,7 +98,7 @@ class EnrollmentCoreService:
                         )
 
                 if self._activity_svc:
-                    from app.modules.crm.interfaces.dtos.log_enrollment_dto import LogEnrollmentDTO
+                    from app.modules.crm import LogEnrollmentDTO
                     self._activity_svc.log_enrollment(
                         LogEnrollmentDTO(
                             student_id=created.student_id,
@@ -193,7 +200,7 @@ class EnrollmentCoreService:
                 updated = repo.update_enrollment_fields(session, enrollment_id, updates)
                 
                 if self._activity_svc:
-                    from app.modules.crm.interfaces.dtos.log_enrollment_change_dto import LogEnrollmentChangeDTO
+                    from app.modules.crm import LogEnrollmentChangeDTO
                     self._activity_svc.log_enrollment_change(
                         LogEnrollmentChangeDTO(
                             student_id=updated.student_id,
@@ -268,7 +275,7 @@ class EnrollmentCoreService:
             created = repo.create_enrollment(session, new_enrollment)
 
             if self._activity_svc:
-                from app.modules.crm.interfaces.dtos.log_enrollment_change_dto import LogEnrollmentChangeDTO
+                from app.modules.crm import LogEnrollmentChangeDTO
                 self._activity_svc.log_enrollment_change(
                     LogEnrollmentChangeDTO(
                         student_id=source.student_id,
@@ -313,7 +320,7 @@ class EnrollmentCoreService:
             updated = repo.update_enrollment_status(session, enrollment_id, "dropped")
 
             if self._activity_svc:
-                from app.modules.crm.interfaces.dtos.log_enrollment_change_dto import LogEnrollmentChangeDTO
+                from app.modules.crm import LogEnrollmentChangeDTO
                 self._activity_svc.log_enrollment_change(
                     LogEnrollmentChangeDTO(
                         student_id=enrollment.student_id,
