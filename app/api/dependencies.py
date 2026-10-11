@@ -213,6 +213,15 @@ from app.modules.finance.services.receipt_service import ReceiptService
 from app.modules.finance.services.refund_service import RefundService
 from app.modules.finance.services.balance_service import BalanceService
 from app.modules.finance.services.reporting_service import ReportingService
+from app.modules.finance.services.student_payment_service import StudentPaymentService
+
+
+def get_student_payment_service(
+    session: Session = Depends(get_db),
+) -> StudentPaymentService:
+    """Returns a StudentPaymentService with a fresh UnitOfWork."""
+    uow = FinanceUnitOfWork(session=session)
+    return StudentPaymentService(uow)
 
 
 def get_receipt_service(

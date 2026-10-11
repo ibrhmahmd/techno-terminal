@@ -12,7 +12,6 @@ from app.modules.crm.services import (
     StudentProfileService,
     StudentActivityService,
 )
-from app.modules.finance.services.student_payment_service import StudentPaymentService
 
 
 def get_student_crud_service(
@@ -54,12 +53,3 @@ def get_parent_crud_service(
     """Returns a ParentCrudService with a fresh UnitOfWork."""
     uow = StudentUnitOfWork(session=session)
     return ParentCrudService(uow)
-
-
-def get_student_payment_service(
-    session: Session = Depends(get_db),
-) -> StudentPaymentService:
-    """Returns a StudentPaymentService with a fresh UnitOfWork."""
-    from app.modules.finance.repositories.unit_of_work import FinanceUnitOfWork
-    uow = FinanceUnitOfWork(session=session)
-    return StudentPaymentService(uow)

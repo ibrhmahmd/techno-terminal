@@ -25,11 +25,8 @@ from app.modules.crm.api.deps import (
     get_student_profile_service,
     get_student_search_service,
     get_student_crud_service,
-    get_student_payment_service,
 )
 from app.api.dependencies import require_any, require_admin
-from app.modules.finance.services.student_payment_service import StudentPaymentService
-from app.api.schemas.finance.payment import PaymentListItem
 from app.modules.crm.services.student_profile_service import StudentProfileService
 from app.modules.crm.services.search_service import SearchService
 from app.modules.crm.services.student_crud_service import StudentCrudService
@@ -45,7 +42,7 @@ from app.modules.crm.schemas import (
 from app.modules.auth import User
 from app.shared.exceptions import NotFoundError
 from app.modules.crm.validators.student_validator import StudentValidator
-from app.modules.academics.constants import DAY_ABBREV_MAP
+from app.shared.constants import DAY_ABBREV_MAP
 
 
 router = APIRouter(prefix="/crm", tags=["CRM — Students"])
@@ -592,33 +589,3 @@ def list_deleted_students(
     )
 
 
-@router.get(
-    "/students/{student_id}/payments",
-    response_model=PaginatedResponse[PaymentListItem],
-    summary="List student payments",
-    description="Retrieve all payment records for a specific student with course and group information."
-)
-def list_student_payments(
-    student_id: int,
-    skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
-    _user: User = Depends(require_any),
-    svc: StudentPaymentService = Depends(get_student_payment_service),
-):
-    """
-    List all payments for a specific student.
-    
-    Returns paginated payment history including:
-    - Payment amount and date
-    - Receipt number and payment method
-    - Course name and group name (if applicable)
-    
-    Sorted by payment date descending (newest first).
-    """
-    result = svc.list_student_payments(student_id=student_id, skip=skip, limit=limit)
-    return PaginatedResponse(
-        data=[PaymentListItem.model_validate(item) for item in result.items],
-        total=result.total,
-        skip=result.skip,
-        limit=result.limit,
-    )

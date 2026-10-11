@@ -7,7 +7,6 @@ from app.modules.crm.api.deps import (
     get_student_profile_service,
     get_student_activity_service,
     get_parent_crud_service,
-    get_student_payment_service,
 )
 from app.modules.crm.api.schemas import (
     StudentPublic,
@@ -63,7 +62,6 @@ __all__ = [
     "get_student_profile_service",
     "get_student_activity_service",
     "get_parent_crud_service",
-    "get_student_payment_service",
     "StudentPublic",
     "StudentListingDTO",
     "WaitingStudentDTO",
