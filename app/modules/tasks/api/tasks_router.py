@@ -5,7 +5,7 @@ Mounted under /api/v1
 """
 import uuid
 from typing import Optional
-from fastapi import APIRouter, BackgroundTasks, Depends, Query
+from fastapi import APIRouter, Depends, Query
 
 from app.api.schemas.common import ApiResponse
 from app.modules.tasks import (
@@ -24,7 +24,8 @@ from app.modules.tasks import (
     CreateTaskTimeLogInput,
     TaskTimeLogReadDTO
 )
-from app.api.dependencies import require_admin, require_any, get_task_service
+from app.api.dependencies import require_admin, require_any
+from app.modules.tasks.api.deps import get_task_service
 from app.modules.auth import User
 from app.modules.hr.models import Employee
 
@@ -34,12 +35,11 @@ router = APIRouter(tags=["Tasks"])
 @router.post("/tasks", response_model=ApiResponse[TaskDetailDTO], summary="Create a new task")
 def create_task(
     dto: CreateTaskInput,
-    background_tasks: BackgroundTasks,
     current_user: User = Depends(require_admin),
     service: TaskService = Depends(get_task_service)
 ):
     """Creates a new task. Restricted to admins."""
-    result = service.create_task(dto, current_user, background_tasks=background_tasks)
+    result = service.create_task(dto, current_user)
     return ApiResponse(data=result, message="Task created successfully")
 
 
@@ -78,12 +78,11 @@ def get_task(
 def update_task(
     task_id: uuid.UUID,
     dto: UpdateTaskInput,
-    background_tasks: BackgroundTasks,
     current_user: User = Depends(require_any),
     service: TaskService = Depends(get_task_service)
 ):
     """Updates a task. Admins have full access. Assigned employees can update status only."""
-    result = service.update_task(task_id, dto, current_user, background_tasks=background_tasks)
+    result = service.update_task(task_id, dto, current_user)
     return ApiResponse(data=result, message="Task updated successfully")
 
 
@@ -137,17 +136,16 @@ def delete_subtask(
 def add_comment(
     task_id: uuid.UUID,
     dto: CreateTaskCommentInput,
-    background_tasks: BackgroundTasks,
     current_user: User = Depends(require_any),
     service: TaskService = Depends(get_task_service)
 ):
     """Adds a comment to a task. Admin or assigned employee only."""
-    comment = service.add_comment(task_id, dto, current_user, background_tasks=background_tasks)
+    comment = service.add_comment(task_id, dto, current_user)
     
     # Resolve author name
     author_name = current_user.username
     if current_user.employee_id:
-        emp = service._uow._session.get(Employee, current_user.employee_id)
+        emp = service._uow.session.get(Employee, current_user.employee_id)
         if emp:
             author_name = emp.full_name
             
@@ -187,7 +185,7 @@ def add_time_log(
     # Resolve employee name
     employee_name = None
     if current_user.employee_id:
-        emp = service._uow._session.get(Employee, current_user.employee_id)
+        emp = service._uow.session.get(Employee, current_user.employee_id)
         if emp:
             employee_name = emp.full_name
             

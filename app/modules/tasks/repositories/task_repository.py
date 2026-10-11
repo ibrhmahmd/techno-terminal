@@ -4,14 +4,13 @@ Data access for task tracking entities.
 Coordinates tasks, subtasks, comments, and time logs.
 """
 import uuid
-from datetime import datetime, timezone
 from typing import Optional
 from sqlalchemy import select, and_
 from sqlalchemy.orm import aliased
 from sqlmodel import Session
 
 from app.modules.tasks.models import Task, TaskSubtask, TaskComment, TaskTimeLog, TaskStatus, TaskPriority
-from app.modules.tasks.schemas import (
+from app.modules.tasks.schemas.task_schemas import (
     CreateTaskInput,
     UpdateTaskInput,
     CreateTaskSubtaskInput,
@@ -331,23 +330,3 @@ class TaskRepository:
     def get_time_log_by_id(self, log_id: uuid.UUID) -> Optional[TaskTimeLog]:
         """Get a time log by ID."""
         return self._session.get(TaskTimeLog, log_id)
-
-
-class TasksUnitOfWork:
-    """Unit of Work for Tasks module transactions."""
-
-    def __init__(self, session: Session):
-        self._session = session
-        self.tasks = TaskRepository(session)
-
-    def commit(self) -> None:
-        """Commit the transaction."""
-        self._session.commit()
-
-    def flush(self) -> None:
-        """Flush pending changes."""
-        self._session.flush()
-
-    def rollback(self) -> None:
-        """Rollback transaction."""
-        self._session.rollback()
