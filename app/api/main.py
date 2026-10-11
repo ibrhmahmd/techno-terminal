@@ -47,7 +47,7 @@ from app.api.routers import enrollments_router
 from app.api.routers.notifications import router as notifications_router
 from app.api.routers.competitions import competitions_router, teams_router
 from app.modules.hr.api import hr_router
-from app.api.routers.crm import (
+from app.modules.crm.api import (
     students_router,
     parents_router,
     students_history_router,
@@ -135,8 +135,8 @@ def create_app() -> FastAPI:
         auth_router.router, prefix="/api/v1/auth", tags=["Authentication"]
     )
     # CRM (Students and Parents)
-    app.include_router(students_router, prefix="/api/v1", tags=["CRM — Students"])
-    app.include_router(parents_router, prefix="/api/v1", tags=["CRM — Parents"])
+    app.include_router(students_router.router, prefix="/api/v1", tags=["CRM — Students"])
+    app.include_router(parents_router.router, prefix="/api/v1", tags=["CRM — Parents"])
     # Academics (Courses, Groups, Sessions) + Attendance
     app.include_router(courses_router, prefix="/api/v1", tags=["Academics — Courses"])
     # Group directory router MUST come before groups_router to prevent /{group_id} shadowing /enriched
@@ -162,7 +162,7 @@ def create_app() -> FastAPI:
     app.include_router(reporting_router, prefix="/api/v1", tags=["Finance — Reporting"])
     # Student History & Activity
     app.include_router(
-        students_history_router, prefix="/api/v1", tags=["Student History"]
+        students_history_router.router, prefix="/api/v1", tags=["Student History"]
     )
     # Competitions (competitions and teams)
     app.include_router(competitions_router, prefix="/api/v1", tags=["Competitions"])
