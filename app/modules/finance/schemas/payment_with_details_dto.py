@@ -1,5 +1,5 @@
 """
-app/modules/finance/interfaces/dto/payment_with_details_dto.py
+app/modules/finance/schemas/payment_with_details_dto.py
 ──────────────────────────────────────────────────────────────
 Detailed payment information DTO with all related data.
 """

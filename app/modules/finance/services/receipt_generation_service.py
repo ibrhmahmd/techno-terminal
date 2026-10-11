@@ -5,26 +5,30 @@ Automated receipt generation with template support.
 """
 import logging
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import TYPE_CHECKING, Optional, List, Dict, Any
 from decimal import Decimal
 
-from sqlalchemy import text
-from sqlmodel import select
-
-from app.db.connection import get_session
-from app.modules.finance import Receipt, Payment
+from app.db.uow import UnitOfWork
+from app.modules.finance.repositories.receipt_document_repository import ReceiptDocumentRepository
 from app.modules.finance.schemas.receipt_generation import BatchGenerateResponse, BatchReceiptItem
-from app.modules.enrollments.models.enrollment_models import Enrollment
-from app.modules.academics.models.group_models import Group
-from app.modules.crm.models.student_models import Student
 from app.shared.exceptions import NotFoundError
+
+if TYPE_CHECKING:
+    from app.modules.academics.models.group_models import Group
+    from app.modules.enrollments.models.enrollment_models import Enrollment
+    from app.modules.crm.models.student_models import Student
+    from app.modules.finance.models import Payment, Receipt
 
 logger = logging.getLogger(__name__)
 
 
 class ReceiptGenerationService:
     """Service for generating formatted receipts."""
-    
+
+    def __init__(self, uow: UnitOfWork) -> None:
+        self._uow = uow
+        self._receipts = ReceiptDocumentRepository(uow.session)
+
     def generate_receipt_text(
         self,
         receipt_id: int,
@@ -42,95 +46,79 @@ class ReceiptGenerationService:
         Returns:
             Formatted receipt text
         """
-        with get_session() as db:
-            # Fetch receipt with all related data
-            receipt = db.get(Receipt, receipt_id)
-            if not receipt:
-                raise NotFoundError(f"Receipt with ID {receipt_id} not found")
+        # Fetch receipt with all related data
+        receipt = self._receipts.get_receipt(receipt_id)
+        if not receipt:
+            raise NotFoundError(f"Receipt with ID {receipt_id} not found")
             
-            # Get payment lines for receipt
-            payments_data = db.exec(
-                select(Payment, Enrollment, Group)
-                .outerjoin(Enrollment, Payment.enrollment_id == Enrollment.id)
-                .outerjoin(Group, Enrollment.group_id == Group.id)
-                .where(Payment.receipt_id == receipt_id)
-            ).all()
+        # Get payment lines for receipt
+        payments_data = self._receipts.get_payment_rows_with_group(receipt_id)
             
-            if not payments_data:
-                raise NotFoundError(f"No payments found for receipt {receipt_id}")
+        if not payments_data:
+            raise NotFoundError(f"No payments found for receipt {receipt_id}")
             
-            # Get student info from first payment
-            first_payment = payments_data[0][0]
-            student = db.get(Student, first_payment.student_id)
+        # Get student info from first payment
+        first_payment = payments_data[0][0]
+        student = self._receipts.get_student(first_payment.student_id)
             
-            # Build payment lines
-            payment_lines = []
-            total_discount = Decimal('0.00')
+        # Build payment lines
+        payment_lines = []
+        total_discount = Decimal('0.00')
             
-            for payment, enrollment, group in payments_data:
-                description = self._build_description(payment, enrollment, group)
+        for payment, enrollment, group in payments_data:
+            description = self._build_description(payment, enrollment, group)
                 
-                line_discount = Decimal(str(payment.discount_amount or 0))
-                total_discount += line_discount
+            line_discount = Decimal(str(payment.discount_amount or 0))
+            total_discount += line_discount
                 
-                payment_lines.append({
-                    'description': description,
-                    'amount': float(payment.amount),
-                    'discount': float(line_discount),
-                    'net_amount': float(Decimal(str(payment.amount)) - line_discount)
-                })
+            payment_lines.append({
+                'description': description,
+                'amount': float(payment.amount),
+                'discount': float(line_discount),
+                'net_amount': float(Decimal(str(payment.amount)) - line_discount)
+            })
             
-            # Calculate totals
-            subtotal = sum(line['amount'] for line in payment_lines)
-            total = subtotal - float(total_discount)
+        # Calculate totals
+        subtotal = sum(line['amount'] for line in payment_lines)
+        total = subtotal - float(total_discount)
             
-            # Get balance if requested (query v_enrollment_balance directly)
-            balance_remaining = 0.0
-            if include_balance and student:
-                try:
-                    from sqlalchemy import text
-                    result = db.execute(
-                        text("""
-                            SELECT COALESCE(SUM(balance), 0) as net_balance
-                            FROM v_enrollment_balance
-                            WHERE student_id = :sid
-                        """),
-                        {"sid": student.id}
-                    ).first()
-                    if result:
-                        net_balance = float(result[0] or 0)
-                        if net_balance < 0:
-                            balance_remaining = abs(net_balance)
-                except Exception:
-                    logger.warning("Balance query failed for student %s — continuing without balance", student.id)
+        # Get balance if requested (query v_enrollment_balance directly)
+        balance_remaining = 0.0
+        if include_balance and student:
+            try:
+                net_balance = self._receipts.get_student_net_balance(student.id)
+                if net_balance < 0:
+                    balance_remaining = abs(net_balance)
+            except Exception:
+                logger.warning("Balance query failed for student %s — continuing without balance", student.id)
             
-            # Render based on template
-            if template_name == 'detailed':
-                return self._render_detailed_template(
-                    receipt=receipt,
-                    student=student,
-                    payment_lines=payment_lines,
-                    subtotal=subtotal,
-                    total_discount=float(total_discount),
-                    total=total,
-                    balance_remaining=balance_remaining
-                )
-            else:
-                return self._render_standard_template(
-                    receipt=receipt,
-                    student=student,
-                    payment_lines=payment_lines,
-                    subtotal=subtotal,
-                    total_discount=float(total_discount),
-                    total=total,
-                    balance_remaining=balance_remaining
-                )
+        # Render based on template
+        if template_name == 'detailed':
+            return self._render_detailed_template(
+                receipt=receipt,
+                student=student,
+                payment_lines=payment_lines,
+                subtotal=subtotal,
+                total_discount=float(total_discount),
+                total=total,
+                balance_remaining=balance_remaining
+            )
+        else:
+            return self._render_standard_template(
+                receipt=receipt,
+                student=student,
+                payment_lines=payment_lines,
+                subtotal=subtotal,
+                total_discount=float(total_discount),
+                total=total,
+                balance_remaining=balance_remaining
+            )
     
     def _build_description(
         self,
-        payment: Payment,
-        enrollment: Optional[Enrollment],
-        group: Optional[Group]
+        payment: "Payment",
+        enrollment: Optional["Enrollment"],
+        group: Optional["Group"]
     ) -> str:
         """Build human-readable payment description."""
         
@@ -147,8 +135,8 @@ class ReceiptGenerationService:
     
     def _render_standard_template(
         self,
-        receipt: Receipt,
-        student: Optional[Student],
+        receipt: "Receipt",
+        student: Optional["Student"],
         payment_lines: List[Dict[str, Any]],
         subtotal: float,
         total_discount: float,
@@ -196,8 +184,8 @@ Thank you for your payment!
     
     def _render_detailed_template(
         self,
-        receipt: Receipt,
-        student: Optional[Student],
+        receipt: "Receipt",
+        student: Optional["Student"],
         payment_lines: List[Dict[str, Any]],
         subtotal: float,
         total_discount: float,
@@ -258,16 +246,15 @@ This receipt was generated on {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}.
         
         for receipt_id in receipt_ids:
             try:
-                with get_session() as db:
-                    receipt = db.get(Receipt, receipt_id)
-                    if not receipt:
-                        results.append(BatchReceiptItem(
-                            receipt_id=receipt_id,
-                            success=False,
-                            error_message=f"Receipt {receipt_id} not found",
-                            error_code="not_found"
-                        ))
-                        continue
+                receipt = self._receipts.get_receipt(receipt_id)
+                if not receipt:
+                    results.append(BatchReceiptItem(
+                        receipt_id=receipt_id,
+                        success=False,
+                        error_message=f"Receipt {receipt_id} not found",
+                        error_code="not_found"
+                    ))
+                    continue
                 
                 # generate_receipt_text creates its own session
                 content = self.generate_receipt_text(receipt_id, template_name)
@@ -294,6 +281,4 @@ This receipt was generated on {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}.
         return results
 
 
-def get_receipt_generation_service(db = None):
-    """Factory function to create ReceiptGenerationService instance."""
-    return ReceiptGenerationService()
+

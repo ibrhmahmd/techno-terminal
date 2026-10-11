@@ -1,5 +1,5 @@
 """
-app/modules/finance/interfaces/dto/paginated_student_payments_dto.py
+app/modules/finance/schemas/paginated_student_payments_dto.py
 ────────────────────────────────────────────────────────────────────
 Paginated student payments DTO.
 """

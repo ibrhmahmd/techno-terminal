@@ -25687,16 +25687,6 @@
       "post": {
         "description": "Generate multiple receipts in a single batch operation. Returns structured results with explicit success/error tracking.",
         "operationId": "batch_generate_receipts_api_v1_finance_receipts_batch_generate_post",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "db",
-            "required": false,
-            "schema": {
-              "title": "Db"
-            }
-          }
-        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -25837,14 +25827,6 @@
               "description": "Return as plain text response instead of JSON",
               "title": "As Text",
               "type": "boolean"
-            }
-          },
-          {
-            "in": "query",
-            "name": "db",
-            "required": false,
-            "schema": {
-              "title": "Db"
             }
           }
         ],

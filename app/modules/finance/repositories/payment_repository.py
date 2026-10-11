@@ -9,14 +9,18 @@ from typing import Optional, List
 from sqlalchemy import text
 from sqlmodel import Session, select
 
-from app.modules.finance import Payment
-from app.modules.finance.interfaces import (
+from app.modules.finance.models import Payment
+from app.modules.finance.schemas import (
     EnrollmentBalanceDTO,
     AddPaymentLineDTO,
     PaymentWithDetailsDTO,
     PaymentListItemDTO,
 )
-from app.modules.finance import EnrollmentBalanceItem
+from app.modules.finance.schemas import (
+    EnrollmentBalanceItem,
+    PaginatedEnrollmentBalancesDTO,
+    PaginatedStudentPaymentsDTO,
+)
 from app.shared.datetime_utils import utc_now
 
 
@@ -164,7 +168,7 @@ class PaymentRepository:
         group_id: Optional[int] = None,
         skip: int = 0,
         limit: int = 50,
-    ) -> tuple[List[EnrollmentBalanceItem], int]:
+    ) -> PaginatedEnrollmentBalancesDTO:
         """
         Get unpaid enrollment balances from v_unpaid_enrollments view.
         Returns items and total count for pagination.
@@ -229,11 +233,11 @@ class PaymentRepository:
             for row in rows
         ]
 
-        return items, total
+        return PaginatedEnrollmentBalancesDTO(items=items, total=total)
 
     def get_payments_by_student(
         self, student_id: int, skip: int = 0, limit: int = 50
-    ) -> tuple[List[PaymentListItemDTO], int]:
+    ) -> PaginatedStudentPaymentsDTO:
         """
         Get paginated payments for a specific student with receipt and course info.
         
@@ -299,7 +303,7 @@ class PaymentRepository:
             for row in rows
         ]
         
-        return items, total
+        return PaginatedStudentPaymentsDTO(items=items, total=total, skip=skip, limit=limit)
 
     def get_payment_with_details(
         self, payment_id: int
@@ -421,73 +425,17 @@ class PaymentRepository:
             parent_phone=row.parent_phone,
         )
 
-    def get_payments_by_group_with_levels(
-        self, group_id: int
-    ) -> list[dict]:
+    def list_team_memberships(self, student_id: int) -> list:
+        """Team memberships (competition fee rows) of a student.
+
+        The competitions model is imported here, not at module level: competitions'
+        model package registers finance's models on import, so a module-level import
+        in the other direction would be circular.
         """
-        Get all payments for a group with level breakdown.
-        Joins through enrollments to get level_number.
-        
-        Returns list of dicts with payment + enrollment data including:
-        - payment_id, student_id, student_name
-        - enrollment_id, level_number
-        - amount, discount, payment_date, payment_method, status
-        - receipt_number, transaction_type
-        """
-        stmt = text("""
-            SELECT 
-                p.id AS payment_id,
-                p.receipt_id,
-                p.student_id,
-                s.full_name AS student_name,
-                p.enrollment_id,
-                e.level_number,
-                p.amount,
-                COALESCE(p.discount_amount, 0) AS discount_amount,
-                COALESCE(r.paid_at, p.created_at) AS payment_date,
-                r.payment_method,
-                CASE 
-                    WHEN p.transaction_type = 'refund' THEN 'refunded'
-                    WHEN p.transaction_type = 'adjustment' THEN 'completed'
-                    ELSE 'completed'
-                END AS status,
-                r.receipt_number,
-                p.transaction_type,
-                COALESCE(c.name, 'Unknown') AS course_name,
-                e.amount_due,
-                e.discount_applied
-            FROM payments p
-            JOIN enrollments e ON p.enrollment_id = e.id
-            JOIN students s ON p.student_id = s.id
-            LEFT JOIN receipts r ON p.receipt_id = r.id
-            LEFT JOIN groups g ON e.group_id = g.id
-            LEFT JOIN courses c ON g.course_id = c.id
-            WHERE e.group_id = :group_id
-                AND p.deleted_at IS NULL
-            ORDER BY e.level_number, p.created_at DESC
-        """)
-        
-        rows = self._session.execute(stmt, {"group_id": group_id}).all()
-        
-        result = []
-        for row in rows:
-            mapping = row._mapping
-            result.append({
-                "payment_id": mapping["payment_id"],
-                "student_id": mapping["student_id"],
-                "student_name": mapping["student_name"],
-                "enrollment_id": mapping["enrollment_id"],
-                "level_number": mapping["level_number"],
-                "amount": float(mapping["amount"] or 0),
-                "discount_amount": float(mapping["discount_amount"] or 0),
-                "payment_date": mapping["payment_date"],
-                "payment_method": mapping["payment_method"] or "unknown",
-                "status": mapping["status"],
-                "receipt_number": mapping["receipt_number"],
-                "transaction_type": mapping["transaction_type"],
-                "course_name": mapping["course_name"],
-                "amount_due": float(mapping["amount_due"] or 0),
-                "discount_applied": float(mapping["discount_applied"] or 0),
-            })
-        
-        return result
+        from app.modules.competitions.models.team_models import TeamMember
+
+        return list(
+            self._session.exec(
+                select(TeamMember).where(TeamMember.student_id == student_id)
+            ).all()
+        )

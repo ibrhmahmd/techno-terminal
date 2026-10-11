@@ -8,21 +8,23 @@ Handles:
 - Getting detailed payment information
 - Sending receipts via WhatsApp/Email
 """
+import logging
 from datetime import datetime
+from typing import Optional
 
-from fastapi import BackgroundTasks
 
-from app.modules.finance.repositories.unit_of_work import FinanceUnitOfWork
-from app.modules.finance.interfaces.dto import (
+from app.db.uow import UnitOfWork
+from app.modules.finance.repositories.payment_repository import PaymentRepository
+from app.modules.finance.schemas import (
     PaymentWithDetailsDTO,
     PaginatedStudentPaymentsDTO,
     SendReceiptResultDTO,
 )
-from app.modules.notifications.services.notification_service import NotificationService
-from app.modules.notifications.repositories.notification_repository import NotificationRepository
-from app.db.connection import get_session
+from app.modules.finance.ports import PaymentNotifier
 from app.shared.exceptions import NotFoundError
 
+
+logger = logging.getLogger(__name__)
 
 
 class StudentPaymentService:
@@ -33,8 +35,10 @@ class StudentPaymentService:
     to provide payment listing, details, and receipt sending.
     """
     
-    def __init__(self, uow: FinanceUnitOfWork) -> None:
+    def __init__(self, uow: UnitOfWork, notifier: Optional[PaymentNotifier] = None) -> None:
         self._uow = uow
+        self._notifier = notifier
+        self._payments = PaymentRepository(uow.session)
     
     def list_student_payments(
         self, student_id: int, skip: int = 0, limit: int = 50
@@ -50,15 +54,8 @@ class StudentPaymentService:
         Returns:
             PaginatedStudentPaymentsDTO with payment items and total count
         """
-        items, total = self._uow.payments.get_payments_by_student(
+        return self._payments.get_payments_by_student(
             student_id=student_id, skip=skip, limit=limit
-        )
-        
-        return PaginatedStudentPaymentsDTO(
-            items=items,
-            total=total,
-            skip=skip,
-            limit=limit,
         )
     
     def get_payment_details(self, payment_id: int) -> PaymentWithDetailsDTO:
@@ -74,7 +71,7 @@ class StudentPaymentService:
         Raises:
             NotFoundError: If payment doesn't exist
         """
-        result = self._uow.payments.get_payment_with_details(payment_id)
+        result = self._payments.get_payment_with_details(payment_id)
         
         if result is None:
             raise NotFoundError(f"Payment ID {payment_id} not found.")
@@ -85,7 +82,6 @@ class StudentPaymentService:
         self,
         payment_id: int,
         method: str,  # "whatsapp" or "email"
-        background_tasks: BackgroundTasks,
         sent_by_user_id: int,
     ) -> SendReceiptResultDTO:
         """
@@ -94,7 +90,6 @@ class StudentPaymentService:
         Args:
             payment_id: The payment ID
             method: Delivery method - "whatsapp" or "email"
-            background_tasks: FastAPI BackgroundTasks for async processing
             sent_by_user_id: ID of the user triggering the send
             
         Returns:
@@ -105,7 +100,7 @@ class StudentPaymentService:
             ValueError: If no parent contact found or invalid method
         """
         # Get payment details
-        payment = self._uow.payments.get_payment_with_details(payment_id)
+        payment = self._payments.get_payment_with_details(payment_id)
         if payment is None:
             raise NotFoundError(f"Payment ID {payment_id} not found.")
         
@@ -119,52 +114,49 @@ class StudentPaymentService:
                 sent_at=datetime.utcnow(),
             )
         
-        # Create notification service with a properly managed session
-        with get_session() as session:
-            notification_svc = NotificationService(NotificationRepository(session))
-            
-            # Format amount for display
-            amount_str = f"{float(payment.amount):,.2f}"
-            
-            # Use the notification service to send receipt
-            # The notification service handles template rendering and dispatch
-            notification_svc.payment.notify_payment_received(
-                receipt_id=payment.receipt_id,
-                student_id=payment.student_id,
-                amount=amount_str,
-                receipt_number=payment.receipt_number or f"REC-{payment.receipt_id}",
-                background_tasks=background_tasks,
-            )
-            
-            # Determine recipient contact based on method
-            if method == "whatsapp":
-                recipient_contact = payment.parent_phone
-                if not recipient_contact:
-                    return SendReceiptResultDTO(
-                        success=False,
-                        message=f"Parent {payment.parent_name} has no phone number for WhatsApp.",
-                        receipt_id=payment.receipt_id,
-                        recipient_contact=None,
-                        sent_at=datetime.utcnow(),
-                    )
-            elif method == "email":
-                # Email contact would need to be fetched from parent record
-                # For now, return the phone as contact (notification service handles actual dispatch)
-                recipient_contact = payment.parent_phone
-            else:
+        # Format amount for display
+        amount_str = f"{float(payment.amount):,.2f}"
+
+        # Queue the notification (the adapter handles template rendering and dispatch)
+        if self._notifier:
+            try:
+                self._notifier.payment_received(
+                    receipt_id=payment.receipt_id,
+                    student_id=payment.student_id,
+                    amount=amount_str,
+                    receipt_number=payment.receipt_number or f"REC-{payment.receipt_id}",
+                )
+            except Exception:
+                logger.exception("Payment notifier failed for receipt %s", payment.receipt_id)
+
+        # Determine recipient contact based on method
+        if method == "whatsapp":
+            recipient_contact = payment.parent_phone
+            if not recipient_contact:
                 return SendReceiptResultDTO(
                     success=False,
-                    message=f"Invalid method: {method}. Use 'whatsapp' or 'email'.",
+                    message=f"Parent {payment.parent_name} has no phone number for WhatsApp.",
                     receipt_id=payment.receipt_id,
                     recipient_contact=None,
                     sent_at=datetime.utcnow(),
                 )
-            
+        elif method == "email":
+            # Email contact would need to be fetched from parent record
+            # For now, return the phone as contact (notification service handles actual dispatch)
+            recipient_contact = payment.parent_phone
+        else:
             return SendReceiptResultDTO(
-                success=True,
-                message=f"Receipt queued for sending to {payment.parent_name} via {method}.",
+                success=False,
+                message=f"Invalid method: {method}. Use 'whatsapp' or 'email'.",
                 receipt_id=payment.receipt_id,
-                recipient_contact=recipient_contact,
+                recipient_contact=None,
                 sent_at=datetime.utcnow(),
             )
 
+        return SendReceiptResultDTO(
+            success=True,
+            message=f"Receipt queued for sending to {payment.parent_name} via {method}.",
+            receipt_id=payment.receipt_id,
+            recipient_contact=recipient_contact,
+            sent_at=datetime.utcnow(),
+        )

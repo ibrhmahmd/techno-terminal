@@ -1,5 +1,5 @@
 """
-app/modules/finance/interfaces/dto/enrollment_balance_dto.py
+app/modules/finance/schemas/enrollment_balance_dto.py
 ────────────────────────────────────────────────────────────
 Enrollment balance DTO.
 """

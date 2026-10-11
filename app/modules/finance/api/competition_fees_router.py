@@ -8,9 +8,10 @@ Paths, request bodies, responses and auth are unchanged:
   POST /teams/{team_id}/members/{student_id}/pay
   POST /teams/{team_id}/members/{student_id}/refund
 """
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
-from app.api.dependencies import UoW, get_notification_service, require_admin
+from app.api.dependencies import require_admin
+from app.modules.finance.api.deps import get_competition_fee_service
 from app.api.schemas.common import ApiResponse
 from app.modules.finance.api.schemas.competition_fee import PayCompetitionFeeBody, RefundCompetitionFeeBody
 from app.modules.auth import User
@@ -21,13 +22,6 @@ from app.modules.finance.schemas.competition_fee import (
 from app.modules.finance.services.competition_fee_service import CompetitionFeeService
 
 router = APIRouter(tags=["Teams"])
-
-
-def get_competition_fee_service(
-    uow: UoW,
-    notification_svc: "NotificationService" = Depends(get_notification_service),
-) -> CompetitionFeeService:
-    return CompetitionFeeService(uow, notification_svc=notification_svc)
 
 
 @router.post(
@@ -52,7 +46,6 @@ def pay_competition_fee(
     team_id: int,
     student_id: int,
     body: PayCompetitionFeeBody,
-    background_tasks: BackgroundTasks,
     current_user: User = Depends(require_admin),
     svc: CompetitionFeeService = Depends(get_competition_fee_service),
 ):
@@ -64,7 +57,7 @@ def pay_competition_fee(
         parent_id=body.parent_id,
         received_by_user_id=current_user.id,
     )
-    result = svc.pay_competition_fee(cmd, background_tasks=background_tasks)
+    result = svc.pay_competition_fee(cmd)
     return ApiResponse(data=result, message="Payment processed successfully.")
 
 

@@ -1,5 +1,5 @@
 """
-app/modules/finance/interfaces/dto/receipt_with_lines_dto.py
+app/modules/finance/schemas/receipt_with_lines_dto.py
 ─────────────────────────────────────────────────────────────
 Receipt with lines DTO.
 """

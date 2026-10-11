@@ -9,7 +9,7 @@ from typing import Optional
 from pydantic import BaseModel, field_validator
 
 from app.shared.constants import PaymentMethod, PAYMENT_METHOD_MAP
-from app.modules.finance import ReceiptLineInput
+from app.modules.finance.schemas import ReceiptLineInput
 from app.modules.finance.schemas.receipt_generation import BatchGenerateResponse, BatchReceiptItem  # noqa: F401
 
 

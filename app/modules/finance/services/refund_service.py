@@ -9,12 +9,19 @@ from typing import Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     from app.modules.crm import StudentActivityService
 
-from app.modules.finance.interfaces import (
+from app.modules.finance.schemas import (
     RefundResultDTO,
     IssueRefundDTO,
 )
-from app.modules.finance.repositories.unit_of_work import FinanceUnitOfWork
+from app.db.uow import UnitOfWork
+from app.modules.crm import LogPaymentDTO
+from app.modules.finance.repositories.receipt_repository import ReceiptRepository
+from app.modules.finance.repositories.payment_repository import PaymentRepository
 from app.shared.exceptions import NotFoundError, BusinessRuleError
+from app.modules.finance.schemas import CreateReceiptDTO
+from app.modules.finance.schemas import AddPaymentLineDTO
+from app.modules.finance.models.payment import Payment
+from sqlalchemy import select
 
 
 class RefundService:
@@ -30,13 +37,15 @@ class RefundService:
 
     def __init__(
         self,
-        uow: FinanceUnitOfWork,
+        uow: UnitOfWork,
         activity_svc: Optional["StudentActivityService"] = None,
     ) -> None:
         self._uow = uow
+        self._receipts = ReceiptRepository(uow.session)
+        self._payments = PaymentRepository(uow.session)
         self._activity_svc = activity_svc
 
-    def issue(self, dto: IssueRefundDTO) -> RefundResultDTO:
+    def issue(self, dto: IssueRefundDTO, commit: bool = True) -> RefundResultDTO:
         """
         Issue a refund for an original payment.
         
@@ -49,13 +58,13 @@ class RefundService:
             raise BusinessRuleError("Refund amount must be positive.")
 
         # Get original payment
-        original = self._uow.payments.get_by_id(dto.payment_id)
+        original = self._payments.get_by_id(dto.payment_id)
         if not original:
             raise NotFoundError(f"Original payment {dto.payment_id} not found.")
 
         # Validate refund amount
         original_amount = Decimal(str(original.amount))
-        already_refunded = self._uow.payments.get_total_refunded(dto.payment_id)
+        already_refunded = self._payments.get_total_refunded(dto.payment_id)
         available = original_amount - already_refunded
 
         if dto.amount > available:
@@ -67,13 +76,12 @@ class RefundService:
         # Determine payer name from original receipt
         payer_name = None
         if original.receipt_id:
-            orig_receipt = self._uow.receipts.get_by_id(original.receipt_id)
+            orig_receipt = self._receipts.get_by_id(original.receipt_id)
             if orig_receipt:
                 payer_name = orig_receipt.payer_name
 
         # Create refund receipt
-        from app.modules.finance.interfaces import CreateReceiptDTO
-        refund_receipt = self._uow.receipts.create(
+        refund_receipt = self._receipts.create(
             CreateReceiptDTO(
                 payer_name=payer_name,
                 payment_method=dto.method,
@@ -81,11 +89,10 @@ class RefundService:
                 notes=f"Refund: {dto.reason}",
             )
         )
-        self._uow.receipts.set_receipt_number(refund_receipt.id)
+        self._receipts.set_receipt_number(refund_receipt.id)
 
         # Add refund line
-        from app.modules.finance.interfaces import AddPaymentLineDTO
-        refund_payment = self._uow.payments.add_line(
+        refund_payment = self._payments.add_line(
             AddPaymentLineDTO(
                 receipt_id=refund_receipt.id,
                 student_id=original.student_id,
@@ -106,17 +113,14 @@ class RefundService:
         # Get updated balance if applicable
         new_balance: Optional[Decimal] = None
         if original.enrollment_id:
-            balance_dto = self._uow.payments.get_enrollment_balance(
+            balance_dto = self._payments.get_enrollment_balance(
                 original.enrollment_id
             )
             if balance_dto:
                 new_balance = balance_dto.balance
 
-        self._uow.commit()
-
         # Log refund activity
         if self._activity_svc and original.student_id:
-            from app.modules.crm import LogPaymentDTO
             self._activity_svc.log_payment(
                 LogPaymentDTO(
                     student_id=original.student_id,
@@ -126,6 +130,11 @@ class RefundService:
                     performed_by=dto.received_by_user_id,
                 )
             )
+
+        if commit:
+            self._uow.commit()
+        else:
+            self._uow.flush()
 
         return RefundResultDTO(
             receipt_number=refund_receipt.receipt_number or "",
@@ -137,17 +146,18 @@ class RefundService:
         self, original_payment_id: int, refunded_amount: Decimal
     ) -> None:
         """Internal: Decrement competition fee amount_paid when refunding."""
-        from app.modules.competitions.models.team_models import TeamMember
-        from app.modules.finance.models.payment import Payment
-        from sqlalchemy import select
 
         stmt = select(Payment).where(Payment.id == original_payment_id)
-        payment = self._uow._session.exec(stmt).first()
+        payment = self._uow.session.exec(stmt).first()
 
         if payment and payment.team_member_id:
-            member = self._uow._session.get(TeamMember, payment.team_member_id)
+            # Imported here, not at module level: competitions' model package
+            # registers finance's models on import (circular otherwise).
+            from app.modules.competitions.models.team_models import TeamMember
+
+            member = self._uow.session.get(TeamMember, payment.team_member_id)
             if member:
                 member.amount_paid = max(
                     0.0, float(member.amount_paid) - float(refunded_amount)
                 )
-                self._uow._session.add(member)
+                self._uow.session.add(member)

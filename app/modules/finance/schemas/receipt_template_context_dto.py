@@ -1,5 +1,5 @@
 """
-app/modules/finance/interfaces/dto/receipt_template_context_dto.py
+app/modules/finance/schemas/receipt_template_context_dto.py
 ───────────────────────────────────────────────────────────────────
 Receipt template context DTO.
 """

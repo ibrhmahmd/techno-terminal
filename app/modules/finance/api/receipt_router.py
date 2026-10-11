@@ -9,7 +9,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, Response, HTTPException
 
 from app.api.dependencies import require_any, require_admin
-from app.modules.finance.api.deps import get_receipt_service
+from app.modules.finance.api.deps import get_receipt_generation_service, get_receipt_service
 from app.api.schemas.common import ApiResponse
 from app.modules.finance.api.schemas.receipt import (
     BatchGenerateRequest,
@@ -21,9 +21,9 @@ from app.modules.finance.api.schemas.receipt import (
 from app.modules.finance.api.finance_mapper import to_receipt_list_item, to_receipt_detail_response
 from app.modules.auth.models import User
 from app.modules.finance.services.receipt_service import ReceiptService
-from app.modules.finance.services.receipt_generation_service import get_receipt_generation_service
-from app.modules.finance.interfaces import SearchReceiptsDTO
+from app.modules.finance.schemas import SearchReceiptsDTO
 from app.shared.exceptions import NotFoundError
+from datetime import datetime
 
 
 router = APIRouter(tags=["Receipts"])
@@ -132,7 +132,6 @@ def generate_receipt(
     - Payment method
     - Remaining balance (if requested)
     """
-    from datetime import datetime
     
     content = svc.generate_receipt_text(
         receipt_id=receipt_id,

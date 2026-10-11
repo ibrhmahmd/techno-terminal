@@ -1,5 +1,5 @@
 """
-app/modules/finance/interfaces/dto/issue_refund_dto.py
+app/modules/finance/schemas/issue_refund_dto.py
 ────────────────────────────────────────────────────────
 Issue refund DTO.
 """

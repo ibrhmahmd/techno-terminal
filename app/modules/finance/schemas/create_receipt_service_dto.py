@@ -1,5 +1,5 @@
 """
-app/modules/finance/interfaces/dto/create_receipt_service_dto.py
+app/modules/finance/schemas/create_receipt_service_dto.py
 ──────────────────────────────────────────────────────────────────
 Create receipt service DTO.
 """

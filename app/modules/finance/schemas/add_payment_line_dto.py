@@ -1,5 +1,5 @@
 """
-app/modules/finance/interfaces/dto/add_payment_line_dto.py
+app/modules/finance/schemas/add_payment_line_dto.py
 ──────────────────────────────────────────────────────────────
 Add payment line DTO.
 """

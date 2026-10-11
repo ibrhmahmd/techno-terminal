@@ -8,8 +8,8 @@ This module provides pure functions for DTO transformations,
 keeping the conversion logic separate from routers and services.
 """
 
-from app.modules.finance import ReceiptSearchItem
-from app.modules.finance.interfaces.dto import ReceiptDetailDTO
+from app.modules.finance.schemas import ReceiptSearchItem
+from app.modules.finance.schemas import ReceiptDetailDTO
 from app.modules.finance.api.schemas.receipt import (
     ReceiptListItem,
     ReceiptDetailResponse,

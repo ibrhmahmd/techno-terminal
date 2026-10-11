@@ -1,5 +1,5 @@
 """
-app/modules/finance/interfaces/dto/payment_list_item_dto.py
+app/modules/finance/schemas/payment_list_item_dto.py
 ──────────────────────────────────────────────────────────
 Payment list item DTO for student payments listing.
 """

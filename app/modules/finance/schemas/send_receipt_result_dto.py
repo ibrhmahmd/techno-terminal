@@ -1,5 +1,5 @@
 """
-app/modules/finance/interfaces/dto/send_receipt_result_dto.py
+app/modules/finance/schemas/send_receipt_result_dto.py
 ────────────────────────────────────────────────────────────
 Send receipt result DTO.
 """

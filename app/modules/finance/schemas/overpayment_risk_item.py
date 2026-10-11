@@ -1,5 +1,5 @@
 """
-app/modules/finance/interfaces/dto/overpayment_risk_item.py
+app/modules/finance/schemas/overpayment_risk_item.py
 ────────────────────────────────────────────────────────────
 Overpayment risk item DTO.
 """

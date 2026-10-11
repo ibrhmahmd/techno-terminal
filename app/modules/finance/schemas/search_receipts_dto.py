@@ -1,5 +1,5 @@
 """
-app/modules/finance/interfaces/dto/search_receipts_dto.py
+app/modules/finance/schemas/search_receipts_dto.py
 ───────────────────────────────────────────────────────────
 Search receipts DTO.
 """

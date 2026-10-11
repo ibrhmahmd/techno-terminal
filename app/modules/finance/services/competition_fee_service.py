@@ -8,13 +8,13 @@ import logging
 from decimal import Decimal
 from typing import Optional
 
-from fastapi import BackgroundTasks
 from app.db.uow import UnitOfWork
 from app.modules.competitions import TeamFeeService
 from app.modules.crm import LogPaymentDTO, StudentActivityService
-from app.modules.finance.interfaces import CreateReceiptServiceDTO, IssueRefundDTO, RefundResultDTO
+from app.modules.finance.schemas import CreateReceiptServiceDTO, IssueRefundDTO, RefundResultDTO
 from app.modules.finance.repositories.competition_fee_repository import CompetitionFeeRepository
-from app.modules.finance.repositories.unit_of_work import FinanceUnitOfWork
+from app.modules.finance.ports import PaymentNotifier
+from app.modules.finance.repositories.payment_repository import PaymentRepository
 from app.modules.finance.schemas import ReceiptLineInput
 from app.modules.finance.schemas.competition_fee import (
     PayCompetitionFeeInput,
@@ -28,10 +28,11 @@ logger = logging.getLogger(__name__)
 
 
 class CompetitionFeeService:
-    def __init__(self, uow: UnitOfWork, notification_svc=None) -> None:
+    def __init__(self, uow: UnitOfWork, notifier: Optional[PaymentNotifier] = None) -> None:
         self._uow = uow
         self._session = uow.session
-        self._notification_svc = notification_svc
+        self._notifier = notifier
+        self._payments = PaymentRepository(uow.session)
         self._repo = CompetitionFeeRepository(uow.session)
         self._team_fees = TeamFeeService(self._uow)
 
@@ -46,7 +47,6 @@ class CompetitionFeeService:
     def pay_competition_fee(
         self,
         cmd: PayCompetitionFeeInput,
-        background_tasks: Optional[BackgroundTasks] = None,
     ) -> PayCompetitionFeeResponseDTO:
         """
         Process a competition fee payment for a team member.
@@ -71,27 +71,26 @@ class CompetitionFeeService:
             if parent:
                 payer_name = parent.full_name
 
-        with FinanceUnitOfWork(session=self._session) as finance_uow:
-            result = ReceiptService(finance_uow).create(
-                CreateReceiptServiceDTO(
-                    lines=[
-                        ReceiptLineInput(
-                            student_id=cmd.student_id,
-                            enrollment_id=None,
-                            team_member_id=member.id,
-                            amount=amount,
-                            payment_type="competition",
-                        )
-                    ],
-                    payer_name=payer_name,
-                    payment_method="cash",
-                    received_by_user_id=cmd.received_by_user_id,
-                    allow_credit=False,
-                    notes=f"Competition fee — Team #{cmd.team_id}",
-                ),
-                commit=False,
-            )
-            payment_id = result.payment_ids[0]
+        result = ReceiptService(self._uow).create(
+            CreateReceiptServiceDTO(
+                lines=[
+                    ReceiptLineInput(
+                        student_id=cmd.student_id,
+                        enrollment_id=None,
+                        team_member_id=member.id,
+                        amount=amount,
+                        payment_type="competition",
+                    )
+                ],
+                payer_name=payer_name,
+                payment_method="cash",
+                received_by_user_id=cmd.received_by_user_id,
+                allow_credit=False,
+                notes=f"Competition fee — Team #{cmd.team_id}",
+            ),
+            commit=False,
+        )
+        payment_id = result.payment_ids[0]
 
         self._team_fees.record_payment(member.id, amount)
 
@@ -107,16 +106,18 @@ class CompetitionFeeService:
         # One commit: if anything above fails, receipt, payment and fee all roll back.
         self._uow.commit()
 
-        if self._notification_svc and background_tasks:
-            self._notification_svc.competition.notify_competition_fee_paid(
-                student_id=cmd.student_id,
-                team_id=cmd.team_id,
-                team_name=team.team_name,
-                competition_name=comp.name if comp else "Unknown",
-                amount=Decimal(str(amount)),
-                receipt_number=result.receipt_number,
-                background_tasks=background_tasks,
-            )
+        if self._notifier:
+            try:
+                self._notifier.competition_fee_paid(
+                    student_id=cmd.student_id,
+                    team_id=cmd.team_id,
+                    team_name=team.team_name,
+                    competition_name=comp.name if comp else "Unknown",
+                    amount=Decimal(str(amount)),
+                    receipt_number=result.receipt_number,
+                )
+            except Exception:
+                logger.exception("Payment notifier failed for competition fee of student %s", cmd.student_id)
 
         updated_member = self._repo.get_team_member(cmd.team_id, cmd.student_id)
         return PayCompetitionFeeResponseDTO(
@@ -170,12 +171,12 @@ class CompetitionFeeService:
     # ── refund ────────────────────────────────────────────────────────────────
 
     def _get_refundable_competition_payment_id(
-        self, finance_uow: FinanceUnitOfWork, team_member_id: int, amount: float
+        self, team_member_id: int, amount: float
     ) -> int:
         """Find the newest competition payment with enough refundable balance."""
         requested = Decimal(str(amount))
-        for payment in finance_uow.payments.list_refundable_competition_payments(team_member_id):
-            available = Decimal(str(payment.amount)) - finance_uow.payments.get_total_refunded(
+        for payment in self._payments.list_refundable_competition_payments(team_member_id):
+            available = Decimal(str(payment.amount)) - self._payments.get_total_refunded(
                 payment.id
             )
             if available >= requested:
@@ -198,18 +199,18 @@ class CompetitionFeeService:
         if amount <= 0:
             raise BusinessRuleError("Refund amount must be greater than 0.")
 
-        with FinanceUnitOfWork(session=self._session) as finance_uow:
-            original_payment_id = self._get_refundable_competition_payment_id(
-                finance_uow, team_member_id, amount
-            )
-            result = RefundService(finance_uow).issue(
-                IssueRefundDTO(
-                    payment_id=original_payment_id,
-                    amount=Decimal(str(amount)),
-                    reason=f"Competition fee refund for team member {team_member_id}",
-                    received_by_user_id=current_user_id,
-                    method="cash",
-                )
-            )
+        original_payment_id = self._get_refundable_competition_payment_id(
+            team_member_id, amount
+        )
+        result = RefundService(self._uow).issue(
+            IssueRefundDTO(
+                payment_id=original_payment_id,
+                amount=Decimal(str(amount)),
+                reason=f"Competition fee refund for team member {team_member_id}",
+                received_by_user_id=current_user_id,
+                method="cash",
+            ),
+            commit=False,
+        )
         self._uow.commit()
         return result

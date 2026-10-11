@@ -17,7 +17,7 @@ Tag:    Finance
 from decimal import Decimal
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, status, BackgroundTasks, HTTPException
+from fastapi import APIRouter, Depends, Query, status, HTTPException
 
 from app.api.schemas.common import ApiResponse, PaginatedResponse
 from app.modules.finance.api.schemas.receipt import (
@@ -44,9 +44,11 @@ from app.modules.finance.services.receipt_service import ReceiptService
 from app.modules.finance.services.refund_service import RefundService
 from app.modules.finance.services.balance_service import BalanceService
 from app.modules.finance.services.reporting_service import ReportingService
-from app.modules.finance import ReceiptLineInput, UnpaidCompFeeItem
-from app.modules.finance.interfaces import CreateReceiptServiceDTO, IssueRefundDTO
+from app.modules.finance.schemas import ReceiptLineInput, UnpaidCompFeeItem
+from app.modules.finance.schemas import CreateReceiptServiceDTO, IssueRefundDTO
 from app.modules.auth import User
+from app.modules.finance.api.schemas.payment import ReceiptDetails, EnrollmentInfo, StudentSnapshot, ParentInfo
+from app.shared.exceptions import NotFoundError
 
 router = APIRouter(tags=["Finance"])
 
@@ -63,7 +65,6 @@ router = APIRouter(tags=["Finance"])
 )
 def create_receipt(
     body: CreateReceiptRequest,
-    background_tasks: BackgroundTasks,
     current_user: User = Depends(require_admin),
     service: ReceiptService = Depends(get_receipt_service),
 ) -> ApiResponse[ReceiptCreationResponse]:
@@ -94,7 +95,6 @@ def create_receipt(
             allow_credit=body.allow_credit,
             notes=body.notes,
         ),
-        background_tasks=background_tasks
     )
 
     return ApiResponse(
@@ -346,7 +346,6 @@ def get_payment_details(
         result = svc.get_payment_details(payment_id)
         
         # Import nested schemas
-        from app.modules.finance.api.schemas.payment import ReceiptDetails, EnrollmentInfo, StudentSnapshot, ParentInfo
         
         # Map to response schema
         return ApiResponse(
@@ -388,7 +387,6 @@ def get_payment_details(
             )
         )
     except Exception as e:
-        from app.shared.exceptions import NotFoundError
         if isinstance(e, NotFoundError):
             raise HTTPException(status_code=404, detail=str(e))
         raise
@@ -403,7 +401,6 @@ def get_payment_details(
 def send_payment_receipt(
     payment_id: int,
     body: SendReceiptRequest,
-    background_tasks: BackgroundTasks,
     current_user: User = Depends(require_admin),
     svc: StudentPaymentService = Depends(get_student_payment_service),
 ):
@@ -419,7 +416,6 @@ def send_payment_receipt(
         result = svc.send_receipt(
             payment_id=payment_id,
             method=body.method,
-            background_tasks=background_tasks,
             sent_by_user_id=current_user.id,
         )
         
@@ -434,7 +430,6 @@ def send_payment_receipt(
             message=result.message,
         )
     except Exception as e:
-        from app.shared.exceptions import NotFoundError
         if isinstance(e, NotFoundError):
             raise HTTPException(status_code=404, detail=str(e))
         raise HTTPException(status_code=500, detail=str(e))

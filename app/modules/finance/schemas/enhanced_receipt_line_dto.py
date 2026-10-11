@@ -1,5 +1,5 @@
 """
-app/modules/finance/interfaces/dto/enhanced_receipt_line_dto.py
+app/modules/finance/schemas/enhanced_receipt_line_dto.py
 ────────────────────────────────────────────────────────────────
 Enhanced receipt line DTO with complete payment context.
 """

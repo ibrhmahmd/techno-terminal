@@ -1,5 +1,5 @@
 """
-app/modules/finance/interfaces/dto/paginated_enrollment_balances_dto.py
+app/modules/finance/schemas/paginated_enrollment_balances_dto.py
 ────────────────────────────────────────────────────────────────────────
 Paginated enrollment balances DTO.
 """

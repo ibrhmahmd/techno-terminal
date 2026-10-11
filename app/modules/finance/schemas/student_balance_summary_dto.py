@@ -1,5 +1,5 @@
 """
-app/modules/finance/interfaces/dto/student_balance_summary_dto.py
+app/modules/finance/schemas/student_balance_summary_dto.py
 ────────────────────────────────────────────────────────────────
 Student balance summary DTO.
 """

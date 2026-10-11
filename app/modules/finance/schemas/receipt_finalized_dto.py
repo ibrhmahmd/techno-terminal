@@ -1,5 +1,5 @@
 """
-app/modules/finance/interfaces/dto/receipt_finalized_dto.py
+app/modules/finance/schemas/receipt_finalized_dto.py
 ─────────────────────────────────────────────────────────────
 Receipt finalized DTO.
 """
@@ -8,7 +8,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import List
 
-from app.modules.finance.interfaces.dto.receipt_line_item_dto import ReceiptLineItemDTO
+from app.modules.finance.schemas.receipt_line_item_dto import ReceiptLineItemDTO
 
 
 @dataclass(frozen=True)
