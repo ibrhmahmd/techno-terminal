@@ -25,14 +25,18 @@ def get_group_service(
     return GroupCoreService(uow)
 
 
-def get_group_directory_service() -> GroupDirectoryService:
-    """Returns a fresh GroupDirectoryService instance per request."""
-    return GroupDirectoryService()
+def get_group_directory_service(
+    uow: UoW,
+) -> GroupDirectoryService:
+    """Returns a GroupDirectoryService with request-scoped UnitOfWork."""
+    return GroupDirectoryService(uow)
 
 
-def get_group_level_service() -> GroupLevelService:
-    """Returns a fresh GroupLevelService instance per request."""
-    return GroupLevelService()
+def get_group_level_service(
+    uow: UoW,
+) -> GroupLevelService:
+    """Returns a GroupLevelService with request-scoped UnitOfWork."""
+    return GroupLevelService(uow)
 
 
 def get_session_service(
@@ -42,6 +46,8 @@ def get_session_service(
     return SessionService(uow)
 
 
-def get_group_analytics_service() -> GroupAnalyticsService:
-    """Returns a fresh GroupAnalyticsService instance per request."""
-    return GroupAnalyticsService()
+def get_group_analytics_service(
+    uow: UoW,
+) -> GroupAnalyticsService:
+    """Returns a GroupAnalyticsService with request-scoped UnitOfWork."""
+    return GroupAnalyticsService(uow)
