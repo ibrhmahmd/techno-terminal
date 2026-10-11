@@ -11,7 +11,6 @@ import app.modules.competitions.repositories.competition_repository as comp_repo
 from app.shared.exceptions import NotFoundError, BusinessRuleError, ConflictError
 from app.modules.competitions.schemas.team_schemas import (
     RegisterTeamInput,
-    PayCompetitionFeeInput,
     TeamDTO,
     StudentCompetitionDTO,
     TeamRegistrationResultDTO,
@@ -19,7 +18,6 @@ from app.modules.competitions.schemas.team_schemas import (
     AddTeamMemberResultDTO,
     AddTeamMemberResultWithWarningDTO,
     TeamMemberRosterDTO,
-    PayCompetitionFeeResponseDTO,
     TeamMemberDTO,
     TeamWithMembersDTO,
 )
@@ -28,11 +26,6 @@ from app.modules.competitions.models.team_models import Team
 from app.modules.crm import StudentActivityService, LogCompetitionRegistrationDTO, LogPaymentDTO
 from app.modules.crm.models.student_models import Student
 from app.modules.crm.models.parent_models import Parent
-from app.modules.finance.interfaces import CreateReceiptServiceDTO, IssueRefundDTO, RefundResultDTO
-from app.modules.finance.repositories.unit_of_work import FinanceUnitOfWork
-from app.modules.finance.services.receipt_service import ReceiptService
-from app.modules.finance.services.refund_service import RefundService
-from app.modules.finance import ReceiptLineInput
 
 if TYPE_CHECKING:
     from app.modules.notifications.services.notification_service import NotificationService
@@ -273,56 +266,6 @@ class TeamService:
             uow.commit()
         except Exception:
             logger.exception("Failed to log competition registration activity for team %s", team.id)
-
-    def _log_payment_activity(
-        self,
-        db,
-        student_id: int,
-        payment_id: int,
-        amount: float,
-        competition_name: str,
-        current_user_id: Optional[int],
-    ) -> None:
-        """Log payment activity for competition fee."""
-        try:
-            # Query TeamMember and Team to get team_id and competition_id
-            from app.modules.competitions.models.team_models import TeamMember, Team
-            from sqlmodel import select
-
-            team_member = db.exec(
-                select(TeamMember).where(TeamMember.student_id == student_id)
-            ).first()
-            
-            team_id = team_member.team_id if team_member else None
-            competition_id = None
-            team_name = None
-            if team_member:
-                team_obj = db.get(Team, team_member.team_id)
-                if team_obj:
-                    competition_id = team_obj.competition_id
-                    team_name = team_obj.team_name
-
-            uow = UnitOfWork(db)
-            activity_svc = StudentActivityService(uow)
-
-            activity_svc.log_payment(
-                LogPaymentDTO(
-                    student_id=student_id,
-                    payment_id=payment_id,
-                    amount=Decimal(str(amount)),
-                    payment_type="competition_fee",
-                    performed_by=current_user_id,
-                    metadata={
-                        "competition_id": competition_id,
-                        "competition_name": competition_name,
-                        "team_id": team_id,
-                        "team_name": team_name,
-                    }
-                )
-            )
-            uow.commit()
-        except Exception:
-            logger.exception("Failed to log payment activity for student %s, payment %s", student_id, payment_id)
 
     def _log_placement_activity(
         self,
@@ -678,148 +621,3 @@ class TeamService:
                 )
                 for mwr in member_rows
             ]
-
-    def pay_competition_fee(
-        self, cmd: PayCompetitionFeeInput,
-        background_tasks: Optional[BackgroundTasks] = None,
-    ) -> PayCompetitionFeeResponseDTO:
-        """
-        Process competition fee payment for a team member.
-        Single atomic transaction: validation + receipt creation + fee recording.
-        """
-        with get_session() as db:
-            # Validation
-            team = team_repo.get_team(db, cmd.team_id)
-            if not team:
-                raise NotFoundError(f"Team {cmd.team_id} not found.")
-
-            member = team_repo.get_team_member(db, cmd.team_id, cmd.student_id)
-            if not member:
-                raise NotFoundError(f"Student {cmd.student_id} is not a member of team {cmd.team_id}.")
-
-            amount = cmd.amount
-            if amount <= 0:
-                raise BusinessRuleError("Payment amount must be greater than 0.")
-
-            # Fetch parent name if parent_id provided
-            payer_name = None
-            if cmd.parent_id:
-                parent = db.get(Parent, cmd.parent_id)
-                if parent:
-                    payer_name = parent.full_name
-
-            # Create receipt using the SAME session (atomic with fee recording)
-            with FinanceUnitOfWork(session=db) as uow:
-                service = ReceiptService(uow)
-                result = service.create(
-                    CreateReceiptServiceDTO(
-                        lines=[
-                            ReceiptLineInput(
-                                student_id=cmd.student_id,
-                                enrollment_id=None,
-                                team_member_id=member.id,
-                                amount=amount,
-                                payment_type="competition",
-                            )
-                        ],
-                        payer_name=payer_name,
-                        payment_method="cash",
-                        received_by_user_id=cmd.received_by_user_id,
-                        allow_credit=False,
-                        notes=f"Competition fee — Team #{cmd.team_id}",
-                    )
-                )
-                payment_id = result.payment_ids[0]
-
-            # Record payment in the SAME session
-            team_repo.record_payment(db, member.id, amount)
-
-            # Log payment activity
-            comp = comp_repo.get_competition(db, team.competition_id)
-            self._log_payment_activity(
-                db=db,
-                student_id=cmd.student_id,
-                payment_id=payment_id,
-                amount=amount,
-                competition_name=comp.name if comp else "Unknown",
-                current_user_id=cmd.received_by_user_id,
-            )
-
-            # Single atomic commit — if anything fails, everything rolls back
-            # Commit first so data is visible to the background task's fresh session
-            db.commit()
-
-            # Notify: competition fee paid
-            if self._notification_svc and background_tasks:
-                self._notification_svc.competition.notify_competition_fee_paid(
-                    student_id=cmd.student_id,
-                    team_id=cmd.team_id,
-                    team_name=team.team_name,
-                    competition_name=comp.name if comp else "Unknown",
-                    amount=Decimal(str(amount)),
-                    receipt_number=result.receipt_number,
-                    background_tasks=background_tasks,
-                )
-
-
-            # Get updated member for response (from same session)
-            updated_member = team_repo.get_team_member(db, cmd.team_id, cmd.student_id)
-
-        return PayCompetitionFeeResponseDTO(
-            receipt_number=result.receipt_number,
-            payment_id=payment_id,
-            amount=amount,
-            amount_paid=updated_member.amount_paid if updated_member else amount,
-            amount_due=updated_member.amount_due if updated_member else 0.0,
-        )
-
-    def _get_refundable_competition_payment_id(
-        self, finance_uow, team_member_id: int, amount: float
-    ) -> int:
-        """Find the newest competition payment with enough refundable balance."""
-        requested = Decimal(str(amount))
-        for payment in finance_uow.payments.list_refundable_competition_payments(
-            team_member_id
-        ):
-            available = Decimal(str(payment.amount)) - finance_uow.payments.get_total_refunded(
-                payment.id
-            )
-            if available >= requested:
-                return payment.id
-
-        raise BusinessRuleError(
-            "No competition payment with enough refundable balance was found for this refund amount."
-        )
-
-    def refund_competition_fee(
-        self,
-        team_member_id: int,
-        amount: float,
-        current_user_id: Optional[int] = None,
-    ) -> "RefundResultDTO":
-        """
-        Refund a competition payment through the finance module.
-        """
-        with get_session() as db:
-            member = team_repo.get_team_member_by_id(db, team_member_id)
-            if not member:
-                raise NotFoundError(f"Team member {team_member_id} not found.")
-            if amount <= 0:
-                raise BusinessRuleError("Refund amount must be greater than 0.")
-
-            with FinanceUnitOfWork(session=db) as finance_uow:
-                original_payment_id = self._get_refundable_competition_payment_id(
-                    finance_uow, team_member_id, amount
-                )
-                refund_service = RefundService(finance_uow)
-                result = refund_service.issue(
-                    IssueRefundDTO(
-                        payment_id=original_payment_id,
-                        amount=Decimal(str(amount)),
-                        reason=f"Competition fee refund for team member {team_member_id}",
-                        received_by_user_id=current_user_id,
-                        method="cash",
-                    )
-                )
-            db.commit()
-            return result

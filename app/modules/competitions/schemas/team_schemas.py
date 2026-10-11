@@ -72,19 +72,6 @@ class AddTeamMemberInput(BaseModel):
     amount_due: Optional[float] = None  # Fee amount due for this member
 
 
-class PayCompetitionFeeInput(BaseModel):
-    team_id: int
-    student_id: int
-    amount: float  # Payment amount (supports partial payments)
-    parent_id: Optional[int] = None
-    received_by_user_id: Optional[int] = None
-
-
-class RefundCompetitionFeeBody(BaseModel):
-    """Input for refunding a competition fee payment."""
-    amount: float  # Refund amount (must not exceed amount_paid)
-
-
 # ── Complex Service Aggregate Output DTOs ─────────────────────────────────
 
 class StudentCompetitionDTO(BaseModel):
@@ -128,15 +115,6 @@ class TeamMemberRosterDTO(BaseModel):
     student_name: str
     amount_due: float = 0.0
     amount_paid: float = 0.0
-
-
-class PayCompetitionFeeResponseDTO(BaseModel):
-    """Returned by pay_competition_fee"""
-    receipt_number: str
-    payment_id: int
-    amount: float
-    amount_paid: float  # New running total after this payment
-    amount_due: float  # For context
 
 
 # Nested DTOs for the massive get_competition_summary

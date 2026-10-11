@@ -9,10 +9,12 @@ from app.api.routers.finance.finance_router import router as finance_router
 from app.api.routers.finance.receipt_router import router as receipt_router
 from app.api.routers.finance.reporting_router import router as reporting_router
 from app.api.routers.finance.student_payments_router import router as student_payments_router
+from app.api.routers.finance.competition_fees_router import router as competition_fees_router
 
 __all__ = [
     "finance_router",
     "receipt_router",
     "reporting_router",
     "student_payments_router",
+    "competition_fees_router",
 ]

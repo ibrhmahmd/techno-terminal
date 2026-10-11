@@ -72,7 +72,7 @@ from app.api.routers.analytics import (
     bi_router,
     dashboard_router,
 )
-from app.api.routers.finance import receipt_router, finance_router, reporting_router, student_payments_router
+from app.api.routers.finance import receipt_router, finance_router, reporting_router, student_payments_router, competition_fees_router
 from app.modules.auth.api import admin_auth_router
 from app.api.routers.tasks import router as tasks_router
 
@@ -178,6 +178,7 @@ def create_app() -> FastAPI:
     # Competitions (competitions and teams)
     app.include_router(competitions_router, prefix="/api/v1", tags=["Competitions"])
     app.include_router(teams_router, prefix="/api/v1", tags=["Teams"])
+    app.include_router(competition_fees_router, prefix="/api/v1", tags=["Teams"])
     # HR
     app.include_router(hr_router.router, prefix="/api/v1", tags=["HR"])
     # Tasks
