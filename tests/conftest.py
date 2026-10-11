@@ -3,6 +3,16 @@ Test configuration and shared fixtures.
 """
 import os
 
+# Tests must never send real email or SMS: blank the messaging credentials
+# before the app (and its settings) are imported.
+for _name in (
+    "GMAIL_SENDER_ADDRESS",
+    "GMAIL_APP_PASSWORD",
+    "TWILIO_ACCOUNT_SID",
+    "TWILIO_AUTH_TOKEN",
+):
+    os.environ[_name] = ""
+
 import pytest
 from fastapi.testclient import TestClient
 from app.api.main import create_app
