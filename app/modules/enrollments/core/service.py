@@ -2,6 +2,7 @@ from typing import Any, Optional, TYPE_CHECKING
 from sqlalchemy.exc import IntegrityError
 from fastapi import BackgroundTasks
 from app.db.connection import get_session
+from app.db.uow import UnitOfWork, unit_of_work
 from app.shared.audit_utils import apply_create_audit
 from app.shared.datetime_utils import utc_now
 from app.modules.crm.models.student_models import StudentStatus
@@ -23,7 +24,6 @@ from app.shared.exceptions import NotFoundError, BusinessRuleError, ConflictErro
 if TYPE_CHECKING:
     from app.modules.notifications.services.notification_service import NotificationService
     from app.modules.crm import (
-        StudentUnitOfWork,
         StudentCrudService,
         StudentActivityService,
         LogStatusChangeDTO,
@@ -42,24 +42,24 @@ class EnrollmentCoreService:
         data: EnrollStudentInput,
         background_tasks: Optional[BackgroundTasks] = None,
     ) -> EnrollmentCoreResult:
-        from app.modules.crm import StudentUnitOfWork, StudentCrudService
+        from app.modules.crm import StudentCrudService
 
-        with StudentUnitOfWork() as uow:
+        with unit_of_work() as uow:
             student_svc = StudentCrudService(uow, self._activity_svc)
             student = student_svc.get_by_id(data.student_id)
-        if not student:
-            raise NotFoundError(f"Student ID {data.student_id} not found.")
-        if student.status == StudentStatus.INACTIVE:
-            raise BusinessRuleError(f"Student '{student.full_name}' is inactive and cannot be enrolled.")
+            if not student:
+                raise NotFoundError(f"Student ID {data.student_id} not found.")
+            if student.status == StudentStatus.INACTIVE:
+                raise BusinessRuleError(f"Student '{student.full_name}' is inactive and cannot be enrolled.")
 
-        group = GroupCoreService().get_group_by_id(data.group_id)
-        if not group:
-            raise NotFoundError(f"Group ID {data.group_id} not found.")
-        if group.status != "active":
-            raise BusinessRuleError(f"Group '{group.name}' is not active (status: {group.status}).")
+            group = GroupCoreService().get_group_by_id(data.group_id)
+            if not group:
+                raise NotFoundError(f"Group ID {data.group_id} not found.")
+            if group.status != "active":
+                raise BusinessRuleError(f"Group '{group.name}' is not active (status: {group.status}).")
 
-        try:
-            with get_session() as session:
+            try:
+                session = uow.session
                 existing = repo.get_active_enrollment(session, data.student_id, data.group_id)
                 if existing:
                     raise ConflictError(f"'{student.full_name}' is already enrolled in this group (Enrollment ID: {existing.id}).")
@@ -110,7 +110,7 @@ class EnrollmentCoreService:
                         )
                     )
 
-                session.commit()
+                uow.commit()
                 session.refresh(created)
                 if self._notification_svc and background_tasks:
                     self._notification_svc.enrollment.notify_enrollment_created(
@@ -125,8 +125,8 @@ class EnrollmentCoreService:
                     enrollment=EnrollmentDTO.model_validate(created),
                     capacity_exceeded=capacity_exceeded,
                 )
-        except IntegrityError:
-            raise ConflictError(f"'{student.full_name}' was just enrolled in this group by another request. Please refresh and try again.")
+            except IntegrityError:
+                raise ConflictError(f"'{student.full_name}' was just enrolled in this group by another request. Please refresh and try again.")
 
     def update_enrollment(
         self,

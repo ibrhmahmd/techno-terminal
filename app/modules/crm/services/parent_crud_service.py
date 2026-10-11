@@ -5,7 +5,8 @@ Implements IParentService protocol.
 from typing import List, Optional
 
 from app.modules.crm.models.parent_models import Parent
-from app.modules.crm.repositories.unit_of_work import StudentUnitOfWork
+from app.db.uow import UnitOfWork
+from app.modules.crm.repositories.parent_repository import ParentRepository
 from app.modules.crm.schemas.parent_schemas import RegisterParentInput, UpdateParentDTO
 from app.shared.exceptions import NotFoundError
 
@@ -13,8 +14,9 @@ from app.shared.exceptions import NotFoundError
 class ParentCrudService:
     """Service for parent CRUD operations."""
     
-    def __init__(self, uow: StudentUnitOfWork) -> None:
+    def __init__(self, uow: UnitOfWork) -> None:
         self._uow = uow
+        self._parents = ParentRepository(uow.session)
     
     def create_parent(self, body: RegisterParentInput) -> Parent:
         """Create a new parent."""
@@ -26,21 +28,21 @@ class ParentCrudService:
             relation=body.relation,
             notes=body.notes,
         )
-        created = self._uow.parents.create(parent)
+        created = self._parents.create(parent)
         self._uow.commit()
         return created
     
     def get_parent_by_id(self, parent_id: int) -> Optional[Parent]:
         """Get a parent by ID."""
-        return self._uow.parents.get_by_id(parent_id)
+        return self._parents.get_by_id(parent_id)
     
     def list_parents(self, skip: int = 0, limit: int = 200) -> List[Parent]:
         """List all parents with pagination."""
-        return self._uow.parents.list_all(skip=skip, limit=limit)
+        return self._parents.list_all(skip=skip, limit=limit)
     
     def update_parent(self, parent_id: int, body: UpdateParentDTO) -> Parent:
         """Update an existing parent."""
-        parent = self._uow.parents.get_by_id(parent_id)
+        parent = self._parents.get_by_id(parent_id)
         if not parent:
             raise NotFoundError(f"Parent {parent_id} not found")
         
@@ -56,10 +58,10 @@ class ParentCrudService:
     
     def delete_parent(self, parent_id: int) -> Optional[Parent]:
         """Delete a parent by ID."""
-        parent = self._uow.parents.delete(parent_id)
+        parent = self._parents.delete(parent_id)
         self._uow.commit()
         return parent
     
     def search_parents(self, query: str) -> List[Parent]:
         """Search parents by name or email."""
-        return self._uow.parents.search(query)
+        return self._parents.search(query)

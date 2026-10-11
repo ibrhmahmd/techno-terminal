@@ -9,15 +9,15 @@ from datetime import date, timedelta
 from sqlalchemy import text
 
 from app.modules.crm.models.student_models import Student, StudentStatus
-from app.modules.crm.repositories.unit_of_work import StudentUnitOfWork
+from app.db.uow import UnitOfWork
 from app.modules.crm.schemas.student_schemas import StudentStatusSummaryDTO
 from app.modules.crm.interfaces.dtos import (
     StudentSummaryDTO,
     StudentGroupedResultDTO,
-    StudentGroupBucketDTO,
     StudentFilterDTO,
     StudentFilterResultDTO,
     StudentFilterItemDTO,
+    StudentGroupBucketDTO,
 )
 from app.modules.crm.validators.student_validator import StudentValidator
 from app.modules.crm.schemas.waiting_list import WaitingListStudentDTO
@@ -26,7 +26,7 @@ from app.modules.crm.schemas.waiting_list import WaitingListStudentDTO
 class SearchService:
     """Service for student search and listing operations using raw SQL."""
     
-    def __init__(self, uow: StudentUnitOfWork) -> None:
+    def __init__(self, uow: UnitOfWork) -> None:
         self._uow = uow
     
     def search(self, query: str) -> List[StudentSummaryDTO]:
