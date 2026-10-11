@@ -45,6 +45,8 @@ Optional PDF/receipt settings in `app/core/config.py`.
 
 `app/` is mid-migration to a target shape recorded in `docs/adr/`. Read the relevant ADR before writing, moving, or reviewing code under `app/modules` or `app/api`. New and migrated code follows the target; legacy code is converted one module per ticket, bottom-up.
 
+Architecture: modular monolith per the `modular-architecture` skill ([ibrhmahmd/modular-architecture](https://github.com/ibrhmahmd/modular-architecture)), tier full; decisions in `docs/adr/` (they override the skill's defaults); module order as in ADR-0003. Load the skill for structural work: adding a module, moving code between modules or layers, migrating a module, cross-module workflows, reviewing such diffs.
+
 ### Target shape (ADRs)
 
 | ADR | Rule |
@@ -57,6 +59,8 @@ Optional PDF/receipt settings in `app/core/config.py`.
 | [0006](docs/adr/0006-cross-module-writes-live-in-the-highest-module.md) | A write workflow spanning modules lives in the highest module involved. |
 | [0007](docs/adr/0007-per-module-notifier-ports.md) | Modules notify through their own Notifier port, called after commit; services take no `BackgroundTasks`. |
 | [0008](docs/adr/0008-interfaces-only-where-two-adapters-exist.md) | A Protocol/ABC exists only where two adapters (a test fake counts) satisfy it. |
+| [0009](docs/adr/0009-services-call-siblings-through-the-shared-unit-of-work.md) | A service may call a sibling service in its module only through the shared injected `UnitOfWork`; services never build their own dependencies or sessions. |
+| [0010](docs/adr/0010-validation-splits-between-schemas-and-services.md) | Format checks are Pydantic validators on schemas; DB/business-state rules live in services; no `validators/` layer. |
 
 Rules that hold in both legacy and target code:
 - **Repositories**: pure SQLModel queries, zero business rules. Services hold business logic.
