@@ -1,6 +1,6 @@
 """
-app/api/schemas/academics/course.py
-─────────────────────────────────────
+app/modules/academics/api/schemas/course.py
+───────────────────────────────────────────
 Public-facing Course DTOs.
 """
 from typing import Optional

@@ -1,6 +1,6 @@
 """
-app/api/schemas/academics/group_level.py
-──────────────────────────────────────────
+app/modules/academics/api/schemas/group_level.py
+────────────────────────────────────────────────
 Public-facing Group Level DTOs.
 """
 from datetime import date, datetime

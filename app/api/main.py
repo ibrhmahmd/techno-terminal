@@ -52,7 +52,7 @@ from app.modules.crm.api import (
     parents_router,
     students_history_router,
 )
-from app.api.routers.academics import (
+from app.modules.academics.api import (
     courses_router,
     groups_router,
     group_directory_router,

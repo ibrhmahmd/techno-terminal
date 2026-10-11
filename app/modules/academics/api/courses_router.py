@@ -1,6 +1,6 @@
 """
-app/api/routers/academics/courses.py
-────────────────────────────────────
+app/modules/academics/api/courses_router.py
+───────────────────────────────────────────
 Courses router.
 
 Endpoints for course management.
@@ -8,9 +8,10 @@ Endpoints for course management.
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.schemas.common import ApiResponse, PaginatedResponse
-from app.api.schemas.academics import CoursePublic
+from app.modules.academics.api.schemas import CoursePublic
 from app.modules.academics.group.directory.schemas import GroupFilterResultDTO
-from app.api.dependencies import require_admin, require_any, get_course_service, get_group_directory_service
+from app.api.dependencies import require_admin, require_any
+from app.modules.academics.api.deps import get_course_service, get_group_directory_service
 from app.modules.academics.course.schemas import AddNewCourseInput, UpdateCourseDTO, CourseStatsDTO
 from app.modules.auth import User
 from app.modules.academics.course.service import CourseService

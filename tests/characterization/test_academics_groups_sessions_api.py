@@ -1,7 +1,7 @@
 """Characterization tests for the Academics Group sessions/level HTTP API (ticket #18, Part 1 of 3).
 
 Pins the exact status codes, response envelopes and field shapes of 3 endpoints
-served by ``app/api/routers/academics/groups_router.py`` BEFORE the Academics HTTP
+served by ``app/modules/academics/api/groups_router.py`` BEFORE the Academics HTTP
 layer moves into ``app/modules/academics/api/``:
 
     POST /academics/groups/{group_id}/progress-level

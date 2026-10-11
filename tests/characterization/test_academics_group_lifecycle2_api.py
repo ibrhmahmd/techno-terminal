@@ -1,7 +1,7 @@
 """Characterization tests for the Academics Group Lifecycle HTTP API (ticket #18, analytics slice).
 
 Pins the exact status codes, envelopes and field shapes of the 4 analytics/history
-endpoints served by ``app/api/routers/academics/group_lifecycle_router.py`` BEFORE
+endpoints served by ``app/modules/academics/api/group_lifecycle_router.py`` BEFORE
 the Academics HTTP layer moves into ``app/modules/academics/api/``:
 
     GET /academics/groups/{group_id}/enrollments/analytics

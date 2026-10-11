@@ -1,6 +1,6 @@
 """
-app/api/routers/academics/group_details_router.py
-────────────────────────────────────────────────
+app/modules/academics/api/group_details_router.py
+─────────────────────────────────────────────────
 Group Details API router.
 
 Endpoints for detailed group management:

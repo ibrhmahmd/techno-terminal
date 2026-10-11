@@ -1,6 +1,6 @@
 """
-app/api/schemas/academics/session.py
-──────────────────────────────────────
+app/modules/academics/api/schemas/session.py
+────────────────────────────────────────────
 Public-facing CourseSession DTOs.
 """
 from datetime import date

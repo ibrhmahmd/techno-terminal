@@ -1,7 +1,7 @@
 """Characterization tests for the Academics Group Lifecycle HTTP API (ticket #18, Part 3 of 3).
 
 Pins the exact status codes, envelopes and field shapes of the 3 level-lifecycle
-endpoints served by ``app/api/routers/academics/group_lifecycle_router.py`` BEFORE
+endpoints served by ``app/modules/academics/api/group_lifecycle_router.py`` BEFORE
 the Academics HTTP layer moves into ``app/modules/academics/api/``:
 
     GET   /academics/groups/{group_id}/levels/{level_number}

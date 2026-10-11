@@ -1,5 +1,5 @@
 """
-app/api/routers/academics/groups_router.py
+app/modules/academics/api/groups_router.py
 ──────────────────────────────────────────
 Groups core CRUD router.
 
@@ -14,18 +14,17 @@ from datetime import date
 from fastapi import APIRouter, Depends, Query, HTTPException
 
 from app.api.schemas.common import ApiResponse, PaginatedResponse
-from app.api.schemas.academics.group import (
+from app.modules.academics.api.schemas.group import (
     GroupPublic,
     ProgressGroupLevelRequest,
     ProgressGroupLevelResult,
 )
-from app.api.schemas.academics.session import SessionPublic, GenerateLevelSessionsRequest
+from app.modules.academics.api.schemas.session import SessionPublic, GenerateLevelSessionsRequest
 from app.api.dependencies import (
     require_admin,
     require_any,
-    get_group_service,
-    get_session_service,
 )
+from app.modules.academics.api.deps import get_group_service, get_session_service
 from app.modules.academics.group.core.schemas import ScheduleGroupInput, UpdateGroupDTO
 from app.modules.auth import User
 from app.modules.academics.group.core.service import GroupCoreService

@@ -1,7 +1,7 @@
 """Characterization tests for the Academics Group Details HTTP API (ticket #18, Part 2 of 3).
 
 Pins the exact status codes, response envelopes and field shapes of 3 endpoints
-served by ``app/api/routers/academics/group_details_router.py`` BEFORE the Academics
+served by ``app/modules/academics/api/group_details_router.py`` BEFORE the Academics
 HTTP layer moves into ``app/modules/academics/api/``:
 
     DELETE /academics/groups/{group_id}/levels/{level_number}

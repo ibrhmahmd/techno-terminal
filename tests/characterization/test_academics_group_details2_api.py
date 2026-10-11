@@ -1,7 +1,7 @@
 """Characterization tests for the Academics Group Details HTTP API (ticket #18, Part 3 of 3).
 
 Pins the exact status codes, response envelopes and field shapes of 2 endpoints
-served by ``app/api/routers/academics/group_details_router.py`` BEFORE the Academics
+served by ``app/modules/academics/api/group_details_router.py`` BEFORE the Academics
 HTTP layer moves into ``app/modules/academics/api/``:
 
     GET /finance/groups/{group_id}/payments
