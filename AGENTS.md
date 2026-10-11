@@ -45,7 +45,7 @@ Optional PDF/receipt settings in `app/core/config.py`.
 
 `app/` is mid-migration to a target shape recorded in `docs/adr/`. Read the relevant ADR before writing, moving, or reviewing code under `app/modules` or `app/api`. New and migrated code follows the target; legacy code is converted one module per ticket, bottom-up.
 
-Architecture: modular monolith per the `modular-architecture` skill ([ibrhmahmd/agent-skills](https://github.com/ibrhmahmd/agent-skills)), tier full; decisions in `docs/adr/` (they override the skill's defaults); module order as in ADR-0003. Load the skill for structural work: adding a module, moving code between modules or layers, migrating a module, cross-module workflows, reviewing such diffs.
+Architecture: modular monolith per the `modular-architecture` skill ([ibrhmahmd/modular-architecture](https://github.com/ibrhmahmd/modular-architecture)), tier full; decisions in `docs/adr/` (they override the skill's defaults); module order as in ADR-0003. Load the skill for structural work: adding a module, moving code between modules or layers, migrating a module, cross-module workflows, reviewing such diffs.
 
 ### Target shape (ADRs)
 
