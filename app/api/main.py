@@ -67,7 +67,7 @@ from app.api.routers.analytics import (
     bi_router,
     dashboard_router,
 )
-from app.api.routers.finance import receipt_router, finance_router, reporting_router
+from app.api.routers.finance import receipt_router, finance_router, reporting_router, student_payments_router
 from app.modules.auth.api import admin_auth_router
 from app.api.routers.tasks import router as tasks_router
 
@@ -136,6 +136,7 @@ def create_app() -> FastAPI:
     )
     # CRM (Students and Parents)
     app.include_router(students_router.router, prefix="/api/v1", tags=["CRM — Students"])
+    app.include_router(student_payments_router, prefix="/api/v1", tags=["CRM — Students"])
     app.include_router(parents_router.router, prefix="/api/v1", tags=["CRM — Parents"])
     # Academics (Courses, Groups, Sessions) + Attendance
     app.include_router(courses_router, prefix="/api/v1", tags=["Academics — Courses"])

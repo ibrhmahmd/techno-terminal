@@ -72,3 +72,18 @@ PAYMENT_STATUSES: list[PaymentStatus] = ["not_paid", "partially_paid", "paid"]
 AttendanceStatus: TypeAlias = Literal["present", "absent", "cancelled"]
 ATTENDANCE_STATUSES: list[AttendanceStatus] = ["present", "absent", "cancelled"]
 
+# ── Day Name Abbreviations ────────────────────────────────────────────────────
+
+# Day abbreviation → canonical name mapping.
+# Used by CRM student filter and Academics group filter endpoints to accept shorthand day names.
+DAY_ABBREV_MAP: dict[str, str] = {
+    "mon": "Monday",
+    "tue": "Tuesday",
+    "wed": "Wednesday",
+    "thu": "Thursday",
+    "thurs": "Thursday",
+    "fri": "Friday",
+    "sat": "Saturday",
+    "sun": "Sunday",
+}
+

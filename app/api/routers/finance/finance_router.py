@@ -44,8 +44,8 @@ from app.api.dependencies import (
     get_refund_service,
     get_balance_service,
     get_reporting_service,
+    get_student_payment_service,
 )
-from app.modules.crm.api.deps import get_student_payment_service
 from app.modules.finance.services.student_payment_service import StudentPaymentService
 from app.modules.finance.services.receipt_service import ReceiptService
 from app.modules.finance.services.refund_service import RefundService

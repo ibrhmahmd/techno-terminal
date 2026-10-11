@@ -20,7 +20,7 @@ from app.api.dependencies import require_any, get_group_directory_service
 from app.modules.auth import User
 from app.modules.academics.group.directory.service import GroupDirectoryService
 from app.modules.academics.group.directory.schemas import GroupFilterDTO, GroupFilterResultDTO
-from app.modules.academics.constants import DAY_ABBREV_MAP
+from app.shared.constants import DAY_ABBREV_MAP
 
 router = APIRouter(tags=["Academics — Group Directory"])
 
