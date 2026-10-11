@@ -78,7 +78,9 @@ def _seed_enrollment(db_session, amount_due: float = 1000.0):
         status="active",
     )
     db_session.add(group)
-    student = Student(full_name=f"Fin Student {_short()}", phone=f"555{_short()[:7]}", status="active")
+    # inactive on purpose: committed test rows must not pile up in the "active" bucket that
+    # legacy list tests page through (limit 200)
+    student = Student(full_name=f"Fin Student {_short()}", phone=f"555{_short()[:7]}", status="inactive")
     db_session.add(student)
     db_session.commit()
     db_session.refresh(group)
