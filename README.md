@@ -12,7 +12,7 @@
 │                         API Layer (FastAPI)                              │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────────┐  │
 │  │     Routers     │  │     Schemas     │  │       Middleware        │  │
-│  │   (21 files)    │  │  (Pydantic DTOs)│  │ (Auth/CORS/Logging)     │  │
+│  │  (per module)   │  │  (Pydantic DTOs)│  │ (Auth/CORS/Logging)     │  │
 │  └─────────────────┘  └─────────────────┘  └─────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────────────┘
                                     │
@@ -51,7 +51,7 @@
 | **Database** | PostgreSQL 15+ | Relational data with complex views |
 | **Auth** | Supabase | JWT-based authentication & user management |
 | **Validation** | Pydantic v2 | Request/response DTOs |
-| **Testing** | pytest | 26 test modules, 180+ tests |
+| **Testing** | pytest | unit, characterization and architecture suites |
 | **Hosting** | FastAPI Cloud | Deploys via root `main.py` |
 
 ---
@@ -61,256 +61,79 @@
 ```
 project_root/
 ├── app/
-│   ├── api/
-│   │   ├── routers/              # 21 router modules (209 endpoints)
-│   │   │   ├── auth_router.py              # 6 endpoints
-│   │   │   ├── crm/
-│   │   │   │   ├── students_router.py      # 22 endpoints
-│   │   │   │   ├── parents_router.py       # 5 endpoints
-│   │   │   │   └── students_history_router.py # 8 endpoints
-│   │   │   ├── academics/
-│   │   │   │   ├── courses_router.py       # 7 endpoints
-│   │   │   │   ├── groups_router.py        # 17 endpoints
-│   │   │   │   ├── sessions_router.py      # 7 endpoints
-│   │   │   │   ├── group_lifecycle_router.py # 12 endpoints
-│   │   │   │   ├── group_competitions_router.py # 7 endpoints
-│   │   │   │   └── group_details_router.py # 5 endpoints
-│   │   │   ├── attendance_router.py        # 2 endpoints
-│   │   │   ├── enrollments_router.py        # 6 endpoints
-│   │   │   ├── finance/
-│   │   │   │   ├── receipt_router.py       # 8 endpoints
-│   │   │   │   ├── finance_router.py       # 8 endpoints
-│   │   │   │   └── reporting_router.py     # 2 endpoints
-│   │   │   ├── competitions/
-│   │   │   │   ├── competitions_router.py  # 14 endpoints
-│   │   │   │   └── teams_router.py         # 14 endpoints
-│   │   │   ├── hr_router.py                # 7 endpoints
-│   │   │   ├── analytics/
-│   │   │   │   ├── academic.py             # 4 endpoints
-│   │   │   │   ├── financial.py            # 6 endpoints
-│   │   │   │   ├── competition.py          # 1 endpoint
-│   │   │   │   ├── bi.py                   # 8 endpoints
-│   │   │   │   └── dashboard.py            # 1 endpoint
-│   │   │   └── notifications/
-│   │   │       ├── notifications_router.py # 4 endpoints
-│   │   │       ├── templates_router.py     # 6 endpoints
-│   │   │       ├── admin_settings_router.py # 8 endpoints
-│   │   │       └── bulk_router.py          # 4 endpoints
-│   │   ├── schemas/              # Pydantic DTOs
-│   │   │   ├── common.py         # ApiResponse, PaginatedResponse
-│   │   │   ├── auth.py           # Login/Token schemas
-│   │   │   ├── crm/              # Student/Parent DTOs
-│   │   │   ├── academics/        # Course/Group/Session DTOs
-│   │   │   ├── finance/          # Receipt/Payment DTOs
-│   │   │   ├── hr/               # Employee DTOs
-│   │   │   └── analytics/        # Report DTOs
-│   │   ├── dependencies.py       # DI factories & auth guards
-│   │   ├── exceptions.py           # Global exception handlers
-│   │   └── middleware/
-│   │       └── logging_middleware.py  # Request/response logging
-│   ├── modules/                  # 11 business modules
-│   │   ├── auth/                 # User auth, JWT validation
-│   │   ├── crm/                  # Students, Parents, History
-│   │   ├── academics/            # Courses, Groups, Sessions
-│   │   ├── enrollments/          # Student enrollments
-│   │   ├── attendance/           # Session attendance
-│   │   ├── finance/              # Receipts, Payments, Allocations
-│   │   ├── competitions/         # Competitions, Teams, Categories
-│   │   ├── hr/                   # Employees, Staff accounts
-│   │   ├── analytics/            # Reporting aggregations
-│   │   ├── notifications/        # WhatsApp/SMS/Email service
-│   │   └── shared/               # Utilities, exceptions, mappers
+│   ├── api/                      # Shared HTTP code only
+│   │   ├── main.py               # create_app(): routers, handlers, Notifier wiring
+│   │   ├── deps.py               # get_uow / UoW, get_current_user, role guards
+│   │   ├── exceptions.py         # Global exception handlers
+│   │   ├── schemas/common.py     # Response envelope (ApiResponse, ErrorResponse)
+│   │   └── middleware/           # Request/response logging
+│   ├── modules/                  # 11 business modules, bottom to top:
+│   │   │                         #   auth, hr, crm, academics, enrollments, attendance,
+│   │   │                         #   competitions, finance, tasks, notifications, analytics
+│   │   └── <module>/
+│   │       ├── __init__.py       # Facade: the only thing other modules may import
+│   │       ├── api/              # Router, HTTP schemas, deps
+│   │       ├── services/         # Business rules
+│   │       ├── repositories/     # SQLModel queries
+│   │       ├── schemas/          # DTOs
+│   │       └── models/           # ORM models
 │   ├── db/
 │   │   ├── connection.py         # Engine & session factory
-│   │   └── init_db.py            # Schema initialization
-│   └── core/
-│       └── supabase_clients.py   # Supabase client configuration
+│   │   └── uow.py                # UnitOfWork, unit_of_work()
+│   ├── core/                     # Settings, Supabase clients
+│   ├── shared/                   # Cross-module utilities and exceptions
+│   └── observability/            # Logfire setup and business metrics
 ├── db/
-│   ├── schema.sql                # Base DDL (16 tables, 5 views)
-│   └── migrations/               # 44 migration files
-├── tests/                        # 26 test modules
-├── docs/                         # API documentation
-├── memory-bank/                  # Architecture decisions
+│   ├── schema.sql                # Base DDL (modular files in db/schema/)
+│   └── migrations/               # Plain SQL, applied by hand in chronological order
+├── tests/                        # Unit, characterization and architecture tests
+├── docs/adr/                     # Architecture decision records (the target shape)
+├── specs/                        # Feature specs (Speckit)
+├── dashboard/ + audit_dashboard.py  # Internal Streamlit audit dashboard (not part of the API)
 ├── pyproject.toml
-└── run_api.py                    # Entry point
+├── main.py                       # FastAPI Cloud entrypoint
+└── run_api.py                    # Dev server with hot reload
 ```
+
+The module rules (module order, facades, one unit of work per use case) are in
+[`AGENTS.md`](AGENTS.md) and [`docs/adr/`](docs/adr/).
 
 ---
 
-## API Endpoint Inventory (209 Endpoints)
+## API Endpoints (210)
 
-### Authentication (`/api/v1/auth`)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/login` | Supabase login with email/password |
-| POST | `/refresh` | Refresh JWT token |
-| POST | `/logout` | Invalidate session |
-| GET | `/me` | Get current user |
-| POST | `/users` | Create login user (admin only) |
-| POST | `/users/{id}/reset-password` | Force password reset |
+The authoritative list is the OpenAPI document (see **API Documentation** below);
+`tests/snapshots/openapi.json` pins it. Endpoints per tag:
 
-### CRM — Students (`/api/v1/students/*`)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/students` | List all students |
-| POST | `/students` | Create student |
-| GET | `/students/{id}` | Get student by ID |
-| PUT | `/students/{id}` | Update student |
-| DELETE | `/students/{id}` | Soft delete student |
-| GET | `/students/{id}/parents` | Get student parents |
-| POST | `/students/{id}/parents` | Link parent to student |
-| GET | `/students/{id}/enrollments` | Get student enrollments |
-| GET | `/students/{id}/payments` | Get payment history |
-| GET | `/students/{id}/attendance` | Get attendance summary |
-| GET | `/students/filter` | Advanced filter & search |
-| POST | `/students/bulk-delete` | Bulk soft delete |
-
-### CRM — Parents (`/api/v1/parents/*`)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/parents` | List parents |
-| POST | `/parents` | Create parent |
-| GET | `/parents/{id}` | Get parent with students |
-| PUT | `/parents/{id}` | Update parent |
-| DELETE | `/parents/{id}` | Delete parent |
-
-### CRM — Student History (`/api/v1/students-history/*`)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/students-history/{id}` | Full activity timeline |
-| GET | `/students/{id}/history` | Enrollment history |
-| GET | `/students/{id}/activity-log` | Audit trail |
-| GET | `/students/{id}/financial-summary` | Financial overview |
-
-### Academics — Courses (`/api/v1/courses/*`)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/courses` | List courses |
-| POST | `/courses` | Create course |
-| GET | `/courses/{id}` | Get course details |
-| PUT | `/courses/{id}` | Update course |
-| DELETE | `/courses/{id}` | Delete course |
-| GET | `/courses/{id}/groups` | Get course groups |
-| GET | `/courses/{id}/stats` | Course statistics |
-
-### Academics — Groups (`/api/v1/groups/*`)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/groups` | List groups |
-| POST | `/groups` | Create group |
-| GET | `/groups/{id}` | Get group details |
-| PUT | `/groups/{id}` | Update group |
-| DELETE | `/groups/{id}` | Archive group |
-| GET | `/groups/{id}/students` | Get enrolled students |
-| GET | `/groups/{id}/sessions` | Get group sessions |
-| POST | `/groups/{id}/students` | Enroll student |
-| GET | `/groups/active` | List active groups |
-| POST | `/groups/{id}/complete-level` | Level progression |
-| GET | `/groups/{id}/attendance` | Attendance report |
-
-### Academics — Sessions (`/api/v1/sessions/*`)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/sessions` | List sessions |
-| POST | `/sessions` | Create session |
-| GET | `/sessions/{id}` | Get session |
-| PUT | `/sessions/{id}` | Update session |
-| DELETE | `/sessions/{id}` | Cancel session |
-| GET | `/sessions/daily-schedule` | Day schedule view |
-| POST | `/sessions/{id}/mark-attendance` | Bulk attendance |
-
-### Academics — Group Lifecycle (`/api/v1/group-lifecycle/*`)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/groups/{id}/archive` | Archive group |
-| POST | `/groups/{id}/reactivate` | Reactivate group |
-| POST | `/groups/{id}/cancel-session` | Cancel with renumbering |
-| GET | `/groups/{id}/timeline` | Lifecycle history |
-
-### Finance — Receipts (`/api/v1/receipts/*`)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/receipts` | List receipts |
-| POST | `/receipts` | Create receipt |
-| GET | `/receipts/{id}` | Get receipt |
-| PUT | `/receipts/{id}` | Update receipt |
-| DELETE | `/receipts/{id}` | Void receipt |
-| GET | `/receipts/{id}/pdf` | Download PDF |
-| POST | `/receipts/{id}/send` | Email receipt |
-| GET | `/receipts/daily` | Daily collections |
-
-### Finance — Payments (`/api/v1/finance/*`)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/payments` | List payments |
-| POST | `/payments` | Record payment |
-| GET | `/payments/{id}` | Get payment |
-| POST | `/payments/{id}/refund` | Process refund |
-| GET | `/payments/{id}/allocations` | View allocations |
-| GET | `/finance/balances` | Student balances |
-| POST | `/finance/calculate-balance` | Recalculate balance |
-| GET | `/finance/unpaid-enrollments` | Outstanding debts |
-
-### Finance — Reporting (`/api/v1/finance-reporting/*`)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/finance-reporting/summary` | Financial summary |
-| GET | `/finance-reporting/collections` | Collection report |
-
-### Competitions (`/api/v1/competitions/*`, `/api/v1/teams/*`)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/competitions` | List competitions |
-| POST | `/competitions` | Create competition |
-| GET | `/competitions/{id}` | Get details |
-| PUT | `/competitions/{id}` | Update |
-| DELETE | `/competitions/{id}` | Delete |
-| GET | `/competitions/{id}/categories` | List categories |
-| POST | `/competitions/{id}/register` | Register student |
-| GET | `/competitions/{id}/teams` | List teams |
-| POST | `/teams` | Create team |
-| GET | `/teams/{id}` | Get team |
-| PUT | `/teams/{id}` | Update team |
-| DELETE | `/teams/{id}` | Delete team |
-| POST | `/teams/{id}/members` | Add member |
-| DELETE | `/teams/{id}/members/{student_id}` | Remove member |
-
-### HR (`/api/v1/hr/*`)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/hr/employees` | List employees |
-| POST | `/hr/employees` | Create employee |
-| GET | `/hr/employees/{id}` | Get employee |
-| PUT | `/hr/employees/{id}` | Update employee |
-| GET | `/hr/staff-accounts` | List staff accounts |
-| POST | `/hr/attendance/log` | Log attendance |
-| POST | `/hr/employees/{id}/create-account` | Create login |
-
-### Notifications (`/api/v1/notifications/*`)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/notifications/absence` | Send absence alert |
-| POST | `/notifications/receipt/{id}` | Send receipt notification |
-| GET | `/notifications/logs` | Notification logs |
-| GET | `/notifications/logs/parent/{id}` | Parent logs |
-| GET | `/notification-templates` | List templates |
-| POST | `/notification-templates` | Create template |
-| PUT | `/notification-templates/{id}` | Update template |
-| GET | `/notification-settings` | Admin settings |
-| PUT | `/notification-settings` | Update settings |
-| POST | `/notifications/bulk` | Bulk send |
-
-### Analytics (`/api/v1/analytics/*`, `/api/v1/dashboard/*`)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/analytics/academic/student-progress` | Progress report |
-| GET | `/analytics/academic/group-performance` | Group metrics |
-| GET | `/analytics/financial/revenue` | Revenue analytics |
-| GET | `/analytics/financial/outstanding` | Outstanding balances |
-| GET | `/analytics/bi/enrollment-trends` | Enrollment trends |
-| GET | `/analytics/bi/attendance-patterns` | Attendance stats |
-| GET | `/dashboard/summary` | Dashboard KPIs |
-| GET | `/dashboard/activities` | Recent activities |
+| Tag | Endpoints |
+|-----|-----------|
+| Academics — Courses | 6 |
+| Academics — Group Details | 5 |
+| Academics — Group Directory | 3 |
+| Academics — Group Lifecycle | 7 |
+| Academics — Groups | 8 |
+| Academics — Sessions | 7 |
+| Admin Auth | 8 |
+| Analytics — Academic | 4 |
+| Analytics — BI | 8 |
+| Analytics — Competition | 1 |
+| Analytics — Dashboard | 1 |
+| Analytics — Financial | 6 |
+| Attendance | 2 |
+| Authentication | 15 |
+| CRM — Parents | 5 |
+| CRM — Students | 21 |
+| Competitions | 8 |
+| Enrollments | 7 |
+| Finance | 8 |
+| Finance — Reporting | 2 |
+| HR | 9 |
+| Health | 2 |
+| Notifications | 28 |
+| Receipts | 5 |
+| Student History | 10 |
+| Tasks | 11 |
+| Teams | 13 |
 
 ---
 
@@ -355,7 +178,7 @@ def get_student_service():
 ### 3. DTO Pattern with Pydantic
 All API I/O typed with Pydantic:
 ```python
-# app/api/schemas/crm/student.py
+# app/modules/crm/schemas/ (DTOs) and app/modules/crm/api/schemas/ (HTTP)
 class StudentPublic(BaseModel):
     id: int
     full_name: str
@@ -485,67 +308,6 @@ pytest tests/ -v --tb=short
 
 ## Testing
 
-| Metric | Value |
-|--------|-------|
-| Metric | Value |
-|--------|-------|
-| Test Modules | 26 |
-| Total Tests | 180+ |
-| Endpoint Coverage | 94% |
-| Auth Tests | 6/6 |
-| CRM Tests | 26/26 |
-| Finance Tests | 24/24 |
-| Academics Tests | 14/14 |
-
----
-
-## Development Phases
-
-| Phase | Status | Domain |
-|-------|--------|--------|
-| Phase 1 | ✅ Complete | Core Foundation (Auth, DB) |
-| Phase 2 | ✅ Complete | CRM (Students, Parents) |
-| Phase 3 | ✅ Complete | Operations (Enrollments, Attendance) |
-| Phase 4 | ✅ Complete | Finance (Receipts, Payments) |
-| Phase 5 | ✅ Complete | Competitions & Teams |
-| Phase 6 | ✅ Complete | Analytics & Reporting |
-| Phase 7 | ✅ Complete | Notifications (WhatsApp, SMS, Email) |
-
----
-
-## Recent Fixes
-
-### 029 — Payment Method Normalization (2026-06-10)
-
-Expanded the backend `PaymentMethod` type to accept E-Wallet, instaPay, and Other
-payment methods from the frontend. Added a normalization mapping that accepts any
-input format (icon names like `"bolt"`, display labels like `"instaPay"`, lowercase
-labels, or coded values) and maps them to canonical storage values.
-
-**Files changed**: `app/shared/constants.py`, `app/api/schemas/finance/receipt.py`
-**Tests added**: 16 (covering all 7 methods, icon names, casing, edge cases)
-
-| Method | Accepted Inputs | Stored As |
-|--------|----------------|-----------|
-| Cash | `"cash"`, `"Cash"`, `"payments"` | `"cash"` |
-| Card | `"card"`, `"Card"` | `"card"` |
-| Transfer | `"transfer"`, `"Transfer"` | `"transfer"` |
-| Online | `"online"`, `"Online"` | `"online"` |
-| E-Wallet | `"ewallet"`, `"E-Wallet"`, `"e-wallet"`, `"e_wallet"`, `"account_balance_wallet"` | `"ewallet"` |
-| instaPay | `"instapay"`, `"instaPay"`, `"insta_pay"`, `"insta-pay"`, `"bolt"` | `"instapay"` |
-| Other | `"other"`, `"Other"`, `"more_horiz"` | `"other"` |
-
-### 028 — Student Status Registration (2026-06-10)
-
-Fixed a case-sensitive enum bug where registering a student with status `"Waiting"`
-(or any non-lowercase casing) caused a 422 validation error. Added a
-`@field_validator` that normalizes status casing before enum validation.
-
-**Files changed**: `app/modules/crm/schemas/student_schemas.py`
-**Tests added**: 10 (covering lowercase, capitalized, uppercase, null, edge cases)
-
-| Status | Accepted Inputs |
-|--------|----------------|
-| Active | `"active"`, `"Active"`, `"ACTIVE"` |
-| Waiting | `"waiting"`, `"Waiting"`, `"WAITING"` |
-| Inactive | `"inactive"`, `"Inactive"`, `"INACTIVE"` |
+See [`AGENTS.md`](AGENTS.md) for the test commands and the environment ladder.
+The local gate is `pytest -m "not supabase"` against a throwaway Postgres
+(`scripts/local_test_db.sh up`); `pytest tests/architecture` checks the module rules and the API snapshot.
