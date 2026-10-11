@@ -9,14 +9,12 @@ from .team_schemas import (
     TeamMemberDTO,
     RegisterTeamInput,
     AddTeamMemberInput,
-    PayCompetitionFeeInput,
     StudentCompetitionDTO,
     TeamRegistrationResultDTO,
     TeamRegistrationResultWithWarningDTO,
     AddTeamMemberResultDTO,
     AddTeamMemberResultWithWarningDTO,
     TeamMemberRosterDTO,
-    PayCompetitionFeeResponseDTO,
     CompetitionSummaryDTO,
     CompetitionSummaryDataDTO,
     CategoryWithTeamsDTO,
@@ -24,7 +22,6 @@ from .team_schemas import (
     CategorySubcategoryDTO,
     TeamMemberWithNameDTO,
     StudentMembershipEnrichedDTO,
-    RefundCompetitionFeeBody,
 )
 
 __all__ = [
@@ -38,8 +35,6 @@ __all__ = [
     "CreateCompetitionInput",
     "RegisterTeamInput",
     "AddTeamMemberInput",
-    "PayCompetitionFeeInput",
-    "RefundCompetitionFeeBody",
     
     # Aggregate Outputs
     "StudentCompetitionDTO",
@@ -48,7 +43,6 @@ __all__ = [
     "AddTeamMemberResultDTO",
     "AddTeamMemberResultWithWarningDTO",
     "TeamMemberRosterDTO",
-    "PayCompetitionFeeResponseDTO",
     "CompetitionSummaryDTO",
     "CompetitionSummaryDataDTO",
     "CategoryWithTeamsDTO",

@@ -53,9 +53,13 @@ class ReceiptService:
         self,
         dto: CreateReceiptServiceDTO,
         background_tasks: Optional[BackgroundTasks] = None,
+        commit: bool = True,
     ) -> ReceiptFinalizedDTO:
         """
         Create a new receipt with charge lines.
+
+        ``commit=False`` flushes instead of committing, for callers whose own
+        use case commits once (e.g. competition fee payment).
 
         Validates for overpayment risk unless allow_credit=True.
         """
@@ -124,7 +128,10 @@ class ReceiptService:
             )
 
         total = self._uow.receipts.get_total(receipt.id)
-        self._uow.commit()
+        if commit:
+            self._uow.commit()
+        else:
+            self._uow.flush()
 
         # Log payment activities for each line
         if self._activity_svc:

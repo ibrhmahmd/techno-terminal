@@ -10,6 +10,7 @@ from .daily_collection_item import DailyCollectionItem
 from .daily_receipt_item import DailyReceiptItem
 from .receipt_search_item import ReceiptSearchItem
 from .unpaid_comp_fee_item import UnpaidCompFeeItem
+from .competition_fee import PayCompetitionFeeInput, PayCompetitionFeeResponseDTO
 
 __all__ = [
     "ReceiptLineInput",
@@ -19,4 +20,6 @@ __all__ = [
     "DailyReceiptItem",
     "ReceiptSearchItem",
     "UnpaidCompFeeItem",
+    "PayCompetitionFeeInput",
+    "PayCompetitionFeeResponseDTO",
 ]

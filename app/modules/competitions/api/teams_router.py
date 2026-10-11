@@ -8,16 +8,14 @@ Handles: Team lifecycle, members, payments, placement
 
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.schemas.common import ApiResponse
 from app.modules.competitions.api.schemas.team_schemas import (
     UpdateTeamInput,
     PlacementUpdateInput,
-    PayCompetitionFeeBody,
     TeamMemberListResponse,
     StudentCompetitionsResponse,
-    RefundCompetitionFeeBody,
 )
 from app.api.dependencies import require_any, require_admin
 from app.modules.competitions.api.deps import get_team_service
@@ -31,8 +29,6 @@ from app.modules.competitions.schemas import (
     TeamWithMembersDTO,
     TeamDTO,
     TeamMemberDTO,
-    PayCompetitionFeeInput,
-    PayCompetitionFeeResponseDTO,
     AddTeamMemberResultDTO,
     TeamMemberRosterDTO,
 )
@@ -90,12 +86,11 @@ def list_teams(
 )
 def register_team(
     body: RegisterTeamInput,
-    background_tasks: BackgroundTasks,
     current_user: User = Depends(require_admin),
     svc: TeamService = Depends(get_team_service),
 ):
     """Register a team for a competition."""
-    reg_result = svc.register_team(body, current_user_id=current_user.id, background_tasks=background_tasks)
+    reg_result = svc.register_team(body, current_user_id=current_user.id)
     return ApiResponse(
         data=reg_result.result,
         message=reg_result.warning or "Team registered successfully."
@@ -242,7 +237,6 @@ def list_team_members(
 def add_team_member(
     team_id: int,
     body: AddTeamMemberInput,
-    background_tasks: BackgroundTasks,
     current_user: User = Depends(require_admin),
     svc: TeamService = Depends(get_team_service),
 ):
@@ -252,7 +246,6 @@ def add_team_member(
         student_id=body.student_id,
         amount_due=body.amount_due,
         current_user_id=current_user.id,
-        background_tasks=background_tasks,
     )
     return ApiResponse(
         data=add_result.result,
@@ -286,91 +279,6 @@ def remove_team_member(
     return ApiResponse(data=result, message="Member removed successfully.")
 
 
-@router.post(
-    "/teams/{team_id}/members/{student_id}/pay",
-    response_model=ApiResponse[PayCompetitionFeeResponseDTO],
-    summary="Pay competition fee",
-    description="""
-    Process competition fee payment for a team member.
-    Creates a receipt and records the payment. Supports partial payments.
-    
-    Business Rules:
-    - Payment amount must be > 0
-    - Payment is atomic (receipt + fee recording)
-    - On failure, payment is automatically refunded
-    """,
-    responses={
-        400: {"description": "Invalid payment amount or business rule violation"},
-        404: {"description": "Team or member not found"},
-    },
-)
-def pay_competition_fee(
-    team_id: int,
-    student_id: int,
-    body: PayCompetitionFeeBody,
-    background_tasks: BackgroundTasks,
-    current_user: User = Depends(require_admin),
-    svc: TeamService = Depends(get_team_service),
-):
-    """Process competition fee payment for a team member."""
-    cmd = PayCompetitionFeeInput(
-        team_id=team_id,
-        student_id=student_id,
-        amount=body.amount,
-        parent_id=body.parent_id,
-        received_by_user_id=current_user.id,
-    )
-    
-    result = svc.pay_competition_fee(cmd, background_tasks=background_tasks)
-    return ApiResponse(data=result, message="Payment processed successfully.")
-
-
-@router.post(
-    "/teams/{team_id}/members/{student_id}/refund",
-    response_model=ApiResponse[bool],
-    summary="Refund competition fee",
-    description="""
-    Refund a competition fee payment for a team member.
-    Creates a refund receipt and decreases amount_paid.
-    
-    Business Rules:
-    - Refund amount must be > 0 and <= current amount_paid
-    - Refund is atomic (receipt + fee adjustment)
-    - On failure, entire operation rolls back
-    - Admin only
-    """,
-    responses={
-        400: {"description": "Invalid refund amount or business rule violation"},
-        404: {"description": "Team or member not found"},
-    },
-)
-def refund_competition_fee(
-    team_id: int,
-    student_id: int,
-    body: RefundCompetitionFeeBody,
-    current_user: User = Depends(require_admin),
-    svc: TeamService = Depends(get_team_service),
-):
-    """Refund a competition fee payment for a team member."""
-    member = svc.get_team_member(team_id, student_id)
-    if not member:
-        raise HTTPException(status_code=404, detail="Team member not found.")
-    if body.amount > member.amount_paid:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Refund amount ({body.amount}) exceeds amount paid ({member.amount_paid}).",
-        )
-    result = svc.refund_competition_fee(
-        team_member_id=member.id,
-        amount=body.amount,
-        current_user_id=current_user.id,
-    )
-    return ApiResponse(
-        data=True,
-        message=f"Refund of {body.amount} processed successfully with receipt {result.receipt_number}.",
-    )
-
-
 @router.patch(
     "/teams/{team_id}/placement",
     response_model=ApiResponse[TeamDTO],
@@ -390,7 +298,6 @@ def refund_competition_fee(
 def update_team_placement(
     team_id: int,
     body: PlacementUpdateInput,
-    background_tasks: BackgroundTasks,
     current_user: User = Depends(require_admin),
     svc: TeamService = Depends(get_team_service),
 ):
@@ -400,7 +307,6 @@ def update_team_placement(
         placement_rank=body.placement_rank,
         placement_label=body.placement_label,
         current_user_id=current_user.id,
-        background_tasks=background_tasks,
     )
     return ApiResponse(data=result, message="Placement updated successfully.")
 
