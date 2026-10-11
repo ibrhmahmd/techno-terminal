@@ -13,7 +13,7 @@ from app.modules.crm import (
     LogEnrollmentDTO,
     LogEnrollmentChangeDTO,
 )
-from app.modules.academics.group.core.service import GroupCoreService
+from app.modules.academics import GroupCoreService
 from app.modules.academics.models.group_models import Group
 from app.modules.enrollments.models.enrollment_models import Enrollment
 from app.modules.enrollments.core.schemas import (
