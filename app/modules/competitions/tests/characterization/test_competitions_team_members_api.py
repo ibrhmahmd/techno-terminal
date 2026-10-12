@@ -242,22 +242,35 @@ def test_pay_competition_fee_unknown_member(client_with_uow, override_auth, mock
 # ── POST /teams/{id}/members/{student_id}/refund ──────────────────────────────
 
 
-def test_refund_competition_fee_crashes_with_500(app, client_with_uow, override_auth, mock_admin_headers, db_session, noop_notifications):
-    """current behaviour (pinned, not endorsed): the refund fails with 500 after issuing the
-    refund receipt, because ``RefundService._unlink_competition_payment`` selects with
-    ``sqlalchemy.select`` and then reads ``payment.team_member_id`` on a Row (KeyError). The
-    whole transaction rolls back, so no refund is ever recorded."""
+def test_refund_competition_fee(client_with_uow, override_auth, mock_admin_headers, db_session, uow, noop_notifications):
+    """Fixed in #88 (was a 500 that rolled back every competition refund): the refund is
+    recorded, linked to the member, and the member's amount_paid goes down by the refund."""
+    from sqlmodel import select
+
+    from app.modules.finance.models.payment import Payment
+
     _, team, student = _setup(db_session)
-    _add_member(db_session, team.id, student.id, amount_due=100.0)
-    client_with_uow.post(
+    member = _add_member(db_session, team.id, student.id, amount_due=100.0)
+    paid = client_with_uow.post(
         f"/api/v1/teams/{team.id}/members/{student.id}/pay", headers=mock_admin_headers, json={"amount": 50.0}
     )
+    assert paid.status_code == 200
 
-    r = TestClient(app, raise_server_exceptions=False).post(
+    r = client_with_uow.post(
         f"/api/v1/teams/{team.id}/members/{student.id}/refund", headers=mock_admin_headers, json={"amount": 20.0}
     )
 
-    assert r.status_code == 500
+    assert r.status_code == 200
+    body = r.json()
+    assert body["data"] is True
+    assert body["message"].startswith("Refund of 20.0 processed successfully with receipt ")
+    uow.session.expire_all()
+    assert float(uow.session.get(TeamMember, member.id).amount_paid) == 30.0
+    refunds = uow.session.exec(
+        select(Payment).where(Payment.team_member_id == member.id, Payment.transaction_type == "refund")
+    ).all()
+    assert [float(p.amount) for p in refunds] == [20.0]
+    assert refunds[0].original_payment_id == paid.json()["data"]["payment_id"]
 
 
 def test_refund_unknown_member_is_404(client_with_uow, override_auth, mock_admin_headers, db_session):
