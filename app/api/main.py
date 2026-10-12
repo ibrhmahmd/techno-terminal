@@ -81,6 +81,7 @@ from app.modules.analytics.api import (
 from app.modules.finance.api import receipt_router, finance_router, reporting_router, student_payments_router, competition_fees_router
 from app.modules.auth.api import admin_auth_router
 from app.modules.tasks.api import router as tasks_router
+from app.modules.audit.api import router as audit_router
 
 
 def create_app() -> FastAPI:
@@ -196,6 +197,8 @@ def create_app() -> FastAPI:
     app.include_router(
         dashboard_router, prefix="/api/v1", tags=["Analytics — Dashboard"]
     )
+    # Audit (integrity checks)
+    app.include_router(audit_router, prefix="/api/v1", tags=["Audit"])
 
     # Admin Auth
     app.include_router(admin_auth_router.router, prefix="/api/v1/admin")

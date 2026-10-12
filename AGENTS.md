@@ -1,7 +1,7 @@
 # AGENTS.md — Techno Terminal
 
 FastAPI + SQLModel + PostgreSQL backend for STEM education center management.
-Supabase Auth, 12 business modules, plain-SQL migrations. Python `>=3.11,<3.13` (`.python-version` pins 3.11.9). The `audit` module (ADR-0011) carries a Streamlit demo UI (`audit_dashboard.py` launcher); it is never deployed. Its API comes in #114.
+Supabase Auth, 12 business modules, plain-SQL migrations. Python `>=3.11,<3.13` (`.python-version` pins 3.11.9). The `audit` module (ADR-0011) carries a Streamlit demo UI (`audit_dashboard.py` launcher); it is never deployed. Its API (admin-only): `GET /api/v1/audit/scenarios` (checks A–I with counts) and `GET /api/v1/audit/scenarios/{code}` (typed, paginated anomaly rows).
 
 ## Entry Points
 
@@ -137,7 +137,7 @@ Before any refactoring, grep for callers of every method. Delete dead code immed
 
 ## Work Tracking
 
-GitHub Issues. The prioritised roadmap is #111 (tiers by urgency, safety and size; labels `tier-*`, `size: *`, `needs-ui-check`, `parked`); each issue ends with a "Plan" section holding the decision taken. Cross-cutting API rules decided 2026-10-12: unknown ids return 404 `NotFoundError`; debt is a positive remaining amount; routers raise domain errors, never a bare `HTTPException`. `ISSUES.md` keeps only the security item that must stay off the public tracker.
+GitHub Issues. The prioritised roadmap is #111 (tiers by urgency, safety and size; labels `tier-*`, `size: *`, `needs-ui-check`, `parked`); each issue ends with a "Plan" section holding the decision taken. Cross-cutting API rules decided 2026-10-12: unknown ids return 404 `NotFoundError`; debt is a positive remaining amount; routers raise domain errors, never a bare `HTTPException`.
 
 ## Speckit Pipeline
 
