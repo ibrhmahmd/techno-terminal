@@ -8,17 +8,19 @@
   - `90` — Seed data
 - **[schema.sql](schema.sql)** — **Orchestrator** that includes all modular files. Use for creating a new environment with `psql`.
 - **[migrations/](migrations/)** — Hand-written SQL for upgrading **existing** databases (CHECK changes, auth columns, DBA-reviewed scripts).
-- **Alembic** (repo root: `alembic.ini`, `alembic/`) — Revision history for evolving the schema from Python; use when the team prefers autogenerate/migrate workflows.
 
 ## Schema Overview
 
+Counts for a database built from `schema.sql` alone (measured 2026-10-12 on the local test container):
+
 | Metric | Count |
 |--------|-------|
-| Tables | 33 |
-| Views | 15 |
-| Indexes | 94 |
-| Triggers | 17 |
-| Functions | 6 |
+| Tables | 32 |
+| Views | 13 |
+| Indexes | 132 |
+| Triggers | 10 |
+
+`schema.sql` lags the migrations: the audit, finance and BI views used by the Streamlit dashboard (`v_audit_*`, `v_finance_*`, `v_bi_*`) exist only in `migrations/074_audit_views.sql`, `075_finance_views.sql` and `076_bi_report_views.sql`. There is no Alembic; migrations are plain SQL applied by hand.
 
 ## Schema Files Organization
 
@@ -35,8 +37,8 @@
 | `schema/08_tables_notifications.sql` | Notification tables | notification_templates, notification_logs, notification_subscribers, notification_additional_recipients, admin_notification_settings |
 | `schema/09_tables_history.sql` | History tables | Reserved for future audit tables |
 | `schema/10_tables_supabase.sql` | Supabase tables | subscription, hooks, buckets, objects |
-| `schema/20_indexes.sql` | All indexes | 94 indexes organized by table |
-| `schema/30_views.sql` | All views | 15 views including soft-delete filters and analytics |
+| `schema/20_indexes.sql` | All indexes | 77 `CREATE INDEX` statements organized by table (plus the indexes behind primary keys and unique constraints) |
+| `schema/30_views.sql` | All views | 13 views including soft-delete filters and analytics |
 | `schema/40_functions.sql` | Custom functions | Trigger functions and utility functions |
 | `schema/50_triggers.sql` | All triggers | 17 triggers for audit and business logic |
 | `schema/60_constraints.sql` | Additional constraints | Complex constraints (mostly reserved) |

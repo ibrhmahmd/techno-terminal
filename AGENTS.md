@@ -2,11 +2,11 @@
 
 FastAPI + SQLModel + PostgreSQL backend for STEM education center management.
 Supabase Auth, 11 business modules, plain-SQL migrations. Python `>=3.11,<3.13` (`.python-version` pins 3.11.9). Plus an internal
-Streamlit audit dashboard (`audit_dashboard.py` + `dashboard/`) — not part of the API.
+Streamlit audit dashboard (`audit_dashboard.py` + `dashboard/`), not part of the API today; epic #112 turns it into the `audit` module (12th, with an API; Streamlit stays a local demo).
 
 ## Entry Points
 
-- **Dev**: `python run_api.py` — hot reload. Inserts project root into `PYTHONPATH`; breaking this breaks all imports.
+- **Dev**: `python run_api.py` — hot reload. Its `sys.path` line is only needed when the package isn't installed (`pip install -e .` / `uv sync`); whether to keep two entry points is open in #117.
 - **Prod**: FastAPI Cloud. Root `main.py` re-exports `app.api.main:app` (built via `create_app()`) as the deploy entrypoint.
 - **Dashboard**: `streamlit run audit_dashboard.py`.
 
@@ -30,8 +30,8 @@ Optional PDF/receipt settings in `app/core/config.py`.
 | Local test DB | `scripts/local_test_db.sh up` (also `reset`/`down`; writes `.env.test.local`) |
 | Local gate | `pytest -m "not supabase" -v` |
 | Cloud Supabase tests | `TEST_ENV_FILE=.env.test pytest -m supabase -v` (needs `TEST_ADMIN_JWT`) |
-| All tests (local) | `pytest tests/ -v` (env file chosen in `config.py`; `.env.test.local` wins under pytest) |
-| Coverage | `pytest tests/ -v --cov=app --cov-report=term-missing` |
+| All tests (local) | `pytest -v` (collects `app/` and `tests/`; env file chosen in `config.py`; `.env.test.local` wins under pytest) |
+| Coverage | `pytest -v --cov=app --cov-report=term-missing` |
 | DB init | `psql "$DATABASE_URL" -f db/schema.sql` |
 | Schema verify | `python scripts/verify_test_db.py` |
 | Get test JWT | `TESTING=true TEST_ENV_FILE=.env.test python scripts/get_test_jwt.py` |
@@ -53,7 +53,7 @@ Architecture: modular monolith per the `modular-architecture` skill ([ibrhmahmd/
 |-----|------|
 | [0001](docs/adr/0001-one-unit-of-work-per-use-case.md) | One injected `UnitOfWork` per use case; only the top-level use case commits, before external I/O. Services never call `get_session()`. |
 | [0002](docs/adr/0002-horizontal-modules-own-their-api.md) | Each module: `api/ → services/ → repositories/ → schemas/, models/`; `__init__.py` is its facade. `app/api/` holds only shared HTTP code. |
-| [0003](docs/adr/0003-module-dependency-order-and-facades.md) | Fixed module order, bottom→top: auth, hr, crm, academics, enrollments, attendance, competitions, finance, tasks, notifications, analytics. Import only lower modules, only via their facade. Enforced by import-linter in pytest. |
+| [0003](docs/adr/0003-module-dependency-order-and-facades.md) | Fixed module order, bottom→top: auth, hr, crm, academics, enrollments, attendance, competitions, finance, tasks, notifications, analytics. Import only lower modules, only via their facade. Enforced by `pytest tests/architecture`. |
 | [0004](docs/adr/0004-read-any-model-write-only-your-own.md) | Any repository may read any model; writes only to its own module's tables. Raw SQL only in repositories. |
 | [0005](docs/adr/0005-auth-is-the-identity-layer-below-hr.md) | auth is the identity layer at the bottom; hr provisions logins through `auth.provision_login()`. |
 | [0006](docs/adr/0006-cross-module-writes-live-in-the-highest-module.md) | A write workflow spanning modules lives in the highest module involved. |
@@ -134,6 +134,10 @@ Tests live with the code they test (#109): `app/modules/<module>/tests/` (API pi
 ### Dead Code Discipline
 Before any refactoring, grep for callers of every method. Delete dead code immediately — never migrate it into a new structure. Zero tolerance for commented-out code, deprecated shims, or superseded subset methods.
 
+## Work Tracking
+
+GitHub Issues. The prioritised roadmap is #111 (tiers by urgency, safety and size; labels `tier-*`, `size: *`, `needs-ui-check`, `parked`); each issue ends with a "Plan" section holding the decision taken. Cross-cutting API rules decided 2026-10-12: unknown ids return 404 `NotFoundError`; debt is a positive remaining amount; routers raise domain errors, never a bare `HTTPException`. `ISSUES.md` keeps only the security item that must stay off the public tracker.
+
 ## Speckit Pipeline
 
 `constitution → specify → clarify → plan → tasks → implement → analyze`. All feature work validates against `.specify/memory/constitution.md`. Active plans live in `specs/*/plan.md`.
@@ -145,7 +149,7 @@ Before any refactoring, grep for callers of every method. Delete dead code immed
 
 ## Business Reports
 
-Four finalized report queries (new customers, old customers, waiting students, round cost) live in `specs/archive/035-business-reports-feature/spec.md`. Key schema notes: `group_levels` table tracks rounds, `student_status` is an enum (`active`/`waiting`/`inactive`), soft delete via `deleted_at`/`deleted_by`. Always verify against live schema — docs lag behind (README endpoint/table counts are stale).
+Four finalized report queries (new customers, old customers, waiting students, round cost) live in `specs/archive/035-business-reports-feature/spec.md`. Key schema notes: `group_levels` table tracks rounds, `student_status` is an enum (`active`/`waiting`/`inactive`), soft delete via `deleted_at`/`deleted_by`. Always verify against the live schema; docs can lag behind.
 
 **Open:** Existing waiting students have NULL `waiting_since` (the migration `068` trigger only covers new transitions; no backfill). Report 3 falls back to `COALESCE(waiting_since, created_at)`. Part-time instructor cost report not yet scoped.
 

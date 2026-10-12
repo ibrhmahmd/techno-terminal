@@ -1,77 +1,55 @@
 <!--
 ## Sync Impact Report
-Version change: 1.1.1 → 1.1.2 (PATCH)
+Version change: 1.1.2 → 2.0.0 (MAJOR)
 
 ### Changes
-- §V Auth-Guarded Endpoints: CORRECTED the documented role mechanism to match code
-  truth. The previous text claimed the user role is read from JWT `app_metadata.role`;
-  in reality the JWT only proves identity (Supabase uid mapped to a local User row via
-  `get_user_by_supabase_uid`) and authorization reads exclusively from the local
-  `users.role` column (`app/api/deps.py:100-106`). Mock-token guidance updated:
-  tests need a matching seeded local user row or the `override_auth` fixture, not a
-  role claim. Also listed `require_system_admin`, which was missing from the guard list.
-- Operational Constraints / Database Engine Configuration: corrected `sslmode=require`
-  → `sslmode=prefer` per `app/db/connection.py:28`.
-- Development Workflow / Database Migrations: schema file count corrected 17 → 18;
-  duplicate-prefix list extended with 051 and 057; total migration count noted as 87.
-
-### Templates requiring updates
-- .specify/templates/plan-template.md ✅ No change needed (no stale references found)
-- .specify/templates/spec-template.md ✅ No change needed (no stale references found)
-- .specify/templates/tasks-template.md ✅ No change needed (no stale references found)
-- .specify/templates/commands/*.md ✅ No change needed (grep for `app_metadata` matched
-  only this file)
-
-### Deferred items
-- None
-
-Source audit: feature 039-audit-employee-creation findings F-11 (accepted-risk) and
-post-analysis remediation R-batch C1.
+- §I and §II rewritten to the modular monolith recorded in docs/adr (ADR-0001–0010), which
+  the architecture migration (epic #9) completed: routers live in each module's `api/`,
+  `app/api/` keeps only shared HTTP code, modules follow a fixed order and talk through
+  facades. The per-slice `interface.py` Protocol rule is removed (ADR-0008: a Protocol
+  exists only where two adapters exist).
+- §III: "public method" no longer means "declared in a slice Protocol".
+- Session Lifecycle rewritten to ADR-0001/0009: one injected UnitOfWork per use case;
+  `get_db()`, per-service `get_session()` and the self-sessioned notification service are gone.
+- Testing & Tokens: paths follow the colocated test layout (#109).
 -->
 
 # Techno Terminal Constitution
 
 ## Core Principles
 
-### I. Router → Service → Repository Layer Separation
+### I. Modular Monolith — the ADRs Are the Architecture
 
-Every module follows a strict three-layer architecture. Routers (in `app/api/routers/`)
-handle HTTP concerns — validation via Pydantic, dependency injection via `Depends()`, and
-nothing else. Services (in `app/modules/*/services/`) own all business logic and transaction
-boundaries. Repositories (in `app/modules/*/repositories/`) contain only pure SQL/SQLModel
-queries — zero business rules. No layer may skip the one below it.
+`app/` is a modular monolith. The binding rules are the ADRs in `docs/adr/` (0001–0010 and
+later); where this constitution and an ADR disagree, the ADR wins. In short:
 
-- Services MUST NOT import from `app.api.*` (inverted dependency)
-- Repositories MUST NOT contain business rules, validation, or orchestration
-- Routers MUST NOT contain SQL queries or business logic
-- **Two-Layer Schema Rule**: DTOs live in the slice that owns them. `app/api/schemas/`
-  only contains API-specific shapes that differ from service output. Services MUST NOT
-  import from `app.api.schemas.*`
+- Eleven modules in a fixed order, bottom to top: auth, hr, crm, academics, enrollments,
+  attendance, competitions, finance, tasks, notifications, analytics (ADR-0003). A module
+  imports only lower modules, and only through their facade (`app/modules/<m>/__init__.py`);
+  any module may read any model, but writes only its own tables (ADR-0004).
+- Inside a module, layers point downward: `api/ → services/ → repositories/ → schemas/,
+  models/` (ADR-0002). Routers, HTTP schemas and dependency factories live in the module's
+  `api/`; `app/api/` holds only shared HTTP code (`main.py`, `deps.py`, `exceptions.py`,
+  the envelope schema).
+- Routers handle HTTP only; services own business rules; repositories hold pure queries
+  (raw SQL only in repositories). Services MUST NOT import a router's request/response
+  schemas.
+- A write workflow spanning modules lives in the highest module involved (ADR-0006).
+- `pytest tests/architecture` enforces the order, facades, layers and the UoW rule, and
+  pins the OpenAPI spec. A violation fails the suite.
 
-### II. Module Organization — Vertical Slices (D+ Hybrid for Complex Entities)
+### II. Module Organization
 
-Modules with ≤2 entities use flat Horizontal Layer (Pattern A). Modules with a dominant
-entity and ≥3 distinct workflow concerns use the D+ Hybrid pattern — the entity becomes a
-namespace with sub-slices (`core/`, `directory/`, `lifecycle/`, `analytics/`, etc.). Models
-stay horizontal (shared `models/` directory per module) regardless of slice structure —
-SQLModel entities are registered with the ORM at import time and must not be duplicated
-across slices.
-
-- `models/` is always horizontal, never per-slice
-- Every slice directory contains exactly: `__init__.py`, `interface.py`, `service.py`,
-  `repository.py`, `schemas.py`
-- **Interface design**: `@runtime_checkable` Protocol classes named
-  `{Entity}{Concern}Interface` (never `I`-prefix, never `Protocol` suffix). Method bodies
-  are `...`. Every public service method MUST appear in the interface.
-- **Import dependency chain** (prevents circular imports):
-  `interface.py` → can import from `schemas.py`, `models/`
-  `schemas.py` → can import from `models/`, shared constants
-  `repository.py` → can import from `models/`, constants, shared
-  `service.py` → can import from `repository.py`, `schemas.py`, `interface.py`, helpers,
-  constants, and other slices' schemas (NOT other slices' services)
-- **Cross-slice dependency**: Repositories CAN be imported across slices (they are
-  stateless query functions). Services MUST NOT import other services within the same
-  module — cross-slice orchestration goes through the module root `__init__.py`.
+- Each module uses the same horizontal layers (ADR-0002); there are no per-entity
+  sub-slices.
+- `models/` is always horizontal, never per-slice: SQLModel entities register with the ORM
+  at import time and must not be duplicated.
+- A Protocol/ABC exists only where two adapters satisfy it; a test fake counts (ADR-0008).
+  Notifier ports are the main example (ADR-0007).
+- A service calls a sibling service only through the shared injected UnitOfWork; services
+  never build their own dependencies or sessions (ADR-0009).
+- Format checks are Pydantic validators on schemas; checks that need the database or
+  business state live in services; there is no `validators/` layer (ADR-0010).
 
 ### III. Typed Contracts — No Loose Return Types
 
@@ -81,7 +59,7 @@ boundaries — they bypass validation, hide structure changes, and accumulate te
 All DTOs receiving ORM data MUST set `model_config = ConfigDict(from_attributes=True)`.
 
 - `-> dict`, `-> list[dict]`, `-> tuple` are prohibited in public service and repository
-  method signatures (i.e., any method declared in the slice `interface.py` Protocol)
+  method signatures
 - Every public return type must be a named model or DTO class
 - **Private helper exception**: Repository module-internal helper functions (not appearing
   in any Protocol interface) MAY return `tuple[list[DTO], int]` for `(rows, total)` pairs,
@@ -115,7 +93,7 @@ validates the JWT via `get_supabase_anon()` and maps the Supabase uid to the loc
 model. The JWT proves identity ONLY — authorization never reads role claims.
 
 The user role is read exclusively from the local `users.role` column
-(`dependencies.py:100-106`). Role guards enforce access:
+(`app/api/deps.py`). Role guards enforce access:
 
 - `require_admin`: allows `admin` + `system_admin`
 - `require_system_admin`: allows `system_admin` only
@@ -141,27 +119,16 @@ Actual values from `app/db/connection.py` (code is the source of truth):
 - Session: `expire_on_commit=False`
 - TCP keepalive: `keepalives=1`, idle=30s, interval=10s, count=5
 
-### Session Lifecycle & Unit of Work Rules
+### Session Lifecycle & Unit of Work Rules (ADR-0001, ADR-0009)
 
-Two DI patterns coexist and MUST NOT be confused:
-
-1. **UoW-based** (CRM, Finance, HR, Enrollments): The session is injected via `get_db()`
-   Depends. The session lifecycle (open/commit/close) is managed by FastAPI's `get_db()`
-   generator — NOT by the UnitOfWork. The UoW only owns the session when used standalone
-   via `with UnitOfWork():`.
-
-2. **Stateless** (Academics, Attendance, Competitions, Analytics): Services create their
-   own internal sessions via `get_session()`.
-
-**UoW Rollback Constraint**: `get_db()` calls `session.commit()` on normal generator
-exit. If a service calls `uow.rollback()` without re-raising an exception, `get_db()` will
-still `commit()` afterward. This can commit data that was intentionally rolled back.
-Services MUST let exceptions propagate after rollback, or avoid calling `uow.rollback()`
-when the session is owned by `get_db()`.
-
-**Notification Service**: `get_notification_service()` always opens its own independent
-session via `get_session()` — it receives a different database session from the rest of
-the request. This is intentional for background/non-transactional notifications.
+- Every use case runs in **one** injected `UnitOfWork` (`get_uow` / `UoW` in
+  `app/api/deps.py`, built on `app/db/uow.py`). Services receive it; they never call
+  `get_session()` or open their own sessions.
+- Only the top-level use case commits, and it commits **before** external I/O.
+- Notifications go through each module's Notifier port and run **after** the commit
+  (ADR-0007); notifier failures are logged and never fail the request. Background
+  notification work opens a fresh session inside `notifications/adapters/` only.
+- A rollback must re-raise: never swallow an exception after rolling back.
 
 ### Router Registration Order
 
@@ -175,16 +142,20 @@ the request. This is intentional for background/non-transactional notifications.
 ### Database Migrations
 
 - Schema: 18 modular files in `db/schema/` applied in dependency order via `db/schema.sql`
-- Migrations: 87 numbered `NNN_description.sql` files in `db/migrations/`, apply in
+- Migrations: numbered `NNN_description.sql` files in `db/migrations/`, apply in
   chronological order (not strictly numeric — some numbers have duplicates from parallel
   branches: 008, 020, 021, 022, 026, 030, 036, 051, 057)
 
 ### Testing & Tokens
 
 - Real Supabase JWTs expire ~1 hour. Regenerate via `python scripts/get_test_jwt.py` and
-  update `admin_token` in `tests/conftest.py`
-- Mock `system_admin` tokens are generated via `tests/utils/jwt_mocks.py` using HS256 with
+  export it as `TEST_ADMIN_JWT` (read by the `admin_token` fixture in `app/conftest.py`)
+- Mock `system_admin` tokens are generated via `app/testing/jwt_mocks.py` using HS256 with
   a hardcoded `TEST_SECRET` — use these for tests that don't need real Supabase
+- Tests live with the code they test (`app/modules/<m>/tests/`, `app/db/tests/`, ...);
+  shared fixtures in `app/conftest.py`; only repo-wide contracts in `tests/architecture/`
+- Tests that write use the `uow` / `client_with_uow` fixtures (SAVEPOINT, rolled back) and
+  run against the local Postgres container, never production
 
 ### Dead Code Discipline
 
@@ -207,4 +178,4 @@ Amendments require:
 Constitution violations are always CRITICAL and must be resolved before implementation
 proceeds.
 
-**Version**: 1.1.2 | **Ratified**: 2026-05-11 | **Last Amended**: 2026-08-23
+**Version**: 2.0.0 | **Ratified**: 2026-05-11 | **Last Amended**: 2026-10-12
