@@ -16,6 +16,7 @@ from grimp import build_graph
 # Source of truth for the rule tests. A new module must be added here AND in
 # the order below, otherwise test_module_rules::test_module_list fails.
 MODULES = [
+    "audit",
     "analytics",
     "notifications",
     "tasks",
@@ -36,7 +37,7 @@ ORDER = {name: i for i, name in enumerate(MODULES)}
 RULE_KEYS = ["module_order", "facade_only", "layers", "get_session"]
 
 _PREFIX = "app.modules."
-_LAYERS = ("api", "services", "repositories", "schemas", "models")
+_LAYERS = ("ui", "api", "services", "repositories", "schemas", "models")
 _GET_SESSION_ALLOW = ("app/modules/notifications/adapters",)
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 _APP_ROOT = os.path.join(_PROJECT_ROOT, "app")
@@ -170,6 +171,9 @@ def _layer_of(module: str, top: str) -> str | None:
 
 
 def _forbidden_layer_move(importer_layer: str, imported_layer: str) -> bool:
+    # ui (a presentation layer, like api) sits on top: nothing below may import it.
+    if imported_layer == "ui" and importer_layer != "ui":
+        return True
     if importer_layer == "services" and imported_layer == "api":
         return True
     if importer_layer == "repositories" and imported_layer in ("services", "api"):

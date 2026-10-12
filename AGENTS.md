@@ -1,14 +1,13 @@
 # AGENTS.md — Techno Terminal
 
 FastAPI + SQLModel + PostgreSQL backend for STEM education center management.
-Supabase Auth, 11 business modules, plain-SQL migrations. Python `>=3.11,<3.13` (`.python-version` pins 3.11.9). Plus an internal
-Streamlit audit dashboard (`audit_dashboard.py` + `dashboard/`), not part of the API today; epic #112 turns it into the `audit` module (12th, with an API; Streamlit stays a local demo).
+Supabase Auth, 12 business modules, plain-SQL migrations. Python `>=3.11,<3.13` (`.python-version` pins 3.11.9). The `audit` module (ADR-0011) carries a Streamlit demo UI (`audit_dashboard.py` launcher); it is never deployed. Its API comes in #114.
 
 ## Entry Points
 
 - **Dev**: `python run_api.py` — hot reload. Its `sys.path` line is only needed when the package isn't installed (`pip install -e .` / `uv sync`); whether to keep two entry points is open in #117.
 - **Prod**: FastAPI Cloud. Root `main.py` re-exports `app.api.main:app` (built via `create_app()`) as the deploy entrypoint.
-- **Dashboard**: `streamlit run audit_dashboard.py`.
+- **Audit demo UI**: `uv sync --extra dashboard`, then `streamlit run audit_dashboard.py` (launches `app/modules/audit/ui/app.py`; settings come from the app config, so `TESTING=true TEST_ENV_FILE=.env.test.local` points it at the local DB).
 
 ## Required Env
 
@@ -43,7 +42,7 @@ Optional PDF/receipt settings in `app/core/config.py`.
 
 ## Architecture
 
-`app/` follows the target shape recorded in `docs/adr/`. Read the relevant ADR before writing, moving, or reviewing code under `app/modules` or `app/api`. All eleven modules are migrated and enforced by `pytest tests/architecture`.
+`app/` follows the target shape recorded in `docs/adr/`. Read the relevant ADR before writing, moving, or reviewing code under `app/modules` or `app/api`. All twelve modules are enforced by `pytest tests/architecture`.
 
 Architecture: modular monolith per the `modular-architecture` skill ([ibrhmahmd/modular-architecture](https://github.com/ibrhmahmd/modular-architecture)), tier full; decisions in `docs/adr/` (they override the skill's defaults); module order as in ADR-0003. Load the skill for structural work: adding a module, moving code between modules or layers, migrating a module, cross-module workflows, reviewing such diffs.
 
@@ -53,7 +52,7 @@ Architecture: modular monolith per the `modular-architecture` skill ([ibrhmahmd/
 |-----|------|
 | [0001](docs/adr/0001-one-unit-of-work-per-use-case.md) | One injected `UnitOfWork` per use case; only the top-level use case commits, before external I/O. Services never call `get_session()`. |
 | [0002](docs/adr/0002-horizontal-modules-own-their-api.md) | Each module: `api/ → services/ → repositories/ → schemas/, models/`; `__init__.py` is its facade. `app/api/` holds only shared HTTP code. |
-| [0003](docs/adr/0003-module-dependency-order-and-facades.md) | Fixed module order, bottom→top: auth, hr, crm, academics, enrollments, attendance, competitions, finance, tasks, notifications, analytics. Import only lower modules, only via their facade. Enforced by `pytest tests/architecture`. |
+| [0003](docs/adr/0003-module-dependency-order-and-facades.md) | Fixed module order, bottom→top: auth, hr, crm, academics, enrollments, attendance, competitions, finance, tasks, notifications, analytics, audit. Import only lower modules, only via their facade. Enforced by `pytest tests/architecture`. |
 | [0004](docs/adr/0004-read-any-model-write-only-your-own.md) | Any repository may read any model; writes only to its own module's tables. Raw SQL only in repositories. |
 | [0005](docs/adr/0005-auth-is-the-identity-layer-below-hr.md) | auth is the identity layer at the bottom; hr provisions logins through `auth.provision_login()`. |
 | [0006](docs/adr/0006-cross-module-writes-live-in-the-highest-module.md) | A write workflow spanning modules lives in the highest module involved. |
@@ -61,6 +60,8 @@ Architecture: modular monolith per the `modular-architecture` skill ([ibrhmahmd/
 | [0008](docs/adr/0008-interfaces-only-where-two-adapters-exist.md) | A Protocol/ABC exists only where two adapters (a test fake counts) satisfy it. |
 | [0009](docs/adr/0009-services-call-siblings-through-the-shared-unit-of-work.md) | A service may call a sibling service in its module only through the shared injected `UnitOfWork`; services never build their own dependencies or sessions. |
 | [0010](docs/adr/0010-validation-splits-between-schemas-and-services.md) | Format checks are Pydantic validators on schemas; DB/business-state rules live in services; no `validators/` layer. |
+| [0011](docs/adr/0011-audit-is-the-twelfth-module.md) | `audit` is the twelfth module, on top; its Streamlit pages are a `ui/` layer (demo only, never deployed, optional `dashboard` deps). |
+| [0012](docs/adr/0012-operate-analyse-verify.md) | finance operates (money writes, day-to-day reads), analytics analyses (every aggregate), audit verifies (integrity checks). SQL views are the source of truth for aggregates. |
 
 Rules that hold everywhere:
 - **Repositories**: pure SQLModel queries, zero business rules. Services hold business logic.

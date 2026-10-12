@@ -4,7 +4,7 @@
 .specify/
 .opencode/
 archieve/
-dashboard/
+app/modules/audit/ui/
 docs/
 specs/
 tests/

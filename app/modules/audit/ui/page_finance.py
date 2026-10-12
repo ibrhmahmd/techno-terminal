@@ -1,11 +1,13 @@
 import streamlit as st
 from datetime import date
-from dashboard.config import FINANCE_VIEWS, FINANCE_CATEGORIES, FINANCE_CATEGORY_ICONS, query
-from dashboard.ui_components import render_egp_metric, render_count_metric, format_egp_cols, render_download_button
+from app.modules.audit.constants import FINANCE_VIEWS, FINANCE_CATEGORIES
+from app.modules.audit.ui.data import query_view
+from app.modules.audit.ui.styles import FINANCE_CATEGORY_ICONS
+from app.modules.audit.ui.components import render_egp_metric, render_count_metric, format_egp_cols, render_download_button
 
 def query_finance_summary() -> dict:
     try:
-        df = query("SELECT * FROM v_finance_summary")
+        df = query_view("v_finance_summary")
         if df.empty:
             return {}
         return df.iloc[0].to_dict()
@@ -65,7 +67,7 @@ def render_finance_page():
 
                 # Query view data
                 with st.spinner(f"Loading {fv['label']}..."):
-                    df = query(f"SELECT * FROM {fv['view']}")
+                    df = query_view(fv['view'])
 
                 if df.empty:
                     st.info("No records found in this register.")

@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import date
-from dashboard.config import SEVERITY_COLOR, SEVERITY_ICON
+from app.modules.audit.ui.styles import SEVERITY_COLOR, SEVERITY_ICON
 
 def severity_badge(severity: str) -> str:
     color = SEVERITY_COLOR.get(severity, "#006a61")

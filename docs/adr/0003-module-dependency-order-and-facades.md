@@ -13,7 +13,8 @@ Every module imported almost every other one:
 We fixed an order derived from the foreign-key graph (a table's module sits above the modules its FKs point at). A module may import only modules below it, and only from their `__init__.py` facade (plus models, see ADR-0004):
 
 ```
-analytics          (top: read-only)
+audit              (top: integrity checks + demo UI, ADR-0011)
+analytics          (read-only aggregates)
 notifications
 tasks
 finance

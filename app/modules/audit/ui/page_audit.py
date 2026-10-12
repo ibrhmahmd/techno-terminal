@@ -1,33 +1,20 @@
 import streamlit as st
 from datetime import date
-from dashboard.config import SCENARIOS, SEVERITY_ICON, SEVERITY_PRIORITY, query
-from dashboard.ui_components import severity_badge, render_metric, format_egp_cols, render_download_button
+from app.modules.audit.constants import SCENARIOS, SEVERITY_PRIORITY
+from app.modules.audit.ui.components import severity_badge, render_metric, format_egp_cols, render_download_button
+from app.modules.audit.ui.data import query_view
+from app.modules.audit.ui.styles import SEVERITY_ICON
 
 def query_audit_counts() -> dict[str, int]:
     try:
-        df = query("SELECT code, anomaly_count FROM v_audit_summary ORDER BY code")
+        df = query_view("v_audit_summary", ["code", "anomaly_count"], order_by="code")
         return dict(zip(df["code"], df["anomaly_count"]))
     except Exception as e:
         st.error(f"Failed to query audit counts: {e}")
         return {}
 
 def query_scenario_detail(view: str, start_date: date | None) -> st.delta_generator.DeltaGenerator:
-    date_cols = {
-        "v_audit_zero_charge_enrollments": "enrolled_at",
-        "v_audit_overpaid_enrollments": None,
-        "v_audit_orphaned_payments": "paid_at",
-        "v_audit_duplicate_enrollments": "first_enrolled",
-        "v_audit_dead_group_enrollments": "enrolled_at",
-        "v_audit_unrefunded_exits": None,
-        "v_audit_level_mismatch": "enrolled_at",
-        "v_audit_ghost_payments": "paid_at",
-        "v_audit_overdiscounted_enrollments": "enrolled_at",
-    }
-    date_col = date_cols.get(view)
-    if start_date and date_col:
-        sql = f"SELECT * FROM {view} WHERE {date_col} >= %s"
-        return query(sql, (start_date,))
-    return query(f"SELECT * FROM {view}")
+    return query_view(view, since=start_date)
 
 def render_audit_page():
     st.markdown("## 🔍 Student Balance Integrity Audit")
@@ -46,7 +33,7 @@ def render_audit_page():
     
     st.sidebar.markdown("---")
     st.sidebar.markdown("**Severity Level Reference**")
-    from dashboard.config import SEVERITY_COLOR
+    from app.modules.audit.ui.styles import SEVERITY_COLOR
     for sev, color in SEVERITY_COLOR.items():
         st.sidebar.markdown(
             f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'
