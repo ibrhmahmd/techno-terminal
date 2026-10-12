@@ -12,7 +12,7 @@ class OverpaymentRiskItem:
     """Immutable DTO for overpayment risk assessment."""
     student_id: int
     enrollment_id: int
-    proposed_charge: Decimal
-    current_balance: Decimal
-    projected_balance: Decimal
-    risk_level: str  # 'none', 'low', 'medium', 'high'
+    amount: Decimal              # the proposed payment
+    debt_before: Decimal         # what the enrollment owed before it (never negative)
+    projected_balance: Decimal   # balance after the payment; > 0 means credit
+    excess_credit: Decimal       # the part of the payment beyond the debt

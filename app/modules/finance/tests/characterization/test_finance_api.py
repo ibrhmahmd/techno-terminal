@@ -149,21 +149,39 @@ def test_create_receipt_validation(client_with_uow, override_auth, mock_admin_he
     ).status_code == 422
 
 
-def test_create_receipt_overpayment_check_crashes_with_500(
-    app, client_with_uow, override_auth, mock_admin_headers, db_session, noop_notifications
+def test_create_receipt_without_credit_rejects_an_overpayment(
+    client_with_uow, override_auth, mock_admin_headers, db_session, noop_notifications
 ):
-    """current behaviour (pinned, not endorsed): with allow_credit=false the overpayment check
-    builds ``OverpaymentRiskItem(amount=...)``, a keyword the item does not accept, so the
-    request fails with 500 instead of the intended business-rule error."""
+    """Fixed in #93 (was a 500): with allow_credit=false, a line that would pay more than the
+    enrollment owes is refused with the intended business-rule error, and nothing is written."""
     _, _, student, enrollment = _seed_enrollment(db_session, amount_due=100.0)
 
-    r = TestClient(app, raise_server_exceptions=False).post(
+    r = client_with_uow.post(
         "/api/v1/finance/receipts", headers=mock_admin_headers,
         json={"allow_credit": False, "lines": [
             {"student_id": student.id, "enrollment_id": enrollment.id, "amount": 500.0}]},
     )
 
-    assert r.status_code == 500
+    assert r.status_code == 409
+    assert r.json()["error"] == "BusinessRuleError"
+    assert r.json()["message"] == (
+        "Overpayment risk detected for 1 line(s). Use allow_credit=true to proceed or adjust amounts."
+    )
+
+
+def test_create_receipt_without_credit_accepts_an_exact_payment(
+    client_with_uow, override_auth, mock_admin_headers, db_session, noop_notifications
+):
+    _, _, student, enrollment = _seed_enrollment(db_session, amount_due=100.0)
+
+    r = client_with_uow.post(
+        "/api/v1/finance/receipts", headers=mock_admin_headers,
+        json={"allow_credit": False, "lines": [
+            {"student_id": student.id, "enrollment_id": enrollment.id, "amount": 100.0}]},
+    )
+
+    assert r.status_code in (200, 201)
+    assert r.json()["success"] is True
 
 
 # ── POST /finance/refunds ─────────────────────────────────────────────────────
@@ -226,19 +244,25 @@ def test_unpaid_competition_fees_requires_student_id(client_with_uow, override_a
 # ── POST /finance/risk/overpayment ────────────────────────────────────────────
 
 
-def test_overpayment_risk_always_crashes_with_500(
-    app, client_with_uow, override_auth, mock_admin_headers, db_session
-):
-    """current behaviour (pinned, not endorsed): the request model ``ReceiptLineRequest`` has no
-    ``team_member_id`` but the endpoint reads it, so every call fails with 500."""
+def test_overpayment_risk(client_with_uow, override_auth, mock_admin_headers, db_session):
+    """Fixed in #93 (every call was a 500): only lines that would leave the enrollment in
+    credit are returned, with the debt before, the projected balance and the excess."""
     _, _, student, enrollment = _seed_enrollment(db_session, amount_due=100.0)
 
-    r = TestClient(app, raise_server_exceptions=False).post(
+    r = client_with_uow.post(
         "/api/v1/finance/risk/overpayment", headers=mock_admin_headers,
-        json={"lines": [{"student_id": student.id, "enrollment_id": enrollment.id, "amount": 300.0}]},
+        json={"lines": [
+            {"student_id": student.id, "enrollment_id": enrollment.id, "amount": 300.0},
+            {"student_id": student.id, "enrollment_id": enrollment.id, "amount": 60.0},
+            {"student_id": student.id, "amount": 999.0},
+        ]},
     )
 
-    assert r.status_code == 500
+    assert r.status_code == 200
+    assert r.json()["data"] == [{
+        "student_id": student.id, "enrollment_id": enrollment.id, "amount": 300.0,
+        "debt_before": 100.0, "projected_balance": 200.0, "excess_credit": 200.0,
+    }]
 
 
 def test_overpayment_risk_validation(client_with_uow, override_auth, mock_admin_headers):
