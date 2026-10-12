@@ -86,7 +86,7 @@ project_root/
 ├── db/
 │   ├── schema.sql                # Base DDL (modular files in db/schema/)
 │   └── migrations/               # Plain SQL, applied by hand in chronological order
-├── tests/                        # Unit, characterization and architecture tests
+├── tests/                        # Repo-wide architecture contracts + API snapshot (module tests live in app/**/tests/)
 ├── docs/adr/                     # Architecture decision records (the target shape)
 ├── specs/                        # Feature specs (Speckit)
 ├── dashboard/ + audit_dashboard.py  # Internal Streamlit audit dashboard (not part of the API)
@@ -293,7 +293,7 @@ uvicorn app.api.main:app --host 0.0.0.0 --port 8000
 
 ### 5. Run Tests
 ```bash
-pytest tests/ -v --tb=short
+pytest -v --tb=short
 ```
 
 ---
