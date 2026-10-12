@@ -19,7 +19,7 @@ from app.modules.finance.schemas import (
     SearchReceiptsDTO,
     EnhancedReceiptLineDTO,
 )
-from app.modules.finance.schemas import ReceiptSearchItem, ReceiptLineInput
+from app.modules.finance.schemas import ReceiptSearchItem
 from app.db.uow import UnitOfWork
 from app.modules.crm import LogPaymentDTO
 from app.modules.finance.repositories.receipt_repository import ReceiptRepository
@@ -36,7 +36,7 @@ from app.modules.enrollments.models.enrollment_models import Enrollment
 from app.modules.academics.models.group_models import Group
 from app.modules.academics.models.course_models import Course
 from sqlmodel import select
-from app.modules.finance.schemas import OverpaymentRiskItem
+from app.modules.finance.services.balance_service import BalanceService
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +82,7 @@ class ReceiptService:
 
         # Check overpayment risk if credit not allowed
         if not dto.allow_credit:
-            risks = self._assess_overpayment_risk(dto.lines)
+            risks = BalanceService(self._uow).assess_overpayment_risk(dto.lines)
             if risks:
                 raise BusinessRuleError(
                     f"Overpayment risk detected for {len(risks)} line(s). "
@@ -355,37 +355,6 @@ class ReceiptService:
             )
 
         return enhanced
-
-    def _assess_overpayment_risk(self, lines: List[ReceiptLineInput]) -> List:
-        """Internal: Check which lines would create credit."""
-
-        risks = []
-        for line in lines:
-            if not line.enrollment_id:
-                continue
-
-            balance_dto = self._payments.get_enrollment_balance(line.enrollment_id)
-            if not balance_dto:
-                continue
-
-            current_balance = balance_dto.balance
-            pay_amount = Decimal(str(line.amount))
-            projected_balance = current_balance + pay_amount
-
-            if projected_balance > 0:
-                debt_before = max(-current_balance, Decimal("0"))
-                risks.append(
-                    OverpaymentRiskItem(
-                        student_id=line.student_id,
-                        enrollment_id=line.enrollment_id,
-                        amount=pay_amount,
-                        debt_before=debt_before,
-                        projected_balance=projected_balance,
-                        excess_credit=max(pay_amount - debt_before, Decimal("0")),
-                    )
-                )
-
-        return risks
 
     def _link_competition_payment(self, team_member_id: int, payment_id: int) -> None:
         """Internal: Link payment to team member for competition fees.

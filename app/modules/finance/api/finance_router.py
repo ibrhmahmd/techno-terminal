@@ -77,11 +77,8 @@ def create_receipt(
         ReceiptLineInput(
             student_id=line.student_id,
             enrollment_id=line.enrollment_id,
-            team_member_id=line.team_member_id,
             amount=line.amount,
             payment_type=line.payment_type,
-            discount=line.discount,
-            notes=line.notes,
         )
         for line in body.lines
     ]
@@ -196,11 +193,8 @@ def assess_overpayment_risk(
         ReceiptLineInput(
             student_id=line.student_id,
             enrollment_id=line.enrollment_id,
-            team_member_id=line.team_member_id,
             amount=line.amount,
             payment_type=line.payment_type,
-            discount=line.discount,
-            notes=line.notes,
         )
         for line in body.lines
     ]
