@@ -12,7 +12,7 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from tests.seed_data import seed_database
+from app.testing.seed_data import seed_database
 from app.db.connection import get_session
 
 with get_session() as session:

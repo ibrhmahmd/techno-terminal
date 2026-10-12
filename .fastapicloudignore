@@ -8,6 +8,9 @@ dashboard/
 docs/
 specs/
 tests/
+**/tests/
+app/testing/
+app/conftest.py
 scripts/
 db/migrations/
 audit_dashboard.py
