@@ -81,13 +81,15 @@ class SessionService:
             next_weekday(data.start_date, group.default_day)
             if group.default_day else data.start_date
         )
-        return create_sessions_in_session(
+        sessions = create_sessions_in_session(
             session=self._uow.session,
             group=group,
             sessions_count=course.sessions_per_level,
             start_date=snapped,
             group_level_id=gl_id,
         )
+        self._uow.commit()
+        return sessions
 
     def add_extra_session(
         self, data: AddExtraSessionInput
