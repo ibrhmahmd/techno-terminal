@@ -30,4 +30,6 @@ class AuditViewService:
             if not _IDENTIFIER.match(name):
                 raise ValidationError(f"Invalid column name: {name}")
         since_column = AUDIT_DATE_COLUMNS.get(view) if since else None
-        return self._views.read(view, columns, order_by, since_column, since)
+        return self._views.read(
+            view, columns, [(order_by, "asc")] if order_by else None, since_column, since
+        )

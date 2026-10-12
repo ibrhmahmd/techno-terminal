@@ -55,3 +55,12 @@ def test_invalid_column_name_is_rejected(uow, column):
         AuditViewService(uow).read_view("v_audit_summary", [column])
     with pytest.raises(ValidationError):
         AuditViewService(uow).read_view("v_audit_summary", order_by=column)
+
+
+def test_every_check_has_a_page_order_that_exists_in_its_view(uow):
+    from app.modules.audit.constants import SCENARIOS
+    from app.modules.audit.services.audit_service import _PAGE_ORDER
+
+    for scenario in SCENARIOS:
+        columns = AuditViewService(uow).read_view(scenario["view"]).columns
+        assert {c for c, _ in _PAGE_ORDER[scenario["view"]]} <= set(columns)

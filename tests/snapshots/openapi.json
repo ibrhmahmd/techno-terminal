@@ -3288,6 +3288,42 @@
         "title": "ApiResponse[list[AttendanceHeatmapRowDTO]]",
         "type": "object"
       },
+      "ApiResponse_list_AuditScenarioDTO__": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/AuditScenarioDTO"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "success": {
+            "default": true,
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "title": "ApiResponse[list[AuditScenarioDTO]]",
+        "type": "object"
+      },
       "ApiResponse_list_CategoryResponse__": {
         "properties": {
           "data": {
@@ -5001,6 +5037,40 @@
         "title": "AuditLogEntryDTO",
         "type": "object"
       },
+      "AuditScenarioDTO": {
+        "description": "One integrity check with its current number of anomalies.",
+        "properties": {
+          "anomaly_count": {
+            "title": "Anomaly Count",
+            "type": "integer"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "ERROR",
+              "WARNING",
+              "INFO"
+            ],
+            "title": "Severity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "severity",
+          "anomaly_count"
+        ],
+        "title": "AuditScenarioDTO",
+        "type": "object"
+      },
       "BatchGenerateRequest": {
         "description": "Request for batch receipt generation.",
         "properties": {
@@ -6422,6 +6492,155 @@
         "title": "DashboardSummaryDTO",
         "type": "object"
       },
+      "DeadGroupEnrollmentRowDTO": {
+        "description": "E: active enrollment on a group that is no longer active.",
+        "properties": {
+          "amount_due": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Due"
+          },
+          "course_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Name"
+          },
+          "discount_applied": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discount Applied"
+          },
+          "enrolled_at": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enrolled At"
+          },
+          "enrollment_id": {
+            "title": "Enrollment Id",
+            "type": "integer"
+          },
+          "group_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Id"
+          },
+          "group_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Name"
+          },
+          "group_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Status"
+          },
+          "level_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level Number"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "student_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Name"
+          }
+        },
+        "required": [
+          "enrollment_id",
+          "student_name",
+          "phone",
+          "group_id",
+          "group_name",
+          "group_status",
+          "course_name",
+          "level_number",
+          "enrolled_at",
+          "amount_due",
+          "discount_applied",
+          "notes"
+        ],
+        "title": "DeadGroupEnrollmentRowDTO",
+        "type": "object"
+      },
       "DeleteLevelResult": {
         "description": "Result of undoing/deleting a level.",
         "properties": {
@@ -6464,6 +6683,136 @@
           "group_level_number_after"
         ],
         "title": "DeleteLevelResult",
+        "type": "object"
+      },
+      "DuplicateEnrollmentRowDTO": {
+        "description": "D: a student with more than one active enrollment in the same group.",
+        "properties": {
+          "active_enrollment_count": {
+            "title": "Active Enrollment Count",
+            "type": "integer"
+          },
+          "course_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Name"
+          },
+          "enrollment_ids": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enrollment Ids"
+          },
+          "first_enrolled": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Enrolled"
+          },
+          "group_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Id"
+          },
+          "group_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Name"
+          },
+          "last_enrolled": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Enrolled"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "student_id": {
+            "title": "Student Id",
+            "type": "integer"
+          },
+          "student_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Name"
+          },
+          "total_amount_due_across_duplicates": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Amount Due Across Duplicates"
+          }
+        },
+        "required": [
+          "student_id",
+          "student_name",
+          "phone",
+          "group_id",
+          "group_name",
+          "course_name",
+          "active_enrollment_count",
+          "enrollment_ids",
+          "first_enrolled",
+          "last_enrolled",
+          "total_amount_due_across_duplicates"
+        ],
+        "title": "DuplicateEnrollmentRowDTO",
         "type": "object"
       },
       "EmployeeAccountResponse": {
@@ -7929,6 +8278,132 @@
         "title": "GenerateLevelSessionsRequest",
         "type": "object"
       },
+      "GhostPaymentRowDTO": {
+        "description": "H: active payment that belongs to a soft-deleted student.",
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "deleted_student_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted Student Name"
+          },
+          "enrollment_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enrollment Id"
+          },
+          "paid_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid At"
+          },
+          "payment_id": {
+            "title": "Payment Id",
+            "type": "integer"
+          },
+          "receipt_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receipt Number"
+          },
+          "student_deleted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Deleted At"
+          },
+          "student_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Id"
+          },
+          "transaction_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transaction Type"
+          }
+        },
+        "required": [
+          "payment_id",
+          "student_id",
+          "deleted_student_name",
+          "student_deleted_at",
+          "amount",
+          "transaction_type",
+          "enrollment_id",
+          "receipt_number",
+          "paid_at",
+          "created_at"
+        ],
+        "title": "GhostPaymentRowDTO",
+        "type": "object"
+      },
       "GroupAttendanceResponseDTO": {
         "description": "Root response for GET /academics/groups/{id}/attendance",
         "properties": {
@@ -8872,6 +9347,142 @@
         "title": "LevelEnrollmentSummaryDTO",
         "type": "object"
       },
+      "LevelMismatchRowDTO": {
+        "description": "G: enrollment level with no matching group_levels row.",
+        "properties": {
+          "amount_due": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Due"
+          },
+          "course_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Name"
+          },
+          "enrolled_at": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enrolled At"
+          },
+          "enrollment_id": {
+            "title": "Enrollment Id",
+            "type": "integer"
+          },
+          "enrollment_level": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enrollment Level"
+          },
+          "enrollment_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enrollment Status"
+          },
+          "group_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Id"
+          },
+          "group_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Name"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "student_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Name"
+          }
+        },
+        "required": [
+          "enrollment_id",
+          "student_name",
+          "phone",
+          "group_id",
+          "group_name",
+          "course_name",
+          "enrollment_level",
+          "enrollment_status",
+          "amount_due",
+          "enrolled_at",
+          "notes"
+        ],
+        "title": "LevelMismatchRowDTO",
+        "type": "object"
+      },
       "LevelPaymentSummaryDTO": {
         "description": "Payment summary for a single level.",
         "properties": {
@@ -9273,6 +9884,143 @@
         "title": "NotificationLogDTO",
         "type": "object"
       },
+      "OrphanedPaymentRowDTO": {
+        "description": "C: payment not linked to an enrollment.",
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "paid_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid At"
+          },
+          "payment_id": {
+            "title": "Payment Id",
+            "type": "integer"
+          },
+          "payment_method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Method"
+          },
+          "payment_notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Notes"
+          },
+          "payment_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Type"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "receipt_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receipt Number"
+          },
+          "student_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Name"
+          },
+          "transaction_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transaction Type"
+          }
+        },
+        "required": [
+          "payment_id",
+          "receipt_number",
+          "student_name",
+          "phone",
+          "amount",
+          "transaction_type",
+          "payment_type",
+          "payment_notes",
+          "paid_at",
+          "payment_method",
+          "created_at"
+        ],
+        "title": "OrphanedPaymentRowDTO",
+        "type": "object"
+      },
       "OutstandingByGroupDTO": {
         "properties": {
           "course_name": {
@@ -9304,6 +10052,320 @@
           "total_outstanding"
         ],
         "title": "OutstandingByGroupDTO",
+        "type": "object"
+      },
+      "OverdiscountedEnrollmentRowDTO": {
+        "description": "I: discount of 100% or more.",
+        "properties": {
+          "amount_due": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Due"
+          },
+          "course_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Name"
+          },
+          "discount_applied": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discount Applied"
+          },
+          "discount_pct": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discount Pct"
+          },
+          "enrolled_at": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enrolled At"
+          },
+          "enrollment_id": {
+            "title": "Enrollment Id",
+            "type": "integer"
+          },
+          "enrollment_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enrollment Status"
+          },
+          "group_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Name"
+          },
+          "level_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level Number"
+          },
+          "net_due": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Net Due"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "student_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Name"
+          }
+        },
+        "required": [
+          "enrollment_id",
+          "student_name",
+          "phone",
+          "group_name",
+          "course_name",
+          "level_number",
+          "enrollment_status",
+          "amount_due",
+          "discount_applied",
+          "discount_pct",
+          "net_due",
+          "notes",
+          "enrolled_at"
+        ],
+        "title": "OverdiscountedEnrollmentRowDTO",
+        "type": "object"
+      },
+      "OverpaidEnrollmentRowDTO": {
+        "description": "B: enrollment paid beyond its net due (credit balance).",
+        "properties": {
+          "amount_due": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Due"
+          },
+          "course_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Name"
+          },
+          "discount_applied": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discount Applied"
+          },
+          "enrollment_id": {
+            "title": "Enrollment Id",
+            "type": "integer"
+          },
+          "enrollment_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enrollment Status"
+          },
+          "group_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Name"
+          },
+          "level_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level Number"
+          },
+          "net_due": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Net Due"
+          },
+          "overpaid_by": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overpaid By"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "student_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Name"
+          },
+          "total_paid": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Paid"
+          }
+        },
+        "required": [
+          "enrollment_id",
+          "student_name",
+          "phone",
+          "group_name",
+          "course_name",
+          "level_number",
+          "enrollment_status",
+          "amount_due",
+          "discount_applied",
+          "net_due",
+          "total_paid",
+          "overpaid_by"
+        ],
+        "title": "OverpaidEnrollmentRowDTO",
         "type": "object"
       },
       "OverpaymentRiskResponse": {
@@ -9667,6 +10729,70 @@
           "total"
         ],
         "title": "PaginatedResponse[StudentListingDTO]",
+        "type": "object"
+      },
+      "PaginatedResponse_Union_ZeroChargeEnrollmentRowDTO__OverpaidEnrollmentRowDTO__OrphanedPaymentRowDTO__DuplicateEnrollmentRowDTO__DeadGroupEnrollmentRowDTO__UnrefundedExitRowDTO__LevelMismatchRowDTO__GhostPaymentRowDTO__OverdiscountedEnrollmentRowDTO__": {
+        "properties": {
+          "data": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ZeroChargeEnrollmentRowDTO"
+                },
+                {
+                  "$ref": "#/components/schemas/OverpaidEnrollmentRowDTO"
+                },
+                {
+                  "$ref": "#/components/schemas/OrphanedPaymentRowDTO"
+                },
+                {
+                  "$ref": "#/components/schemas/DuplicateEnrollmentRowDTO"
+                },
+                {
+                  "$ref": "#/components/schemas/DeadGroupEnrollmentRowDTO"
+                },
+                {
+                  "$ref": "#/components/schemas/UnrefundedExitRowDTO"
+                },
+                {
+                  "$ref": "#/components/schemas/LevelMismatchRowDTO"
+                },
+                {
+                  "$ref": "#/components/schemas/GhostPaymentRowDTO"
+                },
+                {
+                  "$ref": "#/components/schemas/OverdiscountedEnrollmentRowDTO"
+                }
+              ]
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "limit": {
+            "default": 50,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "skip": {
+            "default": 0,
+            "title": "Skip",
+            "type": "integer"
+          },
+          "success": {
+            "default": true,
+            "title": "Success",
+            "type": "boolean"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "data",
+          "total"
+        ],
+        "title": "PaginatedResponse[Union[ZeroChargeEnrollmentRowDTO, OverpaidEnrollmentRowDTO, OrphanedPaymentRowDTO, DuplicateEnrollmentRowDTO, DeadGroupEnrollmentRowDTO, UnrefundedExitRowDTO, LevelMismatchRowDTO, GhostPaymentRowDTO, OverdiscountedEnrollmentRowDTO]]",
         "type": "object"
       },
       "PaginatedResponse_UnpaidEnrollmentItem_": {
@@ -14932,6 +16058,155 @@
         "title": "UnpaidEnrollmentItem",
         "type": "object"
       },
+      "UnrefundedExitRowDTO": {
+        "description": "F: dropped or transferred enrollment that still holds collected money.",
+        "properties": {
+          "amount_due": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Due"
+          },
+          "course_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Name"
+          },
+          "discount_applied": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discount Applied"
+          },
+          "enrollment_id": {
+            "title": "Enrollment Id",
+            "type": "integer"
+          },
+          "enrollment_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enrollment Status"
+          },
+          "group_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Name"
+          },
+          "level_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level Number"
+          },
+          "net_collected": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Net Collected"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "student_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Name"
+          },
+          "transferred_from": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transferred From"
+          }
+        },
+        "required": [
+          "enrollment_id",
+          "student_name",
+          "phone",
+          "group_name",
+          "course_name",
+          "level_number",
+          "enrollment_status",
+          "amount_due",
+          "discount_applied",
+          "net_collected",
+          "transferred_from",
+          "notes"
+        ],
+        "title": "UnrefundedExitRowDTO",
+        "type": "object"
+      },
       "UpdateAdminSettingsRequest": {
         "description": "Bulk update settings.",
         "properties": {
@@ -16467,6 +17742,144 @@
           "status"
         ],
         "title": "WaitingStudentDTO",
+        "type": "object"
+      },
+      "ZeroChargeEnrollmentRowDTO": {
+        "description": "A: active enrollment with no charge.",
+        "properties": {
+          "amount_due": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Due"
+          },
+          "course_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Name"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "discount_applied": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discount Applied"
+          },
+          "enrolled_at": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enrolled At"
+          },
+          "enrollment_id": {
+            "title": "Enrollment Id",
+            "type": "integer"
+          },
+          "group_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Name"
+          },
+          "level_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level Number"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "student_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Name"
+          },
+          "student_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Phone"
+          }
+        },
+        "required": [
+          "enrollment_id",
+          "student_name",
+          "student_phone",
+          "group_name",
+          "course_name",
+          "level_number",
+          "enrolled_at",
+          "amount_due",
+          "discount_applied",
+          "notes",
+          "created_at"
+        ],
+        "title": "ZeroChargeEnrollmentRowDTO",
         "type": "object"
       },
       "app__modules__crm__schemas__student_details__EnrollmentInfo": {
@@ -21183,6 +22596,185 @@
         "tags": [
           "Attendance",
           "Attendance"
+        ]
+      }
+    },
+    "/api/v1/audit/scenarios": {
+      "get": {
+        "description": "Scenarios A\u2013I, errors first, then warnings, then info.",
+        "operationId": "list_audit_scenarios_api_v1_audit_scenarios_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_list_AuditScenarioDTO__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List the integrity checks with their anomaly counts",
+        "tags": [
+          "Audit",
+          "Audit"
+        ]
+      }
+    },
+    "/api/v1/audit/scenarios/{code}": {
+      "get": {
+        "description": "The rows of one check (A\u2013I); the row shape depends on the check.",
+        "operationId": "list_audit_scenario_rows_api_v1_audit_scenarios__code__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "title": "Code",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only rows dated on or after this day (ignored by checks without a date)",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only rows dated on or after this day (ignored by checks without a date)",
+              "title": "Since"
+            }
+          },
+          {
+            "in": "query",
+            "name": "skip",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Skip",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_Union_ZeroChargeEnrollmentRowDTO__OverpaidEnrollmentRowDTO__OrphanedPaymentRowDTO__DuplicateEnrollmentRowDTO__DeadGroupEnrollmentRowDTO__UnrefundedExitRowDTO__LevelMismatchRowDTO__GhostPaymentRowDTO__OverdiscountedEnrollmentRowDTO__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown scenario"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List the anomalies one integrity check found",
+        "tags": [
+          "Audit",
+          "Audit"
         ]
       }
     },
