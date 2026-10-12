@@ -91,8 +91,7 @@ project_root/
 ├── specs/                        # Feature specs (Speckit)
 ├── audit_dashboard.py            # Launcher for the audit module's Streamlit demo UI (never deployed)
 ├── pyproject.toml
-├── main.py                       # FastAPI Cloud entrypoint
-└── run_api.py                    # Dev server with hot reload
+└── main.py                       # The entry point: FastAPI Cloud deploys it; `fastapi dev main.py` for dev
 ```
 
 The module rules (module order, facades, one unit of work per use case) are in
@@ -285,7 +284,7 @@ psql -U postgres -d techno_kids -f db/schema.sql
 ### 4. Run API
 ```bash
 # Development (hot reload)
-python run_api.py
+fastapi dev main.py
 
 # Production
 uvicorn app.api.main:app --host 0.0.0.0 --port 8000

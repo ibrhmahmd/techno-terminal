@@ -5,7 +5,7 @@ Supabase Auth, 12 business modules, plain-SQL migrations. Python `>=3.11,<3.13` 
 
 ## Entry Points
 
-- **Dev**: `python run_api.py` — hot reload. Its `sys.path` line is only needed when the package isn't installed (`pip install -e .` / `uv sync`); whether to keep two entry points is open in #117.
+- **Dev**: `fastapi dev main.py` — hot reload (needs the package installed: `uv sync` or `pip install -e .`). `main.py` is the only entry point (#117).
 - **Prod**: FastAPI Cloud. Root `main.py` re-exports `app.api.main:app` (built via `create_app()`) as the deploy entrypoint.
 - **Audit demo UI**: `uv sync --extra dashboard`, then `streamlit run audit_dashboard.py` (launches `app/modules/audit/ui/app.py`; settings come from the app config, so `TESTING=true TEST_ENV_FILE=.env.test.local` points it at the local DB).
 
@@ -23,7 +23,7 @@ Optional PDF/receipt settings in `app/core/config.py`.
 |------|---------|
 | Install deps | `pip install -e .` |
 | Install (locked) | `uv sync` |
-| Dev server | `python run_api.py` |
+| Dev server | `fastapi dev main.py` |
 | Prod server | `uvicorn app.api.main:app --host 0.0.0.0 --port 8000` |
 | Single test | `pytest app/modules/crm/tests/test_crm.py::test_student_list -v` |
 | Local test DB | `scripts/local_test_db.sh up` (also `reset`/`down`; writes `.env.test.local`) |
@@ -119,7 +119,7 @@ Tests live with the code they test (#109): `app/modules/<module>/tests/` (API pi
 | Tier | Target | Allowed |
 |------|--------|---------|
 | Dev/unit | Local `postgres:17` container (`techno-test-db`, `127.0.0.1:55432`) | Full fast gate, destructive resets (`scripts/local_test_db.sh reset`), migration dry-runs |
-| Staging | Supabase **testing** project (`qugffjtucavdseczbata`) | Forward-only migrations FIRST, full pytest gate, live smoke via `TESTING=true python run_api.py` |
+| Staging | Supabase **testing** project (`qugffjtucavdseczbata`) | Forward-only migrations FIRST, full pytest gate, live smoke via `TESTING=true fastapi dev main.py` |
 | Prod | production Supabase project (ID deliberately not recorded in this public repo) | Migrations only after the staging gate is green |
 
 - `.env.test` serves BOTH pytest and the server (`config.py:106` selects it when running under pytest or `TESTING=true`). Its `DATABASE_URL`, `SUPABASE_URL`, and keys must all point at the SAME project — `get_engine()` logs a warning on mismatch (`app/db/connection.py:_warn_on_project_mismatch`).
