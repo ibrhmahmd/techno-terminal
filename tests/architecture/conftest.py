@@ -42,6 +42,12 @@ _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 _APP_ROOT = os.path.join(_PROJECT_ROOT, "app")
 
 
+def _is_test_code(dotted: str) -> bool:
+    """Test code (any ``tests`` package, ``app.testing``, ``app.conftest``) is exempt from the rules."""
+    parts = dotted.split(".")
+    return "tests" in parts or dotted.startswith("app.testing") or dotted == "app.conftest"
+
+
 def _module_of(dotted: str) -> str | None:
     """Top-level module name ("crm") for a dotted path, or None if not under app.modules."""
     if not dotted.startswith(_PREFIX):
@@ -85,7 +91,7 @@ def _cross_module_imports(graph):
     for every direct cross-module import under app.modules."""
     for importer in sorted(graph.modules):
         x = _module_of(importer)
-        if x is None:
+        if x is None or _is_test_code(importer):
             continue
         for imported in sorted(graph.find_modules_directly_imported_by(importer)):
             y = _module_of(imported)
@@ -126,7 +132,7 @@ def _layers_violations(graph) -> dict[str, list[str]]:
     result: dict[str, list[str]] = {}
     for importer in sorted(graph.modules):
         x = _module_of(importer)
-        if x is None:
+        if x is None or _is_test_code(importer):
             continue
         importer_layer = _layer_of(importer, x)
         if importer_layer is None:
@@ -191,7 +197,7 @@ def _get_session_violations() -> dict[str, list[str]]:
                 continue
             module = _file_to_module(rel)
             x = _module_of(module)
-            if x is None:
+            if x is None or _is_test_code(module):
                 continue
             try:
                 tree = ast.parse(open(path, encoding="utf-8").read())

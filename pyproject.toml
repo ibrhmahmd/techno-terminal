@@ -41,9 +41,12 @@ dev = ["import-linter>=2.15,<3"]
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["app*"]
+exclude = ["app.testing*", "*.tests", "*.tests.*"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["app", "tests"]
+pythonpath = ["."]
+addopts = "--import-mode=importlib"
 markers = [
     "supabase: needs real Supabase auth/API (cloud testing project)",
 ]

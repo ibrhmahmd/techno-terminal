@@ -26,7 +26,7 @@ Optional PDF/receipt settings in `app/core/config.py`.
 | Install (locked) | `uv sync` |
 | Dev server | `python run_api.py` |
 | Prod server | `uvicorn app.api.main:app --host 0.0.0.0 --port 8000` |
-| Single test | `pytest tests/test_crm.py::test_student_list -v` |
+| Single test | `pytest app/modules/crm/tests/test_crm.py::test_student_list -v` |
 | Local test DB | `scripts/local_test_db.sh up` (also `reset`/`down`; writes `.env.test.local`) |
 | Local gate | `pytest -m "not supabase" -v` |
 | Cloud Supabase tests | `TEST_ENV_FILE=.env.test pytest -m supabase -v` (needs `TEST_ADMIN_JWT`) |
@@ -75,8 +75,8 @@ Rules that hold everywhere:
 3. Role comes from the **local `users.role` column** (JWT only proves identity). Role guards in `app/api/deps.py`: `require_admin` (`admin` + `system_admin`), `require_system_admin`, `require_any` (alias for `get_current_user`).
 
 **Test tokens**:
-- **Real Supabase JWT** — `admin_token` fixture in `tests/conftest.py`, expires ~1h, regen via `python scripts/get_test_jwt.py`.
-- **Mock tokens** — `system_admin_token`, `mock_admin_token` via `tests/utils/jwt_mocks.py` (HS256, `TEST_SECRET`).
+- **Real Supabase JWT** — `admin_token` fixture in `app/conftest.py`, expires ~1h, regen via `python scripts/get_test_jwt.py`.
+- **Mock tokens** — `system_admin_token`, `mock_admin_token` via `app/testing/jwt_mocks.py` (HS256, `TEST_SECRET`).
 - **Auth bypass** — `override_auth` fixture replaces `get_current_user` entirely; pair with mock headers.
 
 **Notifier wiring (ADR-0007)**: `auth` declares `AuthNotifier` port; `notifications.adapters` provides `NotificationServiceAuthNotifier` adapter; wired in `create_app()` via `app.dependency_overrides[auth_deps.get_auth_notifier] = notifications_adapters.get_auth_notifier`. Login route calls `notifier.admin_login(...)` **after** `uow.commit()`; notifier failures are logged and never fail the login.
@@ -106,10 +106,13 @@ Plain SQL files in `db/migrations/`. Duplicate prefix numbers exist (`008`, `020
 ### Database Pool (code truth in `app/db/connection.py`)
 `pool_size=10, max_overflow=5 (15 total), pool_timeout=30, pool_pre_ping=True, pool_recycle=240s`, `sslmode=prefer`, `statement_timeout=30000`, `expire_on_commit=False`.
 
-### Test Isolation
-`db_session` fixture uses `get_session()` context manager — rollback only happens if the test raises. Successful tests simply close without explicit rollback; uncommitted mutations are lost on session close. `seeded_session` fixture (module-scoped) explicitly rolls back on teardown for zero side effects between modules. 30+ test files total.
+### Test Layout
+Tests live with the code they test (#109): `app/modules/<module>/tests/` (API pins in `characterization/`, notifier fakes in `fakes.py`), plus `app/db/tests`, `app/api/tests`, `app/core/tests`, `app/observability/tests`. Shared fixtures are in `app/conftest.py`, shared helpers in `app/testing/`. Cross-module tests go to the highest module involved. Only the repo-wide contracts stay in `tests/architecture/` (+ `tests/snapshots/`); `test_test_location.py` fails on a test file anywhere else. pytest runs with `--import-mode=importlib`; test code is excluded from the deploy and the built package.
 
-`uow` and `client_with_uow` (tests/conftest.py) are the standard for new tests that write: the injected `UnitOfWork` commits against a SAVEPOINT inside an outer transaction that is rolled back at teardown, so even committed rows leave zero state (commit-safe, idempotent). `client_with_uow` overrides `get_uow` on the real app without starting lifespan schedulers. `db_session`/`seeded_session` remain for seeding committed rows that code opening its own session must see.
+### Test Isolation
+`db_session` fixture uses `get_session()` context manager — rollback only happens if the test raises. Successful tests simply close without explicit rollback; uncommitted mutations are lost on session close. `seeded_session` fixture (module-scoped) explicitly rolls back on teardown for zero side effects between modules.
+
+`uow` and `client_with_uow` (app/conftest.py) are the standard for new tests that write: the injected `UnitOfWork` commits against a SAVEPOINT inside an outer transaction that is rolled back at teardown, so even committed rows leave zero state (commit-safe, idempotent). `client_with_uow` overrides `get_uow` on the real app without starting lifespan schedulers. `db_session`/`seeded_session` remain for seeding committed rows that code opening its own session must see.
 
 ### Testing DB Policy (environment ladder)
 | Tier | Target | Allowed |
@@ -120,7 +123,7 @@ Plain SQL files in `db/migrations/`. Duplicate prefix numbers exist (`008`, `020
 
 - `.env.test` serves BOTH pytest and the server (`config.py:106` selects it when running under pytest or `TESTING=true`). Its `DATABASE_URL`, `SUPABASE_URL`, and keys must all point at the SAME project — `get_engine()` logs a warning on mismatch (`app/db/connection.py:_warn_on_project_mismatch`).
 - **Local gate (#28):** `scripts/local_test_db.sh up` spins up a throwaway `postgres:17` container (`techno-test-db`, `127.0.0.1:55432`), applies `db/schema.sql`, and writes `.env.test.local` (a copy of `.env.test` with only `DATABASE_URL` swapped). Under pytest, `config.py:select_env_file` prefers an explicit `TEST_ENV_FILE`, then `.env.test.local` if present, else `.env.test`. The gate is `pytest -m "not supabase"` — it never touches Supabase. Resets are localhost/container only.
-- **`supabase` marker:** registered in `pyproject.toml`. Tests that need real Supabase auth/API are either auto-marked (any test requesting the `admin_token` fixture, via the `pytest_collection_modifyitems` hook in `tests/conftest.py`) or explicitly decorated `@pytest.mark.supabase`. Run them once per sprint against the cloud testing project with `TEST_ENV_FILE=.env.test pytest -m supabase`, after generating a token: `TESTING=true TEST_ENV_FILE=.env.test python scripts/get_test_jwt.py` (export it as `TEST_ADMIN_JWT`); without it, `admin_token` tests skip.
+- **`supabase` marker:** registered in `pyproject.toml`. Tests that need real Supabase auth/API are either auto-marked (any test requesting the `admin_token` fixture, via the `pytest_collection_modifyitems` hook in `app/conftest.py`) or explicitly decorated `@pytest.mark.supabase`. Run them once per sprint against the cloud testing project with `TEST_ENV_FILE=.env.test pytest -m supabase`, after generating a token: `TESTING=true TEST_ENV_FILE=.env.test python scripts/get_test_jwt.py` (export it as `TEST_ADMIN_JWT`); without it, `admin_token` tests skip.
 - NEVER apply `db/schema.sql` or reset scripts to the cloud testing DB (it holds restored data) — resets are localhost/CI-container only.
 - Suite rows persist on the cloud testing DB by design; everything is uuid-tagged debris.
 - Migration ladder: write migration → apply to testing project → green HR/CI gates there → then prod.
