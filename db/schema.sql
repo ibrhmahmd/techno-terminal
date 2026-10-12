@@ -29,6 +29,7 @@
 --   20_indexes.sql        - All indexes
 --   30_views.sql          - All views
 --   40_functions.sql      - Custom functions
+--   45_reporting_views.sql - Audit, finance and BI views (from migrations 074-076)
 --   50_triggers.sql       - All triggers
 --   60_constraints.sql    - Additional constraints
 --   90_seed_data.sql      - Initial seed data
@@ -61,6 +62,7 @@
 \i schema/20_indexes.sql
 \i schema/30_views.sql
 \i schema/40_functions.sql
+\i schema/45_reporting_views.sql
 \i schema/50_triggers.sql
 \i schema/60_constraints.sql
 \i schema/90_seed_data.sql

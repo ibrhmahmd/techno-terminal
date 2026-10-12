@@ -1,7 +1,7 @@
 import os
 from datetime import date
 from fpdf import FPDF
-from dashboard.config import query
+from app.modules.audit.ui.data import query_view
 
 class BIReportPDF(FPDF):
     def header(self):
@@ -75,7 +75,7 @@ def generate_bi_pdf() -> bytes:
     # -------------------------------------------------------------
     kpi_data = {}
     try:
-        df = query("SELECT * FROM v_bi_kpi_header")
+        df = query_view("v_bi_kpi_header")
         if not df.empty:
             kpi_data = df.iloc[0].to_dict()
     except Exception as e:
@@ -83,14 +83,14 @@ def generate_bi_pdf() -> bytes:
 
     new_studs_rows = []
     try:
-        df = query("SELECT month, new_students FROM v_bi_new_students_monthly ORDER BY month_date ASC")
+        df = query_view("v_bi_new_students_monthly", ["month", "new_students"], order_by="month_date")
         new_studs_rows = df.values.tolist()
     except Exception as e:
         print(f"Error querying v_bi_new_students_monthly: {e}")
 
     waitlist_sum = {}
     try:
-        df = query("SELECT * FROM v_bi_waiting_list_summary")
+        df = query_view("v_bi_waiting_list_summary")
         if not df.empty:
             waitlist_sum = df.iloc[0].to_dict()
     except Exception as e:
@@ -98,14 +98,14 @@ def generate_bi_pdf() -> bytes:
 
     waitlist_months = []
     try:
-        df = query("SELECT joined_month, waiting_students FROM v_bi_waiting_list_by_month ORDER BY joined_month_date ASC")
+        df = query_view("v_bi_waiting_list_by_month", ["joined_month", "waiting_students"], order_by="joined_month_date")
         waitlist_months = df.values.tolist()
     except Exception as e:
         print(f"Error querying v_bi_waiting_list_by_month: {e}")
 
     wait_duration = {}
     try:
-        df = query("SELECT * FROM v_bi_current_wait_duration")
+        df = query_view("v_bi_current_wait_duration")
         if not df.empty:
             wait_duration = df.iloc[0].to_dict()
     except Exception as e:
@@ -113,7 +113,7 @@ def generate_bi_pdf() -> bytes:
 
     wait_conversion = {}
     try:
-        df = query("SELECT * FROM v_bi_waiting_conversion_stats")
+        df = query_view("v_bi_waiting_conversion_stats")
         if not df.empty:
             wait_conversion = df.iloc[0].to_dict()
     except Exception as e:
@@ -121,14 +121,14 @@ def generate_bi_pdf() -> bytes:
 
     gender_rows = []
     try:
-        df = query("SELECT gender, student_count, avg_age FROM v_bi_gender_age_breakdown")
+        df = query_view("v_bi_gender_age_breakdown", ["gender", "student_count", "avg_age"])
         gender_rows = df.values.tolist()
     except Exception as e:
         print(f"Error querying v_bi_gender_age_breakdown: {e}")
 
     demographics_comp = {}
     try:
-        df = query("SELECT * FROM v_bi_demographics_completeness")
+        df = query_view("v_bi_demographics_completeness")
         if not df.empty:
             demographics_comp = df.iloc[0].to_dict()
     except Exception as e:
@@ -136,14 +136,14 @@ def generate_bi_pdf() -> bytes:
 
     cohort_rows = []
     try:
-        df = query("SELECT status, student_count FROM v_bi_founding_cohort_status")
+        df = query_view("v_bi_founding_cohort_status", ["status", "student_count"])
         cohort_rows = df.values.tolist()
     except Exception as e:
         print(f"Error querying v_bi_founding_cohort_status: {e}")
 
     rev_rows = []
     try:
-        df = query("SELECT month, num_payments, revenue FROM v_bi_monthly_revenue ORDER BY month_date ASC")
+        df = query_view("v_bi_monthly_revenue", ["month", "num_payments", "revenue"], order_by="month_date")
         # Format revenue as EGP string for the table
         formatted_rev = []
         for r in df.values.tolist():
@@ -154,7 +154,7 @@ def generate_bi_pdf() -> bytes:
 
     pay_completeness_rows = []
     try:
-        df = query("SELECT payment_state, enrollments, billed, collected FROM v_bi_payment_completeness")
+        df = query_view("v_bi_payment_completeness", ["payment_state", "enrollments", "billed", "collected"])
         formatted_pay = []
         for r in df.values.tolist():
             formatted_pay.append([r[0].replace('_', ' ').title(), r[1], f"{r[2]:,.2f} EGP", f"{r[3]:,.2f} EGP"])
@@ -164,7 +164,7 @@ def generate_bi_pdf() -> bytes:
 
     pay_method_rows = []
     try:
-        df = query("SELECT payment_method, receipt_count, total_collected, pct_of_total FROM v_bi_payment_method_mix")
+        df = query_view("v_bi_payment_method_mix", ["payment_method", "receipt_count", "total_collected", "pct_of_total"])
         formatted_method = []
         for r in df.values.tolist():
             formatted_method.append([r[0].title(), r[1], f"{r[2]:,.2f} EGP", f"{r[3]:.1f}%"])
@@ -174,7 +174,7 @@ def generate_bi_pdf() -> bytes:
 
     course_rows = []
     try:
-        df = query("SELECT course, category, price_per_level, groups, students, revenue FROM v_bi_course_performance")
+        df = query_view("v_bi_course_performance", ["course", "category", "price_per_level", "groups", "students", "revenue"])
         formatted_course = []
         for r in df.values.tolist():
             formatted_course.append([r[0], r[1].title(), f"{r[2]:,.2f} EGP", r[3], r[4], f"{r[5]:,.2f} EGP"])
@@ -184,21 +184,21 @@ def generate_bi_pdf() -> bytes:
 
     over_cap_rows = []
     try:
-        df = query("SELECT group_name, max_capacity, enrolled, over_by FROM v_bi_groups_over_capacity")
+        df = query_view("v_bi_groups_over_capacity", ["group_name", "max_capacity", "enrolled", "over_by"])
         over_cap_rows = df.values.tolist()
     except Exception as e:
         print(f"Error querying v_bi_groups_over_capacity: {e}")
 
     instructor_load_rows = []
     try:
-        df = query("SELECT full_name, employment_type, active_groups, active_students FROM v_bi_instructor_load")
+        df = query_view("v_bi_instructor_load", ["full_name", "employment_type", "active_groups", "active_students"])
         instructor_load_rows = df.values.tolist()
     except Exception as e:
         print(f"Error querying v_bi_instructor_load: {e}")
 
     contract_cost_rows = []
     try:
-        df = query("SELECT full_name, active_groups, active_enrollments, estimated_cost FROM v_bi_contract_instructor_cost")
+        df = query_view("v_bi_contract_instructor_cost", ["full_name", "active_groups", "active_enrollments", "estimated_cost"])
         formatted_contract = []
         for r in df.values.tolist():
             formatted_contract.append([r[0], r[1], r[2], f"{r[3]:,.2f} EGP"])
@@ -208,7 +208,7 @@ def generate_bi_pdf() -> bytes:
 
     headcount_rows = []
     try:
-        df = query("SELECT employment_type, headcount, total_monthly_salary FROM v_bi_headcount_by_type")
+        df = query_view("v_bi_headcount_by_type", ["employment_type", "headcount", "total_monthly_salary"])
         formatted_headcount = []
         for r in df.values.tolist():
             formatted_headcount.append([r[0].replace('_', ' ').title(), r[1], f"{r[2]:,.2f} EGP"])
@@ -218,7 +218,7 @@ def generate_bi_pdf() -> bytes:
 
     attendance_rows = []
     try:
-        df = query("SELECT status, records, pct FROM v_bi_attendance_rate")
+        df = query_view("v_bi_attendance_rate", ["status", "records", "pct"])
         formatted_att = []
         for r in df.values.tolist():
             formatted_att.append([r[0].title(), r[1], f"{r[2]:.1f}%"])
@@ -228,7 +228,7 @@ def generate_bi_pdf() -> bytes:
 
     lifecycle_rows = []
     try:
-        df = query("SELECT status, enrollments, pct FROM v_bi_enrollment_status")
+        df = query_view("v_bi_enrollment_status", ["status", "enrollments", "pct"])
         formatted_life = []
         for r in df.values.tolist():
             formatted_life.append([r[0].title(), r[1], f"{r[2]:.1f}%"])
@@ -238,7 +238,7 @@ def generate_bi_pdf() -> bytes:
 
     schedule_rows = []
     try:
-        df = query("SELECT day, afternoon_groups, evening_groups, total_groups, students_enrolled FROM v_bi_weekly_schedule")
+        df = query_view("v_bi_weekly_schedule", ["day", "afternoon_groups", "evening_groups", "total_groups", "students_enrolled"])
         schedule_rows = df.values.tolist()
     except Exception as e:
         print(f"Error querying v_bi_weekly_schedule: {e}")

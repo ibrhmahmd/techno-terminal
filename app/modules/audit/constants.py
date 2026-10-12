@@ -1,27 +1,7 @@
-import os
-import streamlit as st
-import psycopg2
-import psycopg2.extras
-import pandas as pd
-from datetime import date
-from dotenv import load_dotenv
+"""Audit module catalogue: the integrity scenarios and the dashboard views.
 
-# Load env variables
-load_dotenv()
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-# Severity definitions
-SEVERITY_COLOR = {
-    "ERROR":   "#FF4B4B",
-    "WARNING": "#FFA500",
-    "INFO":    "#4B9EFF",
-}
-
-SEVERITY_ICON = {
-    "ERROR":   "🔴",
-    "WARNING": "🟡",
-    "INFO":    "🔵",
-}
+Pure data, read by the services (view allow-list) and by the Streamlit demo UI.
+"""
 
 SEVERITY_PRIORITY = {"ERROR": 0, "WARNING": 1, "INFO": 2}
 
@@ -195,88 +175,51 @@ FINANCE_VIEWS = [
 ]
 
 FINANCE_CATEGORIES = ["Revenue & Collection", "Payroll & Cost", "Discounts & Risk", "Group Health"]
-FINANCE_CATEGORY_ICONS = {
-    "Revenue & Collection": "💰",
-    "Payroll & Cost": "👷",
-    "Discounts & Risk": "⚠️",
-    "Group Health": "🏫",
+
+# Date column each audit view can be filtered on ("since" filter); None = no date filter.
+AUDIT_DATE_COLUMNS = {
+    "v_audit_zero_charge_enrollments": "enrolled_at",
+    "v_audit_overpaid_enrollments": None,
+    "v_audit_orphaned_payments": "paid_at",
+    "v_audit_duplicate_enrollments": "first_enrolled",
+    "v_audit_dead_group_enrollments": "enrolled_at",
+    "v_audit_unrefunded_exits": None,
+    "v_audit_level_mismatch": "enrolled_at",
+    "v_audit_ghost_payments": "paid_at",
+    "v_audit_overdiscounted_enrollments": "enrolled_at",
 }
 
-# Database functions
-@st.cache_resource
-def get_connection():
-    return psycopg2.connect(DATABASE_URL)
+BI_VIEWS = [
+    "v_bi_attendance_rate",
+    "v_bi_avg_revenue_per_student",
+    "v_bi_billed_vs_collected",
+    "v_bi_contract_instructor_cost",
+    "v_bi_contract_instructors_idle",
+    "v_bi_course_performance",
+    "v_bi_current_wait_duration",
+    "v_bi_demographics_completeness",
+    "v_bi_enrollment_status",
+    "v_bi_founding_cohort_status",
+    "v_bi_gender_age_breakdown",
+    "v_bi_groups_over_capacity",
+    "v_bi_headcount_by_type",
+    "v_bi_instructor_load",
+    "v_bi_kpi_header",
+    "v_bi_monthly_revenue",
+    "v_bi_new_students_monthly",
+    "v_bi_payment_completeness",
+    "v_bi_payment_method_mix",
+    "v_bi_waiting_conversion_stats",
+    "v_bi_waiting_list_by_month",
+    "v_bi_waiting_list_summary",
+    "v_bi_weekly_schedule",
+]
 
-def query(sql: str, params=None) -> pd.DataFrame:
-    conn = get_connection()
-    try:
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute(sql, params)
-            rows = cur.fetchall()
-        return pd.DataFrame([dict(r) for r in rows])
-    except Exception:
-        conn.rollback()
-        raise# Shared styling
-CUSTOM_CSS = """
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
-    
-    /* Global Font Settings */
-    .stApp, [data-testid="stAppViewContainer"], .main {
-        font-family: 'Inter', sans-serif !important;
-    }
-    
-    h1, h2, h3, h4, h5, h6 {
-        font-family: 'Space Grotesk', sans-serif !important;
-        font-weight: 500 !important;
-        letter-spacing: -0.03em !important;
-    }
-    
-    /* Metric Cards (Design Constitution spec) */
-    .metric-card {
-        background: #ffffff;
-        border: none;
-        border-left: 4px solid var(--accent-color, #006a61);
-        padding: 16px 20px;
-        border-radius: 6px;
-        box-shadow: 0 12px 40px rgba(11, 28, 48, 0.06);
-        margin-bottom: 16px;
-        transition: transform 120ms cubic-bezier(0.2, 0, 0, 1);
-    }
-    
-    .metric-card:hover {
-        transform: translateY(-1px);
-    }
-    
-    .metric-title {
-        font-size: 0.72rem;
-        color: #4b5563;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        font-weight: 600;
-        margin-bottom: 4px;
-    }
-    
-    .metric-value {
-        font-size: 1.85rem;
-        font-family: 'Space Grotesk', sans-serif;
-        font-weight: 600;
-        line-height: 1.1;
-        color: #0c111d;
-    }
-    
-    /* Tonal Layering (No Borders) */
-    .tip-box {
-        background: #eff4ff;
-        border: none;
-        border-radius: 6px;
-        padding: 12px 16px;
-        font-size: 0.85rem;
-        color: #1f2538;
-        margin-bottom: 16px;
-        line-height: 1.4;
-    }
-</style>
-"""
-
-
+# Every view the module may read. View and column names are interpolated into SQL,
+# so only names on this list (and plain identifiers) are accepted.
+ALLOWED_VIEWS = frozenset(
+    ["v_audit_summary", "v_finance_summary"]
+    + [s["view"] for s in SCENARIOS]
+    + [f["view"] for f in FINANCE_VIEWS]
+    + BI_VIEWS
+)

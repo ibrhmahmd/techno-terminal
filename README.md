@@ -89,7 +89,7 @@ project_root/
 ├── tests/                        # Repo-wide architecture contracts + API snapshot (module tests live in app/**/tests/)
 ├── docs/adr/                     # Architecture decision records (the target shape)
 ├── specs/                        # Feature specs (Speckit)
-├── dashboard/ + audit_dashboard.py  # Internal Streamlit audit dashboard (not part of the API)
+├── audit_dashboard.py            # Launcher for the audit module's Streamlit demo UI (never deployed)
 ├── pyproject.toml
 ├── main.py                       # FastAPI Cloud entrypoint
 └── run_api.py                    # Dev server with hot reload

@@ -2259,10 +2259,15 @@ dependencies = [
     { name = "sqlalchemy" },
     { name = "sqlmodel" },
     { name = "sqlparse" },
-    { name = "streamlit" },
     { name = "supabase" },
     { name = "twilio" },
     { name = "uvicorn" },
+]
+
+[package.optional-dependencies]
+dashboard = [
+    { name = "pandas" },
+    { name = "streamlit" },
 ]
 
 [package.dev-dependencies]
@@ -2284,6 +2289,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-fastapi", specifier = ">=0.65b0" },
     { name = "opentelemetry-instrumentation-httpx", specifier = ">=0.49.0" },
     { name = "opentelemetry-instrumentation-system-metrics", specifier = ">=0.65b0" },
+    { name = "pandas", marker = "extra == 'dashboard'" },
     { name = "psycopg2-binary", specifier = ">=2.9.9" },
     { name = "pydantic-settings", specifier = ">=2.0.0" },
     { name = "python-bidi", specifier = ">=0.4.2" },
@@ -2294,11 +2300,12 @@ requires-dist = [
     { name = "sqlalchemy", specifier = ">=2.0.54,<2.1" },
     { name = "sqlmodel", specifier = ">=0.0.47,<0.0.48" },
     { name = "sqlparse", specifier = ">=0.5.0" },
-    { name = "streamlit", specifier = ">=1.32.0" },
+    { name = "streamlit", marker = "extra == 'dashboard'", specifier = ">=1.32.0" },
     { name = "supabase", specifier = ">=2.0.0" },
     { name = "twilio" },
     { name = "uvicorn", specifier = ">=0.20.0" },
 ]
+provides-extras = ["dashboard"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "import-linter", specifier = ">=2.15,<3" }]

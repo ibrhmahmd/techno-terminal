@@ -1,13 +1,13 @@
 import streamlit as st
 from datetime import date
-from dashboard.config import query
-from dashboard.ui_components import render_egp_metric, render_count_metric, format_egp_cols, render_download_button
-from dashboard.pdf_generator import generate_bi_pdf
+from app.modules.audit.ui.data import query_view
+from app.modules.audit.ui.components import render_egp_metric, render_count_metric, format_egp_cols, render_download_button
+from app.modules.audit.ui.pdf_generator import generate_bi_pdf
 
 def query_bi_kpi() -> dict:
     try:
         # Query single row summary
-        df = query("SELECT * FROM v_bi_kpi_header")
+        df = query_view("v_bi_kpi_header")
         if df.empty:
             return {}
         return df.iloc[0].to_dict()
@@ -24,7 +24,7 @@ def bi_section(view: str, description: str, tip: str = "", key: str = ""):
         )
     with st.spinner(f"Loading {view}..."):
         try:
-            df = query(f"SELECT * FROM {view}")
+            df = query_view(view)
         except Exception as e:
             st.error(f"Query failed for `{view}`: {e}")
             return

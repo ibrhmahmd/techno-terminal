@@ -16,11 +16,11 @@ Counts for a database built from `schema.sql` alone (measured 2026-10-12 on the 
 | Metric | Count |
 |--------|-------|
 | Tables | 32 |
-| Views | 13 |
+| Views | 59 |
 | Indexes | 132 |
 | Triggers | 10 |
 
-`schema.sql` lags the migrations: the audit, finance and BI views used by the Streamlit dashboard (`v_audit_*`, `v_finance_*`, `v_bi_*`) exist only in `migrations/074_audit_views.sql`, `075_finance_views.sql` and `076_bi_report_views.sql`. There is no Alembic; migrations are plain SQL applied by hand.
+The audit, finance and BI views read by the `audit` module (`v_audit_*`, `v_finance_*`, `v_bi_*`, 46 views from migrations 074–076) live in `schema/45_reporting_views.sql`, so a database built from `schema.sql` matches production. There is no Alembic; migrations are plain SQL applied by hand.
 
 ## Schema Files Organization
 
@@ -38,7 +38,8 @@ Counts for a database built from `schema.sql` alone (measured 2026-10-12 on the 
 | `schema/09_tables_history.sql` | History tables | Reserved for future audit tables |
 | `schema/10_tables_supabase.sql` | Supabase tables | subscription, hooks, buckets, objects |
 | `schema/20_indexes.sql` | All indexes | 77 `CREATE INDEX` statements organized by table (plus the indexes behind primary keys and unique constraints) |
-| `schema/30_views.sql` | All views | 13 views including soft-delete filters and analytics |
+| `schema/30_views.sql` | Core views | 13 views including soft-delete filters and analytics |
+| `schema/45_reporting_views.sql` | Reporting views | 46 audit, finance and BI views (folded in from migrations 074–076) |
 | `schema/40_functions.sql` | Custom functions | Trigger functions and utility functions |
 | `schema/50_triggers.sql` | All triggers | 17 triggers for audit and business logic |
 | `schema/60_constraints.sql` | Additional constraints | Complex constraints (mostly reserved) |
