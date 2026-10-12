@@ -310,6 +310,32 @@ def test_generate_level_sessions(client_with_uow, override_auth, mock_admin_head
     assert [item["session_number"] for item in body["data"]] == [1, 2, 3, 4]
 
 
+def test_generate_level_sessions_are_persisted(app, override_auth, mock_admin_headers, db_session):
+    """Fixed in #81 (generated sessions were never committed, so they vanished with the
+    request): through the real request unit of work, the sessions are in the database."""
+    from fastapi.testclient import TestClient
+    from sqlmodel import Session, select
+
+    from app.db.connection import get_engine
+
+    course = _make_course(db_session, sessions_per_level=3)
+    group = _make_group(db_session, course.id)
+    _make_group_level(db_session, group.id, course.id, level_number=1)
+
+    r = TestClient(app).post(
+        f"/api/v1/academics/groups/{group.id}/generate-sessions",
+        headers=mock_admin_headers,
+        json={"level_number": 1, "start_date": "2026-07-04"},
+    )
+
+    assert r.status_code == 201
+    with Session(get_engine()) as fresh:
+        stored = fresh.exec(
+            select(CourseSession).where(CourseSession.group_id == group.id, CourseSession.level_number == 1)
+        ).all()
+    assert sorted(s.session_number for s in stored) == [1, 2, 3]
+
+
 def test_generate_level_sessions_group_not_found(client_with_uow, override_auth, mock_admin_headers):
     """POST /academics/groups/999999999/generate-sessions returns 404 NotFoundError."""
     r = client_with_uow.post(
