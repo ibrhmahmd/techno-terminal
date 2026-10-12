@@ -2233,7 +2233,7 @@ wheels = [
 ]
 
 [[package]]
-name = "techno-kids"
+name = "techno-terminal"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
