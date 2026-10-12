@@ -379,7 +379,6 @@ class TestTeamRegistrationFeeInput:
 
         assert response.status_code in [201, 404, 409]
 
-    @pytest.mark.xfail(reason="Student model has no is_active attribute — bug in team_service.py", strict=False)
     def test_add_team_member_with_zero_fee(self, client, mock_admin_headers, override_auth):
         response = client.post(
             "/api/v1/teams/1/members",

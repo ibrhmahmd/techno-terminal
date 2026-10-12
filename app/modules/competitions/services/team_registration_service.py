@@ -1,6 +1,5 @@
 from typing import Optional
 from sqlmodel import select
-from app.db.uow import UnitOfWork
 from app.shared.exceptions import NotFoundError, BusinessRuleError, ConflictError
 from app.modules.competitions.schemas.team_schemas import (
     RegisterTeamInput,
@@ -8,7 +7,6 @@ from app.modules.competitions.schemas.team_schemas import (
     TeamRegistrationResultDTO,
     TeamRegistrationResultWithWarningDTO,
 )
-from app.modules.crm import StudentActivityService, LogCompetitionRegistrationDTO
 from app.modules.academics.models.group_models import Group
 from app.modules.crm.models.student_models import Student
 from app.modules.enrollments.models import Enrollment
@@ -65,7 +63,7 @@ class TeamRegistrationService(TeamServiceBase):
             s = db.get(Student, sid)
             if not s:
                 raise NotFoundError(f"Student {sid} not found.")
-            if s.status != "active":
+            if s.status != "active" or s.deleted_at is not None:
                 raise BusinessRuleError(f"Student '{s.full_name}' is not active.")
 
             # Business rule: Warn if student already in another team for this competition
@@ -107,7 +105,6 @@ class TeamRegistrationService(TeamServiceBase):
 
         # Log activity and notify for each student
         self._log_team_registration_activity(
-            db=db,
             team=team,
             student_ids=student_ids,
             competition_name=comp.name,
@@ -178,32 +175,3 @@ class TeamRegistrationService(TeamServiceBase):
             )
 
         return combined
-
-    def _log_team_registration_activity(
-        self,
-        db,
-        team,
-        student_ids: list[int],
-        competition_name: str,
-        current_user_id: Optional[int],
-    ) -> None:
-        """Log competition registration activity for each team member."""
-        # Create UoW and activity service
-        # Note: This is a simplified integration - in production you'd want to
-        # share the same transaction/session
-        try:
-            uow = UnitOfWork(db)
-            activity_svc = StudentActivityService(uow)
-
-            for sid in student_ids:
-                activity_svc.log_competition_registration(
-                    LogCompetitionRegistrationDTO(
-                        student_id=sid,
-                        competition_id=team.competition_id,
-                        competition_name=competition_name,
-                        performed_by=current_user_id,
-                    )
-                )
-            uow.commit()
-        except Exception:
-            logger.exception("Failed to log competition registration activity for team %s", team.id)
