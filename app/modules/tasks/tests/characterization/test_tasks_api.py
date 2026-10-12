@@ -308,18 +308,18 @@ def test_update_subtask(client_with_uow, override_auth, mock_admin_headers, uow,
     assert r.json()["data"]["is_done"] is True and r.json()["data"]["title"] == "renamed"
 
 
-def test_task_detail_with_subtasks_crashes_with_500(app, client_with_uow, override_auth, mock_admin_headers, uow, noop_notifications):
-    """current behaviour (pinned, not endorsed): reading a task that has subtasks fails with 500,
-    because the repository selects with ``sqlalchemy.select`` through a SQLModel session and the
-    subtask rows come back as Row tuples that the detail DTO cannot validate."""
-    from fastapi.testclient import TestClient
-
+def test_task_detail_with_subtasks(client_with_uow, override_auth, mock_admin_headers, uow, noop_notifications):
+    """Fixed in #97 (was a 500: the repository selected with ``sqlalchemy.select`` through a
+    SQLModel session, so subtasks came back as Row tuples the detail DTO could not validate)."""
     t = _create(client_with_uow, mock_admin_headers).json()["data"]
-    _seed_subtask(uow.session, t["id"])
+    sub = _seed_subtask(uow.session, t["id"])
 
-    r = TestClient(app, raise_server_exceptions=False).get(f"/api/v1/tasks/{t['id']}", headers=mock_admin_headers)
+    r = client_with_uow.get(f"/api/v1/tasks/{t['id']}", headers=mock_admin_headers)
 
-    assert r.status_code == 500
+    assert r.status_code == 200
+    subtasks = r.json()["data"]["subtasks"]
+    assert [s["id"] for s in subtasks] == [str(sub.id)]
+    assert subtasks[0]["title"] == sub.title
 
 
 def test_delete_subtask(app, client_with_uow, override_auth, mock_admin_headers, uow, noop_notifications):

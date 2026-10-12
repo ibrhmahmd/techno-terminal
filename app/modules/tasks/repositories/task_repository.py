@@ -5,7 +5,8 @@ Coordinates tasks, subtasks, comments, and time logs.
 """
 import uuid
 from typing import Optional
-from sqlalchemy import select, and_
+from sqlalchemy import and_
+from sqlmodel import select
 from sqlalchemy.orm import aliased
 from sqlmodel import Session
 
