@@ -147,5 +147,5 @@ Four finalized report queries (new customers, old customers, waiting students, r
 **Open:** Existing waiting students have NULL `waiting_since` (the migration `068` trigger only covers new transitions; no backfill). Report 3 falls back to `COALESCE(waiting_since, created_at)`. Part-time instructor cost report not yet scoped.
 
 <!-- SPECKIT START -->
-Active spec: `specs/041-fix-scheduled-report-date-range/spec.md`
+No active spec. The last one, 041 (scheduled report date range), is in `specs/archive/`.
 <!-- SPECKIT END -->

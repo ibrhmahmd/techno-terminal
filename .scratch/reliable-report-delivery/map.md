@@ -53,6 +53,6 @@ A spec at `.scratch/reliable-report-delivery/spec.md`, agreed and ready to hand 
 
 ## Out of scope
 
-- Correctness of report contents (date ranges, soft-delete filters): covered by `specs/041-fix-scheduled-report-date-range`.
+- Correctness of report contents (date ranges, soft-delete filters): covered by `specs/archive/041-fix-scheduled-report-date-range`.
 - A general job queue or worker for all background work.
 - Changing the leaked database password and the public-repo exposure: a separate security issue in `ISSUES.md`.
