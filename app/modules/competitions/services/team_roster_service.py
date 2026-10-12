@@ -71,8 +71,10 @@ class TeamRosterService(TeamServiceBase):
             )
 
         s = db.get(Student, student_id)
-        if not s or not s.is_active:
-            raise NotFoundError(f"Student {student_id} not found or inactive.")
+        if not s:
+            raise NotFoundError(f"Student {student_id} not found.")
+        if s.status != "active" or s.deleted_at is not None:
+            raise BusinessRuleError(f"Student '{s.full_name}' is not active.")
 
         existing = self._teams.get_team_member(team_id, student_id)
         if existing:
@@ -87,7 +89,6 @@ class TeamRosterService(TeamServiceBase):
         # Log activity for student joining team
         comp = self._comps.get_competition(team.competition_id)
         self._log_team_registration_activity(
-            db=db,
             team=team,
             student_ids=[student_id],
             competition_name=comp.name if comp else "Unknown",

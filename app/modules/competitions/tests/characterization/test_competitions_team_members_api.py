@@ -141,18 +141,62 @@ def test_list_team_members_empty_team_name_is_unknown(client_with_uow, override_
 # ── POST /teams/{id}/members ──────────────────────────────────────────────────
 
 
-def test_add_team_member_crashes_with_500(app, client_with_uow, override_auth, mock_admin_headers, db_session, noop_notifications):
-    """current behaviour (pinned, not endorsed): every add-member of an existing team fails with
-    500 because the service reads ``Student.is_active``, an attribute that does not exist
-    (bug #56)."""
+def test_add_team_member(client_with_uow, override_auth, mock_admin_headers, db_session, uow, noop_notifications):
+    """Fixed in #56 (was a 500 on every call: the service read a ``Student.is_active`` that
+    does not exist)."""
     _, team, student = _setup(db_session)
 
-    r = TestClient(app, raise_server_exceptions=False).post(
+    r = client_with_uow.post(
         f"/api/v1/teams/{team.id}/members", headers=mock_admin_headers,
         json={"student_id": student.id, "amount_due": 60.0},
     )
 
-    assert r.status_code == 500
+    assert r.status_code == 201
+    from sqlmodel import select
+
+    member = uow.session.exec(
+        select(TeamMember).where(TeamMember.team_id == team.id, TeamMember.student_id == student.id)
+    ).one()
+    assert float(member.amount_due) == 60.0
+    from app.modules.crm.models.activity_models import StudentActivityLog
+
+    logged = uow.session.exec(
+        select(StudentActivityLog).where(
+            StudentActivityLog.student_id == student.id,
+            StudentActivityLog.activity_type == "competition",
+            StudentActivityLog.activity_subtype == "registered",
+        )
+    ).all()
+    assert len(logged) == 1
+
+
+@pytest.mark.parametrize("status, deleted", [("waiting", False), ("inactive", False), ("active", True)])
+def test_add_team_member_requires_an_active_student(
+    client_with_uow, override_auth, mock_admin_headers, db_session, noop_notifications, status, deleted
+):
+    """Decision on #56: only active, not soft-deleted students can join a team (409 otherwise)."""
+    from datetime import datetime, timezone
+
+    _, team, _ = _setup(db_session)
+    student = _make_student(
+        db_session, status=status, deleted_at=datetime.now(timezone.utc) if deleted else None
+    )
+
+    r = client_with_uow.post(
+        f"/api/v1/teams/{team.id}/members", headers=mock_admin_headers, json={"student_id": student.id}
+    )
+
+    assert r.status_code == 409
+    assert r.json()["message"] == f"Student '{student.full_name}' is not active."
+
+
+def test_add_team_member_unknown_student_is_404(client_with_uow, override_auth, mock_admin_headers, db_session, noop_notifications):
+    _, team, _ = _setup(db_session)
+    r = client_with_uow.post(
+        f"/api/v1/teams/{team.id}/members", headers=mock_admin_headers, json={"student_id": 999999999}
+    )
+    assert r.status_code == 404
+    assert r.json()["message"] == "Student 999999999 not found."
 
 
 def test_add_team_member_unknown_team(client_with_uow, override_auth, mock_admin_headers, db_session, noop_notifications):
