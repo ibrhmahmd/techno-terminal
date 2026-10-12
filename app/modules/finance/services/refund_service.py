@@ -20,8 +20,6 @@ from app.modules.finance.repositories.payment_repository import PaymentRepositor
 from app.shared.exceptions import NotFoundError, BusinessRuleError
 from app.modules.finance.schemas import CreateReceiptDTO
 from app.modules.finance.schemas import AddPaymentLineDTO
-from app.modules.finance.models.payment import Payment
-from sqlalchemy import select
 
 
 class RefundService:
@@ -107,8 +105,8 @@ class RefundService:
         )
 
         # Handle competition fee unmarking
-        if original.payment_type == "competition":
-            self._unlink_competition_payment(dto.payment_id, dto.amount)
+        if original.payment_type == "competition" and original.team_member_id:
+            self._unlink_competition_payment(original.team_member_id, dto.amount)
 
         # Get updated balance if applicable
         new_balance: Optional[Decimal] = None
@@ -143,21 +141,16 @@ class RefundService:
         )
 
     def _unlink_competition_payment(
-        self, original_payment_id: int, refunded_amount: Decimal
+        self, team_member_id: int, refunded_amount: Decimal
     ) -> None:
         """Internal: Decrement competition fee amount_paid when refunding."""
+        # Imported here, not at module level: competitions' model package
+        # registers finance's models on import (circular otherwise).
+        from app.modules.competitions.models.team_models import TeamMember
 
-        stmt = select(Payment).where(Payment.id == original_payment_id)
-        payment = self._uow.session.exec(stmt).first()
-
-        if payment and payment.team_member_id:
-            # Imported here, not at module level: competitions' model package
-            # registers finance's models on import (circular otherwise).
-            from app.modules.competitions.models.team_models import TeamMember
-
-            member = self._uow.session.get(TeamMember, payment.team_member_id)
-            if member:
-                member.amount_paid = max(
-                    0.0, float(member.amount_paid) - float(refunded_amount)
-                )
-                self._uow.session.add(member)
+        member = self._uow.session.get(TeamMember, team_member_id)
+        if member:
+            member.amount_paid = max(
+                0.0, float(member.amount_paid) - float(refunded_amount)
+            )
+            self._uow.session.add(member)
