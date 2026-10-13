@@ -8,7 +8,6 @@ from app.modules.crm.models.student_models import Student
 from app.db.uow import UnitOfWork
 from app.modules.crm.repositories.student_repository import StudentRepository
 from app.modules.crm.validators.student_validator import StudentValidator
-from app.modules.crm.schemas import AttendanceStatsDTO
 from app.modules.crm.schemas.student_details import (
     StudentWithDetails,
     ParentInfo,
@@ -108,9 +107,6 @@ class StudentProfileService:
         # Get siblings
         siblings_data = self._students.get_student_siblings_with_details(student_id)
 
-        # Get attendance stats (existing field)
-        attendance_stats = self._students.get_attendance_stats(student_id)
-
         # NEW: Current enrollment info
         current_enrollment = self._get_current_enrollment_info(student_id)
 
@@ -172,7 +168,6 @@ class StudentProfileService:
             last_session_attended=last_attended,
             balance_summary=balance_data if balance_data else StudentBalanceSummary(),
             siblings=siblings_data,
-            attendance_stats=attendance_stats,
             enrollment_attendance=enrollment_attendance,
         )
 
@@ -184,11 +179,3 @@ class StudentProfileService:
             raise NotFoundError(f"Student {student_id} not found")
 
         return self._students.get_student_siblings_with_details(student_id)
-
-    def get_attendance_stats(self, student_id: int) -> AttendanceStatsDTO:
-        """Get attendance statistics for a student."""
-        student = self._students.get_by_id(student_id)
-        if not student:
-            raise NotFoundError(f"Student {student_id} not found")
-
-        return self._students.get_attendance_stats(student_id)
