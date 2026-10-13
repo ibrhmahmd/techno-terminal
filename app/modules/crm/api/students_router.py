@@ -420,18 +420,16 @@ def set_waiting_priority(
     "/students/{student_id}",
     response_model=ApiResponse[None],
     summary="Delete a student by ID",
-    description="Delete a student by ID."
+    description="Soft-deletes the student (recoverable via restore). Hard delete is DELETE /students/{student_id}/hard."
 )
 def delete_student_by_id(
     student_id: int,
     current_user: User = Depends(require_admin),
     svc: StudentCrudService = Depends(get_student_crud_service),
 ):
-    try:
-        svc.delete_student(student_id)
-        return ApiResponse(data=None, message="Student deleted successfully.")
-    except NotFoundError:
-        raise HTTPException(status_code=404, detail=f"Student {student_id} not found")
+    if not svc.soft_delete_student(student_id, deleted_by=current_user.id):
+        raise NotFoundError(f"Student {student_id} not found")
+    return ApiResponse(data=None, message="Student deleted successfully.")
 
 
 # ── NEW: Student Detail Endpoints ────────────────────────────────────────────

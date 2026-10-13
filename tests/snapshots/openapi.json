@@ -25335,7 +25335,7 @@
     },
     "/api/v1/crm/students/{student_id}": {
       "delete": {
-        "description": "Delete a student by ID.",
+        "description": "Soft-deletes the student (recoverable via restore). Hard delete is DELETE /students/{student_id}/hard.",
         "operationId": "delete_student_by_id_api_v1_crm_students__student_id__delete",
         "parameters": [
           {

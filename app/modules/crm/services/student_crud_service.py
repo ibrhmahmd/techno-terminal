@@ -180,9 +180,8 @@ class StudentCrudService:
             student.status = StudentStatus.ACTIVE
 
         apply_update_audit(student)
-        self._uow.commit()
 
-        # Log status change activity
+        # Log before the commit so the activity row is saved with the change (#59 sweep).
         if self._activity_svc:
             self._activity_svc.log_status_change(
                 LogStatusChangeDTO(
@@ -192,6 +191,7 @@ class StudentCrudService:
                     performed_by=performed_by,
                 )
             )
+        self._uow.commit()
 
         return student
     
@@ -233,29 +233,6 @@ class StudentCrudService:
         
         self._uow.commit()
         return student
-    
-    def delete_student(self, student_id: int, performed_by: Optional[int] = None) -> bool:
-        """Delete a student by ID."""
-        student = self._students.get_by_id(student_id)
-        if not student:
-            return False
-
-        student_name = student.full_name  # Save before deletion
-
-        # Log deletion activity BEFORE deleting (to satisfy FK constraint)
-        if self._activity_svc:
-            self._activity_svc.log_deletion(
-                LogDeletionDTO(
-                    student_id=student_id,
-                    student_name=student_name,
-                    performed_by=performed_by,
-                )
-            )
-
-        self._students.delete(student_id)
-        self._uow.commit()
-
-        return True
     
     def find_siblings(self, student_id: int) -> List[StudentSiblingDTO]:
         """Find siblings for a student (share same parent)."""
@@ -309,9 +286,7 @@ class StudentCrudService:
         # Perform soft delete
         success = self._students.soft_delete_student(student_id, deleted_by)
         if success:
-            self._uow.commit()
-
-            # Log soft deletion activity
+            # Log before the commit so the activity row is saved too (#59).
             if self._activity_svc:
                 self._activity_svc.log_deletion(
                     LogDeletionDTO(
@@ -320,6 +295,7 @@ class StudentCrudService:
                         performed_by=deleted_by,
                     )
                 )
+            self._uow.commit()
 
         return success
 
@@ -335,9 +311,7 @@ class StudentCrudService:
 
         success = self._students.restore_student(student_id)
         if success:
-            self._uow.commit()
-
-            # Log restoration activity
+            # Log before the commit so the activity row is saved too (#59 sweep).
             if self._activity_svc:
                 self._activity_svc.log_registration(
                     LogRegistrationDTO(
@@ -346,6 +320,7 @@ class StudentCrudService:
                         performed_by=restored_by,
                     )
                 )
+            self._uow.commit()
 
         return success
 

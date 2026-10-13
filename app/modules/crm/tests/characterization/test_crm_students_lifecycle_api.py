@@ -271,7 +271,7 @@ def test_set_waiting_priority(client_with_uow, override_auth, mock_admin_headers
 
 def test_set_waiting_priority_active_student(client_with_uow, override_auth, mock_admin_headers, db_session):
     """PATCH /crm/students/{student_id}/waiting-priority on ACTIVE student returns 200 (service allows it).
-    
+
     Current behaviour (pinned, not endorsed): service doesn't validate waiting status.
     """
     student = _make_student(db_session, status=StudentStatus.ACTIVE)
@@ -311,45 +311,32 @@ def test_set_waiting_priority_unknown_student(client_with_uow, override_auth, mo
 # ── DELETE /crm/students/{student_id} ──────────────────────────────────────────
 
 
-def test_delete_student_existing_returns_500(client_with_uow, override_auth, mock_admin_headers, db_session):
-    """DELETE /crm/students/{student_id} for existing student returns 500 (service bug: StudentRepository has no delete method).
-    
-    Current behaviour (pinned, not endorsed): service has AttributeError on delete
-    """
-    from starlette.testclient import TestClient
+def test_delete_student_soft_deletes(client_with_uow, override_auth, mock_admin_headers, db_session, uow):
+    """DELETE /crm/students/{id} soft-deletes the student (#59; it was a 500)."""
     student = _make_student(db_session, full_name=f"To Delete {_short()}")
 
-    # Use client that doesn't raise server exceptions so we can inspect the 500 response
-    test_client = TestClient(client_with_uow.app, raise_server_exceptions=False)
-    r = test_client.delete(
-        f"/api/v1/crm/students/{student.id}",
-        headers=mock_admin_headers,
-    )
+    r = client_with_uow.delete(f"/api/v1/crm/students/{student.id}", headers=mock_admin_headers)
 
-    # Service bug: 'StudentRepository' object has no attribute 'delete'
-    assert r.status_code == 500
-    body = r.json()
-    assert body["success"] is False
-    assert body["error"] == "InternalServerError"
-
-
-def test_delete_student_not_found_returns_200(client_with_uow, override_auth, mock_admin_headers):
-    """DELETE /crm/students/999999999 returns 200 'success' (router ignores service's False return value).
-    
-    Current behaviour (pinned, not endorsed): router doesn't check service return value.
-    """
-    r = client_with_uow.delete(
-        "/api/v1/crm/students/999999999",
-        headers=mock_admin_headers,
-    )
-
-    # Router calls svc.delete_student() which returns False for not found,
-    # but router ignores return value and returns success anyway.
     assert r.status_code == 200
     body = r.json()
     assert body["success"] is True
     assert body["message"] == "Student deleted successfully."
     assert body["data"] is None
+    assert uow.session.get(Student, student.id).deleted_at is not None
+    # Already deleted -> not found
+    again = client_with_uow.delete(f"/api/v1/crm/students/{student.id}", headers=mock_admin_headers)
+    assert again.status_code == 404
+
+
+def test_delete_student_not_found_is_404(client_with_uow, override_auth, mock_admin_headers):
+    """DELETE /crm/students/999999999 is a 404 (#59; it answered 200 'deleted')."""
+    r = client_with_uow.delete("/api/v1/crm/students/999999999", headers=mock_admin_headers)
+
+    assert r.status_code == 404
+    body = r.json()
+    assert body["success"] is False
+    assert body["error"] == "NotFoundError"
+    assert body["message"] == "Student 999999999 not found"
 
 
 # ── GET /crm/students/{student_id}/details ─────────────────────────────────────
@@ -483,7 +470,7 @@ def test_get_student_siblings_only_child(client_with_uow, override_auth, mock_ad
 
 def test_get_student_siblings_unknown_student(client_with_uow, override_auth, mock_admin_headers):
     """GET /crm/students/999999999/siblings returns 404 with error 'NotFoundError' (service raises NotFoundError; global handler catches it).
-    
+
     Current behaviour (pinned, not endorsed): router doesn't catch NotFoundError for this endpoint.
     """
     r = client_with_uow.get(
@@ -538,7 +525,7 @@ def test_soft_delete_student_not_found(client_with_uow, override_auth, mock_admi
 
 def test_restore_student(client_with_uow, override_auth, mock_admin_headers, db_session):
     """POST /crm/students/{student_id}/restore restores soft-deleted student and returns StudentDeletionResult.
-    
+
     Creates a student, soft-deletes it via the API, then restores it.
     """
     student = _make_student(db_session, full_name=f"To Restore {_short()}")
