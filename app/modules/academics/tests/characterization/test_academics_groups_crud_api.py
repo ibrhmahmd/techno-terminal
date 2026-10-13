@@ -287,6 +287,18 @@ def test_update_group_not_found(client_with_uow, override_auth, mock_admin_heade
 # ── PATCH /academics/groups/{group_id}/archive ────────────────────────────────
 
 
+
+def test_update_group_invalid_status_is_422(client_with_uow, override_auth, mock_admin_headers):
+    """An unknown group status is a 422 from the schema (#150; was a 500 CHECK violation)."""
+    r = client_with_uow.patch(
+        "/api/v1/academics/groups/999999999",
+        headers=mock_admin_headers,
+        json={"status": "bogus"},
+    )
+
+    assert r.status_code == 422
+    assert r.json()["error"] == "ValidationError"
+
 def test_archive_group(client_with_uow, override_auth, mock_admin_headers, db_session):
     """PATCH /academics/groups/{id}/archive sets status 'completed'."""
     marker = _short()

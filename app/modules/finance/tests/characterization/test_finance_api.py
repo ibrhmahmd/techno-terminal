@@ -168,6 +168,18 @@ def test_create_receipt_unknown_references_are_404(
     assert ok.status_code == 201
 
 
+def test_create_receipt_invalid_payment_type_is_422(client_with_uow, override_auth, mock_admin_headers):
+    """An unknown line payment_type is a 422 from the schema (#150 sweep; was a 500 CHECK violation)."""
+    r = client_with_uow.post(
+        "/api/v1/finance/receipts",
+        headers=mock_admin_headers,
+        json={"method": "cash", "lines": [{"student_id": 1, "amount": 10.0, "payment_type": "bogus"}]},
+    )
+
+    assert r.status_code == 422
+    assert r.json()["error"] == "ValidationError"
+
+
 def test_create_receipt_normalizes_method_label(client_with_uow, override_auth, mock_admin_headers, db_session, noop_notifications):
     _, _, student, enrollment = _seed_enrollment(db_session)
 

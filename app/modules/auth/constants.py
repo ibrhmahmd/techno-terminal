@@ -4,12 +4,17 @@ app/modules/auth/constants.py
 Auth-domain constants: role definitions and validators.
 """
 from enum import Enum
+from typing import Literal, TypeAlias
 
 
 class UserRole(str, Enum):
     """User roles for the application."""
     ADMIN = "admin"
     SYSTEM_ADMIN = "system_admin"
+
+
+# The roles an admin may assign through the API (#150); keep in step with UserRole.
+UserRoleValue: TypeAlias = Literal["admin", "system_admin"]
 
 
 # Precomputed set of all valid role string values for fast O(1) membership tests.

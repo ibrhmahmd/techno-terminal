@@ -9269,6 +9269,10 @@
             "title": "Employee Id"
           },
           "role": {
+            "enum": [
+              "admin",
+              "system_admin"
+            ],
             "title": "Role",
             "type": "string"
           }
@@ -11759,6 +11763,11 @@
           },
           "payment_type": {
             "default": "course_level",
+            "enum": [
+              "course_level",
+              "competition",
+              "other"
+            ],
             "title": "Payment Type",
             "type": "string"
           },
@@ -11805,6 +11814,11 @@
           },
           "payment_type": {
             "default": "course_level",
+            "enum": [
+              "course_level",
+              "competition",
+              "other"
+            ],
             "title": "Payment Type",
             "type": "string"
           },
@@ -16574,6 +16588,12 @@
           "status": {
             "anyOf": [
               {
+                "enum": [
+                  "active",
+                  "inactive",
+                  "completed",
+                  "archived"
+                ],
                 "type": "string"
               },
               {
@@ -16872,6 +16892,11 @@
           "status": {
             "anyOf": [
               {
+                "enum": [
+                  "scheduled",
+                  "completed",
+                  "cancelled"
+                ],
                 "type": "string"
               },
               {
@@ -17392,6 +17417,10 @@
           "role": {
             "anyOf": [
               {
+                "enum": [
+                  "admin",
+                  "system_admin"
+                ],
                 "type": "string"
               },
               {
@@ -19402,8 +19431,7 @@
                     "active",
                     "completed",
                     "transferred",
-                    "dropped",
-                    "cancelled"
+                    "dropped"
                   ],
                   "type": "string"
                 },
@@ -19555,8 +19583,7 @@
                     "active",
                     "completed",
                     "transferred",
-                    "dropped",
-                    "cancelled"
+                    "dropped"
                   ],
                   "type": "string"
                 },

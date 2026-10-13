@@ -462,6 +462,22 @@ def test_admin_update_user(client_with_uow, override_system_admin_auth, system_a
     assert body["data"]["role"] == "system_admin"
 
 
+
+def test_admin_update_user_invalid_role_is_422(client_with_uow, override_system_admin_auth, system_admin_headers, db_session):
+    """An unknown role is a 422 from the schema (#150; was a 500 CHECK violation, and a role the DB
+    allows but the app does not know, e.g. "instructor", was stored)."""
+    target = _make_user(db_session)
+
+    for role in ("bogus", "instructor"):
+        r = client_with_uow.patch(
+            f"/api/v1/admin/users/{target.id}",
+            headers=system_admin_headers,
+            json={"role": role},
+        )
+
+        assert r.status_code == 422, role
+        assert r.json()["error"] == "ValidationError"
+
 def test_admin_delete_user(client_with_uow, override_system_admin_auth, system_admin_headers, db_session):
     target = _make_user(db_session, supabase_uid=_uid())
     admin = MagicMock()

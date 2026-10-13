@@ -8,7 +8,7 @@ from typing import Optional
 
 from pydantic import BaseModel, field_validator
 
-from app.shared.constants import PaymentMethod, PAYMENT_METHOD_MAP
+from app.shared.constants import PaymentMethod, PaymentType, PAYMENT_METHOD_MAP
 from app.modules.finance.schemas import ReceiptLineInput
 from app.modules.finance.schemas.receipt_generation import BatchGenerateResponse, BatchReceiptItem  # noqa: F401
 
@@ -86,7 +86,7 @@ class ReceiptLineRequest(BaseModel):
     student_id: int
     enrollment_id: Optional[int] = None
     amount: float
-    payment_type: str = "course_level"
+    payment_type: PaymentType = "course_level"
 
 
 class CreateReceiptRequest(BaseModel):

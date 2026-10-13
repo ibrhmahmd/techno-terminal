@@ -6,6 +6,7 @@ Request/Response DTOs specifically for the Authentication HTTP router.
 from pydantic import BaseModel, Field
 
 from app.modules.auth import UserPublic
+from app.modules.auth.constants import UserRoleValue
 from app.shared.constants import MIN_PASSWORD_LENGTH
 
 class LoginRequest(BaseModel):
@@ -45,12 +46,12 @@ class UpdateProfileRequest(BaseModel):
     email: str | None = None
 
 class UpdateUserRequest(BaseModel):
-    role: str | None = None
+    role: UserRoleValue | None = None
     is_active: bool | None = None
 
 class InviteUserRequest(BaseModel):
     email: str
-    role: str
+    role: UserRoleValue
     employee_id: int | None = None
 
 class RegisterUserRequest(BaseModel):
