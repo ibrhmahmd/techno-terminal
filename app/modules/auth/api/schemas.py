@@ -37,6 +37,9 @@ class ChangePasswordRequest(BaseModel):
 class ForgotPasswordRequest(BaseModel):
     email: str = Field(..., min_length=1)
 
+class ResetPasswordConfirmRequest(BaseModel):
+    new_password: str = Field(..., min_length=MIN_PASSWORD_LENGTH)
+
 class UpdateProfileRequest(BaseModel):
     username: str | None = None
     email: str | None = None

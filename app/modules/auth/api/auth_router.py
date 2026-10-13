@@ -31,6 +31,7 @@ from app.modules.auth.api.schemas import (
     ResetPasswordRequest,
     ChangePasswordRequest,
     ForgotPasswordRequest,
+    ResetPasswordConfirmRequest,
     UpdateProfileRequest,
     RegisterUserRequest,
 )
@@ -258,6 +259,30 @@ def forgot_password(
         data=None,
         message="If the email exists, a password reset link has been sent.",
     )
+
+
+# complete a password reset from the emailed recovery link (#158)
+@router.post(
+    "/reset-password-confirm",
+    response_model=ApiResponse[None],
+    summary="Set a new password from a recovery link",
+    description=(
+        "Called by the UI's /reset-password page with the recovery link's "
+        "access token as the Bearer token. Only recovery sessions are accepted."
+    ),
+)
+def reset_password_confirm(
+    body: ResetPasswordConfirmRequest,
+    credentials: HTTPAuthorizationCredentials = Depends(http_bearer),
+    current_user: User = Depends(get_current_user),
+    auth_svc: AuthService = Depends(get_auth_service),
+):
+    auth_svc.complete_password_recovery(
+        user=current_user,
+        recovery_token=credentials.credentials,
+        new_password=body.new_password,
+    )
+    return ApiResponse(data=None, message="Password has been reset.")
 
 
 # update own profile
