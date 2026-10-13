@@ -54,8 +54,9 @@ class FlightRiskStudentDTO(BaseModel):
 
 
 class RetentionCohortDTO(BaseModel):
-    """Cohort-based retention analysis."""
-    cohort_month: str
+    """One enrollment cohort (the month enrollments started) and how much of it is retained
+    today. Retained = enrollment status active or completed; dropped/transferred are lost."""
+    cohort_month: str  # "YYYY-MM"
     initial_enrollments: int
-    retention_by_month: dict[str, int] #TODO remove Dict and write a typed DTO classs
-    retention_rates: dict[str, float]#TODO remove Dict and write a typed DTO class
+    retained_count: int
+    retention_pct: float  # 0–100, two decimals

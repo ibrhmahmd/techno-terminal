@@ -400,7 +400,6 @@ class TestBIAnalytics:
         assert body["success"] is True
         assert isinstance(body["data"], list)
 
-    @pytest.mark.xfail(strict=False, reason="App bug: RetentionCohortDTO int_parsing validation error")
     def test_retention_analysis_success(self, client, mock_admin_headers, override_auth, db_session):
         """200 + list for cohort-based retention analysis."""
         from app.testing.db_helpers import (
