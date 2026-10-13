@@ -551,7 +551,11 @@ def test_generate_receipt_json_and_text(client_with_uow, override_auth, mock_adm
 
     assert j.status_code == 200
     data = j.json()["data"]
-    assert set(data) == {"content", "content_type"}
+    assert set(data) == {"receipt_id", "content", "content_type", "template_name", "include_balance", "generated_at"}
+    assert data["receipt_id"] == created["receipt_id"]
+    assert data["template_name"] == "standard"
+    assert data["include_balance"] is True
+    assert data["generated_at"].endswith(("Z", "+00:00"))
     assert data["content_type"] == "text/plain"
     assert data["content"].startswith("=" * 10)
     assert "RECEIPT #: R-" in data["content"]

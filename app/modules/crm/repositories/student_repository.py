@@ -4,7 +4,7 @@ from sqlalchemy import or_, text
 from datetime import datetime
 from decimal import Decimal
 
-from app.modules.crm.schemas import StudentBalanceSummaryDTO, AttendanceStatsDTO
+from app.modules.crm.schemas import StudentBalanceSummaryDTO
 from app.modules.crm.schemas.student_details import SiblingInfo
 from app.modules.crm.models import Student, StudentStatus, StudentParent, Parent
 from app.shared.datetime_utils import utc_now
@@ -297,28 +297,6 @@ class StudentRepository:
                 enrollments_count=enrollment_count,
             ))
         return siblings_data
-
-    def get_attendance_stats(self, student_id: int) -> AttendanceStatsDTO:
-        from app.modules.attendance.models.attendance_models import Attendance
-        from app.modules.enrollments.models.enrollment_models import Enrollment
-        counts = dict(self._session.exec(
-            select(Attendance.status, func.count(Attendance.id))
-            .join(Enrollment, Attendance.enrollment_id == Enrollment.id)
-            .where(Enrollment.student_id == student_id)
-            .group_by(Attendance.status)
-        ).all())
-        total = sum((v for k, v in counts.items() if v))
-        attended = counts.get("present", 0)
-        absent = counts.get("absent", 0)
-        cancelled = counts.get("cancelled", 0)
-        denom = total - cancelled
-        return AttendanceStatsDTO(
-            total_sessions=total,
-            attended=attended,
-            absent=absent,
-            cancelled=cancelled,
-            attendance_rate=round(attended / denom, 3) if denom > 0 else 0.0
-        )
 
     def get_student_attendance_summary(self, student_id: int):
         """

@@ -133,5 +133,9 @@ class BatchGenerateRequest(BaseModel):
 
 class ReceiptGenerationResponse(BaseModel):
     """Response for single receipt generation."""
+    receipt_id: int
     content: str
     content_type: str = "text/plain"
+    template_name: str
+    include_balance: bool
+    generated_at: datetime

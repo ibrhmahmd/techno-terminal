@@ -34,7 +34,6 @@ from .student_summary_dto import StudentSummaryDTO
 from .student_grouped_result_dto import StudentGroupedResultDTO
 from .student_group_bucket_dto import StudentGroupBucketDTO
 from .student_balance_summary_dto import StudentBalanceSummaryDTO
-from .attendance_stats_dto import AttendanceStatsDTO
 from .activity_log_dto import ActivityLogDTO
 from .timeline_filter_dto import TimelineFilterDTO
 from .activity_summary_dto import ActivitySummaryDTO
@@ -59,7 +58,6 @@ __all__ = [
     "StudentGroupedResultDTO",
     "StudentGroupBucketDTO",
     "StudentBalanceSummaryDTO",
-    "AttendanceStatsDTO",
     "StudentFilterDTO",
     "StudentFilterResultDTO",
     "StudentFilterItemDTO",

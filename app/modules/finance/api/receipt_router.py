@@ -23,7 +23,7 @@ from app.modules.auth.models import User
 from app.modules.finance.services.receipt_service import ReceiptService
 from app.modules.finance.schemas import SearchReceiptsDTO
 from app.shared.exceptions import NotFoundError
-from datetime import datetime
+from app.shared.datetime_utils import utc_now
 
 
 router = APIRouter(tags=["Receipts"])
@@ -155,7 +155,7 @@ def generate_receipt(
             content=content,
             template_name=template_name,
             include_balance=include_balance,
-            generated_at=datetime.utcnow()
+            generated_at=utc_now()
         )
     )
 

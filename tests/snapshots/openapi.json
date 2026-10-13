@@ -11677,10 +11677,31 @@
             "default": "text/plain",
             "title": "Content Type",
             "type": "string"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "include_balance": {
+            "title": "Include Balance",
+            "type": "boolean"
+          },
+          "receipt_id": {
+            "title": "Receipt Id",
+            "type": "integer"
+          },
+          "template_name": {
+            "title": "Template Name",
+            "type": "string"
           }
         },
         "required": [
-          "content"
+          "receipt_id",
+          "content",
+          "template_name",
+          "include_balance",
+          "generated_at"
         ],
         "title": "ReceiptGenerationResponse",
         "type": "object"

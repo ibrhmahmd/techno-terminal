@@ -38,7 +38,7 @@ Optional PDF/receipt settings in `app/core/config.py`. `FRONTEND_BASE_URL` (the 
 
 ### Architecture contracts
 
-`pytest tests/architecture` runs four import-graph rules against `app/modules` (module order and facades per ADR-0003, in-module layers per ADR-0002, no `get_session()` per ADR-0001), a guard that every module imports standalone in a fresh interpreter (facades whose models are read from below load their services lazily), plus an OpenAPI spec snapshot. Every rule fails on any violation in any module; a summary table with the per-module counts is printed at the end of the run. The snapshot compares `create_app().openapi()` against `tests/snapshots/openapi.json`; regenerate it with `UPDATE_OPENAPI_SNAPSHOT=1` only for a ticket that names an API change.
+`pytest tests/architecture` runs four import-graph rules against `app/modules` (module order and facades per ADR-0003, in-module layers per ADR-0002, no `get_session()` per ADR-0001), a guard that every module imports standalone in a fresh interpreter (facades whose models are read from below load their services lazily), a guard that no `Model(...)` call passes a keyword its Pydantic model does not define (Pydantic would drop it silently, #151), plus an OpenAPI spec snapshot. Every rule fails on any violation in any module; a summary table with the per-module counts is printed at the end of the run. The snapshot compares `create_app().openapi()` against `tests/snapshots/openapi.json`; regenerate it with `UPDATE_OPENAPI_SNAPSHOT=1` only for a ticket that names an API change.
 
 ## Architecture
 
