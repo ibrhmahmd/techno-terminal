@@ -32,7 +32,7 @@ class ReceiptRepository:
         receipt = Receipt(
             payer_name=dto.payer_name,
             payment_method=dto.payment_method,
-            received_by_user_id=dto.received_by_user_id,
+            received_by=dto.received_by_user_id,
             notes=dto.notes,
             paid_at=utc_now(),
         )

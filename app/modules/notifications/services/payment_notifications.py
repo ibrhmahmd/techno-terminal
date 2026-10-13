@@ -122,7 +122,7 @@ class PaymentNotificationService(BaseNotificationService):
             if receipt.received_by:
                 user = session.get(User, receipt.received_by)
                 if user:
-                    processed_by_name = user.email.split('@')[0] if user.email else f"User {user.id}"
+                    processed_by_name = user.username.split('@')[0] if user.username else f"User {user.id}"
                     processed_by_role = str(getattr(user, 'role', 'Admin'))
                     # Attempt to fetch Employee
                     stmt_emp = select(Employee).where(Employee.user_id == user.id)
