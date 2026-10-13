@@ -22,3 +22,9 @@ def test_logfire_handler_survives_configure_logging():
         isinstance(handler, logfire.LogfireLoggingHandler)
         for handler in logging.getLogger().handlers
     )
+
+def test_logfire_never_sends_under_tests():
+    """#145: test runs must not ship telemetry, even when the env file has a token."""
+    configure_logfire()
+
+    assert logfire.DEFAULT_LOGFIRE_INSTANCE.config.send_to_logfire is False

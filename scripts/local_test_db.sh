@@ -10,7 +10,7 @@
 #   scripts/local_test_db.sh reset   # drop + recreate techno_test, reapply schema
 #   scripts/local_test_db.sh down    # remove the container
 #
-# Writes .env.test.local (a copy of .env.test with only DATABASE_URL swapped)
+# Writes .env.test.local (a copy of .env.test with DATABASE_URL swapped and LOGFIRE_TOKEN dropped)
 # for config.py to pick up. Supabase keys are never printed.
 # =============================================================================
 set -euo pipefail
@@ -131,7 +131,7 @@ write_local_env() {
     log "Writing $LOCAL_ENV (DATABASE_URL -> 127.0.0.1:$PORT)."
     local tmp
     tmp="$(mktemp)"
-    awk -v url="$url" '/^DATABASE_URL=/{print "DATABASE_URL=" url; next} {print}' \
+    awk -v url="$url" '/^DATABASE_URL=/{print "DATABASE_URL=" url; next} /^LOGFIRE_TOKEN=/{next} {print}' \
         "$ENV_FILE" > "$tmp"
     mv "$tmp" "$LOCAL_ENV"
 }
