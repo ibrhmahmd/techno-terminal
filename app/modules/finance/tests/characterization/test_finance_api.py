@@ -124,6 +124,22 @@ def test_create_receipt(client_with_uow, override_auth, mock_admin_headers, db_s
     assert detail["receipt"]["receipt_number"].startswith("R-")
 
 
+def test_create_receipt_records_who_received_it(
+    client_with_uow, override_auth, mock_admin_headers, db_session, uow, noop_notifications
+):
+    """The receipt stores the logged-in user as received_by (#149; it was always NULL)."""
+    from sqlmodel import select
+    from app.modules.auth.models.auth_models import User
+    from app.modules.finance.models.receipt import Receipt
+
+    _, _, student, enrollment = _seed_enrollment(db_session)
+    admin = db_session.exec(select(User).where(User.supabase_uid == "test-admin-001")).one()
+
+    created = _create_receipt(client_with_uow, mock_admin_headers, student, enrollment).json()["data"]
+
+    assert uow.session.get(Receipt, created["receipt_id"]).received_by == admin.id
+
+
 def test_create_receipt_normalizes_method_label(client_with_uow, override_auth, mock_admin_headers, db_session, noop_notifications):
     _, _, student, enrollment = _seed_enrollment(db_session)
 
