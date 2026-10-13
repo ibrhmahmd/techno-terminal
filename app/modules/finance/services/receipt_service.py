@@ -64,6 +64,24 @@ class ReceiptService:
         self._activity_svc = activity_svc
         self._notifier = notifier
 
+    def _require_line_references(self, lines) -> None:
+        """404 unless every line's student and enrollment exist (#139).
+
+        The enrollment must belong to the line's student; nothing is written
+        when a reference is unknown. (Team-member lines come only from the
+        competition fee flow, which has already loaded the member.)
+        """
+        session = self._uow.session
+        for line in lines:
+            if session.get(Student, line.student_id) is None:
+                raise NotFoundError(f"Student {line.student_id} not found")
+            if line.enrollment_id is not None:
+                enrollment = session.get(Enrollment, line.enrollment_id)
+                if enrollment is None or enrollment.student_id != line.student_id:
+                    raise NotFoundError(
+                        f"Enrollment {line.enrollment_id} not found for student {line.student_id}"
+                    )
+
     def create(
         self,
         dto: CreateReceiptServiceDTO,
@@ -79,6 +97,7 @@ class ReceiptService:
         """
         if not dto.lines:
             raise BusinessRuleError("Receipt must have at least one line item.")
+        self._require_line_references(dto.lines)
 
         # Check overpayment risk if credit not allowed
         if not dto.allow_credit:

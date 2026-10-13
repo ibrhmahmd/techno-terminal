@@ -552,3 +552,16 @@ def test_admin_audit_failed_attempts(client_with_uow, override_system_admin_auth
     assert set(body) == {"success", "data", "total", "skip", "limit"}
     assert isinstance(body["data"], list)
     assert isinstance(body["total"], int)
+
+
+def test_admin_audit_bad_date_is_422(client_with_uow, override_system_admin_auth, system_admin_headers):
+    """A from/to value that is not an ISO date is a 422 on all three audit routes (#140; was 500)."""
+    for path in ("logins", "password-changes", "failed-attempts"):
+        r = client_with_uow.get(
+            f"/api/v1/admin/audit/{path}",
+            params={"from": "not-a-date"},
+            headers=system_admin_headers,
+        )
+
+        assert r.status_code == 422
+        assert r.json()["error"] == "ValidationError"
