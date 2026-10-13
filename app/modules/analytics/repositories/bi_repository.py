@@ -194,23 +194,12 @@ class BiRepository:
     
         rows = self._session.execute(stmt, {"cutoff_date": str(cutoff_date)}).all()
     
-        result = []
-        for r in rows:
-            retained = r.retained_count
-            total = r.initial_enrollments
-            rate = round((retained / total) * 100, 2) if total > 0 else 0
-        
-            # Populate basic retention dict for current state
-            retention_data = {
-                "Month 0": "100%",
-                "Current": f"{rate}%"
-            }
-        
-            result.append(RetentionCohortDTO(
-                cohort_month=str(r.cohort_month),
-                initial_enrollments=total,
-                retention_by_month=retention_data,
-                retention_rates={"overall_retention_pct": rate}
-            ))
-    
-        return result
+        return [
+            RetentionCohortDTO(
+                cohort_month=r.cohort_month,
+                initial_enrollments=r.initial_enrollments,
+                retained_count=r.retained_count,
+                retention_pct=round(r.retained_count / r.initial_enrollments * 100, 2),
+            )
+            for r in rows
+        ]

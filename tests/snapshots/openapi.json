@@ -12397,7 +12397,7 @@
         "type": "object"
       },
       "RetentionCohortDTO": {
-        "description": "Cohort-based retention analysis.",
+        "description": "One enrollment cohort (the month enrollments started) and how much of it is retained\ntoday. Retained = enrollment status active or completed; dropped/transferred are lost.",
         "properties": {
           "cohort_month": {
             "title": "Cohort Month",
@@ -12407,26 +12407,20 @@
             "title": "Initial Enrollments",
             "type": "integer"
           },
-          "retention_by_month": {
-            "additionalProperties": {
-              "type": "integer"
-            },
-            "title": "Retention By Month",
-            "type": "object"
+          "retained_count": {
+            "title": "Retained Count",
+            "type": "integer"
           },
-          "retention_rates": {
-            "additionalProperties": {
-              "type": "number"
-            },
-            "title": "Retention Rates",
-            "type": "object"
+          "retention_pct": {
+            "title": "Retention Pct",
+            "type": "number"
           }
         },
         "required": [
           "cohort_month",
           "initial_enrollments",
-          "retention_by_month",
-          "retention_rates"
+          "retained_count",
+          "retention_pct"
         ],
         "title": "RetentionCohortDTO",
         "type": "object"

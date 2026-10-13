@@ -53,7 +53,7 @@ EXPECTED_KEYS = {
     "instructor_value": {"instructor_name", "total_revenue", "avg_attendance_pct"},
     "schedule_utilization": {"day", "time_start", "total_enrolled", "total_capacity", "utilization_pct"},
     "flight_risk": {"student_name", "course_name", "amount_owed", "sessions_missed"},
-    "retention_analysis": {"cohort_month", "initial_enrollments", "retention_by_month", "retention_rates"},
+    "retention_analysis": {"cohort_month", "initial_enrollments", "retained_count", "retention_pct"},
     "revenue_by_date": {"day", "net_revenue"},
     "revenue_by_method": {"payment_method", "net_revenue", "receipt_count"},
     "outstanding_by_group": {"group_id", "group_name", "course_name", "students_with_balance", "total_outstanding"},
@@ -154,20 +154,40 @@ def test_bi_endpoints_shape(client_with_uow, override_auth, mock_admin_headers, 
 
 
 def test_retention_analysis_shape_and_months_bounds(client_with_uow, override_auth, mock_admin_headers):
-    """current behaviour (pinned, not endorsed): with enrolment data older than a month the
-    cohort rows fail DTO validation (percent strings in int fields, bug #74), so the endpoint
-    is 200 on an empty database and 500 once cohorts exist."""
-    from fastapi.testclient import TestClient
-
-    r = TestClient(client_with_uow.app, raise_server_exceptions=False).get(
-        f"{API}/analytics/bi/retention-analysis", headers=mock_admin_headers
-    )
-    assert r.status_code in (200, 500)
-    if r.status_code == 200:
-        for row in r.json()["data"]:
-            assert set(row) == EXPECTED_KEYS["retention_analysis"]
+    """Fixed in #74 (was a 500 once cohorts existed: percent strings in int fields). Typed
+    rows: retained_count and retention_pct (a number) per cohort month."""
+    _assert_list(_get(client_with_uow, mock_admin_headers, "/analytics/bi/retention-analysis"), "retention_analysis")
     assert _get(client_with_uow, mock_admin_headers, "/analytics/bi/retention-analysis?months=0").status_code == 422
     assert _get(client_with_uow, mock_admin_headers, "/analytics/bi/retention-analysis?months=13").status_code == 422
+
+
+def test_retention_analysis_counts_active_and_completed_as_retained(
+    client_with_uow, override_auth, mock_admin_headers, uow
+):
+    """Four enrollments started this month: active and completed count as retained, dropped
+    and transferred as lost. Measured as the change in this month's cohort, because other
+    tests' rows share the database."""
+    from app.modules.finance.tests.characterization.test_finance_api import _seed_enrollment
+
+    this_month = date.today().strftime("%Y-%m")
+
+    def cohort():
+        rows = _get(client_with_uow, mock_admin_headers, "/analytics/bi/retention-analysis?months=1").json()["data"]
+        return next((r for r in rows if r["cohort_month"] == this_month),
+                    {"initial_enrollments": 0, "retained_count": 0})
+
+    before = cohort()
+    for status in ("active", "completed", "dropped", "transferred"):
+        *_, enrollment = _seed_enrollment(uow.session)
+        enrollment.status = status
+        enrollment.enrolled_at = date.today()
+        uow.session.add(enrollment)
+    uow.session.commit()
+    after = cohort()
+
+    assert after["initial_enrollments"] - before["initial_enrollments"] == 4
+    assert after["retained_count"] - before["retained_count"] == 2
+    assert after["retention_pct"] == round(after["retained_count"] / after["initial_enrollments"] * 100, 2)
 
 
 # ── Competitions fee summary (fixed behaviour, exact values) ─────────────────
