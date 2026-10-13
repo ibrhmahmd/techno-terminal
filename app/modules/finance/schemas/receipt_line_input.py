@@ -5,6 +5,7 @@ Receipt line input schema.
 """
 from typing import Optional
 from pydantic import BaseModel, field_validator
+from app.shared.constants import PaymentType
 from app.shared.validators import validate_positive_amount
 
 
@@ -15,7 +16,7 @@ class ReceiptLineInput(BaseModel):
     enrollment_id: Optional[int] = None
     team_member_id: Optional[int] = None
     amount: float
-    payment_type: str = "course_level"
+    payment_type: PaymentType = "course_level"
     discount: float = 0.0
     notes: Optional[str] = None
 

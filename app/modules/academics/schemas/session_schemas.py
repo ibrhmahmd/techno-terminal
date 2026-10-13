@@ -7,6 +7,8 @@ from datetime import date, time
 from typing import Optional
 from pydantic import BaseModel, field_validator
 
+from app.modules.academics.constants import SessionStatus
+
 
 class AddExtraSessionInput(BaseModel):
     """Input for SessionService.add_extra_session()."""
@@ -31,7 +33,7 @@ class UpdateSessionDTO(BaseModel):
     actual_instructor_id: Optional[int] = None
     is_substitute: Optional[bool] = None
     notes: Optional[str] = None
-    status: Optional[str] = None
+    status: Optional[SessionStatus] = None
 
     @field_validator('actual_instructor_id', mode='before')
     @classmethod

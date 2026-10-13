@@ -36,8 +36,10 @@ DAY_ORDER: dict[str, int] = {
 
 # ── Domain Types ──────────────────────────────────────────────────────────────
 
-GroupStatus: TypeAlias = Literal["active", "inactive", "archived"]
-GROUP_STATUSES: list[GroupStatus] = ["active", "inactive", "archived"]
+# Mirror the groups_status_check / sessions_status_check constraints (#150).
+GroupStatus: TypeAlias = Literal["active", "inactive", "completed", "archived"]
+GROUP_STATUSES: list[GroupStatus] = ["active", "inactive", "completed", "archived"]
+SessionStatus: TypeAlias = Literal["scheduled", "completed", "cancelled"]
 
 DEFAULT_SESSIONS_PER_LEVEL: int = 5
 

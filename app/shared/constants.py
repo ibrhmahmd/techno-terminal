@@ -60,9 +60,8 @@ PaymentType: TypeAlias = Literal["course_level", "competition", "other"]
 
 # ── Enrollments ───────────────────────────────────────────────────────────────
 
-EnrollmentStatus: TypeAlias = Literal[
-    "active", "completed", "transferred", "dropped", "cancelled"
-]
+# Mirrors enrollments_status_check (#150: "cancelled" was listed but the DB rejects it).
+EnrollmentStatus: TypeAlias = Literal["active", "completed", "transferred", "dropped"]
 
 PaymentStatus: TypeAlias = Literal["not_paid", "partially_paid", "paid"]
 PAYMENT_STATUSES: list[PaymentStatus] = ["not_paid", "partially_paid", "paid"]

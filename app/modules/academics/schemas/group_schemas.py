@@ -6,6 +6,7 @@ Input DTOs for the Group entity.
 from datetime import time
 from typing import Literal, Optional
 from pydantic import BaseModel, model_validator
+from app.modules.academics.constants import GroupStatus
 from app.shared.time_helpers import validate_times
 
 WeekDay = Literal[
@@ -46,7 +47,7 @@ class UpdateGroupDTO(BaseModel):
     default_time_start: Optional[time] = None
     default_time_end: Optional[time] = None
     notes: Optional[str] = None
-    status: Optional[str] = None
+    status: Optional[GroupStatus] = None
 
 
 class EnrichedGroupDTO(BaseModel):
