@@ -12,7 +12,7 @@ from sqlmodel import select
 from app.modules.notifications.models.notification_template import NotificationTemplate
 
 _SERVICES = pathlib.Path(__file__).resolve().parents[1] / "services"
-_LOOKUP = re.compile(r'_get_template_by_name\("([a-z_]+)"\)')
+_LOOKUP = re.compile(r'get_template_by_name\("([a-z_]+)"\)')
 
 
 def _names_used_in_code() -> set[str]:
@@ -27,5 +27,5 @@ def test_every_looked_up_template_is_seeded(db_session):
     used = _names_used_in_code()
     seeded = set(db_session.exec(select(NotificationTemplate.name)).all())
 
-    assert {"task_assigned", "task_status_changed", "task_comment_added"} <= used
+    assert {"task_assigned", "task_status_changed", "task_comment_added", "user_invite"} <= used
     assert used - seeded == set()

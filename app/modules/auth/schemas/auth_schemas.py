@@ -13,6 +13,8 @@ from app.shared.constants import MIN_PASSWORD_LENGTH
 class UserCreate(UserBase):
     """DTO for creating a local user; supabase_uid is filled after Supabase admin signup."""
     supabase_uid: Optional[str] = None
+    invite_token: Optional[str] = None
+    invite_expires_at: Optional[datetime] = None
     model_config = ConfigDict(from_attributes=True)
 
 class UserPublic(SQLModel):

@@ -1,6 +1,7 @@
 """Admin-facing alerts: admin login alert and student absence alert."""
 import logging
 from datetime import datetime
+from typing import Optional
 
 from fastapi import BackgroundTasks
 
@@ -55,6 +56,39 @@ class AlertNotificationService(BaseNotificationService):
                 contact=email_address,
                 variables=variables,
             )
+
+    def notify_user_invited(
+        self,
+        email: str,
+        role: str,
+        register_url: str,
+        expires_at: Optional[datetime],
+        employee_id: Optional[int],
+        background_tasks: BackgroundTasks,
+    ) -> None:
+        """Emails the invitee their registration link (user_invite template, #148)."""
+        template = self._repo.get_template_by_name("user_invite")
+        if not template:
+            logger.warning("Notification template 'user_invite' not found. Skipping.")
+            return
+
+        variables = {
+            "email": email,
+            "role": role.replace("_", " ").title(),
+            "register_url": register_url,
+            "expires_at": expires_at.strftime("%Y-%m-%d %H:%M UTC") if expires_at else "—",
+        }
+        # The invitee has no recipient row yet: log against the linked
+        # employee when there is one, otherwise as an additional recipient.
+        background_tasks.add_task(
+            self._dispatch,
+            template=template,
+            channel="EMAIL",
+            recipient_type="EMPLOYEE" if employee_id else "ADDITIONAL",
+            recipient_id=employee_id or 0,
+            contact=email,
+            variables=variables,
+        )
 
     # ── Absence Alerts ────────────────────────────────────────────────────
 

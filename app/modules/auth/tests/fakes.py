@@ -1,6 +1,7 @@
 """Test fake for AuthNotifier port."""
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Optional
 from app.modules.auth import AuthNotifier
 
@@ -10,6 +11,7 @@ class FakeAuthNotifier(AuthNotifier):
     """Records calls to admin_login for test assertions."""
 
     calls: list[dict] = field(default_factory=list)
+    invites: list[dict] = field(default_factory=list)
     should_raise: bool = False
     raise_exception: Optional[Exception] = None
 
@@ -34,5 +36,25 @@ class FakeAuthNotifier(AuthNotifier):
             "alert_reason": alert_reason,
         })
 
+    def user_invited(
+        self,
+        *,
+        email: str,
+        role: str,
+        register_url: str,
+        expires_at: Optional[datetime],
+        employee_id: Optional[int],
+    ) -> None:
+        if self.should_raise:
+            raise self.raise_exception or RuntimeError("Notifier failure")
+        self.invites.append({
+            "email": email,
+            "role": role,
+            "register_url": register_url,
+            "expires_at": expires_at,
+            "employee_id": employee_id,
+        })
+
     def reset(self) -> None:
         self.calls.clear()
+        self.invites.clear()

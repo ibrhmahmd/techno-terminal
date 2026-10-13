@@ -15,7 +15,7 @@ Supabase Auth, 12 business modules, plain-SQL migrations. Python `>=3.11,<3.13` 
 `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`,
 `GMAIL_SENDER_ADDRESS`, `GMAIL_APP_PASSWORD`.
 
-Optional PDF/receipt settings in `app/core/config.py`.
+Optional PDF/receipt settings in `app/core/config.py`. `FRONTEND_BASE_URL` (the UI origin, e.g. `https://app.example.com`) is needed for invite emails: without it, `POST /admin/users/invite` creates the invite but sends no link (#148).
 
 ## Commands
 
