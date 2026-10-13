@@ -3,7 +3,7 @@ FastAPI exceptions handler mappings.
 """
 import logging
 
-from fastapi import Request, HTTPException
+from fastapi import Request
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -16,6 +16,19 @@ from app.shared.exceptions import (
 )
 
 logger = logging.getLogger("api.access")
+
+
+def _json_safe(value):
+    """A JSON-serialisable copy of a validation-error field. Scalars pass through, lists and
+    dicts are copied recursively, anything else (tuples, exceptions in ``ctx``...) becomes
+    its ``str``. A validator raising ``ValueError`` puts the exception itself in ``ctx``."""
+    if isinstance(value, (str, int, float, bool, type(None))):
+        return value
+    if isinstance(value, list):
+        return [_json_safe(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _json_safe(v) for k, v in value.items()}
+    return str(value)
 
 
 def register_exception_handlers(app):
@@ -46,11 +59,7 @@ def register_exception_handlers(app):
                 "success": False,
                 "error": "ValidationError",
                 "message": message,
-                "details": [
-                    {k: str(v) if not isinstance(v, (str, int, float, bool, list, dict, type(None))) else v
-                     for k, v in err.items()}
-                    for err in errors
-                ]
+                "details": [{k: _json_safe(v) for k, v in err.items()} for err in errors],
             },
         )
 

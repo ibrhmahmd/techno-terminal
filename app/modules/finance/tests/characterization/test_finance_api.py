@@ -32,7 +32,6 @@ import uuid
 from datetime import date, time
 
 import pytest
-from fastapi.testclient import TestClient
 
 from app.modules.academics.models.course_models import Course
 from app.modules.academics.models.group_models import Group
@@ -396,16 +395,14 @@ def test_send_receipt_without_parent_is_200_with_failure_payload(
     assert set(body["data"]) == {"success", "message", "receipt_id", "recipient_contact", "sent_at"}
 
 
-def test_send_receipt_invalid_method_crashes_with_500(
-    app, client_with_uow, override_auth, mock_admin_headers, noop_notifications
-):
-    """current behaviour (pinned, not endorsed): the method validator's ValueError cannot be
-    JSON-serialised by the 422 handler (same pattern as the attendance duplicate-id bug), so
-    the response is 500."""
-    r = TestClient(app, raise_server_exceptions=False).post(
+def test_send_receipt_invalid_method_is_422(client_with_uow, override_auth, mock_admin_headers, noop_notifications):
+    """Fixed by the #86 handler fix (was a 500: the method validator's ValueError could not be
+    JSON-serialised by the 422 handler)."""
+    r = client_with_uow.post(
         "/api/v1/finance/payments/1/send-receipt", headers=mock_admin_headers, json={"method": "carrier"},
     )
-    assert r.status_code == 500
+    assert r.status_code == 422
+    assert r.json()["error"] == "ValidationError"
 
 
 # ── Receipts: GET /finance/receipts/{id}, search, pdf, generate, batch ────────
