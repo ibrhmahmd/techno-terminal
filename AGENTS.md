@@ -129,8 +129,8 @@ Tests live with the code they test (#109): `app/modules/<module>/tests/` (API pi
 - Suite rows persist on the cloud testing DB by design; everything is uuid-tagged debris.
 - Migration ladder: write migration → apply to testing project → green HR/CI gates there → then prod.
 
-### No CI
-`.github/` does not exist, so nothing runs on push. Run the tests yourself, against `localhost` Postgres for anything that writes.
+### CI
+The only workflow is `.github/workflows/deploy-staging.yml`, which deploys the `staging` branch to the FastAPI Cloud staging app on every push. It runs no tests, so run the tests yourself, against `localhost` Postgres for anything that writes.
 
 ### Dead Code Discipline
 Before any refactoring, grep for callers of every method. Delete dead code immediately — never migrate it into a new structure. Zero tolerance for commented-out code, deprecated shims, or superseded subset methods.
@@ -147,6 +147,8 @@ GitHub Issues. The prioritised roadmap is #111 (tiers by urgency, safety and siz
 
 - **Platform**: FastAPI Cloud. Entrypoint: root `main.py`. Dependencies come from `pyproject.toml` (`requirements.txt` is gone).
 - **Health**: `/health`, `/kaithhealthcheck`.
+- **Staging**: the `staging` branch auto-deploys via GitHub Actions to the staging app (token and app id are secrets of the GitHub `staging` environment). The local `.fastapicloud/cloud.json` links to production, so a manual staging deploy needs `fastapi deploy --app-id <staging-app-id>`.
+- **Production**: deployed manually by the owner from `main`, only after the sprint is green on staging. Never wire `main` to a workflow.
 
 ## Business Reports
 
