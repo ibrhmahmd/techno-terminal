@@ -38,10 +38,6 @@ class SearchService:
         """Count total students."""
         return self._search_repo.count(active_only)
 
-    def count_by_status(self, status) -> int:
-        """Count students by specific status."""
-        return self._search_repo.count_by_status(status)
-
     def get_by_status(self, status) -> List:
         """Get all students with a specific status."""
         return self._search_repo.get_by_status(status)

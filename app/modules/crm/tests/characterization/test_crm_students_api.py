@@ -459,13 +459,21 @@ def test_get_students_by_status_invalid(client_with_uow, override_auth, mock_adm
 
 
 def test_get_student_status_summary(client_with_uow, override_auth, mock_admin_headers, db_session):
-    """GET /crm/students/status-summary returns ApiResponse[StudentStatusSummaryDTO]."""
+    """GET /crm/students/status-summary counts non-deleted students per status; total is their sum (#62)."""
+    url = "/api/v1/crm/students/status-summary"
+    before = client_with_uow.get(url, headers=mock_admin_headers).json()["data"]
+
     marker = _short()
     _make_student(db_session, full_name=f"SumA {marker}", status=StudentStatus.ACTIVE)
     _make_student(db_session, full_name=f"SumW {marker}", status=StudentStatus.WAITING)
+    _make_student(db_session, full_name=f"SumW2 {marker}", status=StudentStatus.WAITING)
     _make_student(db_session, full_name=f"SumI {marker}", status=StudentStatus.INACTIVE)
+    _make_student(
+        db_session, full_name=f"SumD {marker}", status=StudentStatus.WAITING,
+        deleted_at=datetime.now(timezone.utc),
+    )
 
-    r = client_with_uow.get("/api/v1/crm/students/status-summary", headers=mock_admin_headers)
+    r = client_with_uow.get(url, headers=mock_admin_headers)
 
     assert r.status_code == 200
     body = r.json()
@@ -473,15 +481,11 @@ def test_get_student_status_summary(client_with_uow, override_auth, mock_admin_h
     assert body["success"] is True
     data = body["data"]
     assert set(data) == {"total", "active", "waiting", "inactive"}
-    assert isinstance(data["total"], int)
-    assert isinstance(data["active"], int)
-    assert isinstance(data["waiting"], int)
-    assert isinstance(data["inactive"], int)
-    # Counts are non-negative; exact relationship depends on service implementation (may include/exclude soft-deleted differently)
-    assert data["total"] >= 0
-    assert data["active"] >= 0
-    assert data["waiting"] >= 0
-    assert data["inactive"] >= 0
+    assert data["total"] == data["active"] + data["waiting"] + data["inactive"]
+    assert data["active"] - before["active"] == 1
+    assert data["waiting"] - before["waiting"] == 2
+    assert data["inactive"] - before["inactive"] == 1
+    assert data["total"] - before["total"] == 4
 
 
 # ── /api/v1/crm/students/{student_id} ─────────────────────────────────────────
