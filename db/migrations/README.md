@@ -41,3 +41,4 @@ Always test on a copy first.
 
 If a statement fails inside a script wrapped in `BEGIN` … `COMMIT` (e.g. `005_audit_d4_timestamps.sql`), PostgreSQL enters an **aborted transaction**; further commands return **SQLSTATE 25P02** until you run **`ROLLBACK;`** (or use a new connection), then re-apply the **whole** script from the start.
 
+| [082_task_notification_templates_by_name.sql](082_task_notification_templates_by_name.sql) | Inserts the `task_assigned`, `task_status_changed` and `task_comment_added` email templates by `name` when missing (#156). It replaces `078`, which targeted a `code` column the table no longer has. Safe to re-run. Apply it to the testing project, then production; task emails (#153) need it. |
