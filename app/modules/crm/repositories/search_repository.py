@@ -24,8 +24,8 @@ class SearchRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def search(self, query: str) -> List[StudentSummaryDTO]:
-        """Search students by name or phone using raw SQL."""
+    def search(self, query: str, skip: int = 0, limit: int = 50) -> List[StudentSummaryDTO]:
+        """One page of students whose name or phone matches ``query`` (#53 sweep)."""
         if not query or len(query.strip()) < 2:
             return []
 
@@ -51,10 +51,10 @@ class SearchRepository:
             WHERE s.deleted_at IS NULL
               AND (s.full_name ILIKE :term OR s.phone ILIKE :term)
             ORDER BY s.id, e.id DESC
-            LIMIT 50
+            OFFSET :skip LIMIT :limit
         """)
 
-        result = self._session.exec(sql, params={"term": term})
+        result = self._session.exec(sql, params={"term": term, "skip": skip, "limit": limit})
 
         students = []
         for row in result.mappings():
@@ -178,6 +178,15 @@ class SearchRepository:
                 has_unpaid_balance=row.has_unpaid_balance or False
             ))
         return students
+
+    def count_search(self, query: str) -> int:
+        """How many non-deleted students match ``query`` by name or phone."""
+        sql = text("""
+            SELECT COUNT(*) FROM students s
+            WHERE s.deleted_at IS NULL
+              AND (s.full_name ILIKE :term OR s.phone ILIKE :term)
+        """)
+        return self._session.exec(sql, params={"term": f"%{query.strip()}%"}).scalar()
 
     def count(self, active_only: bool = True) -> int:
         """Count total students using raw SQL."""

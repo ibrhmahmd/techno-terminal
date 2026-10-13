@@ -111,28 +111,28 @@ def test_list_parents_search(client_with_uow, override_auth, mock_admin_headers,
 
 
 def test_list_parents_pagination_search_branch(client_with_uow, override_auth, mock_admin_headers, db_session):
-    """GET /crm/parents?q=<marker>&skip=...&limit=... — search branch ignores skip/limit (pinned, not endorsed)."""
+    """GET /crm/parents?q=<marker>&skip=1&limit=2 pages the matches; total is all matches (#53)."""
     marker = _short()
     for i in range(5):
         _make_parent(db_session, full_name=f"P{i} {marker}", phone_primary=f"555{marker}{i:04d}")
 
-    r = client_with_uow.get(f"/api/v1/crm/parents?q={marker}&skip=1&limit=2", headers=mock_admin_headers)
+    pages = []
+    for skip in (0, 2, 4):
+        r = client_with_uow.get(f"/api/v1/crm/parents?q={marker}&skip={skip}&limit=2", headers=mock_admin_headers)
+        assert r.status_code == 200
+        body = r.json()
+        assert body["total"] == 5
+        assert body["skip"] == skip
+        assert body["limit"] == 2
+        pages.append([item["full_name"] for item in body["data"]])
 
-    assert r.status_code == 200
-    body = r.json()
-    assert body["success"] is True
-    # Search branch returns ALL matches (max 50), ignoring skip/limit
-    assert len(body["data"]) == 5
-    assert body["total"] == 5
-    # Envelope echoes the params but they have no effect on results
-    assert body["skip"] == 1
-    assert body["limit"] == 2
-    for item in body["data"]:
-        assert marker in item["full_name"] or marker in item["phone_primary"]
+    assert [len(p) for p in pages] == [2, 2, 1]
+    names = [n for page in pages for n in page]
+    assert names == sorted(names) == [f"P{i} {marker}" for i in range(5)]
 
 
 def test_list_parents_pagination_non_search(client_with_uow, override_auth, mock_admin_headers, db_session):
-    """GET /crm/parents?skip=0&limit=2 (no q) — non-search branch applies skip/limit."""
+    """GET /crm/parents?skip=0&limit=2 (no q): total is the count of all parents, not the page size (#53 sweep)."""
     marker = _short()
     for i in range(5):
         _make_parent(db_session, full_name=f"Q{i} {marker}", phone_primary=f"555{marker}2{i:04d}")
@@ -144,8 +144,8 @@ def test_list_parents_pagination_non_search(client_with_uow, override_auth, mock
     assert body["success"] is True
     assert body["skip"] == 0
     assert body["limit"] == 2
-    # Non-search branch respects limit
-    assert len(body["data"]) <= 2
+    assert len(body["data"]) == 2
+    assert body["total"] >= 5
 
 
 # ── /api/v1/crm/parents/{parent_id} ──────────────────────────────────────────

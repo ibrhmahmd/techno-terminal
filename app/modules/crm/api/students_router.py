@@ -72,11 +72,13 @@ def search_students(
     _user: User = Depends(require_any),
     svc: SearchService = Depends(get_student_search_service),
 ):
+    # skip/limit apply to the search too, and total counts what the list
+    # shows: every non-deleted student, not only active ones (#53 sweep).
     if q is not None and len(q.strip()) >= 2:
-        results = svc.search(query=q)
-        total = len(results)  # search returns bounded set (max 50)
+        results = svc.search(query=q, skip=skip, limit=limit)
+        total = svc.count_search(q)
     else:
-        total = svc.count()
+        total = svc.count(active_only=False)
         results = svc.list_all(skip=skip, limit=limit)
 
     mapped_data = []

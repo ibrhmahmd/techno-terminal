@@ -22,9 +22,13 @@ class SearchService:
     def __init__(self, uow: UnitOfWork) -> None:
         self._search_repo = SearchRepository(uow.session)
 
-    def search(self, query: str) -> List[StudentSummaryDTO]:
-        """Search students by name or phone."""
-        return self._search_repo.search(query)
+    def search(self, query: str, skip: int = 0, limit: int = 50) -> List[StudentSummaryDTO]:
+        """One page of students matching ``query`` by name or phone."""
+        return self._search_repo.search(query, skip, limit)
+
+    def count_search(self, query: str) -> int:
+        """How many students match ``query`` by name or phone."""
+        return self._search_repo.count_search(query)
 
     def list_all(self, skip: int = 0, limit: int = 200) -> List[StudentSummaryDTO]:
         """List all students with pagination."""
