@@ -10,7 +10,7 @@ Auth: all endpoints require at least require_any (any authenticated user).
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from datetime import date as _date, time as _time
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from app.api.schemas.common import ApiResponse
 from app.modules.academics.api.schemas.group import (
@@ -108,8 +108,8 @@ def filter_groups(
     current_session_number: Optional[int] = Query(None, ge=1, description="Groups currently at this session number"),
     session_number_from: Optional[int] = Query(None, ge=1, description="Session number range start"),
     session_number_to: Optional[int] = Query(None, ge=1, description="Session number range end"),
-    sort_by: Optional[str] = Query("name", description="Sort field: name, day, status"),
-    sort_order: Optional[str] = Query("asc", description="Sort direction: asc, desc"),
+    sort_by: Literal["name", "day", "status"] = Query("name", description="Sort field: name, day, status"),
+    sort_order: Literal["asc", "desc"] = Query("asc", description="Sort direction: asc, desc"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     _user: User = Depends(require_any),
@@ -135,23 +135,15 @@ def filter_groups(
     except (ValueError, AttributeError) as exc:
         raise HTTPException(status_code=422, detail=f"Invalid date/time format: {exc}")
 
-    # Validate sort_by
-    valid_sort_by = {"name", "day", "status"}
-    if sort_by not in valid_sort_by:
-        sort_by = "name"
-    valid_sort_order = {"asc", "desc"}
-    if sort_order not in valid_sort_order:
-        sort_order = "asc"
-
     filters = GroupFilterDTO(
         q=q,
         name=name,
         course_ids=course_ids,
         course_name=course_name,
         day=_normalize_day_names(day),
-        instructor_id=instructor_id,
+        instructor_ids=[instructor_id] if instructor_id is not None else None,
         instructor_name=instructor_name,
-        level_number=level_number,
+        level_numbers=[level_number] if level_number is not None else None,
         status=status,
         price_min=price_min,
         price_max=price_max,
@@ -162,8 +154,8 @@ def filter_groups(
         current_session_number=current_session_number,
         session_number_from=session_number_from,
         session_number_to=session_number_to,
-        sort_by=sort_by,  # type: ignore[arg-type]
-        sort_order=sort_order,  # type: ignore[arg-type]
+        sort_by=sort_by,
+        sort_order=sort_order,
         skip=skip,
         limit=limit,
     )

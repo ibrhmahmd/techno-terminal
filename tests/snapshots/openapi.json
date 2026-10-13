@@ -18864,17 +18864,15 @@
             "name": "sort_by",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
               "default": "name",
               "description": "Sort field: name, day, status",
-              "title": "Sort By"
+              "enum": [
+                "name",
+                "day",
+                "status"
+              ],
+              "title": "Sort By",
+              "type": "string"
             }
           },
           {
@@ -18883,17 +18881,14 @@
             "name": "sort_order",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
               "default": "asc",
               "description": "Sort direction: asc, desc",
-              "title": "Sort Order"
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "title": "Sort Order",
+              "type": "string"
             }
           },
           {
@@ -19382,20 +19377,27 @@
             }
           },
           {
-            "description": "Filter by status (active, completed, dropped)",
+            "description": "Filter by enrollment status",
             "in": "query",
             "name": "status",
             "required": false,
             "schema": {
               "anyOf": [
                 {
+                  "enum": [
+                    "active",
+                    "completed",
+                    "transferred",
+                    "dropped",
+                    "cancelled"
+                  ],
                   "type": "string"
                 },
                 {
                   "type": "null"
                 }
               ],
-              "description": "Filter by status (active, completed, dropped)",
+              "description": "Filter by enrollment status",
               "title": "Status"
             }
           },
@@ -19528,20 +19530,27 @@
             }
           },
           {
-            "description": "Filter by status (active, completed, dropped)",
+            "description": "Filter by enrollment status",
             "in": "query",
             "name": "status",
             "required": false,
             "schema": {
               "anyOf": [
                 {
+                  "enum": [
+                    "active",
+                    "completed",
+                    "transferred",
+                    "dropped",
+                    "cancelled"
+                  ],
                   "type": "string"
                 },
                 {
                   "type": "null"
                 }
               ],
-              "description": "Filter by status (active, completed, dropped)",
+              "description": "Filter by enrollment status",
               "title": "Status"
             }
           },

@@ -299,6 +299,21 @@ def test_enrollment_analytics_limit_zero_is_422(client_with_uow, override_auth, 
     assert "details" in body
 
 
+def test_enrollment_status_filter_unknown_value_is_422(client_with_uow, override_auth, mock_admin_headers):
+    """An unknown status filter is a 422 on both routes (#142; used to return an empty list)."""
+    for path in ("enrollments/analytics", "enrollment-history"):
+        r = client_with_uow.get(
+            f"/api/v1/academics/groups/1/{path}",
+            headers=mock_admin_headers,
+            params={"status": "bogus"},
+        )
+
+        assert r.status_code == 422
+        body = r.json()
+        assert body["success"] is False
+        assert body["error"] == "ValidationError"
+
+
 def test_enrollment_analytics_bad_group_id_is_422(client_with_uow, override_auth, mock_admin_headers):
     """A non-integer group_id fails path validation with 422."""
     r = client_with_uow.get(
