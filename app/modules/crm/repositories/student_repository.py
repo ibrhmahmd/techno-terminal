@@ -62,17 +62,6 @@ class StudentRepository:
             ).limit(50)
         ).all())
 
-    def count(self, active_only: bool = True) -> int:
-        stmt = select(func.count()).select_from(Student)
-        if active_only:
-            stmt = stmt.where(Student.status == StudentStatus.ACTIVE)
-        return self._session.exec(stmt).one()
-
-    def count_by_status(self, status: StudentStatus) -> int:
-        return self._session.exec(
-            select(func.count()).select_from(Student).where(Student.status == status)
-        ).one()
-
     def update_status(self, student_id: int, new_status: StudentStatus,
                       user_id: Optional[int], notes: Optional[str]) -> Optional[Student]:
         student = self._session.get(Student, student_id)

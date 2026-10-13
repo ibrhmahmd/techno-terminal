@@ -200,18 +200,6 @@ class SearchRepository:
         result = self._session.exec(sql, params={"active_only": active_only})
         return result.scalar()
 
-    def count_by_status(self, status) -> int:
-        """Count students by specific status using raw SQL."""
-        status_value = status.value if hasattr(status, 'value') else str(status)
-
-        sql = text("""
-            SELECT COUNT(*) FROM students
-            WHERE status = :status AND deleted_at IS NULL
-        """)
-
-        result = self._session.exec(sql, params={"status": status_value})
-        return result.scalar()
-
     def get_by_status(self, status) -> List:
         """Get all students with a specific status using raw SQL."""
         from app.modules.crm.models.student_models import Student
@@ -268,15 +256,21 @@ class SearchRepository:
         return students
 
     def get_status_summary(self) -> StudentStatusSummaryDTO:
-        """Get summary counts by status."""
-        total_active = self.count(active_only=True)
-        total_inactive = self.count(active_only=False) - total_active
-
+        """Count non-deleted students per status; ``total`` is their sum."""
+        sql = text("""
+            SELECT status, COUNT(*) AS n FROM students
+            WHERE deleted_at IS NULL
+            GROUP BY status
+        """)
+        counts = {str(row.status): row.n for row in self._session.exec(sql).mappings()}
+        active = counts.get("active", 0)
+        waiting = counts.get("waiting", 0)
+        inactive = counts.get("inactive", 0)
         return StudentStatusSummaryDTO(
-            total=total_active + total_inactive,
-            active=total_active,
-            inactive=total_inactive,
-            waiting=self.count_by_status("waiting"),
+            total=active + waiting + inactive,
+            active=active,
+            waiting=waiting,
+            inactive=inactive,
         )
 
     def get_grouped(
