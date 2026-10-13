@@ -6,6 +6,7 @@ from app.modules.enrollments.models.enrollment_models import Enrollment
 from app.modules.enrollments.schemas.enrollment_directory_schemas import (
     EnrollmentAttendanceSummaryDTO,
     EnrollmentBalanceDTO,
+    GroupDisplayNamesDTO,
 )
 
 
@@ -31,6 +32,21 @@ class EnrollmentDirectoryRepository:
     def get_enrollments_by_student(self, student_id: int) -> list[Enrollment]:
         stmt = select(Enrollment).where(Enrollment.student_id == student_id)
         return list(self._session.exec(stmt).all())
+
+    def get_group_display_names(self, group_id: int) -> GroupDisplayNamesDTO:
+        """Group, course and instructor names for a group (all None if unknown)."""
+        row = self._session.exec(
+            text("""
+                SELECT g.name AS group_name, c.name AS course_name,
+                       e.full_name AS instructor_name
+                FROM groups g
+                LEFT JOIN courses c ON c.id = g.course_id
+                LEFT JOIN employees e ON e.id = g.instructor_id
+                WHERE g.id = :group_id
+            """),
+            params={"group_id": group_id},
+        ).mappings().first()
+        return GroupDisplayNamesDTO(**row) if row else GroupDisplayNamesDTO()
 
     def get_enrollment_balance(
         self, enrollment_id: int

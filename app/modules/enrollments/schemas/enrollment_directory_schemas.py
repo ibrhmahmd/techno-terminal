@@ -18,6 +18,13 @@ class StudentEnrollmentSummaryDTO(BaseModel):
     discount_applied: float
 
 
+class GroupDisplayNamesDTO(BaseModel):
+    """Names shown next to an enrollment: its group, course and instructor."""
+    group_name: str | None = None
+    course_name: str | None = None
+    instructor_name: str | None = None
+
+
 class EnrollmentBalanceDTO(BaseModel):
     """Enrollment balance snapshot read from the v_enrollment_balance view.
 

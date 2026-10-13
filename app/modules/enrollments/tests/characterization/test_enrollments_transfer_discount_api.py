@@ -23,9 +23,6 @@ Pinned quirks (pinned, not endorsed)
 -----------------------------------
 * Transfer checks the target group BEFORE the source enrollment: an inactive
   target group wins even when the source id does not exist.
-* The transfer response carries ``group_name``/``course_name``/
-  ``instructor_name`` as ``null``: the service validates ``EnrollmentDTO``
-  straight off the ORM row and never hydrates those display fields.
 * Applying a discount SETS ``discount_applied`` to the requested amount; the
   router docstring says "added to existing", but the repository overwrites.
 * Discount on a non-active enrollment is a 409 ``BusinessRuleError``.
@@ -181,9 +178,9 @@ def test_transfer_student(
     assert data["status"] == "active"
     assert data["amount_due"] == 800.0
     assert data["discount_applied"] == 30.0
-    # current behaviour (pinned, not endorsed): display names are not hydrated.
-    assert data["group_name"] is None
-    assert data["course_name"] is None
+    # Display names are filled on write responses (#83).
+    assert data["group_name"] == target_group.name
+    assert data["course_name"] == course.name
     assert data["instructor_name"] is None
     assert data["payment_status"] is None
     assert data["amount_remaining"] is None
@@ -346,9 +343,9 @@ def test_apply_sibling_discount_default(
     # current behaviour (pinned, not endorsed): SET, not added to the prior 30.0.
     assert data["discount_applied"] == 50.0
     assert data["status"] == "active"
-    # current behaviour (pinned, not endorsed): display names are not hydrated.
-    assert data["group_name"] is None
-    assert data["course_name"] is None
+    # Display names are filled on write responses (#83).
+    assert data["group_name"] == group.name
+    assert data["course_name"] == course.name
     assert data["instructor_name"] is None
 
 

@@ -1,8 +1,7 @@
 from sqlmodel import select
 
 from app.db.uow import UnitOfWork
-from app.modules.academics.models import Course, GroupLevel
-from app.modules.academics.models.course_models import Course  # noqa: F811 (re-exported below)
+from app.modules.academics.models import GroupLevel
 from app.modules.academics.models.group_models import Group
 from app.modules.crm.models import Student
 from app.modules.enrollments.models.enrollment_models import Enrollment
@@ -11,7 +10,6 @@ from app.modules.enrollments.schemas.enrollment_directory_schemas import Student
 from app.modules.enrollments.repositories.enrollment_directory_repository import (
     EnrollmentDirectoryRepository,
 )
-from app.modules.hr.models.employee_models import Employee
 
 
 class EnrollmentDirectoryService:
@@ -20,24 +18,11 @@ class EnrollmentDirectoryService:
         self._repo = EnrollmentDirectoryRepository(uow.session)
 
     def get_student_enrollments(self, student_id: int) -> list[EnrollmentDTO]:
-        session = self._uow.session
         enrollments = self._repo.get_enrollments_by_student(student_id)
         result = []
         for enrollment in enrollments:
-            dto = EnrollmentDTO.model_validate(enrollment)
-
-            # Fetch group, course, and instructor names
-            group = session.get(Group, enrollment.group_id)
-            if group:
-                dto.group_name = group.name
-                if group.course_id:
-                    course = session.get(Course, group.course_id)
-                    if course:
-                        dto.course_name = course.name
-                if group.instructor_id:
-                    instructor = session.get(Employee, group.instructor_id)
-                    if instructor:
-                        dto.instructor_name = instructor.full_name
+            names = self._repo.get_group_display_names(enrollment.group_id)
+            dto = EnrollmentDTO.model_validate(enrollment).model_copy(update=names.model_dump())
 
             balance_info = self._repo.get_enrollment_balance(enrollment.id)
             if balance_info:
