@@ -21,6 +21,8 @@ GMAIL_SENDER_ADDRESS= GMAIL_APP_PASSWORD= TWILIO_ACCOUNT_SID= TWILIO_AUTH_TOKEN=
 """
 
 import uuid
+
+import pytest
 from datetime import date, datetime, timezone
 from sqlmodel import select
 
@@ -571,18 +573,37 @@ def test_update_student_not_found(client_with_uow, override_auth, mock_admin_hea
 
 
 def test_update_student_bad_body(client_with_uow, override_auth, mock_admin_headers, db_session):
-    """PATCH /crm/students/{id} with invalid gender returns 500 (DB check constraint -> InternalServerError)."""
-    from starlette.testclient import TestClient
+    """Fixed in #61 (was a 500 from the students.gender CHECK constraint): the request schema
+    accepts only 'male' or 'female', so an invalid gender is a 422 and nothing is written."""
     student = _make_student(db_session, full_name="Bad Gender", phone="5552222222")
 
-    test_client = TestClient(client_with_uow.app, raise_server_exceptions=False)
-    r = test_client.patch(f"/api/v1/crm/students/{student.id}", headers=mock_admin_headers, json={"gender": "not_a_gender"})
+    r = client_with_uow.patch(
+        f"/api/v1/crm/students/{student.id}", headers=mock_admin_headers, json={"gender": "not_a_gender"}
+    )
 
-    # DB check constraint violation on students.gender -> 500 InternalServerError
-    assert r.status_code == 500
+    assert r.status_code == 422
     body = r.json()
     assert body["success"] is False
-    assert body["error"] == "InternalServerError"
+    assert body["error"] == "ValidationError"
+    assert body["details"][0]["loc"] == "('body', 'gender')"
+
+
+@pytest.mark.parametrize("gender", ["male", "female", None])
+def test_update_student_valid_gender(client_with_uow, override_auth, mock_admin_headers, db_session, gender):
+    student = _make_student(db_session, full_name="Good Gender", phone="5552222223")
+
+    r = client_with_uow.patch(f"/api/v1/crm/students/{student.id}", headers=mock_admin_headers, json={"gender": gender})
+
+    assert r.status_code == 200
+
+
+def test_create_student_invalid_gender_is_422(client_with_uow, override_auth, mock_admin_headers):
+    r = client_with_uow.post(
+        "/api/v1/crm/students", headers=mock_admin_headers,
+        json={"student_data": {"full_name": "Gender Check", "gender": "unknown"}},
+    )
+    assert r.status_code == 422
+    assert r.json()["error"] == "ValidationError"
 
 
 # ── /api/v1/crm/students/{student_id}/parents ─────────────────────────────────
