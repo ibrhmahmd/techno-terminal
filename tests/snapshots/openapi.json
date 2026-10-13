@@ -18965,6 +18965,12 @@
             "required": true,
             "schema": {
               "description": "Field to group by: day, course, instructor, status",
+              "enum": [
+                "day",
+                "course",
+                "instructor",
+                "status"
+              ],
               "title": "Group By",
               "type": "string"
             }

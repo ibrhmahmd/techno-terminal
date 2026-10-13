@@ -68,7 +68,7 @@ class GroupLifecycleService:
         # Get course info
         course = session.get(Course, data.group_input.course_id)
         if not course:
-            raise ValueError(f"Course {data.group_input.course_id} not found")
+            raise NotFoundError(f"Course {data.group_input.course_id} not found")
             
         sessions_per_level = course.sessions_per_level
             

@@ -460,7 +460,6 @@ class TestGroupDirectory:
         data = response.json()
         assert data["success"] is False
 
-    @pytest.mark.xfail(reason="BUG: ValueError not caught → 500 in groups grouped router", strict=False)
     def test_groups_grouped_invalid_field(self, client, mock_admin_headers, override_auth):
         response = client.get(
             "/api/v1/academics/groups/grouped?group_by=invalid_field",

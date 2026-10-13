@@ -10,6 +10,8 @@ from pydantic import BaseModel, field_validator
 
 from app.modules.academics.schemas.group_schemas import EnrichedGroupDTO
 
+GroupByField = Literal["day", "course", "instructor", "status"]
+
 
 class GroupedItemDTO(BaseModel):
     """Internal DTO for a grouped item."""

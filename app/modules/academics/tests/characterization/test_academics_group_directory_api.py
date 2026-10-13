@@ -24,7 +24,6 @@ GMAIL_SENDER_ADDRESS= GMAIL_APP_PASSWORD= TWILIO_ACCOUNT_SID= TWILIO_AUTH_TOKEN=
 import uuid
 from datetime import time
 
-from starlette.testclient import TestClient
 
 from app.modules.academics.models.course_models import Course
 from app.modules.academics.models.group_models import Group
@@ -162,18 +161,16 @@ def test_list_groups_grouped_missing_group_by(client_with_uow, override_auth, mo
 
 
 def test_list_groups_grouped_invalid_group_by(client_with_uow, override_auth, mock_admin_headers):
-    """GET /academics/groups/grouped?group_by=bogus returns 500 (ValueError unhandled)."""
-    test_client = TestClient(client_with_uow.app, raise_server_exceptions=False)
-    r = test_client.get(
+    """GET /academics/groups/grouped?group_by=bogus fails request validation with 422 (#69)."""
+    r = client_with_uow.get(
         "/api/v1/academics/groups/grouped?group_by=bogus",
         headers=mock_admin_headers,
     )
 
-    assert r.status_code == 500
+    assert r.status_code == 422
     body = r.json()
     assert body["success"] is False
-    assert body["error"] == "InternalServerError"
-    # current behaviour (pinned, not endorsed) - service raises bare ValueError
+    assert body["error"] == "ValidationError"
 
 
 # ── /api/v1/academics/groups/filter ───────────────────────────────────────────
