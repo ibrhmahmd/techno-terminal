@@ -19,6 +19,7 @@ from app.modules.crm.api.schemas import (
     ParentPublic,
     StudentWithDetails,
     SiblingInfo,
+    ActivityType,
 )
 from app.modules.crm.schemas import StudentGroupedResultDTO, StudentFilterDTO, StudentFilterResultDTO
 from app.modules.crm.api.deps import (
@@ -182,7 +183,7 @@ def filter_students(
     course_enrollment_date_to: Optional[date] = Query(None, description="Course enrollment date to"),
     min_activity_count: Optional[int] = Query(None, ge=0, description="Minimum number of activity log events"),
     max_activity_count: Optional[int] = Query(None, ge=0, description="Maximum number of activity log events"),
-    activity_types: Optional[List[str]] = Query(None, description="Activity types to filter by"),
+    activity_types: Optional[List[ActivityType]] = Query(None, description="Activity types to filter by"),
     activity_date_from: Optional[date] = Query(None, description="Activity created on or after this date"),
     activity_date_to: Optional[date] = Query(None, description="Activity created on or before this date"),
     activity_search_term: Optional[str] = Query(None, description="Search term in student activity description or metadata"),
@@ -209,7 +210,7 @@ def filter_students(
         course_enrollment_date_to=course_enrollment_date_to,
         min_activity_count=min_activity_count,
         max_activity_count=max_activity_count,
-        activity_types=activity_types,
+        activity_types=[t.value for t in activity_types] if activity_types else None,
         activity_date_from=activity_date_from,
         activity_date_to=activity_date_to,
         activity_search_term=activity_search_term,

@@ -17,6 +17,7 @@ from app.modules.finance.api.schemas.receipt import (
     ReceiptGenerationResponse,
     ReceiptDetailResponse,
     ReceiptListItem,
+    ReceiptTemplate,
 )
 from app.modules.finance.api.finance_mapper import to_receipt_list_item, to_receipt_detail_response
 from app.modules.auth.models import User
@@ -112,7 +113,7 @@ def download_receipt_pdf(
 )
 def generate_receipt(
     receipt_id: int,
-    template_name: str = Query("standard", description="Template to use (standard, detailed)"),
+    template_name: ReceiptTemplate = Query("standard", description="Template to use (standard, detailed)"),
     include_balance: bool = Query(True, description="Include remaining balance"),
     as_text: bool = Query(False, description="Return as plain text response instead of JSON"),
     current_user: User = Depends(require_any),

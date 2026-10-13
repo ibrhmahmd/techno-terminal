@@ -297,6 +297,12 @@ class TestAdminUserManagement:
 
         assert response.status_code == 200
 
+    def test_admin_list_users_unknown_role_is_422(self, client, override_auth, mock_admin_headers):
+        """role is admin or system_admin (#179); an unknown role used to return an empty list."""
+        response = client.get("/api/v1/admin/users?role=teacher", headers=mock_admin_headers)
+
+        assert response.status_code == 422
+
     def test_admin_get_user_unauthorized(self, client):
         response = client.get("/api/v1/admin/users/1")
         assert response.status_code == 401

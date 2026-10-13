@@ -19,6 +19,7 @@ class ActivityType(str, Enum):
     NOTE_ADDED = "note_added"
     COMPETITION = "competition"
     DELETION = "deletion"
+    ACADEMIC = "academic"
 
 
 class ReferenceType(str, Enum):

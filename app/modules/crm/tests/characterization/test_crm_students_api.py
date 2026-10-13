@@ -321,6 +321,14 @@ def test_filter_students_empty(client_with_uow, override_auth, mock_admin_header
         assert set(item) >= {"id", "full_name", "age", "status", "gender", "phone", "date_of_birth", "current_group_id", "current_group_name", "group_default_day", "instructor_id", "instructor_name", "current_enrollment_count", "enrolled_courses", "has_unpaid_balance"}
 
 
+def test_filter_students_unknown_activity_type_is_422(client_with_uow, override_auth, mock_admin_headers):
+    """activity_types is the ActivityType enum (#179); an unknown type used to match nothing silently."""
+    r = client_with_uow.get("/api/v1/crm/students/filter?activity_types=bogus", headers=mock_admin_headers)
+
+    assert r.status_code == 422
+    assert r.json()["success"] is False
+
+
 def test_filter_students_with_status(client_with_uow, override_auth, mock_admin_headers, db_session):
     """GET /crm/students/filter?status=active returns filtered results."""
     marker = _short()

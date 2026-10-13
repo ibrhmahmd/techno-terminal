@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, Query
 
 from app.api.deps import require_admin
 from app.core.config import settings
+from app.modules.auth.constants import UserRoleValue
 from app.modules.auth.api.deps import get_auth_service, get_audit_service, get_auth_notifier
 from app.api.schemas.common import ApiResponse, PaginatedResponse
 from app.modules.auth.api.schemas import UpdateUserRequest, InviteUserRequest
@@ -46,7 +47,7 @@ def list_users(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     is_active: bool | None = None,
-    role: str | None = None,
+    role: UserRoleValue | None = None,
     q: str | None = None,
     _user: User = Depends(require_admin),
     auth_svc: AuthService = Depends(get_auth_service),
