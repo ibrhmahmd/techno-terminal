@@ -1,6 +1,9 @@
 """Adapter implementing AuthNotifier using the notification services (ADR-0007)."""
 
 import logging
+from datetime import datetime
+from typing import Optional
+
 from fastapi import BackgroundTasks, Depends
 
 from app.modules.notifications.api.deps import get_alert_service
@@ -34,6 +37,24 @@ class NotificationServiceAuthNotifier:
             ip_address=ip_address,
             user_agent=user_agent,
             alert_reason=alert_reason,
+            background_tasks=self._background_tasks,
+        )
+
+    def user_invited(
+        self,
+        *,
+        email: str,
+        role: str,
+        register_url: str,
+        expires_at: Optional[datetime],
+        employee_id: Optional[int],
+    ) -> None:
+        self._notif_svc.notify_user_invited(
+            email=email,
+            role=role,
+            register_url=register_url,
+            expires_at=expires_at,
+            employee_id=employee_id,
             background_tasks=self._background_tasks,
         )
 

@@ -7,15 +7,20 @@ Prefix: /api/v1/admin  (mounted in main.py)
 Tag:    Admin Auth
 """
 
+import logging
 from datetime import datetime, timezone
+from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Query
 
 from app.api.deps import require_admin
-from app.modules.auth.api.deps import get_auth_service, get_audit_service
+from app.core.config import settings
+from app.modules.auth.api.deps import get_auth_service, get_audit_service, get_auth_notifier
 from app.api.schemas.common import ApiResponse, PaginatedResponse
 from app.modules.auth.api.schemas import UpdateUserRequest, InviteUserRequest
-from app.modules.auth import AuthService, AuditService, User, UserAdminDTO, InviteResultDTO, AuditLogEntryDTO
+from app.modules.auth import AuthService, AuditService, AuthNotifier, User, UserAdminDTO, InviteResultDTO, AuditLogEntryDTO
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Admin Auth"])
 
@@ -113,12 +118,31 @@ def invite_user(
     body: InviteUserRequest,
     _user: User = Depends(require_admin),
     auth_svc: AuthService = Depends(get_auth_service),
+    notifier: AuthNotifier = Depends(get_auth_notifier),
 ):
     user = auth_svc.invite_user(email=body.email, role=body.role, employee_id=body.employee_id)
-    return ApiResponse(
-        data=InviteResultDTO.model_validate(user, from_attributes=True),
-        message="Invite sent.",
-    )
+    data = InviteResultDTO.model_validate(user, from_attributes=True)
+
+    # Email the registration link after commit (ADR-0007, #148); a failure
+    # never undoes the invite.
+    base_url = settings.frontend_base_url.rstrip("/")
+    if not base_url:
+        logger.warning("FRONTEND_BASE_URL is not set; invite for user %s was not emailed", user.id)
+        return ApiResponse(
+            data=data,
+            message="Invite created, but no email was sent: FRONTEND_BASE_URL is not configured.",
+        )
+    try:
+        notifier.user_invited(
+            email=user.username,
+            role=user.role,
+            register_url=f"{base_url}/register?{urlencode({'token': user.invite_token})}",
+            expires_at=user.invite_expires_at,
+            employee_id=user.employee_id,
+        )
+    except Exception:
+        logger.exception("AuthNotifier.user_invited failed; the invite stands")
+    return ApiResponse(data=data, message=f"Invite created. The registration link is being emailed to {user.username}.")
 
 
 @router.get(

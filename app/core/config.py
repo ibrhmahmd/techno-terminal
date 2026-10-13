@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     # Notifications Configuration
     fallback_email: str = "techno.terminal.notifications@gmail.com"
     internal_trigger_secret: str = ""
+    # Frontend origin for links in emails, e.g. https://app.example.com (#148)
+    frontend_base_url: str = ""
 
     # Logging Configuration
     log_level: str = "INFO"

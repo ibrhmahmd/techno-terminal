@@ -491,7 +491,8 @@ def test_admin_invite_user(client_with_uow, override_system_admin_auth, system_a
     assert r.status_code == 200
     body = r.json()
     assert set(body) == {"success", "data", "message"}
-    assert body["message"] == "Invite sent."
+    # No FRONTEND_BASE_URL in the test env, so no email goes out (#148).
+    assert body["message"] == "Invite created, but no email was sent: FRONTEND_BASE_URL is not configured."
     data = body["data"]
     assert set(data) >= {"id", "username", "role", "is_active", "invite_expires_at"}
     assert data["username"] == email
