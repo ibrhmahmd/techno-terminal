@@ -317,11 +317,9 @@ class SearchRepository:
                 key = student.status
             elif group_by == "gender":
                 key = student.gender or "unknown"
-            elif group_by == "age_bucket":
+            else:
                 age = student.age if student.age is not None else StudentValidator.compute_age(student.date_of_birth)
                 key = StudentValidator.classify_age_bracket(age)
-            else:
-                key = "other"
 
             buckets[key].append(student)
 

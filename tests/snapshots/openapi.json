@@ -25154,6 +25154,11 @@
             "schema": {
               "default": "status",
               "description": "Group by: status, gender, age_bucket",
+              "enum": [
+                "status",
+                "gender",
+                "age_bucket"
+              ],
               "title": "Group By",
               "type": "string"
             }

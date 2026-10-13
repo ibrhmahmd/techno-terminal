@@ -292,6 +292,14 @@ def test_get_grouped_students_by_age_bucket(client_with_uow, override_auth, mock
         assert group["key"].startswith("age_") or group["key"] == "unknown"
 
 
+def test_get_grouped_students_unknown_group_by_is_422(client_with_uow, override_auth, mock_admin_headers):
+    """An unknown group_by is rejected (#138); it used to return 200 with one "other" bucket."""
+    r = client_with_uow.get("/api/v1/crm/students/grouped?group_by=course", headers=mock_admin_headers)
+
+    assert r.status_code == 422
+    assert r.json()["success"] is False
+
+
 # ── /api/v1/crm/students/filter ───────────────────────────────────────────────
 
 

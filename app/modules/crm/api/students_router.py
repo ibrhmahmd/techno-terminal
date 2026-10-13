@@ -5,7 +5,7 @@ Students router (CRM module).
 
 Endpoints for student management.
 """
-from typing import List, Optional
+from typing import List, Literal, Optional
 from datetime import date
 
 from fastapi import APIRouter, Depends, Query, HTTPException
@@ -141,7 +141,7 @@ def create_student(
     description="Group students by status, gender, or age_bucket. Supports pagination within groups."
 )
 def get_grouped_students(
-    group_by: str = Query("status", description="Group by: status, gender, age_bucket"),
+    group_by: Literal["status", "gender", "age_bucket"] = Query("status", description="Group by: status, gender, age_bucket"),
     include_inactive: bool = Query(False, description="Include inactive students"),
     skip: int = Query(0, ge=0, description="Number of students to skip per group"),
     limit: int = Query(50, ge=1, le=200, description="Max students per group"),
