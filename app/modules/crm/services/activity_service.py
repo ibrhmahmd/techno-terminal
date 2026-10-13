@@ -25,6 +25,8 @@ from app.modules.crm.schemas import (
     CompetitionHistoryDTO,
 )
 from app.modules.crm.models.activity_models import StudentActivityLog
+from app.modules.crm.models.student_models import Student
+from app.shared.exceptions import NotFoundError
 
 
 class StudentActivityService:
@@ -172,6 +174,8 @@ class StudentActivityService:
         created_at: Optional[datetime] = None,
     ) -> StudentActivityLog:
         """Manually log a student activity."""
+        if self._uow.session.get(Student, student_id) is None:
+            raise NotFoundError(f"Student {student_id} not found")
         return self._activities.create_activity_log(
             student_id=student_id,
             activity_type=activity_type,
@@ -197,11 +201,7 @@ class StudentActivityService:
         created_at: Optional[datetime] = None,
     ) -> StudentActivityLog:
         """Update a student activity log."""
-        log = self._activities.get_activity_log_by_id(activity_id)
-        if not log:
-            raise ValueError(f"Activity log with ID {activity_id} not found")
-        if log.student_id != student_id:
-            raise ValueError(f"Activity log does not belong to student {student_id}")
+        self._require_student_activity(student_id, activity_id)
 
         return self._activities.update_activity_log(
             activity_id=activity_id,
@@ -216,13 +216,15 @@ class StudentActivityService:
 
     def delete_activity(self, student_id: int, activity_id: int) -> None:
         """Delete a student activity log."""
-        log = self._activities.get_activity_log_by_id(activity_id)
-        if not log:
-            raise ValueError(f"Activity log with ID {activity_id} not found")
-        if log.student_id != student_id:
-            raise ValueError(f"Activity log does not belong to student {student_id}")
+        self._require_student_activity(student_id, activity_id)
 
         self._activities.delete_activity_log(activity_id)
+
+    def _require_student_activity(self, student_id: int, activity_id: int) -> None:
+        """404 unless the activity log exists and belongs to this student."""
+        log = self._activities.get_activity_log_by_id(activity_id)
+        if log is None or log.student_id != student_id:
+            raise NotFoundError(f"Activity log {activity_id} not found for student {student_id}")
 
     def commit(self) -> None:
         """Commit the unit of work. For top-level use cases (public endpoints)."""

@@ -377,26 +377,17 @@ def test_log_manual_activity_bad_body(client_with_uow, override_auth, mock_admin
 
 
 def test_log_manual_activity_unknown_student(client_with_uow, override_auth, mock_admin_headers):
-    """POST /crm/students/999999999/log-activity returns 500 (FK violation - no student existence check)."""
-    from starlette.testclient import TestClient
-    unique = _short()
-    payload = {
-        "activity_type": "note_added",
-        "description": f"Test {unique}",
-    }
-    # Use a client that doesn't raise server exceptions so we can inspect the 500 response
-    test_client = TestClient(client_with_uow.app, raise_server_exceptions=False)
-    r = test_client.post(
+    """Fixed in #50 (was a 500 from the student foreign key): an unknown student is a 404."""
+    r = client_with_uow.post(
         "/api/v1/crm/students/999999999/log-activity",
         headers=mock_admin_headers,
-        json=payload,
+        json={"activity_type": "note_added", "description": f"Test {_short()}"},
     )
 
-    # FK violation on student_activity_log.student_id -> students.id
-    assert r.status_code == 500
+    assert r.status_code == 404
     body = r.json()
-    assert body["success"] is False
-    assert body["error"] == "InternalServerError"
+    assert body["error"] == "NotFoundError"
+    assert body["message"] == "Student 999999999 not found"
 
 
 # ── /api/v1/crm/students/{student_id}/log-activity/{activity_id} (PATCH) ───
@@ -437,21 +428,41 @@ def test_update_manual_activity(client_with_uow, override_auth, mock_admin_heade
 
 
 def test_update_manual_activity_not_found(client_with_uow, override_auth, mock_admin_headers, db_session):
-    """PATCH /crm/students/{student_id}/log-activity/999999999 returns 500 (ValueError -> InternalServerError)."""
-    from starlette.testclient import TestClient
+    """Fixed in #51 (was a 500 from a bare ValueError)."""
     student = _make_student(db_session)
-    payload = {"description": "Updated"}
-    test_client = TestClient(client_with_uow.app, raise_server_exceptions=False)
-    r = test_client.patch(
+    r = client_with_uow.patch(
         f"/api/v1/crm/students/{student.id}/log-activity/999999999",
         headers=mock_admin_headers,
-        json=payload,
+        json={"description": "Updated"},
     )
 
-    assert r.status_code == 500
+    assert r.status_code == 404
     body = r.json()
-    assert body["success"] is False
-    assert body["error"] == "InternalServerError"
+    assert body["error"] == "NotFoundError"
+    assert body["message"] == f"Activity log 999999999 not found for student {student.id}"
+
+
+def test_activity_of_another_student_is_404(client_with_uow, override_auth, mock_admin_headers, db_session):
+    """An activity that belongs to a different student is not found for this one (#51); it
+    is neither updated nor deleted."""
+    owner = _make_student(db_session)
+    other = _make_student(db_session)
+    activity_id = _make_activity(db_session, owner.id, description=f"Owned {_short()}")
+
+    patched = client_with_uow.patch(
+        f"/api/v1/crm/students/{other.id}/log-activity/{activity_id}",
+        headers=mock_admin_headers, json={"description": "hijack"},
+    )
+    deleted = client_with_uow.delete(
+        f"/api/v1/crm/students/{other.id}/log-activity/{activity_id}", headers=mock_admin_headers
+    )
+
+    assert patched.status_code == 404 and deleted.status_code == 404
+    still_there = client_with_uow.patch(
+        f"/api/v1/crm/students/{owner.id}/log-activity/{activity_id}",
+        headers=mock_admin_headers, json={"description": "owner edit"},
+    )
+    assert still_there.status_code == 200
 
 
 # ── /api/v1/crm/students/{student_id}/log-activity/{activity_id} (DELETE) ──
@@ -479,19 +490,15 @@ def test_delete_manual_activity(client_with_uow, override_auth, mock_admin_heade
 
 
 def test_delete_manual_activity_not_found(client_with_uow, override_auth, mock_admin_headers, db_session):
-    """DELETE /crm/students/{student_id}/log-activity/999999999 returns 500 (ValueError -> InternalServerError)."""
-    from starlette.testclient import TestClient
+    """Fixed in #51 (was a 500 from a bare ValueError)."""
     student = _make_student(db_session)
-    test_client = TestClient(client_with_uow.app, raise_server_exceptions=False)
-    r = test_client.delete(
+    r = client_with_uow.delete(
         f"/api/v1/crm/students/{student.id}/log-activity/999999999",
         headers=mock_admin_headers,
     )
 
-    assert r.status_code == 500
-    body = r.json()
-    assert body["success"] is False
-    assert body["error"] == "InternalServerError"
+    assert r.status_code == 404
+    assert r.json()["error"] == "NotFoundError"
 
 
 # ── /api/v1/crm/history/recent ─────────────────────────────────────────────
