@@ -50,6 +50,13 @@ class EnrollmentService:
         self._enrollments = EnrollmentRepository(uow.session)
         self._directory = EnrollmentDirectoryRepository(uow.session)
 
+    def _to_dto(self, enrollment: Enrollment) -> EnrollmentDTO:
+        """EnrollmentDTO with the group, course and instructor names filled (#83)."""
+        names = self._directory.get_group_display_names(enrollment.group_id)
+        return EnrollmentDTO.model_validate(enrollment).model_copy(
+            update=names.model_dump()
+        )
+
     def _notify(self, method: str, **kwargs) -> None:
         """Call the notifier after commit; failures are logged, never raised."""
         if self._notifier is None:
@@ -144,7 +151,7 @@ class EnrollmentService:
             )
 
             return EnrollmentCoreResult(
-                enrollment=EnrollmentDTO.model_validate(created),
+                enrollment=self._to_dto(created),
                 capacity_exceeded=capacity_exceeded,
             )
         except IntegrityError:
@@ -178,7 +185,7 @@ class EnrollmentService:
             updates["notes"] = data.notes
 
         if not updates:
-            return UpdateEnrollmentResult(enrollment=EnrollmentDTO.model_validate(enrollment))
+            return UpdateEnrollmentResult(enrollment=self._to_dto(enrollment))
 
         warnings = []
 
@@ -240,9 +247,9 @@ class EnrollmentService:
                     changes_summary="<br>".join(changes_summary_parts),
                     performed_by=performed_by,
                 )
-            return UpdateEnrollmentResult(enrollment=EnrollmentDTO.model_validate(updated), warnings=warnings)
+            return UpdateEnrollmentResult(enrollment=self._to_dto(updated), warnings=warnings)
 
-        return UpdateEnrollmentResult(enrollment=EnrollmentDTO.model_validate(enrollment))
+        return UpdateEnrollmentResult(enrollment=self._to_dto(enrollment))
 
     def apply_sibling_discount(
         self, enrollment_id: int, discount_amount: float = 50.0
@@ -256,7 +263,7 @@ class EnrollmentService:
         updated = self._enrollments.update_discount(enrollment_id, discount_amount)
         self._uow.commit()
         session.refresh(updated)
-        return EnrollmentDTO.model_validate(updated)
+        return self._to_dto(updated)
 
     def transfer_student(
         self,
@@ -313,7 +320,7 @@ class EnrollmentService:
             transferred_by=data.created_by,
         )
 
-        return EnrollmentDTO.model_validate(created)
+        return self._to_dto(created)
 
     def drop_enrollment(
         self,
@@ -353,4 +360,4 @@ class EnrollmentService:
             dropped_by=performed_by,
         )
 
-        return EnrollmentDTO.model_validate(updated)
+        return self._to_dto(updated)

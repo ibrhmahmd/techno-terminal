@@ -22,10 +22,6 @@ Buckets
 
 Pinned quirks (pinned, not endorsed)
 ------------------------------------
-* POST/PATCH/DELETE responses carry ``group_name``/``course_name``/
-  ``instructor_name`` as ``null`` even though the group/course exist: the
-  service validates ``EnrollmentDTO`` straight off the ORM row and never
-  hydrates those display fields.
 * POST over capacity still returns 201 and enrolls; the only signal is the
   appended message suffix ``WARNING: Group capacity exceeded.``
 * An inactive student or non-active group is a 409 ``BusinessRuleError``,
@@ -46,6 +42,7 @@ from app.modules.academics.models.course_models import Course
 from app.modules.academics.models.group_models import Group
 from app.modules.crm.models.student_models import Student
 from app.modules.enrollments.models.enrollment_models import Enrollment
+from app.testing.db_helpers import create_test_employee
 
 _ENROLLMENT_FIELDS = {
     "id",
@@ -155,7 +152,8 @@ def test_enroll_student(
 ):
     """POST /enrollments enrolls an active student and returns 201."""
     course = _make_course(db_session)
-    group = _make_group(db_session, course.id, level_number=2)
+    instructor = create_test_employee(db_session, full_name=f"Instructor {_short()}")
+    group = _make_group(db_session, course.id, level_number=2, instructor_id=instructor.id)
     student = _make_student(db_session, status="active")
 
     r = client_with_uow.post(
@@ -185,10 +183,10 @@ def test_enroll_student(
     assert data["amount_due"] == 750.0
     assert data["discount_applied"] == 25.5
     assert data["notes"] == "first level"
-    # current behaviour (pinned, not endorsed): display names are not hydrated.
-    assert data["group_name"] is None
-    assert data["course_name"] is None
-    assert data["instructor_name"] is None
+    # Display names are filled on write responses (#83).
+    assert data["group_name"] == group.name
+    assert data["course_name"] == course.name
+    assert data["instructor_name"] == instructor.full_name
     assert data["payment_status"] is None
     assert data["amount_remaining"] is None
     assert isinstance(data["enrolled_at"], str)
@@ -377,9 +375,9 @@ def test_update_enrollment(
     assert data["amount_due"] == 250.0
     assert data["notes"] == "new note"
     assert data["status"] == "active"
-    # current behaviour (pinned, not endorsed): display names are not hydrated.
-    assert data["group_name"] is None
-    assert data["course_name"] is None
+    # Display names are filled on write responses (#83).
+    assert data["group_name"] == group.name
+    assert data["course_name"] == course.name
     assert data["instructor_name"] is None
 
 
@@ -513,6 +511,8 @@ def test_drop_enrollment(
     assert set(data) == _ENROLLMENT_FIELDS
     assert data["id"] == enrollment.id
     assert data["status"] == "dropped"
+    assert data["group_name"] == group.name
+    assert data["course_name"] == course.name
 
 
 def test_drop_enrollment_with_reason(
