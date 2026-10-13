@@ -28,3 +28,21 @@ def test_logfire_never_sends_under_tests():
     configure_logfire()
 
     assert logfire.DEFAULT_LOGFIRE_INSTANCE.config.send_to_logfire is False
+
+
+def test_logfire_without_token_starts_and_does_not_send(monkeypatch):
+    """#145: outside tests, a missing token must not make Logfire refuse to start.
+
+    Logfire itself never sends under pytest, so the test checks the arguments
+    configure_logfire passes rather than the resulting config.
+    """
+    import app.api.main as api_main
+
+    calls = []
+    monkeypatch.setattr(api_main, "is_testing", lambda: False)
+    monkeypatch.setattr(api_main.settings, "logfire_token", None)
+    monkeypatch.setattr(api_main.logfire, "configure", lambda **kw: calls.append(kw))
+    configure_logfire()
+
+    assert calls[0]["send_to_logfire"] is False
+    assert "token" not in calls[0]

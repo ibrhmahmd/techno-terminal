@@ -17,7 +17,8 @@ def configure_logfire() -> None:
 
     Tests and ``TESTING=true`` runs never send to Logfire (#145): the test env
     files may carry a token, and test traffic must not mix with production.
-    The deployment names itself with the ``LOGFIRE_ENVIRONMENT`` env var.
+    Without a token nothing is sent either (Logfire would otherwise refuse to
+    start). The deployment names itself with the ``LOGFIRE_ENVIRONMENT`` env var.
     """
     config_kwargs = {
         "service_name": "techno-terminal-api",
@@ -26,9 +27,9 @@ def configure_logfire() -> None:
             base_url="https://logfire-us.pydantic.dev"
         ),
     }
-    if is_testing():
+    if is_testing() or not settings.logfire_token:
         config_kwargs["send_to_logfire"] = False
-    elif settings.logfire_token:
+    else:
         config_kwargs["token"] = settings.logfire_token
     
     logfire.configure(**config_kwargs)
