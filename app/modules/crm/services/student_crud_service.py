@@ -12,6 +12,7 @@ from app.modules.crm.schemas import (
     LogRegistrationDTO,
     LogStatusChangeDTO,
     LogDeletionDTO,
+    StudentSummaryDTO,
 )
 from app.db.uow import UnitOfWork
 from app.modules.crm.repositories.student_repository import StudentRepository
@@ -338,6 +339,6 @@ class StudentCrudService:
             self._uow.commit()
         return success
 
-    def list_deleted_students(self, limit: int = 100, offset: int = 0) -> List[Student]:
+    def list_deleted_students(self, limit: int = 100, offset: int = 0) -> List[StudentSummaryDTO]:
         """List all soft-deleted students (for admin recovery)."""
         return self._students.get_deleted(limit=limit, offset=offset)

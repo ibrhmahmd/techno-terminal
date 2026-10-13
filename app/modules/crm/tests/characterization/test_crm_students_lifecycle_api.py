@@ -657,6 +657,26 @@ def test_list_deleted_students(client_with_uow, override_auth, mock_admin_header
             break
 
 
+def test_list_deleted_students_fills_age_group_and_balance(client_with_uow, override_auth, mock_admin_headers, db_session):
+    """Deleted students carry age, last group and unpaid flag (#177; they were always empty)."""
+    from app.testing.db_helpers import create_test_course, create_test_group, create_test_enrollment
+    from app.modules.crm.validators.student_validator import StudentValidator
+
+    student = _make_student(db_session, full_name=f"Deleted Owes {_short()}", date_of_birth=date(2014, 6, 1))
+    course = create_test_course(db_session, name=f"DelCourse {_short()}")
+    group = create_test_group(db_session, course_id=course.id, name=f"DelGroup {_short()}")
+    create_test_enrollment(db_session, student_id=student.id, group_id=group.id, status="active", amount_due=300.0)
+    assert client_with_uow.delete(f"/api/v1/crm/students/{student.id}/soft", headers=mock_admin_headers).status_code == 200
+
+    r = client_with_uow.get("/api/v1/crm/admin/deleted-students?limit=100", headers=mock_admin_headers)
+
+    assert r.status_code == 200
+    item = next(i for i in r.json()["data"] if i["id"] == student.id)
+    assert item["age"] == StudentValidator.compute_age(date(2014, 6, 1))
+    assert item["current_group_name"] == group.name
+    assert item["has_unpaid_balance"] is True
+
+
 def test_list_deleted_students_pagination(client_with_uow, override_auth, mock_admin_headers):
     """GET /crm/admin/deleted-students?skip=0&limit=10 respects pagination params."""
     r = client_with_uow.get(

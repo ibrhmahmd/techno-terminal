@@ -169,6 +169,27 @@ def test_get_employee_success(client_with_uow, db_session, override_auth, mock_a
     assert data["full_name"] == emp.full_name
     # hired_at must be YYYY-MM-DD date string (the #3 fix)
     assert data["hired_at"] == "2024-01-15"
+    assert data["has_account"] is False
+
+
+def test_get_employee_has_account(client_with_uow, db_session, override_auth, mock_admin_headers):
+    """has_account is true once a registered login is linked (#177; it was always false)."""
+    with_login = _make_employee(db_session)
+    _make_user(db_session, employee_id=with_login.id)
+    invited = _make_employee(db_session)
+    pending = _make_user(db_session, employee_id=invited.id)
+    pending.supabase_uid = None
+    db_session.add(pending)
+    db_session.commit()
+
+    def has_account(emp_id: int) -> bool:
+        r = client_with_uow.get(f"/api/v1/hr/employees/{emp_id}", headers=mock_admin_headers)
+        assert r.status_code == 200
+        return r.json()["data"]["has_account"]
+
+    assert has_account(with_login.id) is True
+    # An invite not yet accepted has no supabase_uid: no usable login yet.
+    assert has_account(invited.id) is False
 
 
 def test_get_employee_not_found(client_with_uow, override_auth, mock_admin_headers):

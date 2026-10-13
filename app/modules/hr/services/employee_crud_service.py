@@ -30,6 +30,12 @@ class EmployeeCrudService:
         self._employees = EmployeeRepository(uow.session)
         self._staff_accounts = StaffAccountRepository(uow.session)
 
+    def _to_dto(self, employee) -> EmployeeReadDTO:
+        """EmployeeReadDTO with ``has_account`` filled (#177)."""
+        return EmployeeReadDTO.model_validate(employee).model_copy(
+            update={"has_account": self._staff_accounts.has_account(employee)}
+        )
+
     def create(self, dto: CreateEmployeeDTO) -> EmployeeReadDTO:
         """Create new employee.
 
@@ -53,7 +59,7 @@ class EmployeeCrudService:
             self._uow.rollback()
             raise translate_employee_integrity_error(exc) from exc
 
-        return EmployeeReadDTO.model_validate(employee)
+        return self._to_dto(employee)
 
     def update(self, employee_id: int, dto: UpdateEmployeeDTO) -> EmployeeReadDTO:
         """Update existing employee.
@@ -92,7 +98,7 @@ class EmployeeCrudService:
             self._uow.rollback()
             raise translate_employee_integrity_error(exc) from exc
 
-        return EmployeeReadDTO.model_validate(updated)
+        return self._to_dto(updated)
 
     def get_by_id(self, employee_id: int) -> EmployeeReadDTO:
         """Get employee by ID.
@@ -109,7 +115,7 @@ class EmployeeCrudService:
         emp = self._employees.get_by_id(employee_id)
         if not emp:
             raise NotFoundError(f"Employee {employee_id} not found")
-        return EmployeeReadDTO.model_validate(emp)
+        return self._to_dto(emp)
 
     def delete_employee(self, employee_id: int, actor_user_id: int) -> None:
         """Soft-delete an employee and block any linked login.
@@ -190,7 +196,7 @@ class EmployeeCrudService:
 
         refreshed = self._employees.get_by_id(employee_id)
         assert refreshed is not None
-        return EmployeeReadDTO.model_validate(refreshed)
+        return self._to_dto(refreshed)
 
     def list_paginated(
         self,
