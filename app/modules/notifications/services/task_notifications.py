@@ -102,7 +102,7 @@ class TaskNotificationService(BaseNotificationService):
             if assigned_by_user_id:
                 user = session.get(User, assigned_by_user_id)
                 if user:
-                    assigned_by_name = user.email  # fallback to email; full_name may not exist
+                    assigned_by_name = user.username
 
             variables = {
                 "employee_name": employee.full_name,
@@ -155,7 +155,7 @@ class TaskNotificationService(BaseNotificationService):
             if changed_by_user_id:
                 user = session.get(User, changed_by_user_id)
                 if user:
-                    changed_by_name = user.email
+                    changed_by_name = user.username
 
             variables = {
                 "task_title": task.title,
@@ -230,7 +230,7 @@ class TaskNotificationService(BaseNotificationService):
                 return
 
             author = session.get(User, author_user_id)
-            author_name = author.email if author else "Someone"
+            author_name = author.username if author else "Someone"
 
             variables = {
                 "task_title": task.title,
