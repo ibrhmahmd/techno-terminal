@@ -20,7 +20,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.api.schemas.common import ApiResponse, PaginatedResponse
 from app.modules.auth import AuthService, AuditService, User, UserPublic, UserSessionDTO, AuditLogEntryDTO, AuthNotifier
-from app.api.deps import get_current_user, require_admin
+from app.api.deps import get_current_user, require_admin, http_bearer as required_bearer
 from app.modules.auth.api.deps import get_auth_service, get_audit_service, get_auth_notifier
 from app.modules.auth.schemas.auth_schemas import UpdateProfileInput
 from app.modules.auth.api.schemas import (
@@ -273,7 +273,7 @@ def forgot_password(
 )
 def reset_password_confirm(
     body: ResetPasswordConfirmRequest,
-    credentials: HTTPAuthorizationCredentials = Depends(http_bearer),
+    credentials: HTTPAuthorizationCredentials = Depends(required_bearer),
     current_user: User = Depends(get_current_user),
     auth_svc: AuthService = Depends(get_auth_service),
 ):

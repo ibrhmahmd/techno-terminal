@@ -20606,6 +20606,7 @@
             "name": "from",
             "required": true,
             "schema": {
+              "format": "date-time",
               "title": "From",
               "type": "string"
             }
@@ -20617,6 +20618,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "format": "date-time",
                   "type": "string"
                 },
                 {
@@ -20710,6 +20712,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "format": "date-time",
                   "type": "string"
                 },
                 {
@@ -20726,6 +20729,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "format": "date-time",
                   "type": "string"
                 },
                 {
@@ -20819,6 +20823,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "format": "date-time",
                   "type": "string"
                 },
                 {
@@ -20835,6 +20840,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "format": "date-time",
                   "type": "string"
                 },
                 {

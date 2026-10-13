@@ -140,6 +140,34 @@ def test_create_receipt_records_who_received_it(
     assert uow.session.get(Receipt, created["receipt_id"]).received_by == admin.id
 
 
+def test_create_receipt_unknown_references_are_404(
+    client_with_uow, override_auth, mock_admin_headers, db_session, noop_notifications
+):
+    """Unknown student / enrollment, or another student's enrollment, is a 404 and writes nothing (#139; was 500)."""
+    _, _, student, enrollment = _seed_enrollment(db_session)
+    _, _, other_student, other_enrollment = _seed_enrollment(db_session)
+
+    def post(line):
+        body = {"payer_name": "P", "method": "cash", "lines": [{"amount": 100.0, "payment_type": "course_level", **line}]}
+        return client_with_uow.post("/api/v1/finance/receipts", headers=mock_admin_headers, json=body)
+
+    cases = [
+        ({"student_id": 999999999}, "Student 999999999 not found"),
+        ({"student_id": student.id, "enrollment_id": 999999999},
+         f"Enrollment 999999999 not found for student {student.id}"),
+        ({"student_id": student.id, "enrollment_id": other_enrollment.id},
+         f"Enrollment {other_enrollment.id} not found for student {student.id}"),
+    ]
+    for line, message in cases:
+        r = post(line)
+        assert r.status_code == 404, line
+        assert r.json()["error"] == "NotFoundError"
+        assert r.json()["message"] == message
+
+    ok = post({"student_id": student.id, "enrollment_id": enrollment.id})
+    assert ok.status_code == 201
+
+
 def test_create_receipt_normalizes_method_label(client_with_uow, override_auth, mock_admin_headers, db_session, noop_notifications):
     _, _, student, enrollment = _seed_enrollment(db_session)
 

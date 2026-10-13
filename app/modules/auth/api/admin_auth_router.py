@@ -25,19 +25,16 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Admin Auth"])
 
 
-def _parse_audit_date(value: str | None) -> datetime | None:
-    """Parse an ISO date/datetime query param, defaulting naive values to UTC.
+def _parse_audit_date(value: datetime | None) -> datetime | None:
+    """Default a naive date/datetime query param to UTC.
 
-    AuditLog.created_at is timezone-aware (SQLModel's UTCDateTime), so a
-    naive value here would raise ValueError at query time -- a bare date
-    like "2026-09-01" parses naive via fromisoformat.
+    FastAPI has already parsed the ISO value (a bad one is a 422, #140).
+    AuditLog.created_at is timezone-aware, so a naive value -- e.g. a bare
+    date like "2026-09-01" -- would fail at query time.
     """
-    if value is None:
-        return None
-    parsed = datetime.fromisoformat(value)
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed
+    if value is None or value.tzinfo is not None:
+        return value
+    return value.replace(tzinfo=timezone.utc)
 
 
 @router.get(
@@ -152,8 +149,8 @@ def invite_user(
 )
 def audit_logins(
     user_id: int | None = None,
-    from_date: str | None = Query(None, alias="from"),
-    to_date: str | None = Query(None, alias="to"),
+    from_date: datetime | None = Query(None, alias="from"),
+    to_date: datetime | None = Query(None, alias="to"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     _user: User = Depends(require_admin),
@@ -178,8 +175,8 @@ def audit_logins(
 )
 def audit_password_changes(
     user_id: int | None = None,
-    from_date: str | None = Query(None, alias="from"),
-    to_date: str | None = Query(None, alias="to"),
+    from_date: datetime | None = Query(None, alias="from"),
+    to_date: datetime | None = Query(None, alias="to"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     _user: User = Depends(require_admin),
@@ -203,8 +200,8 @@ def audit_password_changes(
     summary="Failed login attempts",
 )
 def audit_failed_attempts(
-    from_date: str = Query(..., alias="from"),
-    to_date: str | None = Query(None, alias="to"),
+    from_date: datetime = Query(..., alias="from"),
+    to_date: datetime | None = Query(None, alias="to"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     _user: User = Depends(require_admin),
