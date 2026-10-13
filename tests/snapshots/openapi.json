@@ -12386,6 +12386,20 @@
         "title": "RegisterUserRequest",
         "type": "object"
       },
+      "ResetPasswordConfirmRequest": {
+        "properties": {
+          "new_password": {
+            "minLength": 12,
+            "title": "New Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "new_password"
+        ],
+        "title": "ResetPasswordConfirmRequest",
+        "type": "object"
+      },
       "ResetPasswordRequest": {
         "properties": {
           "new_password": {
@@ -23270,6 +23284,54 @@
           }
         },
         "summary": "Register with invite token",
+        "tags": [
+          "Authentication",
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/reset-password-confirm": {
+      "post": {
+        "description": "Called by the UI's /reset-password page with the recovery link's access token as the Bearer token. Only recovery sessions are accepted.",
+        "operationId": "reset_password_confirm_api_v1_auth_reset_password_confirm_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordConfirmRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_NoneType_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set a new password from a recovery link",
         "tags": [
           "Authentication",
           "Authentication"

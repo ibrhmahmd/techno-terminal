@@ -1,3 +1,5 @@
+import base64
+import json
 import logging
 from typing import Optional
 from datetime import date
@@ -79,6 +81,31 @@ class AuthService:
         self._audit.log_event(
             event_type=AuditLogEventType.PASSWORD_CHANGE,
             user_id=user.id,
+        )
+        self._uow.commit()
+
+    def complete_password_recovery(self, user: User, recovery_token: str, new_password: str) -> None:
+        """Set a new password from a Supabase recovery link (#158).
+
+        The token has already been validated with Supabase by get_current_user;
+        this only accepts sessions Supabase opened from a recovery link, so a
+        normal login session cannot skip the current-password check of
+        change_password.
+        """
+        if not is_recovery_session(recovery_token):
+            raise AuthError("This link is not a password recovery session.")
+        if len(new_password) < MIN_PASSWORD_LENGTH:
+            raise ValidationError(
+                f"Password must be at least {MIN_PASSWORD_LENGTH} characters."
+            )
+        admin = get_supabase_admin()
+        admin.auth.admin.update_user_by_id(
+            user.supabase_uid, {"password": new_password}
+        )
+        self._audit.log_event(
+            event_type=AuditLogEventType.PASSWORD_CHANGE,
+            user_id=user.id,
+            details={"via": "recovery_link"},
         )
         self._uow.commit()
 
@@ -312,3 +339,18 @@ class AuthService:
             user_agent=user_agent,
         )
         self._uow.commit()
+
+
+def is_recovery_session(token: str) -> bool:
+    """True when the JWT's ``amr`` claim says Supabase opened it from a recovery link.
+
+    Reads the payload without verifying the signature: callers pass a token
+    Supabase has already validated.
+    """
+    try:
+        payload_b64 = token.split(".")[1]
+        payload = json.loads(base64.urlsafe_b64decode(payload_b64 + "=" * (-len(payload_b64) % 4)))
+    except (IndexError, ValueError):
+        return False
+    amr = payload.get("amr") or []
+    return any(isinstance(entry, dict) and entry.get("method") == "recovery" for entry in amr)
