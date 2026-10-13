@@ -152,6 +152,27 @@ def test_get_logs_filters_accepted(client_with_uow, override_auth, mock_admin_he
     assert r.json()["total"] >= 0
 
 
+def test_get_logs_rejects_unknown_filter_and_sort_values(client_with_uow, override_auth, mock_admin_headers):
+    """Unknown enum values are a 422 (#141): sort_by=metadata used to be a 500, the rest were ignored."""
+    for query in (
+        "sort_by=metadata", "sort_by=nonexistent", "sort_order=sideways",
+        "status=bogus", "channel=SMS", "recipient_type=nobody", "limit=0", "offset=-1",
+    ):
+        r = client_with_uow.get(f"{BASE}/logs?{query}", headers=mock_admin_headers)
+        assert r.status_code == 422, query
+        assert r.json()["error"] == "ValidationError"
+
+    ok = client_with_uow.get(f"{BASE}/logs?sort_by=recipient_contact&sort_order=asc", headers=mock_admin_headers)
+    assert ok.status_code == 200
+
+
+def test_parent_logs_paging_is_bounded(client_with_uow, override_auth, mock_admin_headers):
+    """limit/offset are validated (sweep after #141): a negative limit used to reach SQL as a 500."""
+    for query in ("limit=-1", "limit=0", "offset=-1", "limit=1000"):
+        r = client_with_uow.get(f"{BASE}/logs/parent/1?{query}", headers=mock_admin_headers)
+        assert r.status_code == 422, query
+
+
 def test_get_logs_date_filters(client_with_uow, override_auth, mock_admin_headers, db_session):
     """Fixed in #99 (was a 500: the dates became NAIVE datetimes, which the timestamptz column
     rejects). start_date/end_date are whole Cairo business days."""
@@ -310,6 +331,14 @@ def _new_template(client, headers, **over):
     return client.post(f"{BASE}/templates", headers=headers, json=body)
 
 
+def test_template_unknown_channel_is_422(client_with_uow, override_auth, mock_admin_headers):
+    """An unknown channel is a 422 from the schema (#141; was a 500 CHECK violation)."""
+    r = _new_template(client_with_uow, mock_admin_headers, channel="SMS")
+
+    assert r.status_code == 422
+    assert r.json()["error"] == "ValidationError"
+
+
 def test_template_crud_roundtrip(client_with_uow, override_auth, mock_admin_headers):
     created = _new_template(client_with_uow, mock_admin_headers)
     assert created.status_code == 200
@@ -450,10 +479,16 @@ def test_bulk_update_settings(client_with_uow, override_auth, mock_admin_headers
         client_with_uow.put(f"{BASE}/admin/settings/me", headers=h, json={"settings": {"weekly_report": cur}})
 
 
-def test_unknown_setting_type_is_404(client_with_uow, override_auth, mock_admin_headers):
-    r = client_with_uow.get(f"{BASE}/admin/settings/me/types/not_a_type_{_short()}", headers=mock_admin_headers)
-    assert r.status_code == 404
-    assert r.json()["message"] == "Notification setting not found"
+def test_unknown_setting_type_is_422(client_with_uow, override_auth, mock_admin_headers):
+    """An unknown notification type is rejected on read and on write (#141; GET was 404, PUT stored it)."""
+    for method in ("get", "put"):
+        r = getattr(client_with_uow, method)(
+            f"{BASE}/admin/settings/me/types/not_a_type_{_short()}",
+            headers=mock_admin_headers,
+            **({"json": {"is_enabled": True}} if method == "put" else {}),
+        )
+        assert r.status_code == 422, method
+        assert r.json()["error"] == "ValidationError"
 
 
 def test_additional_recipient_lifecycle(client_with_uow, override_auth, mock_admin_headers):

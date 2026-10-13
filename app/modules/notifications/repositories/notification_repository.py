@@ -162,8 +162,9 @@ class NotificationRepository:
                 (col(NotificationLog.subject).ilike(f"%{search}%"))
             )
             
-        sort_column = getattr(NotificationLog, sort_by, NotificationLog.created_at)
-        if sort_order.lower() == "asc":
+        # sort_by is a LogSortField column name, checked at the API (#141).
+        sort_column = getattr(NotificationLog, sort_by)
+        if sort_order == "asc":
             stmt = stmt.order_by(sort_column.asc())
         else:
             stmt = stmt.order_by(sort_column.desc())

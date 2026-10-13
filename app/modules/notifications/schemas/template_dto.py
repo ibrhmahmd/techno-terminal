@@ -2,6 +2,8 @@ from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, ConfigDict
 
+from app.modules.notifications.constants import NotificationChannel
+
 class TemplateDTO(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -18,7 +20,7 @@ class TemplateDTO(BaseModel):
 
 class CreateTemplateRequest(BaseModel):
     name: str
-    channel: str
+    channel: NotificationChannel
     subject: Optional[str] = None
     body: str
     variables: list[str]
@@ -26,7 +28,7 @@ class CreateTemplateRequest(BaseModel):
     
 class UpdateTemplateRequest(BaseModel):
     name: Optional[str] = None
-    channel: Optional[str] = None
+    channel: Optional[NotificationChannel] = None
     subject: Optional[str] = None
     body: Optional[str] = None
     variables: Optional[list[str]] = None

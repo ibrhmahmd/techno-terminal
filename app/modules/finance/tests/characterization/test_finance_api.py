@@ -180,6 +180,15 @@ def test_create_receipt_invalid_payment_type_is_422(client_with_uow, override_au
     assert r.json()["error"] == "ValidationError"
 
 
+def test_search_receipts_negative_limit_is_422(client_with_uow, override_auth, mock_admin_headers):
+    """limit is validated (sweep after #141): a negative limit used to reach SQL as a 500."""
+    r = client_with_uow.get(
+        "/api/v1/finance/receipts?from_date=2026-01-01&to_date=2026-01-31&limit=-1",
+        headers=mock_admin_headers,
+    )
+    assert r.status_code == 422
+
+
 def test_create_receipt_normalizes_method_label(client_with_uow, override_auth, mock_admin_headers, db_session, noop_notifications):
     _, _, student, enrollment = _seed_enrollment(db_session)
 

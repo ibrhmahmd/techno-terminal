@@ -570,6 +570,13 @@ def test_admin_audit_failed_attempts(client_with_uow, override_system_admin_auth
     assert isinstance(body["total"], int)
 
 
+def test_my_activity_paging_is_bounded(client_with_uow, override_auth, mock_admin_headers):
+    """skip/limit are validated (sweep after #141): a negative limit used to reach SQL as a 500."""
+    for query in ("limit=-1", "limit=0", "skip=-1", "limit=1000"):
+        r = client_with_uow.get(f"/api/v1/auth/me/activity?{query}", headers=mock_admin_headers)
+        assert r.status_code == 422, query
+
+
 def test_admin_audit_bad_date_is_422(client_with_uow, override_system_admin_auth, system_admin_headers):
     """A from/to value that is not an ISO date is a 422 on all three audit routes (#140; was 500)."""
     for path in ("logins", "password-changes", "failed-attempts"):

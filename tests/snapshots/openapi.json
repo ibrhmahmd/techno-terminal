@@ -605,6 +605,23 @@
             "anyOf": [
               {
                 "items": {
+                  "enum": [
+                    "absence_alert",
+                    "admin_login_alert",
+                    "bulk",
+                    "competition_fee_payment",
+                    "competition_placement",
+                    "competition_team_registration",
+                    "daily_report",
+                    "enrollment_created",
+                    "enrollment_dropped",
+                    "enrollment_transferred",
+                    "enrollment_updated",
+                    "monthly_report",
+                    "payment_received",
+                    "task_status_changed",
+                    "weekly_report"
+                  ],
                   "type": "string"
                 },
                 "type": "array"
@@ -6171,6 +6188,10 @@
             "type": "string"
           },
           "channel": {
+            "enum": [
+              "EMAIL",
+              "WHATSAPP"
+            ],
             "title": "Channel",
             "type": "string"
           },
@@ -16240,6 +16261,25 @@
             "additionalProperties": {
               "type": "boolean"
             },
+            "propertyNames": {
+              "enum": [
+                "absence_alert",
+                "admin_login_alert",
+                "bulk",
+                "competition_fee_payment",
+                "competition_placement",
+                "competition_team_registration",
+                "daily_report",
+                "enrollment_created",
+                "enrollment_dropped",
+                "enrollment_transferred",
+                "enrollment_updated",
+                "monthly_report",
+                "payment_received",
+                "task_status_changed",
+                "weekly_report"
+              ]
+            },
             "title": "Settings",
             "type": "object"
           }
@@ -16803,6 +16843,23 @@
             "anyOf": [
               {
                 "items": {
+                  "enum": [
+                    "absence_alert",
+                    "admin_login_alert",
+                    "bulk",
+                    "competition_fee_payment",
+                    "competition_placement",
+                    "competition_team_registration",
+                    "daily_report",
+                    "enrollment_created",
+                    "enrollment_dropped",
+                    "enrollment_transferred",
+                    "enrollment_updated",
+                    "monthly_report",
+                    "payment_received",
+                    "task_status_changed",
+                    "weekly_report"
+                  ],
                   "type": "string"
                 },
                 "type": "array"
@@ -17342,6 +17399,10 @@
           "channel": {
             "anyOf": [
               {
+                "enum": [
+                  "EMAIL",
+                  "WHATSAPP"
+                ],
                 "type": "string"
               },
               {
@@ -23082,6 +23143,7 @@
             "required": false,
             "schema": {
               "default": 0,
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
@@ -23092,6 +23154,8 @@
             "required": false,
             "schema": {
               "default": 50,
+              "maximum": 100,
+              "minimum": 1,
               "title": "Limit",
               "type": "integer"
             }
@@ -27306,6 +27370,7 @@
             "schema": {
               "default": 200,
               "maximum": 1000,
+              "minimum": 1,
               "title": "Limit",
               "type": "integer"
             }
@@ -28609,6 +28674,23 @@
             "name": "notification_type",
             "required": true,
             "schema": {
+              "enum": [
+                "absence_alert",
+                "admin_login_alert",
+                "bulk",
+                "competition_fee_payment",
+                "competition_placement",
+                "competition_team_registration",
+                "daily_report",
+                "enrollment_created",
+                "enrollment_dropped",
+                "enrollment_transferred",
+                "enrollment_updated",
+                "monthly_report",
+                "payment_received",
+                "task_status_changed",
+                "weekly_report"
+              ],
               "title": "Notification Type",
               "type": "string"
             }
@@ -28656,6 +28738,23 @@
             "name": "notification_type",
             "required": true,
             "schema": {
+              "enum": [
+                "absence_alert",
+                "admin_login_alert",
+                "bulk",
+                "competition_fee_payment",
+                "competition_placement",
+                "competition_team_registration",
+                "daily_report",
+                "enrollment_created",
+                "enrollment_dropped",
+                "enrollment_transferred",
+                "enrollment_updated",
+                "monthly_report",
+                "payment_received",
+                "task_status_changed",
+                "weekly_report"
+              ],
               "title": "Notification Type",
               "type": "string"
             }
@@ -28965,6 +29064,8 @@
             "required": false,
             "schema": {
               "default": 50,
+              "maximum": 200,
+              "minimum": 1,
               "title": "Limit",
               "type": "integer"
             }
@@ -28975,6 +29076,7 @@
             "required": false,
             "schema": {
               "default": 0,
+              "minimum": 0,
               "title": "Offset",
               "type": "integer"
             }
@@ -28986,6 +29088,11 @@
             "schema": {
               "anyOf": [
                 {
+                  "enum": [
+                    "PENDING",
+                    "SENT",
+                    "FAILED"
+                  ],
                   "type": "string"
                 },
                 {
@@ -29002,6 +29109,10 @@
             "schema": {
               "anyOf": [
                 {
+                  "enum": [
+                    "EMAIL",
+                    "WHATSAPP"
+                  ],
                   "type": "string"
                 },
                 {
@@ -29034,6 +29145,11 @@
             "schema": {
               "anyOf": [
                 {
+                  "enum": [
+                    "PARENT",
+                    "EMPLOYEE",
+                    "ADDITIONAL"
+                  ],
                   "type": "string"
                 },
                 {
@@ -29099,6 +29215,17 @@
             "required": false,
             "schema": {
               "default": "created_at",
+              "enum": [
+                "id",
+                "created_at",
+                "sent_at",
+                "status",
+                "channel",
+                "recipient_type",
+                "recipient_contact",
+                "subject",
+                "template_id"
+              ],
               "title": "Sort By",
               "type": "string"
             }
@@ -29109,6 +29236,10 @@
             "required": false,
             "schema": {
               "default": "desc",
+              "enum": [
+                "asc",
+                "desc"
+              ],
               "title": "Sort Order",
               "type": "string"
             }
@@ -29166,6 +29297,8 @@
             "required": false,
             "schema": {
               "default": 50,
+              "maximum": 200,
+              "minimum": 1,
               "title": "Limit",
               "type": "integer"
             }
@@ -29176,6 +29309,7 @@
             "required": false,
             "schema": {
               "default": 0,
+              "minimum": 0,
               "title": "Offset",
               "type": "integer"
             }
