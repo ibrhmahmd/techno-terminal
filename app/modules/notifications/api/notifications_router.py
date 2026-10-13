@@ -21,9 +21,11 @@ from app.modules.notifications.schemas.send_request import SendAbsenceRequest
 from app.modules.notifications.schemas.notification_dto import NotificationLogDTO
 from datetime import datetime, time
 from fastapi import HTTPException
-from fastapi import HTTPException, status
+from zoneinfo import ZoneInfo
 from datetime import timedelta
 import calendar
+
+CAIRO_TZ = ZoneInfo("Africa/Cairo")
 
 router = APIRouter()
 
@@ -66,9 +68,9 @@ def get_logs(
     _user: User = Depends(require_admin),
     svc: NotificationLogService = Depends(get_log_service)
 ):
-    # Convert date to datetime if provided
-    start_dt = datetime.combine(start_date, time.min) if start_date else None
-    end_dt = datetime.combine(end_date, time.max) if end_date else None
+    # Whole business days (Cairo), as timezone-aware datetimes: the column is timestamptz.
+    start_dt = datetime.combine(start_date, time.min, tzinfo=CAIRO_TZ) if start_date else None
+    end_dt = datetime.combine(end_date, time.max, tzinfo=CAIRO_TZ) if end_date else None
 
     logs = svc.get_logs(
         limit=limit,
@@ -132,15 +134,9 @@ async def trigger_daily_report(
             )
         return ApiResponse(data=f"Daily report queued for {len(body.email_recipients)} recipient(s)")
 
-    try:
-        date_str, pdf_b64 = await asyncio.to_thread(
-            svc_report.get_daily_report_pdf_base64, report_date
-        )
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No data found for {report_date}",
-        )
+    date_str, pdf_b64 = await asyncio.to_thread(
+        svc_report.get_daily_report_pdf_base64, report_date
+    )
 
     return ApiResponse(data={"date": date_str, "pdf_base64": pdf_b64})
 
@@ -154,13 +150,7 @@ async def get_daily_report_data(
     report_date = target_date or date.today()
     if report_date > date.today():
         raise HTTPException(status_code=400, detail="Report date cannot be in the future")
-    try:
-        aggregates = await asyncio.to_thread(svc.get_daily_report_data, report_date)
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No data found for {report_date}",
-        )
+    aggregates = await asyncio.to_thread(svc.get_daily_report_data, report_date)
     return ApiResponse(data=aggregates.model_dump())
 
 
@@ -189,16 +179,10 @@ async def get_weekly_report_data(
     report_date = target_date or date.today()
     if report_date > date.today():
         raise HTTPException(status_code=400, detail="Report date cannot be in the future")
-    try:
-        week_start = report_date - timedelta(days=report_date.weekday())
-        completed_week_end = week_start + timedelta(days=6)
-        week_end = completed_week_end if completed_week_end < date.today() else report_date
-        aggregates = await asyncio.to_thread(svc._fetch_weekly_aggregates, week_start, week_end)
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No data found for {report_date}",
-        )
+    week_start = report_date - timedelta(days=report_date.weekday())
+    completed_week_end = week_start + timedelta(days=6)
+    week_end = completed_week_end if completed_week_end < date.today() else report_date
+    aggregates = await asyncio.to_thread(svc._fetch_weekly_aggregates, week_start, week_end)
     return ApiResponse(data=aggregates.model_dump())
 
 
@@ -226,15 +210,9 @@ async def get_monthly_report_data(
     report_date = target_date or date.today()
     if report_date > date.today():
         raise HTTPException(status_code=400, detail="Report date cannot be in the future")
-    try:
-        month_start = report_date.replace(day=1)
-        last_day = calendar.monthrange(month_start.year, month_start.month)[1]
-        completed_month_end = date(month_start.year, month_start.month, last_day)
-        month_end = completed_month_end if completed_month_end < date.today() else report_date
-        aggregates = await asyncio.to_thread(svc._fetch_monthly_aggregates, month_start, month_end)
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No data found for {report_date}",
-        )
+    month_start = report_date.replace(day=1)
+    last_day = calendar.monthrange(month_start.year, month_start.month)[1]
+    completed_month_end = date(month_start.year, month_start.month, last_day)
+    month_end = completed_month_end if completed_month_end < date.today() else report_date
+    aggregates = await asyncio.to_thread(svc._fetch_monthly_aggregates, month_start, month_end)
     return ApiResponse(data=aggregates.model_dump())
