@@ -137,42 +137,45 @@ def test_list_students_with_seed(client_with_uow, override_auth, mock_admin_head
     assert s2.id in found_ids
 
 
-def test_list_students_search_branch_pagination_ignored(client_with_uow, override_auth, mock_admin_headers, db_session):
-    """GET /crm/students?q=<marker>&skip=1&limit=2 — search branch ignores skip/limit (pinned, not endorsed)."""
+def test_list_students_search_branch_paginates(client_with_uow, override_auth, mock_admin_headers, db_session):
+    """GET /crm/students?q=<marker>&skip=&limit= pages the matches; total is all matches (#53 sweep)."""
     marker = _short()
-    for i in range(5):
-        _make_student(db_session, full_name=f"S{i} {marker}", phone=f"555{marker}{i:04d}")
+    ids = sorted(_make_student(db_session, full_name=f"S{i} {marker}", phone=f"555{marker}{i:04d}").id for i in range(5))
 
-    r = client_with_uow.get(f"/api/v1/crm/students?q={marker}&skip=1&limit=2", headers=mock_admin_headers)
+    pages = []
+    for skip in (0, 2, 4):
+        r = client_with_uow.get(f"/api/v1/crm/students?q={marker}&skip={skip}&limit=2", headers=mock_admin_headers)
+        assert r.status_code == 200
+        body = r.json()
+        assert body["total"] == 5
+        assert body["skip"] == skip
+        assert body["limit"] == 2
+        pages.append([item["id"] for item in body["data"]])
 
-    assert r.status_code == 200
-    body = r.json()
-    assert body["success"] is True
-    # Search branch returns ALL matches (max 50), ignoring skip/limit
-    assert len(body["data"]) == 5
-    assert body["total"] == 5
-    # Envelope echoes the params but they have no effect on results
-    assert body["skip"] == 1
-    assert body["limit"] == 2
-    for item in body["data"]:
-        assert marker in item["full_name"] or marker in item["phone"]
+    assert [len(p) for p in pages] == [2, 2, 1]
+    assert [i for page in pages for i in page] == ids
 
 
-def test_list_students_non_search_pagination(client_with_uow, override_auth, mock_admin_headers, db_session):
-    """GET /crm/students?skip=0&limit=2 (no q) — non-search branch applies skip/limit."""
-    marker = _short()
-    for i in range(5):
-        _make_student(db_session, full_name=f"T{i} {marker}", phone=f"555{marker}3{i:04d}")
+def test_list_students_non_search_total_counts_every_status(client_with_uow, override_auth, mock_admin_headers, db_session):
+    """GET /crm/students (no q): total counts every listed student, not only active ones (#53 sweep).
+
+    The list includes waiting and inactive students, but total used to count only active
+    ones, so the UI stopped paging before reaching them.
+    """
+    _make_student(db_session, status=StudentStatus.WAITING)
+    _make_student(db_session, status=StudentStatus.INACTIVE)
 
     r = client_with_uow.get("/api/v1/crm/students?skip=0&limit=2", headers=mock_admin_headers)
 
     assert r.status_code == 200
     body = r.json()
-    assert body["success"] is True
     assert body["skip"] == 0
     assert body["limit"] == 2
-    # Non-search branch respects limit
-    assert len(body["data"]) <= 2
+    assert len(body["data"]) == 2
+    everyone = client_with_uow.get("/api/v1/crm/students?skip=0&limit=200", headers=mock_admin_headers).json()
+    if everyone["total"] <= 200:
+        assert everyone["total"] == len(everyone["data"])
+    assert body["total"] == everyone["total"]
 
 
 # ── /api/v1/crm/students (POST) ───────────────────────────────────────────────

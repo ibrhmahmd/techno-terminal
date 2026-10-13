@@ -35,13 +35,10 @@ def list_parents(
     _user: User = Depends(require_any),
     svc: ParentCrudService = Depends(get_parent_crud_service),
 ):
-    if len(q.strip()) >= 2:
-        results = svc.search_parents(query=q)
-        total = len(results)  # search returns bounded set (max 50)
-    else:
-        # Get all and count manually since ParentRepository doesn't have count
-        results = svc.list_parents(skip=skip, limit=limit)
-        total = len(results)  # simplified for now
+    # skip/limit apply to the search too, and total is the full match count (#53).
+    query = q.strip() if len(q.strip()) >= 2 else None
+    results = svc.list_parents(query, skip=skip, limit=limit)
+    total = svc.count_parents(query)
 
     return PaginatedResponse(
         data=[ParentListItem.model_validate(p) for p in results],

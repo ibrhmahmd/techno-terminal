@@ -36,9 +36,13 @@ class ParentCrudService:
         """Get a parent by ID."""
         return self._parents.get_by_id(parent_id)
     
-    def list_parents(self, skip: int = 0, limit: int = 200) -> List[Parent]:
-        """List all parents with pagination."""
-        return self._parents.list_all(skip=skip, limit=limit)
+    def list_parents(self, query: Optional[str], skip: int, limit: int) -> List[Parent]:
+        """One page of parents; ``query`` (name or phone) narrows it when given."""
+        return self._parents.list_page(query, skip=skip, limit=limit)
+
+    def count_parents(self, query: Optional[str]) -> int:
+        """How many parents match ``query`` (all parents when it is None)."""
+        return self._parents.count(query)
     
     def update_parent(self, parent_id: int, body: UpdateParentDTO) -> Parent:
         """Update an existing parent."""
@@ -62,6 +66,3 @@ class ParentCrudService:
         self._uow.commit()
         return parent
     
-    def search_parents(self, query: str) -> List[Parent]:
-        """Search parents by name or email."""
-        return self._parents.search(query)
