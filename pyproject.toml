@@ -32,6 +32,7 @@ dependencies = [
     "opentelemetry-instrumentation-system-metrics>=0.65b0",
     "opentelemetry-instrumentation-fastapi>=0.65b0",
     "opentelemetry-instrumentation-asgi>=0.65b0",
+    "python-dateutil>=2.9.0",
 ]
 
 [project.optional-dependencies]
