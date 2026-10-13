@@ -18,8 +18,6 @@ Buckets
 Pinned quirks (pinned, not endorsed)
 ------------------------------------
 * GET for an unknown session is a 200 with an empty ``data`` list, not a 404.
-* POST with duplicate student ids in one request crashes with 500 (the 422 handler
-  cannot serialise the validator's ValueError context).
 * POST silently skips students without an active enrolment in the session's group
   AT the session's level (``skipped`` lists their ids); it never fails for them.
 
@@ -160,14 +158,10 @@ def test_mark_attendance_validation(client_with_uow, override_auth, mock_admin_h
     ).status_code == 422
 
 
-def test_mark_attendance_duplicate_student_ids_crash_with_500(app, client_with_uow, override_auth, mock_admin_headers):
-    """current behaviour (pinned, not endorsed): the duplicate-id validator raises a
-    ValueError whose context the 422 handler cannot JSON-serialise, so the response
-    is a 500 instead of a 422 (see the bug issue linked from #20)."""
-    from fastapi.testclient import TestClient
-
-    client = TestClient(app, raise_server_exceptions=False)
-    r = client.post(
+def test_mark_attendance_duplicate_student_ids_is_422(client_with_uow, override_auth, mock_admin_headers):
+    """Fixed in #86 (was a 500: the 422 handler could not JSON-serialise the validator's
+    ValueError context)."""
+    r = client_with_uow.post(
         "/api/v1/attendance/session/1/mark",
         headers=mock_admin_headers,
         json={"entries": [
@@ -175,7 +169,11 @@ def test_mark_attendance_duplicate_student_ids_crash_with_500(app, client_with_u
             {"student_id": 1, "status": "absent"},
         ]},
     )
-    assert r.status_code == 500
+    assert r.status_code == 422
+    body = r.json()
+    assert body["error"] == "ValidationError"
+    assert "Duplicate student IDs found in attendance entries" in body["message"]
+    assert body["details"][0]["ctx"] == {"error": "Duplicate student IDs found in attendance entries"}
 
 
 # ── GET /attendance/session/{session_id} ──────────────────────────────────────

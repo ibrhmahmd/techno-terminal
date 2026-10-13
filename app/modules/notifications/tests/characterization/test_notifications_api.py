@@ -221,14 +221,14 @@ def test_weekly_and_monthly_triggers_force_send(client_with_uow, override_auth, 
     assert fake_svc.send_monthly_report.call_args.kwargs == {"target_date": date(2026, 1, 7), "force": True}
 
 
-def test_invalid_recipient_email_crashes_with_500(app, client_with_uow, override_auth, mock_admin_headers, fake_svc):
-    """current behaviour (pinned, not endorsed): the email validator raises ValueError, whose
-    context the 422 handler cannot serialise, so the response is 500 (same pattern as the
-    attendance duplicate-id bug)."""
-    r = TestClient(app, raise_server_exceptions=False).post(
+def test_invalid_recipient_email_is_422(client_with_uow, override_auth, mock_admin_headers, fake_svc):
+    """Fixed by the #86 handler fix (was a 500: the email validator's ValueError could not be
+    JSON-serialised by the 422 handler)."""
+    r = client_with_uow.post(
         f"{BASE}/reports/daily", headers=mock_admin_headers, json={"email_recipients": ["not-an-email"]}
     )
-    assert r.status_code == 500
+    assert r.status_code == 422
+    assert r.json()["error"] == "ValidationError"
 
 
 # ── GET /reports/*/data (real service, read-only) ─────────────────────────────
