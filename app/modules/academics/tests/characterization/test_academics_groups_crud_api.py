@@ -29,7 +29,6 @@ GMAIL_SENDER_ADDRESS= GMAIL_APP_PASSWORD= TWILIO_ACCOUNT_SID= TWILIO_AUTH_TOKEN=
 import uuid
 from datetime import time
 
-from starlette.testclient import TestClient
 
 from app.modules.academics.models.course_models import Course
 from app.modules.academics.models.group_models import Group
@@ -228,22 +227,18 @@ def test_create_group_missing_schedule(client_with_uow, override_auth, mock_admi
 
 
 def test_create_group_unknown_course(client_with_uow, override_auth, mock_admin_headers):
-    """POST /academics/groups with an unknown course returns 500 (bare ValueError).
-
-    Current behaviour (pinned, not endorsed): the lifecycle service raises
-    ``ValueError`` which the router does not map to a 404.
-    """
-    test_client = TestClient(client_with_uow.app, raise_server_exceptions=False)
-    r = test_client.post(
+    """POST /academics/groups with an unknown course returns 404 NotFoundError (#68)."""
+    r = client_with_uow.post(
         "/api/v1/academics/groups",
         headers=mock_admin_headers,
         json=_schedule_body(999999999, 1),
     )
 
-    assert r.status_code == 500
+    assert r.status_code == 404
     body = r.json()
     assert body["success"] is False
-    assert body["error"] == "InternalServerError"
+    assert body["error"] == "NotFoundError"
+    assert body["message"] == "Course 999999999 not found"
 
 
 # ── PATCH /academics/groups/{group_id} ────────────────────────────────────────

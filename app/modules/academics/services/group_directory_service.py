@@ -12,6 +12,7 @@ from app.modules.academics.schemas.group_directory_schemas import (
     GroupedGroupsResult,
     GroupFilterDTO,
     GroupFilterResultDTO,
+    GroupByField,
 )
 import app.modules.academics.repositories.group_directory_repository as repo
 
@@ -36,7 +37,7 @@ class GroupDirectoryService:
 
     def get_groups_grouped(
         self,
-        group_by: str,
+        group_by: GroupByField,
         skip: int = 0,
         limit: int = 50,
         search: str | None = None
@@ -44,11 +45,6 @@ class GroupDirectoryService:
         """
         Get groups grouped by a specific field with pagination.
         """
-        # Validate group_by field
-        valid_fields = {"day", "course", "instructor", "status"}
-        if group_by not in valid_fields:
-            raise ValueError(f"Invalid group_by field. Must be one of: {valid_fields}")
-
         session = self._uow.session
         # Get all active groups with enrichment
         groups = repo.get_enriched_groups(session)
