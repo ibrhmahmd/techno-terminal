@@ -9,11 +9,17 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.exceptions import register_exception_handlers
 from app.api.middleware.logging_middleware import logging_middleware
-from app.core.config import configure_logging, settings
+from app.core.config import configure_logging, is_testing, settings
 
 
 def configure_logfire() -> None:
-    """Configure Logfire observability with the project settings."""
+    """Configure Logfire observability with the project settings.
+
+    Tests and ``TESTING=true`` runs never send to Logfire (#145): the test env
+    files may carry a token, and test traffic must not mix with production.
+    Without a token nothing is sent either (Logfire would otherwise refuse to
+    start). The deployment names itself with the ``LOGFIRE_ENVIRONMENT`` env var.
+    """
     config_kwargs = {
         "service_name": "techno-terminal-api",
         "service_version": "1.0.0",
@@ -21,7 +27,9 @@ def configure_logfire() -> None:
             base_url="https://logfire-us.pydantic.dev"
         ),
     }
-    if settings.logfire_token:
+    if is_testing() or not settings.logfire_token:
+        config_kwargs["send_to_logfire"] = False
+    else:
         config_kwargs["token"] = settings.logfire_token
     
     logfire.configure(**config_kwargs)
