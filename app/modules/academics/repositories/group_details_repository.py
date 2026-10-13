@@ -70,6 +70,7 @@ class GroupDetailsRepository:
             mapping = row._mapping
             result.append(GroupPaymentRowDTO(
                 payment_id=mapping["payment_id"],
+                receipt_id=mapping["receipt_id"],
                 student_id=mapping["student_id"],
                 student_name=mapping["student_name"],
                 enrollment_id=mapping["enrollment_id"],
