@@ -152,14 +152,30 @@ def test_get_logs_filters_accepted(client_with_uow, override_auth, mock_admin_he
     assert r.json()["total"] >= 0
 
 
-def test_get_logs_date_filters_crash_with_500(app, client_with_uow, override_auth, mock_admin_headers):
-    """current behaviour (pinned, not endorsed): start_date/end_date are turned into NAIVE
-    datetimes, which the timezone-aware column rejects, so any date filter is a 500 (same
-    family as bug #55)."""
-    r = TestClient(app, raise_server_exceptions=False).get(
-        f"{BASE}/logs?start_date=2020-01-01&end_date=2020-01-02", headers=mock_admin_headers
-    )
-    assert r.status_code == 500
+def test_get_logs_date_filters(client_with_uow, override_auth, mock_admin_headers, db_session):
+    """Fixed in #99 (was a 500: the dates became NAIVE datetimes, which the timestamptz column
+    rejects). start_date/end_date are whole Cairo business days."""
+    from datetime import date, datetime, timedelta, timezone
+
+    from app.modules.notifications.models.notification_log import NotificationLog
+
+    token = f"datefilter-{_short()}"
+    db_session.add(NotificationLog(
+        channel="EMAIL", recipient_type="EMPLOYEE", recipient_id=0, recipient_contact=f"{token}@example.com",
+        body=token, status="SENT", created_at=datetime.now(timezone.utc),
+    ))
+    db_session.commit()
+    today = date.today()
+
+    def found(start, end):
+        r = client_with_uow.get(
+            f"{BASE}/logs?search={token}&start_date={start}&end_date={end}", headers=mock_admin_headers
+        )
+        assert r.status_code == 200
+        return r.json()["total"]
+
+    assert found(today - timedelta(days=1), today + timedelta(days=1)) == 1
+    assert found("2020-01-01", "2020-01-02") == 0
 
 
 def test_get_parent_logs(client_with_uow, override_auth, mock_admin_headers):
@@ -192,12 +208,26 @@ def test_daily_report_trigger_with_recipients_queues_dispatch(
 
 
 def test_daily_report_trigger_no_data_is_404(client_with_uow, override_auth, mock_admin_headers, fake_svc):
-    fake_svc.get_daily_report_pdf_base64.side_effect = RuntimeError("nothing")
+    from app.shared.exceptions import NotFoundError
+
+    fake_svc.get_daily_report_pdf_base64.side_effect = NotFoundError("No data found for 2026-01-01")
 
     r = client_with_uow.post(f"{BASE}/reports/daily?target_date=2026-01-01", headers=mock_admin_headers)
 
     assert r.status_code == 404
+    assert r.json()["error"] == "NotFoundError"
     assert r.json()["message"] == "No data found for 2026-01-01"
+
+
+def test_daily_report_trigger_failure_is_500(app, override_auth, mock_admin_headers, fake_svc):
+    """Fixed in #99: a failure building the PDF is a 500, not a 404 'No data found'."""
+    fake_svc.get_daily_report_pdf_base64.side_effect = RuntimeError("pdf engine down")
+
+    r = TestClient(app, raise_server_exceptions=False).post(
+        f"{BASE}/reports/daily?target_date=2026-01-01", headers=mock_admin_headers
+    )
+
+    assert r.status_code == 500
 
 
 def test_report_triggers_reject_future_dates(client_with_uow, override_auth, mock_admin_headers, fake_svc):
@@ -234,17 +264,38 @@ def test_invalid_recipient_email_is_422(client_with_uow, override_auth, mock_adm
 # ── GET /reports/*/data (real service, read-only) ─────────────────────────────
 
 
-def test_report_data_endpoints_return_aggregates_or_404(client_with_uow, override_auth, mock_admin_headers):
-    """current behaviour (pinned, not endorsed): each data endpoint is either 200 with the
-    aggregate model or a 404 'No data found' (any failure inside is mapped to 404)."""
-    for period in ("daily", "weekly", "monthly"):
-        r = client_with_uow.get(f"{BASE}/reports/{period}/data?target_date=2001-01-02", headers=mock_admin_headers)
-        assert r.status_code in (200, 404), period
-        body = r.json()
-        if r.status_code == 404:
-            assert body["message"] == "No data found for 2001-01-02"
-        else:
-            assert body["success"] is True and isinstance(body["data"], dict)
+def test_daily_report_data_without_data_is_404(client_with_uow, override_auth, mock_admin_headers):
+    """No activity on the day -> 404 NotFoundError (the only 404 left after #99)."""
+    r = client_with_uow.get(f"{BASE}/reports/daily/data?target_date=2001-01-02", headers=mock_admin_headers)
+    assert r.status_code == 404
+    assert r.json()["error"] == "NotFoundError"
+    assert r.json()["message"] == "No data found for 2001-01-02"
+
+
+@pytest.mark.parametrize("period", ["weekly", "monthly"])
+def test_weekly_and_monthly_data_without_data_are_zero_aggregates(client_with_uow, override_auth, mock_admin_headers, period):
+    """Unchanged by #99: these endpoints have no "no data" check, so an empty period is a 200
+    with zero aggregates."""
+    r = client_with_uow.get(f"{BASE}/reports/{period}/data?target_date=2001-01-02", headers=mock_admin_headers)
+    assert r.status_code == 200
+    assert r.json()["success"] is True and isinstance(r.json()["data"], dict)
+
+
+@pytest.mark.parametrize("period, method", [
+    ("daily", "get_daily_report_data"),
+    ("weekly", "_fetch_weekly_aggregates"),
+    ("monthly", "_fetch_monthly_aggregates"),
+])
+def test_report_data_failure_is_500_not_404(app, override_auth, mock_admin_headers, fake_svc, period, method):
+    """Fixed in #99 (every internal failure was reported as 404 'No data found'): a real
+    failure now surfaces as a 500 (and is logged)."""
+    getattr(fake_svc, method).side_effect = RuntimeError("database unreachable")
+
+    r = TestClient(app, raise_server_exceptions=False).get(
+        f"{BASE}/reports/{period}/data?target_date=2026-01-05", headers=mock_admin_headers
+    )
+
+    assert r.status_code == 500
 
 
 # ── Templates (real service, rows created/removed by the test) ────────────────
