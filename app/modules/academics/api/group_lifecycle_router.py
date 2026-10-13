@@ -15,6 +15,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query
 
 from app.api.schemas.common import ApiResponse
 from app.shared.exceptions import NotFoundError, BusinessRuleError
+from app.shared.constants import EnrollmentStatus
 from app.shared.datetime_utils import utc_now
 from app.api.deps import (
     require_any,
@@ -136,7 +137,7 @@ def update_group_level(
 )
 def get_group_enrollment_analytics(
     group_id: int,
-    status: str | None = Query(None, description="Filter by status (active, completed, dropped)"),
+    status: EnrollmentStatus | None = Query(None, description="Filter by enrollment status"),
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=500, description="Maximum number of records"),
     _user: User = Depends(require_any),
@@ -179,7 +180,7 @@ def get_group_instructors_analytics(
 )
 def get_group_enrollment_history_alias(
     group_id: int,
-    status: str | None = Query(None, description="Filter by status (active, completed, dropped)"),
+    status: EnrollmentStatus | None = Query(None, description="Filter by enrollment status"),
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=500, description="Maximum number of records"),
     _user: User = Depends(require_any),

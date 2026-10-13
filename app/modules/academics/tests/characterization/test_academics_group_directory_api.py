@@ -204,6 +204,39 @@ def test_filter_groups_by_course(client_with_uow, override_auth, mock_admin_head
     assert match[0]["course_name"] == course.name
 
 
+def test_filter_groups_by_instructor_and_level(client_with_uow, override_auth, mock_admin_headers, db_session):
+    """instructor_id and level_number narrow the result (#70; both used to be ignored)."""
+    course = _make_course(db_session)
+    instructor = _make_employee(db_session)
+    match = _make_group(db_session, course.id, instructor_id=instructor.id, level_number=2)
+    _make_group(db_session, course.id, instructor_id=instructor.id, level_number=1)
+    _make_group(db_session, course.id, level_number=2)
+
+    def ids(query: str) -> set[int]:
+        r = client_with_uow.get(
+            f"/api/v1/academics/groups/filter?course_ids={course.id}&{query}",
+            headers=mock_admin_headers,
+        )
+        assert r.status_code == 200
+        return {g["id"] for g in r.json()["data"]["groups"]}
+
+    assert len(ids("")) == 3
+    assert ids(f"instructor_id={instructor.id}&level_number=2") == {match.id}
+    assert len(ids(f"instructor_id={instructor.id}")) == 2
+    assert len(ids("level_number=2")) == 2
+
+
+def test_filter_groups_invalid_sort_is_422(client_with_uow, override_auth, mock_admin_headers):
+    """An unknown sort_by or sort_order is a 422 (#142; used to fall back silently)."""
+    for query in ("sort_by=bogus", "sort_order=sideways"):
+        r = client_with_uow.get(
+            f"/api/v1/academics/groups/filter?{query}",
+            headers=mock_admin_headers,
+        )
+        assert r.status_code == 422
+        assert r.json()["error"] == "ValidationError"
+
+
 def test_filter_groups_bad_date(client_with_uow, override_auth, mock_admin_headers):
     """GET /academics/groups/filter with a malformed date returns 422."""
     r = client_with_uow.get(

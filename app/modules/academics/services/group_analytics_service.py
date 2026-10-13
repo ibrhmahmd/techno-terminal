@@ -3,6 +3,7 @@ app/modules/academics/services/group_analytics_service.py
 ───────────────────────────────────────────────────────
 Service for group analytics and history endpoints.
 """
+from app.shared.constants import EnrollmentStatus
 from app.db.uow import UnitOfWork
 from app.modules.academics.schemas.group_analytics_schemas import (
     EnrollmentHistoryItemDTO,
@@ -28,7 +29,7 @@ class GroupAnalyticsService:
     def get_enrollment_history(
         self,
         group_id: int,
-        status: str | None = None,
+        status: EnrollmentStatus | None = None,
         skip: int = 0,
         limit: int = 100
     ) -> GroupEnrollmentHistoryResponseDTO:
