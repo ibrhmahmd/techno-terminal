@@ -4,12 +4,15 @@ app/modules/crm/schemas/student_schemas.py
 Pydantic DTOs scoped to Student operations.
 """
 from datetime import date, datetime
-from typing import Optional, List
+from typing import Literal, Optional, List
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 from app.modules.crm.models.student_models import Student, StudentStatus
+
+# The values the students.gender CHECK constraint accepts.
+Gender = Literal["male", "female"]
 
 
 class RegisterStudentDTO(BaseModel):
@@ -19,7 +22,7 @@ class RegisterStudentDTO(BaseModel):
     """
     full_name: str
     date_of_birth: Optional[date] = None
-    gender: Optional[str] = None  # 'male' | 'female'
+    gender: Optional[Gender] = None
     phone: Optional[str] = None
     notes: Optional[str] = None
     status: Optional[StudentStatus] = None
@@ -40,7 +43,7 @@ class UpdateStudentDTO(BaseModel):
     """
     full_name: Optional[str] = None
     date_of_birth: Optional[date] = None
-    gender: Optional[str] = None
+    gender: Optional[Gender] = None
     phone: Optional[str] = None
     notes: Optional[str] = None
     status: Optional[StudentStatus] = None  # Strict enum validation

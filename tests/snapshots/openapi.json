@@ -12193,6 +12193,10 @@
           "gender": {
             "anyOf": [
               {
+                "enum": [
+                  "male",
+                  "female"
+                ],
                 "type": "string"
               },
               {
@@ -16895,6 +16899,10 @@
           "gender": {
             "anyOf": [
               {
+                "enum": [
+                  "male",
+                  "female"
+                ],
                 "type": "string"
               },
               {
