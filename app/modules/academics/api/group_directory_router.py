@@ -8,7 +8,7 @@ These are read-only operations served by GroupDirectoryService.
 
 Auth: all endpoints require at least require_any (any authenticated user).
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from datetime import date as _date, time as _time
 from typing import List, Literal, Optional
 
@@ -23,6 +23,8 @@ from app.modules.auth import User
 from app.modules.academics.services.group_directory_service import GroupDirectoryService
 from app.modules.academics.schemas.group_directory_schemas import GroupByField, GroupFilterDTO, GroupFilterResultDTO
 from app.shared.constants import DAY_ABBREV_MAP
+from app.modules.academics.constants import GroupStatus
+from app.shared.exceptions import NotFoundError
 
 router = APIRouter(tags=["Academics — Group Directory"])
 
@@ -98,13 +100,13 @@ def filter_groups(
     instructor_id: Optional[int] = Query(None, description="Current instructor ID"),
     instructor_name: Optional[str] = Query(None, description="Partial instructor name match"),
     level_number: Optional[int] = Query(None, ge=1, description="Filter by level number (e.g. 1, 2, 3)"),
-    status: Optional[List[str]] = Query(None, description="Group status(es): active, inactive, archived"),
+    status: Optional[List[GroupStatus]] = Query(None, description="Group status(es): active, inactive, completed, archived"),
     price_min: Optional[float] = Query(None, ge=0, description="Minimum course price per level"),
     price_max: Optional[float] = Query(None, ge=0, description="Maximum course price per level"),
-    start_date_from: Optional[str] = Query(None, description="Sessions on or after this date (YYYY-MM-DD)"),
-    start_date_to: Optional[str] = Query(None, description="Sessions on or before this date (YYYY-MM-DD)"),
-    time_from: Optional[str] = Query(None, description="Default start time on or after (HH:MM)"),
-    time_to: Optional[str] = Query(None, description="Default start time on or before (HH:MM)"),
+    start_date_from: Optional[_date] = Query(None, description="Sessions on or after this date (YYYY-MM-DD)"),
+    start_date_to: Optional[_date] = Query(None, description="Sessions on or before this date (YYYY-MM-DD)"),
+    time_from: Optional[_time] = Query(None, description="Default start time on or after (HH:MM)"),
+    time_to: Optional[_time] = Query(None, description="Default start time on or before (HH:MM)"),
     current_session_number: Optional[int] = Query(None, ge=1, description="Groups currently at this session number"),
     session_number_from: Optional[int] = Query(None, ge=1, description="Session number range start"),
     session_number_to: Optional[int] = Query(None, ge=1, description="Session number range end"),
@@ -116,25 +118,6 @@ def filter_groups(
     svc: GroupDirectoryService = Depends(get_group_directory_service),
 ):
     """Filter groups by multiple criteria with pagination."""
-    # Parse date/time strings
-    parsed_start_date_from = None
-    parsed_start_date_to = None
-    parsed_time_from = None
-    parsed_time_to = None
-    try:
-        if start_date_from:
-            parsed_start_date_from = _date.fromisoformat(start_date_from)
-        if start_date_to:
-            parsed_start_date_to = _date.fromisoformat(start_date_to)
-        if time_from:
-            h, m = time_from.split(":")
-            parsed_time_from = _time(int(h), int(m))
-        if time_to:
-            h, m = time_to.split(":")
-            parsed_time_to = _time(int(h), int(m))
-    except (ValueError, AttributeError) as exc:
-        raise HTTPException(status_code=422, detail=f"Invalid date/time format: {exc}")
-
     filters = GroupFilterDTO(
         q=q,
         name=name,
@@ -147,10 +130,10 @@ def filter_groups(
         status=status,
         price_min=price_min,
         price_max=price_max,
-        start_date_from=parsed_start_date_from,
-        start_date_to=parsed_start_date_to,
-        time_from=parsed_time_from,
-        time_to=parsed_time_to,
+        start_date_from=start_date_from,
+        start_date_to=start_date_to,
+        time_from=time_from,
+        time_to=time_to,
         current_session_number=current_session_number,
         session_number_from=session_number_from,
         session_number_to=session_number_to,
@@ -177,5 +160,5 @@ def get_enriched_group(
 ):
     group = svc.get_enriched_group_by_id(group_id)
     if not group:
-        raise HTTPException(status_code=404, detail=f"Group {group_id} not found")
+        raise NotFoundError(f"Group {group_id} not found")
     return ApiResponse(data=EnrichedGroupPublic.model_validate(group.model_dump(mode="json")))

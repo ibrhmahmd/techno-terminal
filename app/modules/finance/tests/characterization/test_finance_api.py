@@ -581,6 +581,18 @@ def test_batch_generate_receipts(client_with_uow, override_auth, mock_admin_head
     assert set(items[0]) == {"receipt_id", "success", "content", "error_message", "error_code"}
 
 
+def test_generate_receipt_unknown_template_is_422(client_with_uow, override_auth, mock_admin_headers):
+    """template_name is standard or detailed (#179); an unknown one used to fall back to standard."""
+    r = client_with_uow.get("/api/v1/finance/receipts/1/generate?template_name=fancy", headers=mock_admin_headers)
+    b = client_with_uow.post(
+        "/api/v1/finance/receipts/batch-generate", headers=mock_admin_headers,
+        json={"receipt_ids": [1], "template_name": "fancy"},
+    )
+
+    assert r.status_code == 422
+    assert b.status_code == 422
+
+
 # ── Reports ───────────────────────────────────────────────────────────────────
 
 

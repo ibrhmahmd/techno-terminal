@@ -126,9 +126,11 @@ class ActivityRepository:
         student_id: int,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
+        activity_types: Optional[List[str]] = None,
+        skip: int = 0,
         limit: int = 100,
     ) -> List[StudentActivityLog]:
-        """Get activity timeline for a student with optional date filtering."""
+        """Get activity timeline for a student with optional date and type filtering."""
         sql = """
             SELECT id, student_id, activity_type, activity_subtype,
                    reference_type, reference_id, description, meta,
@@ -144,8 +146,12 @@ class ActivityRepository:
         if end_date:
             sql += " AND created_at <= :end_date"
             params["end_date"] = end_date
+        if activity_types:
+            sql += " AND activity_type = ANY(:activity_types)"
+            params["activity_types"] = activity_types
 
-        sql += " ORDER BY created_at DESC LIMIT :limit"
+        sql += " ORDER BY created_at DESC, id DESC OFFSET :skip LIMIT :limit"
+        params["skip"] = skip
         params["limit"] = limit
 
         result = self._session.exec(text(sql), params=params)

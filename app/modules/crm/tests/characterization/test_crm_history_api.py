@@ -158,6 +158,51 @@ def test_get_student_history_unknown_student(client_with_uow, override_auth, moc
     assert len(body["data"]) == 0
 
 
+def test_get_student_history_filters_by_activity_types(client_with_uow, override_auth, mock_admin_headers, db_session):
+    """activity_types (comma-separated) filters the timeline (#179); it used to be ignored."""
+    student = _make_student(db_session)
+    _make_activity(db_session, student.id, activity_type="note_added")
+    _make_activity(db_session, student.id, activity_type="payment")
+    _make_activity(db_session, student.id, activity_type="academic")
+
+    r = client_with_uow.get(
+        f"/api/v1/crm/students/{student.id}/history?activity_types=payment,academic",
+        headers=mock_admin_headers,
+    )
+
+    assert r.status_code == 200
+    assert sorted(a["activity_type"] for a in r.json()["data"]) == ["academic", "payment"]
+
+
+def test_get_student_history_unknown_activity_type_is_422(client_with_uow, override_auth, mock_admin_headers, db_session):
+    student = _make_student(db_session)
+
+    r = client_with_uow.get(
+        f"/api/v1/crm/students/{student.id}/history?activity_types=payment,bogus",
+        headers=mock_admin_headers,
+    )
+
+    assert r.status_code == 422
+    body = r.json()
+    assert body["success"] is False
+    assert "bogus" in body["message"]
+
+
+def test_get_student_history_offset_pages(client_with_uow, override_auth, mock_admin_headers, db_session):
+    """offset skips rows (#179); it used to be ignored, so every page repeated the first."""
+    student = _make_student(db_session)
+    for _ in range(3):
+        _make_activity(db_session, student.id)
+    url = f"/api/v1/crm/students/{student.id}/history?limit=2"
+
+    first = [a["activity_id"] for a in client_with_uow.get(f"{url}&offset=0", headers=mock_admin_headers).json()["data"]]
+    second = [a["activity_id"] for a in client_with_uow.get(f"{url}&offset=2", headers=mock_admin_headers).json()["data"]]
+
+    assert len(first) == 2
+    assert len(second) == 1
+    assert not set(first) & set(second)
+
+
 # ── /api/v1/crm/students/{student_id}/activity-summary ─────────────────────
 
 
@@ -178,6 +223,17 @@ def test_get_activity_summary(client_with_uow, override_auth, mock_admin_headers
         assert isinstance(item["activity_type"], str)
         assert isinstance(item["count"], int)
         assert item["count"] >= 0
+
+
+def test_get_activity_summary_with_academic_activity(client_with_uow, override_auth, mock_admin_headers, db_session):
+    """The level-progression activity type "academic" is a known type (#179); the summary used to 500 on it."""
+    student = _make_student(db_session)
+    _make_activity(db_session, student.id, activity_type="academic")
+
+    r = client_with_uow.get(f"/api/v1/crm/students/{student.id}/activity-summary", headers=mock_admin_headers)
+
+    assert r.status_code == 200
+    assert {"activity_type": "academic", "count": 1} in r.json()["data"]
 
 
 def test_get_activity_summary_unknown_student(client_with_uow, override_auth, mock_admin_headers):

@@ -248,7 +248,31 @@ def test_filter_groups_bad_date(client_with_uow, override_auth, mock_admin_heade
     body = r.json()
     assert body["success"] is False
     assert body["error"] == "ValidationError"
-    assert "invalid date/time format" in body["message"].lower()
+    assert "start_date_from" in body["message"]
+
+
+def test_filter_groups_bad_time_and_status_are_422(client_with_uow, override_auth, mock_admin_headers):
+    """Times and statuses are typed (#179): a malformed time or unknown status is a 422."""
+    for query in ("time_from=25:99", "time_to=noon", "status=bogus"):
+        r = client_with_uow.get(f"/api/v1/academics/groups/filter?{query}", headers=mock_admin_headers)
+        assert r.status_code == 422, query
+        assert r.json()["success"] is False
+
+
+def test_filter_groups_time_range(client_with_uow, override_auth, mock_admin_headers, db_session):
+    """A valid HH:MM time still filters (the params are typed as time now)."""
+    from datetime import time
+    course = _make_course(db_session)
+    afternoon = _make_group(db_session, course.id, default_time_start=time(14, 0), default_time_end=time(16, 0))
+    _make_group(db_session, course.id, default_time_start=time(10, 0), default_time_end=time(12, 0))
+
+    r = client_with_uow.get(
+        f"/api/v1/academics/groups/filter?course_ids={course.id}&time_from=13:00&status=active",
+        headers=mock_admin_headers,
+    )
+
+    assert r.status_code == 200
+    assert [g["id"] for g in r.json()["data"]["groups"]] == [afternoon.id]
 
 
 # ── /api/v1/academics/groups/{group_id}/enriched ──────────────────────────────
@@ -298,7 +322,7 @@ def test_get_enriched_group_by_id(client_with_uow, override_auth, mock_admin_hea
 
 
 def test_get_enriched_group_not_found(client_with_uow, override_auth, mock_admin_headers):
-    """GET /academics/groups/999999999/enriched returns 404 from the directory router."""
+    """GET /academics/groups/999999999/enriched is a 404 NotFoundError (#179; was a bare HTTPException)."""
     r = client_with_uow.get(
         "/api/v1/academics/groups/999999999/enriched",
         headers=mock_admin_headers,
@@ -308,7 +332,7 @@ def test_get_enriched_group_not_found(client_with_uow, override_auth, mock_admin
     body = r.json()
     assert set(body) == {"success", "error", "message"}
     assert body["success"] is False
-    assert body["error"] == "NotFound"
+    assert body["error"] == "NotFoundError"
     assert body["message"] == "Group 999999999 not found"
 
 

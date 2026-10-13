@@ -473,7 +473,8 @@
           "payment",
           "note_added",
           "competition",
-          "deletion"
+          "deletion",
+          "academic"
         ],
         "title": "ActivityType",
         "type": "string"
@@ -5100,6 +5101,10 @@
           },
           "template_name": {
             "default": "standard",
+            "enum": [
+              "standard",
+              "detailed"
+            ],
             "title": "Template Name",
             "type": "string"
           }
@@ -11692,6 +11697,10 @@
             "type": "integer"
           },
           "template_name": {
+            "enum": [
+              "standard",
+              "detailed"
+            ],
             "title": "Template Name",
             "type": "string"
           }
@@ -18796,7 +18805,7 @@
             }
           },
           {
-            "description": "Group status(es): active, inactive, archived",
+            "description": "Group status(es): active, inactive, completed, archived",
             "in": "query",
             "name": "status",
             "required": false,
@@ -18804,6 +18813,12 @@
               "anyOf": [
                 {
                   "items": {
+                    "enum": [
+                      "active",
+                      "inactive",
+                      "completed",
+                      "archived"
+                    ],
                     "type": "string"
                   },
                   "type": "array"
@@ -18812,7 +18827,7 @@
                   "type": "null"
                 }
               ],
-              "description": "Group status(es): active, inactive, archived",
+              "description": "Group status(es): active, inactive, completed, archived",
               "title": "Status"
             }
           },
@@ -18862,6 +18877,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "format": "date",
                   "type": "string"
                 },
                 {
@@ -18880,6 +18896,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "format": "date",
                   "type": "string"
                 },
                 {
@@ -18898,6 +18915,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "format": "time",
                   "type": "string"
                 },
                 {
@@ -18916,6 +18934,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "format": "time",
                   "type": "string"
                 },
                 {
@@ -21066,6 +21085,10 @@
             "schema": {
               "anyOf": [
                 {
+                  "enum": [
+                    "admin",
+                    "system_admin"
+                  ],
                   "type": "string"
                 },
                 {
@@ -25032,7 +25055,7 @@
               "anyOf": [
                 {
                   "items": {
-                    "type": "string"
+                    "$ref": "#/components/schemas/ActivityType"
                   },
                   "type": "array"
                 },
@@ -27596,6 +27619,10 @@
             "schema": {
               "default": "standard",
               "description": "Template to use (standard, detailed)",
+              "enum": [
+                "standard",
+                "detailed"
+              ],
               "title": "Template Name",
               "type": "string"
             }

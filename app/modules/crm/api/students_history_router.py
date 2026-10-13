@@ -29,10 +29,26 @@ from app.modules.crm.api.schemas import (
 )
 from app.modules.auth.models import User
 from app.modules.crm.services import StudentActivityService
+from app.modules.crm.api.schemas.history import ActivityType
 from app.modules.crm.schemas import TimelineFilterDTO
+from app.shared.exceptions import ValidationError
 
 
 router = APIRouter(prefix="/crm", tags=["Student History"])
+
+
+def _parse_activity_types(raw: Optional[str]) -> Optional[List[str]]:
+    """Split the comma-separated filter; an unknown type is a 422 (#179)."""
+    if not raw:
+        return None
+    types = [t.strip() for t in raw.split(",") if t.strip()]
+    valid = {t.value for t in ActivityType}
+    unknown = [t for t in types if t not in valid]
+    if unknown:
+        raise ValidationError(
+            f"Unknown activity type(s): {', '.join(unknown)}. Allowed: {', '.join(sorted(valid))}"
+        )
+    return types or None
 
 
 # Get student activity history
@@ -62,6 +78,7 @@ def get_student_history(
     filters = TimelineFilterDTO(
         start_date=date_from,
         end_date=date_to,
+        activity_types=_parse_activity_types(activity_types),
         limit=limit,
         skip=offset,
     )

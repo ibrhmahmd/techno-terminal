@@ -242,6 +242,8 @@ class StudentActivityService:
             student_id=student_id,
             start_date=filters.start_date,
             end_date=filters.end_date,
+            activity_types=filters.activity_types,
+            skip=filters.skip,
             limit=filters.limit,
         )
         return [self._map_to_dto(log) for log in logs]

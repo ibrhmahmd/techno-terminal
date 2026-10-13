@@ -4,7 +4,7 @@ app/api/schemas/finance/receipt.py
 Public-facing Receipt DTOs.
 """
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional, TypeAlias
 
 from pydantic import BaseModel, field_validator
 
@@ -120,6 +120,9 @@ class IssueRefundRequest(BaseModel):
     method: str = "cash"
 
 
+ReceiptTemplate: TypeAlias = Literal["standard", "detailed"]
+
+
 class MarkReceiptSentRequest(BaseModel):
     """Request to mark a receipt as sent."""
     pass
@@ -128,7 +131,7 @@ class MarkReceiptSentRequest(BaseModel):
 class BatchGenerateRequest(BaseModel):
     """Request for batch receipt generation."""
     receipt_ids: list[int]
-    template_name: str = "standard"
+    template_name: ReceiptTemplate = "standard"
 
 
 class ReceiptGenerationResponse(BaseModel):
@@ -136,6 +139,6 @@ class ReceiptGenerationResponse(BaseModel):
     receipt_id: int
     content: str
     content_type: str = "text/plain"
-    template_name: str
+    template_name: ReceiptTemplate
     include_balance: bool
     generated_at: datetime
