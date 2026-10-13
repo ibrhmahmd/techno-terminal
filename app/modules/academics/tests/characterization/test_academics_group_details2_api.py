@@ -193,9 +193,8 @@ def test_get_group_payments_happy_path(client_with_uow, override_auth, mock_admi
     assert payment["payment_method"] == "cash"
     assert payment["status"] == "completed"
     assert payment["receipt_number"] == receipt.receipt_number
-    # Pinned quirk (suspected product bug): the repository selects p.receipt_id but
-    # never puts it in the result dict, so receipt_id is always None in the response.
-    assert payment["receipt_id"] is None
+    # #72: the receipt id is returned (it used to be dropped and always None).
+    assert payment["receipt_id"] == receipt.id
     assert payment["transaction_type"] == "payment"
 
 

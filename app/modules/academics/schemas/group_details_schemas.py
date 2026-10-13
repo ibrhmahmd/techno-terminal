@@ -47,12 +47,7 @@ class GroupEnrollmentDTO(BaseModel):
 
 
 class GroupPaymentRowDTO(BaseModel):
-    """One payment row for a group, with its level and course context.
-
-    ``receipt_id`` is intentionally never populated: the source query selects
-    ``p.receipt_id`` but the projection dropped it, so callers always saw
-    ``None``. That behaviour is preserved.
-    """
+    """One payment row for a group, with its level and course context."""
     model_config = ConfigDict(from_attributes=True)
     payment_id: int
     student_id: int
