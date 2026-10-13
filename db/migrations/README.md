@@ -25,6 +25,7 @@ The table above stops at `010`. Files `011`–`080` are documented in their own 
 | File | Purpose |
 |------|---------|
 | [081_notification_logs_report_period.sql](081_notification_logs_report_period.sql) | Adds `notification_logs.report_period_start` and the partial unique index `uq_notification_logs_report_delivery`, which keys each scheduled-report Delivery on (template, period, recipient). It only adds things. **Apply it before deploying** the code that maps the column. The rollback is in the file header. |
+| [082_task_notification_templates_by_name.sql](082_task_notification_templates_by_name.sql) | Inserts the `task_assigned`, `task_status_changed` and `task_comment_added` email templates by `name` when missing (#156). It replaces `078`, which targeted a `code` column the table no longer has. Safe to re-run. Apply it to the testing project, then production; task emails (#153) need it. |
 
 ## Relationship to Alembic
 
@@ -40,4 +41,3 @@ psql "$DATABASE_URL" -f db/migrations/010_phase2_competition_fees.sql
 Always test on a copy first.
 
 If a statement fails inside a script wrapped in `BEGIN` … `COMMIT` (e.g. `005_audit_d4_timestamps.sql`), PostgreSQL enters an **aborted transaction**; further commands return **SQLSTATE 25P02** until you run **`ROLLBACK;`** (or use a new connection), then re-apply the **whole** script from the start.
-
