@@ -6,6 +6,8 @@ DTOs for admin notification settings API.
 from typing import Optional, List, Dict
 from pydantic import BaseModel, EmailStr
 
+from app.modules.notifications.constants import NotificationType
+
 
 class AdminNotificationSettingDTO(BaseModel):
     """Single notification setting for an admin."""
@@ -33,7 +35,7 @@ class AdminSettingsResponse(BaseModel):
 
 class UpdateAdminSettingsRequest(BaseModel):
     """Bulk update settings."""
-    settings: Dict[str, bool]  # notification_type -> is_enabled #TODO remove Dict and write a typed DTO class
+    settings: Dict[NotificationType, bool]  # notification_type -> is_enabled #TODO remove Dict and write a typed DTO class
 
 
 class ToggleNotificationRequest(BaseModel):
@@ -45,12 +47,12 @@ class AddRecipientRequest(BaseModel):
     """Add new additional recipient."""
     email: EmailStr
     label: Optional[str] = None
-    notification_types: Optional[List[str]] = None  # null = all
+    notification_types: Optional[List[NotificationType]] = None  # null = all
 
 
 class UpdateRecipientRequest(BaseModel):
     """Update existing recipient."""
     email: Optional[EmailStr] = None
     label: Optional[str] = None
-    notification_types: Optional[List[str]] = None
+    notification_types: Optional[List[NotificationType]] = None
     is_active: Optional[bool] = None

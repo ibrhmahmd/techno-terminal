@@ -20,6 +20,7 @@ from app.modules.notifications.schemas.admin_settings_dto import (
     AddRecipientRequest,
     UpdateRecipientRequest,
 )
+from app.modules.notifications.constants import NotificationType
 from app.modules.notifications.repositories.admin_settings_repository import AdminSettingsRepository
 
 
@@ -129,7 +130,7 @@ def update_my_settings(
     summary="Get specific notification setting",
 )
 def get_notification_setting(
-    notification_type: str,
+    notification_type: NotificationType,
     current_user: User = Depends(require_admin),
     repo: AdminSettingsRepository = Depends(get_settings_repo),
 ):
@@ -154,7 +155,7 @@ def get_notification_setting(
     summary="Toggle specific notification",
 )
 def toggle_notification(
-    notification_type: str,
+    notification_type: NotificationType,
     request: ToggleNotificationRequest,
     current_user: User = Depends(require_admin),
     repo: AdminSettingsRepository = Depends(get_settings_repo),

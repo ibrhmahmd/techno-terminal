@@ -56,7 +56,7 @@ def search_receipts(
     payer_name: Optional[str] = Query(None, description="Filter by payer name"),
     student_id: Optional[int] = Query(None, description="Filter by student ID"),
     receipt_number: Optional[str] = Query(None, description="Filter by receipt number"),
-    limit: int = Query(200, le=1000),
+    limit: int = Query(200, ge=1, le=1000),
     _user: User = Depends(require_admin),
     service: ReceiptService = Depends(get_receipt_service),
 ):

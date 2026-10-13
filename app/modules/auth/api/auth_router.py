@@ -15,7 +15,7 @@ All tokens are issued by Supabase. Use "Authorize" in Swagger UI with:
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, Request, BackgroundTasks, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.api.schemas.common import ApiResponse, PaginatedResponse
@@ -325,8 +325,8 @@ def list_sessions(
     summary="List recent account activity",
 )
 def list_my_activity(
-    skip: int = 0,
-    limit: int = 50,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
     current_user: User = Depends(get_current_user),
     audit_svc = Depends(get_audit_service),
 ):

@@ -19,6 +19,13 @@ from app.modules.notifications.services.payment_notifications import PaymentNoti
 from app.modules.notifications.services.report_notifications import ReportNotificationService
 from app.modules.notifications.schemas.send_request import SendAbsenceRequest
 from app.modules.notifications.schemas.notification_dto import NotificationLogDTO
+from app.modules.notifications.constants import (
+    LogSortField,
+    NotificationChannel,
+    NotificationStatus,
+    RecipientType,
+    SortOrder,
+)
 from datetime import datetime, time
 from fastapi import HTTPException
 from zoneinfo import ZoneInfo
@@ -54,17 +61,17 @@ def send_receipt_notification(
 
 @router.get("/logs", response_model=PaginatedResponse[NotificationLogDTO], summary="Get notification logs")
 def get_logs(
-    limit: int = 50,
-    offset: int = 0,
-    status: Optional[str] = Query(None),
-    channel: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    status: Optional[NotificationStatus] = Query(None),
+    channel: Optional[NotificationChannel] = Query(None),
     search: Optional[str] = Query(None),
-    recipient_type: Optional[str] = Query(None),
+    recipient_type: Optional[RecipientType] = Query(None),
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
     template_id: Optional[int] = Query(None),
-    sort_by: str = Query("created_at"),
-    sort_order: str = Query("desc"),
+    sort_by: LogSortField = Query("created_at"),
+    sort_order: SortOrder = Query("desc"),
     _user: User = Depends(require_admin),
     svc: NotificationLogService = Depends(get_log_service)
 ):
@@ -104,8 +111,8 @@ def get_logs(
 @router.get("/logs/parent/{parent_id}", response_model=ApiResponse[List[NotificationLogDTO]], summary="Get parent logs")
 def get_parent_logs(
     parent_id: int,
-    limit: int = 50,
-    offset: int = 0,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     _user: User = Depends(require_admin),
     svc: NotificationLogService = Depends(get_log_service)
 ):
