@@ -187,8 +187,9 @@ def test_enroll_student(
     assert data["group_name"] == group.name
     assert data["course_name"] == course.name
     assert data["instructor_name"] == instructor.full_name
-    assert data["payment_status"] is None
-    assert data["amount_remaining"] is None
+    # Payment state is filled on write responses (#177).
+    assert data["payment_status"] == "not_paid"
+    assert data["amount_remaining"] == 724.5
     assert isinstance(data["enrolled_at"], str)
 
 

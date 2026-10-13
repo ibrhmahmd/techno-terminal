@@ -4,7 +4,8 @@ from sqlalchemy import or_, text
 from datetime import datetime
 from decimal import Decimal
 
-from app.modules.crm.schemas import StudentBalanceSummaryDTO
+from app.modules.crm.schemas import StudentBalanceSummaryDTO, StudentSummaryDTO
+from app.modules.crm.validators.student_validator import StudentValidator
 from app.modules.crm.schemas.student_details import SiblingInfo
 from app.modules.crm.models import Student, StudentStatus, StudentParent, Parent
 from app.shared.datetime_utils import utc_now
@@ -47,12 +48,40 @@ class StudentRepository:
         stmt = stmt.offset(skip).limit(limit)
         return list(self._session.exec(stmt).all())
     
-    def get_deleted(self, limit: int = 100, offset: int = 0) -> List[Student]:
-        """Get soft-deleted students for admin recovery."""
-        stmt = select(Student).where(Student.deleted_at.is_not(None))
-        stmt = stmt.order_by(Student.deleted_at.desc())
-        stmt = stmt.offset(offset).limit(limit)
-        return list(self._session.exec(stmt).all())
+    def get_deleted(self, limit: int = 100, offset: int = 0) -> List[StudentSummaryDTO]:
+        """Soft-deleted students for admin recovery, newest deletion first.
+
+        ``current_group_name`` is the group of the student's last enrollment;
+        ``has_unpaid_balance`` is true when an active enrollment still owes money.
+        """
+        rows = self._session.exec(
+            text("""
+                SELECT s.id, s.full_name, s.phone, s.gender, s.status, s.date_of_birth,
+                       last_e.group_id AS current_group_id,
+                       g.name AS current_group_name,
+                       EXISTS (
+                           SELECT 1 FROM v_unpaid_enrollments vue WHERE vue.student_id = s.id
+                       ) AS has_unpaid_balance
+                FROM students s
+                LEFT JOIN LATERAL (
+                    SELECT e.group_id FROM enrollments e
+                    WHERE e.student_id = s.id
+                    ORDER BY e.id DESC LIMIT 1
+                ) last_e ON TRUE
+                LEFT JOIN groups g ON g.id = last_e.group_id
+                WHERE s.deleted_at IS NOT NULL
+                ORDER BY s.deleted_at DESC, s.id DESC
+                OFFSET :offset LIMIT :limit
+            """),
+            params={"offset": offset, "limit": limit},
+        ).mappings()
+        return [
+            StudentSummaryDTO(
+                **{**row, "status": str(row["status"])},
+                age=StudentValidator.compute_age(row["date_of_birth"]),
+            )
+            for row in rows
+        ]
 
     def search(self, query: str) -> list[Student]:
         term = f"%{query}%"

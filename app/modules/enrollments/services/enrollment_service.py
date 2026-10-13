@@ -51,11 +51,13 @@ class EnrollmentService:
         self._directory = EnrollmentDirectoryRepository(uow.session)
 
     def _to_dto(self, enrollment: Enrollment) -> EnrollmentDTO:
-        """EnrollmentDTO with the group, course and instructor names filled (#83)."""
-        names = self._directory.get_group_display_names(enrollment.group_id)
-        return EnrollmentDTO.model_validate(enrollment).model_copy(
-            update=names.model_dump()
-        )
+        """EnrollmentDTO with display names (#83) and payment state (#177) filled."""
+        update = self._directory.get_group_display_names(enrollment.group_id).model_dump()
+        balance = self._directory.get_enrollment_balance(enrollment.id)
+        if balance:
+            update["payment_status"] = balance.status
+            update["amount_remaining"] = max(0.0, -float(balance.balance))
+        return EnrollmentDTO.model_validate(enrollment).model_copy(update=update)
 
     def _notify(self, method: str, **kwargs) -> None:
         """Call the notifier after commit; failures are logged, never raised."""

@@ -83,3 +83,4 @@ class EmployeeReadDTO(BaseModel):
     user_id: Optional[int] = None
     deleted_at: Optional[datetime] = None
     deleted_by: Optional[int] = None
+    has_account: bool = False

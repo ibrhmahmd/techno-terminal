@@ -182,8 +182,9 @@ def test_transfer_student(
     assert data["group_name"] == target_group.name
     assert data["course_name"] == course.name
     assert data["instructor_name"] is None
-    assert data["payment_status"] is None
-    assert data["amount_remaining"] is None
+    # Payment state is filled on write responses (#177).
+    assert data["payment_status"] == "not_paid"
+    assert data["amount_remaining"] == 770.0
     assert isinstance(data["enrolled_at"], str)
 
 

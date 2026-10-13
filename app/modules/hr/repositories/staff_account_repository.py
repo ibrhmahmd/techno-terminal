@@ -49,3 +49,14 @@ class StaffAccountRepository:
             for user, employee in results
         ]
 
+    def has_account(self, employee: Employee) -> bool:
+        """Whether the employee has a usable login: a registered user linked to them.
+
+        An invite that was never accepted (no ``supabase_uid`` yet) does not count.
+        """
+        if employee.user_id is not None:
+            return True
+        stmt = select(User.id).where(
+            User.employee_id == employee.id, User.supabase_uid.is_not(None)
+        ).limit(1)
+        return self._session.exec(stmt).first() is not None
