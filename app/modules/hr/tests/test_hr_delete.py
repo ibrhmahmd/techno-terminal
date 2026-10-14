@@ -347,3 +347,64 @@ class TestIncludeDeletedFlag:
 
         assert resp.status_code == 401
         assert resp.json()["error"] == "Unauthorized"
+
+
+def _seed_invited_user(db_session, employee_id: int, registered: bool = True) -> User:
+    """A login linked the way the invite flow links it: only ``users.employee_id`` (#184)."""
+    tag = _unique()
+    user = User(
+        username=f"inv-{tag}@staff.test",
+        role="admin",
+        supabase_uid=f"sup-{tag}" if registered else None,
+        is_active=registered,
+        employee_id=employee_id,
+        created_at=utc_now(),
+    )
+    db_session.add(user)
+    db_session.commit()
+    return user
+
+
+class TestInviteLinkedLogin:
+    """An employee who joined through an invite has only ``users.employee_id`` set (#184)."""
+
+    def test_deactivating_blocks_an_invite_linked_login(
+        self, client, mock_admin_headers, override_auth, db_session
+    ):
+        emp = _create_employee(client, mock_admin_headers)
+        user = _seed_invited_user(db_session, emp["id"])
+
+        resp = client.put(
+            f"{BASE}/employees/{emp['id']}", headers=mock_admin_headers, json={"is_active": False}
+        )
+
+        assert resp.status_code == 200, resp.text
+        db_session.expire_all()
+        assert db_session.get(User, user.id).is_active is False
+
+    def test_deleting_blocks_an_invite_linked_login(
+        self, client, mock_admin_headers, override_auth, db_session
+    ):
+        emp = _create_employee(client, mock_admin_headers)
+        user = _seed_invited_user(db_session, emp["id"])
+
+        resp = client.delete(f"{BASE}/employees/{emp['id']}", headers=mock_admin_headers)
+
+        assert resp.status_code == 200
+        db_session.expire_all()
+        assert db_session.get(User, user.id).is_active is False
+
+    def test_create_account_refused_for_an_invite_linked_employee(
+        self, client, mock_admin_headers, override_auth, db_session
+    ):
+        emp = _create_employee(client, mock_admin_headers)
+        _seed_invited_user(db_session, emp["id"], registered=False)
+
+        resp = client.post(
+            f"{BASE}/employees/{emp['id']}/create-account",
+            headers=mock_admin_headers,
+            json={"email": f"{_unique()}@example.com", "password": "StrongPassword12", "role": "admin"},
+        )
+
+        assert resp.status_code == 409, resp.text
+        assert resp.json()["error"] == "ConflictError"

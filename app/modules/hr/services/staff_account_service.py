@@ -163,8 +163,8 @@ class StaffAccountService:
         if not emp:
             raise NotFoundError(f"Employee {dto.employee_id} not found")
 
-        # Check if employee already has account
-        if emp.user_id is not None:
+        # Check if employee already has an account or a pending invite (#184)
+        if self._staff_accounts.linked_users(emp):
             raise ConflictError(
                 f"Employee {dto.employee_id} already has an account"
             )

@@ -92,3 +92,54 @@ def test_invite_survives_a_notifier_failure(
 
     assert r.status_code == 200
     assert r.json()["data"]["is_active"] is False
+
+
+def _employee(db_session, **overrides):
+    from app.testing.db_helpers import create_test_employee
+    return create_test_employee(db_session, full_name=f"Invitee {uuid.uuid4().hex[:6]}", **overrides)
+
+
+def test_invite_refused_for_an_inactive_employee(
+    client_with_uow, override_system_admin_auth, system_admin_headers, fake_notifier, db_session
+):
+    """An inactive or deleted employee cannot be invited (#184)."""
+    emp = _employee(db_session, is_active=False)
+
+    r = client_with_uow.post(
+        "/api/v1/admin/users/invite",
+        headers=system_admin_headers,
+        json={"email": f"{uuid.uuid4().hex[:10]}@test.local", "role": "admin", "employee_id": emp.id},
+    )
+
+    assert r.status_code == 409
+    assert r.json()["error"] == "BusinessRuleError"
+    assert fake_notifier.invites == []
+
+
+def test_invite_is_void_once_the_employee_is_deactivated(
+    client_with_uow, override_system_admin_auth, system_admin_headers, fake_notifier, db_session, monkeypatch
+):
+    """Registering with an invite for an employee deactivated since then fails (#184)."""
+    monkeypatch.setattr(settings, "frontend_base_url", BASE_URL)
+    emp = _employee(db_session)
+    r = client_with_uow.post(
+        "/api/v1/admin/users/invite",
+        headers=system_admin_headers,
+        json={"email": f"{uuid.uuid4().hex[:10]}@test.local", "role": "admin", "employee_id": emp.id},
+    )
+    assert r.status_code == 200, r.text
+    token = parse_qs(urlparse(fake_notifier.invites[0]["register_url"]).query)["token"][0]
+
+    emp.is_active = False
+    db_session.add(emp)
+    db_session.commit()
+
+    admin = MagicMock()
+    with patch(f"{PROVISIONING}.get_supabase_admin", return_value=admin):
+        reg = client_with_uow.post(
+            "/api/v1/auth/register",
+            json={"token": token, "username": f"inv_{uuid.uuid4().hex[:8]}", "password": "StrongPassword12"},
+        )
+
+    assert reg.status_code == 401
+    admin.auth.admin.create_user.assert_not_called()

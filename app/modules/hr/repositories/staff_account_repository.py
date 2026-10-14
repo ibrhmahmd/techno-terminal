@@ -49,14 +49,23 @@ class StaffAccountRepository:
             for user, employee in results
         ]
 
+    def linked_users(self, employee: Employee) -> list[User]:
+        """Every login linked to the employee, by either side of the link (#184).
+
+        The staff-account flow sets ``employees.user_id`` and
+        ``users.employee_id``; the invite flow sets only ``users.employee_id``.
+        Pending invites (no ``supabase_uid`` yet) are included.
+        """
+        stmt = select(User).where(User.employee_id == employee.id)
+        if employee.user_id is not None:
+            stmt = select(User).where(
+                (User.employee_id == employee.id) | (User.id == employee.user_id)
+            )
+        return list(self._session.exec(stmt).scalars().all())
+
     def has_account(self, employee: Employee) -> bool:
         """Whether the employee has a usable login: a registered user linked to them.
 
         An invite that was never accepted (no ``supabase_uid`` yet) does not count.
         """
-        if employee.user_id is not None:
-            return True
-        stmt = select(User.id).where(
-            User.employee_id == employee.id, User.supabase_uid.is_not(None)
-        ).limit(1)
-        return self._session.exec(stmt).first() is not None
+        return any(u.supabase_uid is not None for u in self.linked_users(employee))
