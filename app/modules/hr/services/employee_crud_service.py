@@ -30,6 +30,11 @@ class EmployeeCrudService:
         self._employees = EmployeeRepository(uow.session)
         self._staff_accounts = StaffAccountRepository(uow.session)
 
+    def _block_logins(self, employee) -> None:
+        """Deactivate every login linked to the employee, whichever side holds the link (#184)."""
+        for user in self._staff_accounts.linked_users(employee):
+            set_login_active(self._uow, user.id, False)
+
     def _to_dto(self, employee) -> EmployeeReadDTO:
         """EmployeeReadDTO with ``has_account`` filled (#177)."""
         return EmployeeReadDTO.model_validate(employee).model_copy(
@@ -84,14 +89,13 @@ class EmployeeCrudService:
 
         try:
             updated = self._employees.update(employee_id, dto)
-            # FR-011: deactivating an employee blocks their linked login.
+            # FR-011: deactivating an employee blocks their linked logins.
             if (
                 getattr(dto, "model_fields_set", set())
                 & {"is_active"}
                 and dto.is_active is False
-                and existing.user_id is not None
             ):
-                set_login_active(self._uow, existing.user_id, False)
+                self._block_logins(existing)
             self._uow.flush()
             self._uow.commit()
         except IntegrityError as exc:
@@ -134,8 +138,7 @@ class EmployeeCrudService:
         if not existing:
             raise NotFoundError(f"Employee {employee_id} not found")
 
-        if existing.user_id is not None:
-            set_login_active(self._uow, existing.user_id, False)
+        self._block_logins(existing)
 
         self._employees.soft_delete(employee_id, actor_user_id)
         self._uow.flush()

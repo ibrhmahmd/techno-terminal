@@ -103,3 +103,9 @@ class AuthRepository:
         # Local import to avoid circular dependency: hr's __init__ imports auth facade
         from app.modules.hr.models import Employee
         return self._session.get(Employee, employee_id) is not None
+
+    def employee_can_log_in(self, employee_id: int) -> bool:
+        """The employee exists, is not soft-deleted and is active (#184)."""
+        from app.modules.hr.models import Employee
+        emp = self._session.get(Employee, employee_id)
+        return emp is not None and emp.deleted_at is None and emp.is_active

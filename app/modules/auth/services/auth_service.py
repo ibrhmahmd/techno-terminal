@@ -133,6 +133,10 @@ class AuthService:
         if employee_id is not None:
             if not self._repo.employee_exists(employee_id):
                 raise NotFoundError(f"Employee {employee_id} not found.")
+            if not self._repo.employee_can_log_in(employee_id):
+                raise BusinessRuleError(
+                    f"Employee {employee_id} is inactive or deleted; it cannot be invited."
+                )
         user_in = UserCreate(
             username=email,
             role=role,
@@ -158,6 +162,9 @@ class AuthService:
         if not user:
             raise AuthError("Invalid or expired invite token.")
         if user.invite_expires_at and user.invite_expires_at < utc_now():
+            raise AuthError("Invalid or expired invite token.")
+        # An invite for an employee deactivated or deleted since is void (#184).
+        if user.employee_id is not None and not self._repo.employee_can_log_in(user.employee_id):
             raise AuthError("Invalid or expired invite token.")
         existing = self._repo.get_user_by_username(username)
         if existing:
