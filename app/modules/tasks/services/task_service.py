@@ -24,11 +24,10 @@ from app.modules.tasks.schemas.task_schemas import (
 from app.modules.auth.models.auth_models import User
 from app.modules.hr.models.employee_models import Employee
 from app.shared.exceptions import AuthError, NotFoundError
-from app.shared.datetime_utils import utc_now
+from app.shared.datetime_utils import cairo_day_bounds, utc_now
 from sqlmodel import select
-from datetime import datetime, timedelta
+from datetime import timedelta
 from app.modules.tasks.models import Task, TaskSubtask
-from datetime import timezone
 logger = logging.getLogger(__name__)
 
 
@@ -333,8 +332,7 @@ class TaskService:
                 continue
                 
             # Prevent double spawning
-            start_dt = datetime.combine(target_date, datetime.min.time())
-            end_dt = datetime.combine(target_date + timedelta(days=1), datetime.min.time())
+            start_dt, end_dt = cairo_day_bounds(target_date)
             
             check_stmt = select(Task).where(
                 Task.parent_task_id == parent.id,
@@ -346,7 +344,8 @@ class TaskService:
                 continue
                 
             # Create child task
-            child_created = datetime.combine(target_date, datetime.now(timezone.utc).time()).replace(tzinfo=timezone.utc)
+            now = utc_now()
+            child_created = now if start_dt <= now < end_dt else start_dt
             child = Task(
                 title=parent.title,
                 description=parent.description,

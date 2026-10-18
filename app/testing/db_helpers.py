@@ -295,14 +295,14 @@ def create_test_attendance(
     marked_by: Optional[int] = None,
 ):
     from app.modules.attendance.models.attendance_models import Attendance
-    from datetime import datetime
+    from app.shared.datetime_utils import utc_now
     att = Attendance(
         student_id=student_id,
         session_id=session_id,
         enrollment_id=enrollment_id,
         status=status,
         marked_by=marked_by,
-        marked_at=datetime.utcnow(),
+        marked_at=utc_now(),
     )
     session.add(att)
     session.commit()
@@ -402,9 +402,9 @@ def create_test_receipt(
     paid_at: Optional[datetime] = None,
 ):
     from app.modules.finance.models.receipt import Receipt
-    from datetime import datetime
+    from app.shared.datetime_utils import utc_now
     if paid_at is None:
-        paid_at = datetime.utcnow()
+        paid_at = utc_now()
     receipt = Receipt(
         payer_name=payer_name,
         payment_method=payment_method,
@@ -432,7 +432,7 @@ def create_test_payment(
     notes: Optional[str] = None,
 ):
     from app.modules.finance.models.payment import Payment
-    from datetime import datetime
+    from app.shared.datetime_utils import utc_now
     pmt = Payment(
         receipt_id=receipt_id,
         student_id=student_id,
@@ -443,7 +443,7 @@ def create_test_payment(
         payment_type=payment_type,
         discount_amount=discount_amount,
         notes=notes,
-        created_at=datetime.utcnow(),
+        created_at=utc_now(),
     )
     session.add(pmt)
     session.commit()

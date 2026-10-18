@@ -26,6 +26,7 @@ from app.modules.crm.schemas import (
 )
 from app.modules.crm.models.activity_models import StudentActivityLog
 from app.modules.crm.models.student_models import Student
+from app.shared.datetime_utils import utc_now
 from app.shared.exceptions import NotFoundError
 
 
@@ -140,7 +141,7 @@ class StudentActivityService:
             metadata={
                 "student_id": dto.student_id,
                 "student_name": dto.student_name,
-                "deleted_at": datetime.utcnow().isoformat(),
+                "deleted_at": utc_now().isoformat(),
             },
             performed_by=dto.performed_by,
         )

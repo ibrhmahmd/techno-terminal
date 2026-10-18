@@ -7,8 +7,9 @@ Orchestrates the 4-query repository pattern to build the daily overview
 response with lookup tables and nested session/attendance data.
 """
 
-from datetime import date, datetime
+from datetime import date
 from app.db.uow import UnitOfWork
+from app.shared.datetime_utils import utc_now
 
 from app.modules.analytics.repositories.dashboard_repository import DashboardRepository
 from app.modules.analytics.schemas.dashboard_schemas import (
@@ -172,7 +173,7 @@ class DashboardService:
             
         return DashboardDailyOverviewDTO(
             date=str(target_date),
-            generated_at=datetime.utcnow().isoformat() + 'Z',
+            generated_at=utc_now().isoformat().replace("+00:00", "Z"),
             cache_ttl=300,
             groups=groups_lookup,
             instructors=instructors_lookup,
@@ -184,7 +185,7 @@ class DashboardService:
         """Build empty response when no groups have sessions on target date."""
         return DashboardDailyOverviewDTO(
             date=str(target_date),
-            generated_at=datetime.utcnow().isoformat() + 'Z',
+            generated_at=utc_now().isoformat().replace("+00:00", "Z"),
             cache_ttl=300,
             groups={},
             instructors={},

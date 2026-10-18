@@ -326,4 +326,71 @@ class TestTasksCRUD:
         children_after = db_session.exec(child_stmt).all()
         assert len(children_after) == 1, "Spawner created a duplicate child for the same parent on the same date"
 
+    def _make_daily_template(self, client, mock_admin_headers):
+        resp = client.post(
+            "/api/v1/tasks",
+            json={
+                "title": f"Daily template {uuid.uuid4().hex[:8]}",
+                "is_recurring": True,
+                "recurrence_pattern": "daily",
+                "priority": "medium",
+                "status": "todo",
+            },
+            headers=mock_admin_headers,
+        )
+        assert resp.status_code == 200
+        return resp.json()["data"]["id"]
 
+    def test_recurring_spawn_today_stamps_now_and_is_idempotent(
+        self, client, app, db_session, mock_admin_headers, override_auth
+    ):
+        """Spawning for today's Cairo date stamps the child with the current instant, once."""
+        from datetime import datetime, timedelta
+        from sqlmodel import select
+        from app.db.uow import UnitOfWork
+        from app.modules.tasks import TaskService
+        from app.modules.tasks.models import Task
+        from app.shared.datetime_utils import CAIRO_TZ, utc_now
+
+        parent_id = self._make_daily_template(client, mock_admin_headers)
+        service = TaskService(UnitOfWork(db_session))
+        today = datetime.now(CAIRO_TZ).date()
+
+        service.spawn_recurring_tasks(today)
+
+        children = db_session.exec(select(Task).where(Task.parent_task_id == parent_id)).all()
+        assert len(children) == 1
+        created_at = children[0].created_at
+        assert created_at.tzinfo is not None
+        assert abs(utc_now() - created_at) < timedelta(seconds=60)
+
+        service.spawn_recurring_tasks(today)
+
+        children = db_session.exec(select(Task).where(Task.parent_task_id == parent_id)).all()
+        assert len(children) == 1
+
+    def test_recurring_spawn_past_date_stamps_cairo_midnight_and_is_idempotent(
+        self, client, app, db_session, mock_admin_headers, override_auth
+    ):
+        """A backfill for a past date is stamped at that day's Cairo midnight, once."""
+        from datetime import date
+        from sqlmodel import select
+        from app.db.uow import UnitOfWork
+        from app.modules.tasks import TaskService
+        from app.modules.tasks.models import Task
+        from app.shared.datetime_utils import cairo_day_bounds
+
+        parent_id = self._make_daily_template(client, mock_admin_headers)
+        service = TaskService(UnitOfWork(db_session))
+        past = date(2026, 7, 16)
+
+        service.spawn_recurring_tasks(past)
+
+        children = db_session.exec(select(Task).where(Task.parent_task_id == parent_id)).all()
+        assert len(children) == 1
+        assert children[0].created_at == cairo_day_bounds(past)[0]
+
+        service.spawn_recurring_tasks(past)
+
+        children = db_session.exec(select(Task).where(Task.parent_task_id == parent_id)).all()
+        assert len(children) == 1

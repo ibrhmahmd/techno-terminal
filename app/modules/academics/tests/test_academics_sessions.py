@@ -14,6 +14,7 @@ Tests all endpoints in sessions_router.py:
 import pytest
 from datetime import date, timedelta
 from app.modules.academics.models import CourseSession
+from app.shared.datetime_utils import utc_now
 
 
 class TestSessionsRead:
@@ -510,7 +511,7 @@ class TestSessionsEdgeCases:
             session_id=session.id,
             enrollment_id=enrollment.id,
             status="present",
-            marked_at=date.today()
+            marked_at=utc_now()
         )
         db_session.add(attendance)
         db_session.commit()

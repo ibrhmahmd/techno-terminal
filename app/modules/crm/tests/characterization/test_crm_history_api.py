@@ -483,6 +483,21 @@ def test_update_manual_activity(client_with_uow, override_auth, mock_admin_heade
     assert data["description"] == f"Updated {unique2}"
 
 
+def test_update_manual_activity_accepts_naive_created_at(client_with_uow, override_auth, mock_admin_headers, db_session):
+    """PATCH with a timezone-less created_at is read as UTC and succeeds."""
+    student = _make_student(db_session)
+    activity_id = _make_activity(db_session, student.id, description=f"Original {_short()}")
+
+    r = client_with_uow.patch(
+        f"/api/v1/crm/students/{student.id}/log-activity/{activity_id}",
+        headers=mock_admin_headers,
+        json={"created_at": "2026-03-01T10:00:00"},
+    )
+
+    assert r.status_code == 200
+    assert r.json()["data"]["created_at"].startswith("2026-03-01T10:00:00")
+
+
 def test_update_manual_activity_not_found(client_with_uow, override_auth, mock_admin_headers, db_session):
     """Fixed in #51 (was a 500 from a bare ValueError)."""
     student = _make_student(db_session)
