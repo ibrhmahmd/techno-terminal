@@ -9,10 +9,20 @@ UTC datetime helpers — prefer these over ad hoc `datetime.utcnow()` / naive `c
 
 from __future__ import annotations
 
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Optional
+from zoneinfo import ZoneInfo
 
-__all__ = ["utc_now", "utc_now_iso", "date_at_utc_midnight", "time_to_str"]
+__all__ = [
+    "CAIRO_TZ",
+    "utc_now",
+    "utc_now_iso",
+    "date_at_utc_midnight",
+    "cairo_day_bounds",
+    "time_to_str",
+]
+
+CAIRO_TZ = ZoneInfo("Africa/Cairo")
 
 
 def utc_now() -> datetime:
@@ -28,6 +38,13 @@ def utc_now_iso() -> str:
 def date_at_utc_midnight(d: date) -> datetime:
     """Midnight at the start of `d` in UTC (aware datetime)."""
     return datetime.combine(d, time.min, tzinfo=timezone.utc)
+
+
+def cairo_day_bounds(d: date) -> tuple[datetime, datetime]:
+    """Aware start of `d` and start of the next day, both in Africa/Cairo."""
+    start = datetime.combine(d, time.min, tzinfo=CAIRO_TZ)
+    end = datetime.combine(d + timedelta(days=1), time.min, tzinfo=CAIRO_TZ)
+    return start, end
 
 
 def time_to_str(value) -> Optional[str]:

@@ -9,7 +9,6 @@ Handles:
 - Sending receipts via WhatsApp/Email
 """
 import logging
-from datetime import datetime
 from typing import Optional
 
 
@@ -21,6 +20,7 @@ from app.modules.finance.schemas import (
     SendReceiptResultDTO,
 )
 from app.modules.finance.ports import PaymentNotifier
+from app.shared.datetime_utils import utc_now
 from app.shared.exceptions import NotFoundError
 
 
@@ -111,7 +111,7 @@ class StudentPaymentService:
                 message=f"No parent found for student {payment.student_name}.",
                 receipt_id=payment.receipt_id,
                 recipient_contact=None,
-                sent_at=datetime.utcnow(),
+                sent_at=utc_now(),
             )
         
         # Format amount for display
@@ -138,7 +138,7 @@ class StudentPaymentService:
                     message=f"Parent {payment.parent_name} has no phone number for WhatsApp.",
                     receipt_id=payment.receipt_id,
                     recipient_contact=None,
-                    sent_at=datetime.utcnow(),
+                    sent_at=utc_now(),
                 )
         elif method == "email":
             # Email contact would need to be fetched from parent record
@@ -150,7 +150,7 @@ class StudentPaymentService:
                 message=f"Invalid method: {method}. Use 'whatsapp' or 'email'.",
                 receipt_id=payment.receipt_id,
                 recipient_contact=None,
-                sent_at=datetime.utcnow(),
+                sent_at=utc_now(),
             )
 
         return SendReceiptResultDTO(
@@ -158,5 +158,5 @@ class StudentPaymentService:
             message=f"Receipt queued for sending to {payment.parent_name} via {method}.",
             receipt_id=payment.receipt_id,
             recipient_contact=recipient_contact,
-            sent_at=datetime.utcnow(),
+            sent_at=utc_now(),
         )

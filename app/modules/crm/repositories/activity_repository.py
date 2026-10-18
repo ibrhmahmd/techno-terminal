@@ -7,6 +7,8 @@ Uses raw SQL for all queries (no ORM model instantiation).
 from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime, timedelta
 
+from app.shared.datetime_utils import utc_now
+
 from sqlmodel import Session
 from sqlalchemy import text
 
@@ -47,7 +49,7 @@ class ActivityRepository:
             description=description,
             meta=metadata,
             performed_by=performed_by,
-            created_at=created_at or datetime.utcnow(),
+            created_at=created_at or utc_now(),
         )
         self._session.add(log)
         self._session.flush()
@@ -380,7 +382,7 @@ class ActivityRepository:
         limit: int = 100,
     ) -> List[StudentActivityLog]:
         """Get recent activities across all students using raw SQL."""
-        since = datetime.utcnow() - timedelta(days=days)
+        since = utc_now() - timedelta(days=days)
         sql = """
             SELECT id, student_id, activity_type, activity_subtype,
                    reference_type, reference_id, description, meta,

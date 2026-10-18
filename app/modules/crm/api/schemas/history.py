@@ -5,8 +5,8 @@ Pydantic schemas for student history and activity requests (CRM module).
 """
 from enum import Enum
 from typing import Optional, List, Dict, Any
-from datetime import datetime
-from pydantic import BaseModel, Field, validator
+from datetime import datetime, timezone
+from pydantic import BaseModel, Field, field_validator, validator
 
 
 class ActivityType(str, Enum):
@@ -32,6 +32,13 @@ class ReferenceType(str, Enum):
     COMPETITION = "competition"
 
 
+def _assume_utc(value: Optional[datetime]) -> Optional[datetime]:
+    """Attach UTC to a naive datetime; aware values and None pass through."""
+    if value is not None and value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value
+
+
 class ActivityLogRequest(BaseModel):
     """Request to log a manual activity."""
     activity_type: str
@@ -41,6 +48,8 @@ class ActivityLogRequest(BaseModel):
     description: str
     metadata: Optional[Dict[str, Any]] = None
     created_at: Optional[datetime] = None
+
+    _created_at_utc = field_validator("created_at")(_assume_utc)
 
 
 class ActivityLogUpdateRequest(BaseModel):
@@ -52,6 +61,8 @@ class ActivityLogUpdateRequest(BaseModel):
     description: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
     created_at: Optional[datetime] = None
+
+    _created_at_utc = field_validator("created_at")(_assume_utc)
 
 
 class EnrollmentHistoryEntry(BaseModel):

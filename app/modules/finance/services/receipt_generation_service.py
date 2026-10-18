@@ -4,13 +4,13 @@ app/modules/finance/services/receipt_generation_service.py
 Automated receipt generation with template support.
 """
 import logging
-from datetime import datetime
 from typing import TYPE_CHECKING, Optional, List, Dict, Any
 from decimal import Decimal
 
 from app.db.uow import UnitOfWork
 from app.modules.finance.repositories.receipt_document_repository import ReceiptDocumentRepository
 from app.modules.finance.schemas.receipt_generation import BatchGenerateResponse, BatchReceiptItem
+from app.shared.datetime_utils import utc_now
 from app.shared.exceptions import NotFoundError
 
 if TYPE_CHECKING:
@@ -230,7 +230,7 @@ TOTAL PAID:{' '*36}${total:.2f}
 Payment Method: {receipt.payment_method or 'N/A'}
 Receipt #: {receipt.receipt_number or 'N/A'}
 {balance_section}
-This receipt was generated on {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}.
+This receipt was generated on {utc_now().strftime('%Y-%m-%d %H:%M:%S')}.
 {'='*50}
 """
         

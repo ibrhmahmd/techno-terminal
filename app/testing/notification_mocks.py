@@ -6,6 +6,8 @@ from datetime import date, datetime
 from typing import Optional, Any
 from dataclasses import dataclass, field
 
+from app.shared.datetime_utils import utc_now
+
 
 @dataclass
 class CapturedEmail:
@@ -13,7 +15,7 @@ class CapturedEmail:
     body: str
     subject: Optional[str]
     attachments: Optional[list] = None
-    sent_at: datetime = field(default_factory=datetime.utcnow)
+    sent_at: datetime = field(default_factory=utc_now)
 
 
 class MockEmailDispatcher:
@@ -42,7 +44,7 @@ class MockWhatsAppDispatcher:
     def send(self, recipient: str, body: str, subject: Optional[str] = None):
         self.sent_messages.append({
             "recipient": recipient, "body": body, "subject": subject,
-            "sent_at": datetime.utcnow(),
+            "sent_at": utc_now(),
         })
         return True, None
 
@@ -101,7 +103,7 @@ class InMemoryReportDeliveryLedger:
             status="PENDING",
             error_message=None,
             sent_at=None,
-            created_at=datetime.utcnow(),
+            created_at=utc_now(),
         )
         self._next_id += 1
         self.logs.append(log)
@@ -113,7 +115,7 @@ class InMemoryReportDeliveryLedger:
                 log.status = status
                 log.error_message = error_message
                 if status == "SENT":
-                    log.sent_at = datetime.utcnow()
+                    log.sent_at = utc_now()
                 return
 
 
@@ -142,7 +144,7 @@ class MockNotificationRepository:
             recipient_id=recipient_id, recipient_contact=recipient_contact,
             body=body, subject=subject, status="PENDING", error_message=None,
             retry_count=0, next_retry_at=None, sent_at=None,
-            created_at=datetime.utcnow(),
+            created_at=utc_now(),
         )
         self.logs.append(log)
         return log
@@ -153,7 +155,7 @@ class MockNotificationRepository:
                 log.status = status
                 log.error_message = error
                 if status == "SENT":
-                    log.sent_at = datetime.utcnow()
+                    log.sent_at = utc_now()
                 return
 
 
