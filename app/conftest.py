@@ -121,6 +121,16 @@ def system_admin_token():
 
 
 @pytest.fixture
+def instructor_token():
+    """Generate valid instructor mock JWT (a non-admin role)."""
+    return generate_mock_supabase_token(
+        user_id="test-instructor-001",
+        role="instructor",
+        email="instructor@test.com"
+    )
+
+
+@pytest.fixture
 def admin_headers(admin_token):
     """Auth headers with admin token."""
     return {"Authorization": f"Bearer {admin_token}"}
@@ -136,6 +146,12 @@ def mock_admin_headers(mock_admin_token):
 def system_admin_headers(system_admin_token):
     """Auth headers with system_admin token."""
     return {"Authorization": f"Bearer {system_admin_token}"}
+
+
+@pytest.fixture
+def instructor_headers(instructor_token):
+    """Auth headers with instructor token."""
+    return {"Authorization": f"Bearer {instructor_token}"}
 
 
 @pytest.fixture
@@ -236,6 +252,35 @@ def override_system_admin_auth(app, db_session):
             username="test_sysadmin",
             role="system_admin",
             supabase_uid="test-sysadmin-001",
+            is_active=True,
+        )
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
+
+    async def _mock_get_current_user():
+        return user
+
+    app.dependency_overrides[get_current_user] = _mock_get_current_user
+    yield
+    app.dependency_overrides.pop(get_current_user, None)
+
+
+@pytest.fixture
+def override_instructor_auth(app, db_session):
+    """Override get_current_user with an instructor user (pair with instructor_headers)."""
+    from app.api.deps import get_current_user
+    from app.modules.auth.models.auth_models import User as UserModel
+    from sqlmodel import select
+
+    user = db_session.exec(
+        select(UserModel).where(UserModel.supabase_uid == "test-instructor-001")
+    ).first()
+    if user is None:
+        user = UserModel(
+            username="test_instructor",
+            role="instructor",
+            supabase_uid="test-instructor-001",
             is_active=True,
         )
         db_session.add(user)

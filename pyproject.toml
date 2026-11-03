@@ -39,7 +39,7 @@ dependencies = [
 dashboard = ["streamlit>=1.32.0", "pandas"]
 
 [dependency-groups]
-dev = ["import-linter>=2.15,<3"]
+dev = ["import-linter>=2.15,<3", "pytest>=8", "pytest-cov>=5"]
 
 [tool.setuptools.packages.find]
 where = ["."]

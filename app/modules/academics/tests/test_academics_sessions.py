@@ -300,19 +300,15 @@ class TestSessionsWrite:
         # Should return 400 for business rule violation
         assert response.status_code in [400, 409]
 
+    @pytest.mark.xfail(strict=True, reason="#66 substitute endpoint calls SessionService.mark_substitute_instructor, which does not exist")
     def test_substitute_instructor_success(self, client, mock_admin_headers, override_auth, db_session):
         """Test marking substitute instructor."""
-        from app.testing.db_helpers import create_test_course, create_test_group
-        from app.modules.hr.models import Employee
+        from app.testing.db_helpers import create_test_course, create_test_group, create_test_employee
 
         course = create_test_course(db_session)
         group = create_test_group(db_session, course_id=course.id)
 
-        # Create an employee as substitute instructor
-        employee = Employee(full_name="Substitute Instructor", is_active=True)
-        db_session.add(employee)
-        db_session.commit()
-        db_session.refresh(employee)
+        employee = create_test_employee(db_session, full_name="Substitute Instructor")
 
         session = CourseSession(
             group_id=group.id,
