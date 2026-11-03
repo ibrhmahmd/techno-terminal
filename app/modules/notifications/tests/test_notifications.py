@@ -211,6 +211,29 @@ class TestEnrollmentNotifications:
 
         assert len(mock_email.sent_emails) == 0
 
+    @pytest.mark.anyio
+    async def test_default_dispatchers_never_reach_smtp(self, mock_repo, enrollment_template,
+                                                         dispatch_recorder):
+        """#198: a service built with its real dispatchers records the email, never opens SMTP."""
+        import smtplib
+        from app.modules.notifications.services.enrollment_notifications import (
+            EnrollmentNotificationService
+        )
+        mock_repo.templates["enrollment_confirmation"] = enrollment_template
+        svc = EnrollmentNotificationService(mock_repo)
+        svc._resolve_notification_recipients = Mock(return_value=[("admin@test.com", 1, "ADDITIONAL")])
+        svc._get_group_name = Mock(return_value="Test Group")
+        svc._get_instructor_name = Mock(return_value="Test Instructor")
+        svc._get_student_name = Mock(return_value="Test Student")
+
+        with patch.object(smtplib, "SMTP_SSL") as smtp_ssl, patch.object(smtplib, "SMTP") as smtp:
+            await svc._process_created(student_id=1, enrollment_id=10, group_id=5, level_number=1)
+
+        smtp_ssl.assert_not_called()
+        smtp.assert_not_called()
+        email, _ = dispatch_recorder
+        assert [e.recipient for e in email.sent_emails] == ["admin@test.com"]
+
 
 # ── US7: Daily Business Report ───────────────────────────────────────────
 
@@ -449,6 +472,7 @@ class TestDailyReportIntegration:
                       b"#667eea", b"#E65150", b"#2c3e50"):
             assert color not in pdf_bytes, f"PDF still contains color {color.decode()}"
 
+    @pytest.mark.real_dispatchers
     @pytest.mark.skip("Manual visual test - not for automated runs")
     @pytest.mark.anyio
     async def test_send_visual_report_email(self, db_session):
