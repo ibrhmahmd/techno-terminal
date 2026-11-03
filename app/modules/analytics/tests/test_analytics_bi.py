@@ -16,6 +16,7 @@ All endpoints require admin authentication.
 """
 import pytest
 from datetime import date, timedelta
+from app.shared.datetime_utils import cairo_today
 
 
 class TestEnrollmentTrend:
@@ -35,7 +36,7 @@ class TestEnrollmentTrend:
 
     def test_enrollment_trend_with_cutoff(self, client, mock_admin_headers, override_auth):
         """Test getting enrollment trend with specific cutoff date."""
-        cutoff_date = (date.today() - timedelta(days=30)).isoformat()
+        cutoff_date = (cairo_today() - timedelta(days=30)).isoformat()
         response = client.get(
             f"/api/v1/analytics/bi/enrollment-trend?cutoff={cutoff_date}",
             headers=mock_admin_headers

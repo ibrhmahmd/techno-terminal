@@ -69,7 +69,7 @@ class ReportsRepository:
                      - COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type = 'refund'), 0) AS net_revenue
                 FROM receipts r
                 JOIN payments p ON p.receipt_id = r.id
-                WHERE DATE(COALESCE(r.paid_at, r.created_at)) = :target_date
+                WHERE (COALESCE(r.paid_at, r.created_at) AT TIME ZONE 'Africa/Cairo')::date = :target_date
             """)
             result = self._session.execute(stmt, {"target_date": target_date}).scalar()
             return float(result or 0.0)
@@ -116,7 +116,7 @@ class ReportsRepository:
             LEFT JOIN students s ON p.student_id = s.id
             LEFT JOIN enrollments e ON p.enrollment_id = e.id
             LEFT JOIN groups g ON e.group_id = g.id
-            WHERE DATE(COALESCE(r.paid_at, r.created_at)) = :target_date
+            WHERE (COALESCE(r.paid_at, r.created_at) AT TIME ZONE 'Africa/Cairo')::date = :target_date
               AND p.deleted_at IS NULL
         """)
         rows = self._session.execute(stmt, {"target_date": target_date}).all()
@@ -455,7 +455,7 @@ class ReportsRepository:
                 LEFT JOIN students st ON p.student_id = st.id
                 LEFT JOIN enrollments e ON p.enrollment_id = e.id
                 LEFT JOIN groups g ON e.group_id = g.id
-                WHERE DATE(COALESCE(r.paid_at, r.created_at)) BETWEEN :start AND :end
+                WHERE (COALESCE(r.paid_at, r.created_at) AT TIME ZONE 'Africa/Cairo')::date BETWEEN :start AND :end
                   AND p.deleted_at IS NULL
             """)
             pay_rows = session.execute(payment_stmt, {"start": start_date, "end": end_date}).all()
@@ -534,7 +534,7 @@ class ReportsRepository:
                      - COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type = 'refund'), 0) AS total_revenue
                 FROM receipts r
                 JOIN payments p ON p.receipt_id = r.id
-                WHERE DATE(COALESCE(r.paid_at, r.created_at)) BETWEEN :start AND :end
+                WHERE (COALESCE(r.paid_at, r.created_at) AT TIME ZONE 'Africa/Cairo')::date BETWEEN :start AND :end
                   AND p.deleted_at IS NULL
             """), {"start": week_start, "end": week_end}).one_or_none()
             dto.total_revenue = Decimal(str(rev_res.total_revenue)) if rev_res and rev_res.total_revenue is not None else Decimal("0.00")
@@ -543,7 +543,7 @@ class ReportsRepository:
             enr_res = session.execute(text("""
                 SELECT COUNT(*) AS count
                 FROM enrollments 
-                WHERE DATE(COALESCE(enrolled_at, created_at)) BETWEEN :start AND :end
+                WHERE COALESCE(enrolled_at, (created_at AT TIME ZONE 'Africa/Cairo')::date) BETWEEN :start AND :end
             """), {"start": week_start, "end": week_end}).one_or_none()
             dto.new_enrollments = enr_res.count if enr_res else 0
 
@@ -551,9 +551,9 @@ class ReportsRepository:
             stud_res = session.execute(text("""
                 SELECT COUNT(DISTINCT student_id) AS new_students
                 FROM enrollments 
-                WHERE DATE(COALESCE(enrolled_at, created_at)) BETWEEN :start AND :end 
+                WHERE COALESCE(enrolled_at, (created_at AT TIME ZONE 'Africa/Cairo')::date) BETWEEN :start AND :end 
                   AND student_id NOT IN (
-                      SELECT student_id FROM enrollments WHERE DATE(COALESCE(enrolled_at, created_at)) < :start
+                      SELECT student_id FROM enrollments WHERE COALESCE(enrolled_at, (created_at AT TIME ZONE 'Africa/Cairo')::date) < :start
                   )
             """), {"start": week_start, "end": week_end}).one_or_none()
             dto.new_students = stud_res.new_students if stud_res else 0
@@ -562,7 +562,7 @@ class ReportsRepository:
             drop_res = session.execute(text("""
                 SELECT COUNT(*) AS dropped_enrollments
                 FROM enrollments 
-                WHERE status = 'dropped' AND DATE(updated_at) BETWEEN :start AND :end
+                WHERE status = 'dropped' AND (updated_at AT TIME ZONE 'Africa/Cairo')::date BETWEEN :start AND :end
             """), {"start": week_start, "end": week_end}).one_or_none()
             dto.dropped_enrollments = drop_res.dropped_enrollments if drop_res else 0
 
@@ -591,7 +591,7 @@ class ReportsRepository:
                 JOIN enrollments e ON e.group_id = g.id
                 JOIN payments p ON p.enrollment_id = e.id
                 JOIN receipts r ON p.receipt_id = r.id
-                WHERE DATE(COALESCE(r.paid_at, r.created_at)) BETWEEN :start AND :end
+                WHERE (COALESCE(r.paid_at, r.created_at) AT TIME ZONE 'Africa/Cairo')::date BETWEEN :start AND :end
                   AND p.transaction_type IN ('payment','charge')
                   AND p.deleted_at IS NULL
                 GROUP BY g.id, g.name
@@ -612,7 +612,7 @@ class ReportsRepository:
                 JOIN enrollments e ON e.group_id = g.id
                 JOIN payments p ON p.enrollment_id = e.id
                 JOIN receipts r ON p.receipt_id = r.id
-                WHERE DATE(COALESCE(r.paid_at, r.created_at)) BETWEEN :start AND :end
+                WHERE (COALESCE(r.paid_at, r.created_at) AT TIME ZONE 'Africa/Cairo')::date BETWEEN :start AND :end
                   AND p.transaction_type IN ('payment','charge')
                   AND p.deleted_at IS NULL
                 GROUP BY c.id, c.name
@@ -680,7 +680,7 @@ class ReportsRepository:
                      - COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type = 'refund'), 0) AS total_revenue
                 FROM receipts r
                 JOIN payments p ON p.receipt_id = r.id
-                WHERE DATE(COALESCE(r.paid_at, r.created_at)) BETWEEN :start AND :end
+                WHERE (COALESCE(r.paid_at, r.created_at) AT TIME ZONE 'Africa/Cairo')::date BETWEEN :start AND :end
                   AND p.deleted_at IS NULL
             """), {"start": month_start, "end": month_end}).one_or_none()
             dto.total_revenue = Decimal(str(rev_res.total_revenue)) if rev_res and rev_res.total_revenue is not None else Decimal("0.00")
@@ -688,8 +688,8 @@ class ReportsRepository:
             # 2. Enrollments (New & Dropped)
             enr_res = session.execute(text("""
                 SELECT 
-                    COUNT(*) FILTER (WHERE DATE(COALESCE(enrolled_at, created_at)) BETWEEN :start AND :end) AS new_enrollments,
-                    COUNT(*) FILTER (WHERE status = 'dropped' AND DATE(updated_at) BETWEEN :start AND :end) AS dropped_enrollments
+                    COUNT(*) FILTER (WHERE COALESCE(enrolled_at, (created_at AT TIME ZONE 'Africa/Cairo')::date) BETWEEN :start AND :end) AS new_enrollments,
+                    COUNT(*) FILTER (WHERE status = 'dropped' AND (updated_at AT TIME ZONE 'Africa/Cairo')::date BETWEEN :start AND :end) AS dropped_enrollments
                 FROM enrollments 
             """), {"start": month_start, "end": month_end}).one_or_none()
             if enr_res:
@@ -718,9 +718,9 @@ class ReportsRepository:
             stud_res = session.execute(text("""
                 SELECT COUNT(DISTINCT student_id) AS new_students
                 FROM enrollments 
-                WHERE DATE(COALESCE(enrolled_at, created_at)) BETWEEN :start AND :end 
+                WHERE COALESCE(enrolled_at, (created_at AT TIME ZONE 'Africa/Cairo')::date) BETWEEN :start AND :end 
                   AND student_id NOT IN (
-                      SELECT student_id FROM enrollments WHERE DATE(COALESCE(enrolled_at, created_at)) < :start
+                      SELECT student_id FROM enrollments WHERE COALESCE(enrolled_at, (created_at AT TIME ZONE 'Africa/Cairo')::date) < :start
                   )
             """), {"start": month_start, "end": month_end}).one_or_none()
             dto.new_students = stud_res.new_students if stud_res else 0
@@ -735,7 +735,7 @@ class ReportsRepository:
                 FROM courses c
                 JOIN groups g ON g.course_id = c.id
                 JOIN enrollments e ON e.group_id = g.id
-                WHERE DATE(COALESCE(e.enrolled_at, e.created_at)) BETWEEN :start AND :end
+                WHERE COALESCE(e.enrolled_at, (e.created_at AT TIME ZONE 'Africa/Cairo')::date) BETWEEN :start AND :end
                 GROUP BY c.id, c.name
                 ORDER BY enrollment_count DESC LIMIT 5
             """), {"start": month_start, "end": month_end}).all()
@@ -751,7 +751,7 @@ class ReportsRepository:
                 SELECT p.payment_type, COALESCE(SUM(p.amount), 0) AS revenue
                 FROM payments p
                 JOIN receipts r ON p.receipt_id = r.id
-                WHERE DATE(COALESCE(r.paid_at, r.created_at)) BETWEEN :start AND :end
+                WHERE (COALESCE(r.paid_at, r.created_at) AT TIME ZONE 'Africa/Cairo')::date BETWEEN :start AND :end
                   AND p.transaction_type IN ('payment','charge')
                   AND p.deleted_at IS NULL
                 GROUP BY p.payment_type
@@ -805,18 +805,18 @@ class ReportsRepository:
                      JOIN receipts r2 ON p2.receipt_id = r2.id
                      WHERE g2.course_id = c.id 
                        AND p2.transaction_type IN ('payment','charge')
-                       AND DATE(COALESCE(r2.paid_at, r2.created_at)) BETWEEN :start AND :end
+                       AND (COALESCE(r2.paid_at, r2.created_at) AT TIME ZONE 'Africa/Cairo')::date BETWEEN :start AND :end
                     ) AS revenue,
                     (SELECT COUNT(*) FROM enrollments e3 
                      JOIN groups g3 ON e3.group_id = g3.id
                      WHERE g3.course_id = c.id 
-                       AND DATE(COALESCE(e3.enrolled_at, e3.created_at)) BETWEEN :start AND :end
+                       AND COALESCE(e3.enrolled_at, (e3.created_at AT TIME ZONE 'Africa/Cairo')::date) BETWEEN :start AND :end
                     ) AS enrollments_count,
                     (SELECT COUNT(*) FROM enrollments e4 
                      JOIN groups g4 ON e4.group_id = g4.id
                      WHERE g4.course_id = c.id 
                        AND e4.status = 'dropped' 
-                       AND DATE(e4.updated_at) BETWEEN :start AND :end
+                       AND (e4.updated_at AT TIME ZONE 'Africa/Cairo')::date BETWEEN :start AND :end
                     ) AS drops_count
                 FROM courses c
                 ORDER BY revenue DESC, enrollments_count DESC

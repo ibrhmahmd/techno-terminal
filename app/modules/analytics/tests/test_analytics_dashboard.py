@@ -16,6 +16,7 @@ All tests verify:
 """
 import pytest
 from datetime import date, timedelta
+from app.shared.datetime_utils import cairo_today
 
 
 class TestUnpaidAttendees:
@@ -42,7 +43,7 @@ class TestUnpaidAttendees:
         GET /analytics/academics/unpaid-attendees?target_date=YYYY-MM-DD
         Returns unpaid attendees for specific date.
         """
-        today = date.today().isoformat()
+        today = cairo_today().isoformat()
         
         response = client.get(
             f"/api/v1/analytics/academics/unpaid-attendees?target_date={today}",
@@ -70,8 +71,8 @@ class TestRevenueByDate:
         GET /analytics/finance/revenue-by-date returns daily revenue totals.
         Requires date range parameters.
         """
-        start_date = (date.today() - timedelta(days=30)).isoformat()
-        end_date = date.today().isoformat()
+        start_date = (cairo_today() - timedelta(days=30)).isoformat()
+        end_date = cairo_today().isoformat()
         
         response = client.get(
             f"/api/v1/analytics/finance/revenue-by-date?start={start_date}&end={end_date}",

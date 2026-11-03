@@ -24,6 +24,7 @@ All tests verify: auth, response envelope, and data persistence.
 import pytest
 from uuid import uuid4
 from datetime import date, datetime, timedelta
+from app.shared.datetime_utils import cairo_today
 
 from app.testing.db_helpers import (
     create_test_course,
@@ -236,8 +237,8 @@ class TestReceiptRead:
         payload = _create_receipt_payload(student, enrollment)
         client.post("/api/v1/finance/receipts", headers=mock_admin_headers, json=payload)
 
-        today = date.today().isoformat()
-        ninety_days_ago = (date.today() - timedelta(days=30)).isoformat()
+        today = cairo_today().isoformat()
+        ninety_days_ago = (cairo_today() - timedelta(days=30)).isoformat()
         response = client.get(
             f"/api/v1/finance/receipts?from_date={ninety_days_ago}&to_date={today}",
             headers=mock_admin_headers,
@@ -259,7 +260,7 @@ class TestReceiptRead:
         assert data["success"] is False
 
     def test_search_receipts_unauthorized(self, client):
-        today = date.today().isoformat()
+        today = cairo_today().isoformat()
         response = client.get(
             f"/api/v1/finance/receipts?from_date=2024-01-01&to_date={today}",
         )
@@ -569,7 +570,7 @@ class TestReporting:
         payload = _create_receipt_payload(student, enrollment)
         client.post("/api/v1/finance/receipts", headers=mock_admin_headers, json=payload)
 
-        today = date.today().isoformat()
+        today = cairo_today().isoformat()
         response = client.get(
             f"/api/v1/finance/reports/daily-collections?target_date={today}",
             headers=mock_admin_headers,
@@ -591,7 +592,7 @@ class TestReporting:
         payload = _create_receipt_payload(student, enrollment)
         client.post("/api/v1/finance/receipts", headers=mock_admin_headers, json=payload)
 
-        today = date.today().isoformat()
+        today = cairo_today().isoformat()
         response = client.get(
             f"/api/v1/finance/reports/daily-receipts?target_date={today}",
             headers=mock_admin_headers,

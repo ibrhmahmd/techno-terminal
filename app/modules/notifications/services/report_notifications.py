@@ -4,6 +4,7 @@ app/modules/notifications/services/report_notifications.py
 Scheduled report notifications for employees.
 """
 from datetime import date, timedelta
+from app.shared.datetime_utils import cairo_today
 from typing import Optional
 import logging
 
@@ -52,7 +53,7 @@ class ReportNotificationService(BaseNotificationService):
         force: bool = False,
     ) -> ReportDeliveryResult:
         """Daily business summary to all admins."""
-        report_date = target_date or date.today()
+        report_date = target_date or cairo_today()
         template = self._get_template_by_name("daily_report")
         if not template:
             logger.warning("daily_report template not found - report is not configured.")
@@ -105,7 +106,7 @@ class ReportNotificationService(BaseNotificationService):
         force: bool = False,
     ) -> ReportDeliveryResult:
         """Weekly business summary to all admins."""
-        report_date = target_date or date.today()
+        report_date = target_date or cairo_today()
         period_start = report_date - timedelta(days=report_date.weekday())
         template = self._get_template_by_name("weekly_report")
         if not template:
@@ -127,7 +128,7 @@ class ReportNotificationService(BaseNotificationService):
         
         week_start = period_start
         completed_week_end = week_start + timedelta(days=6)
-        week_end = completed_week_end if completed_week_end < date.today() else report_date
+        week_end = completed_week_end if completed_week_end < cairo_today() else report_date
         
         aggregates = self._fetch_weekly_aggregates(week_start, week_end)
         
@@ -161,7 +162,7 @@ class ReportNotificationService(BaseNotificationService):
         force: bool = False,
     ) -> ReportDeliveryResult:
         """Monthly business summary to all admins."""
-        report_date = target_date or date.today()
+        report_date = target_date or cairo_today()
         period_start = report_date.replace(day=1)
         template = self._get_template_by_name("monthly_report")
         if not template:
@@ -184,7 +185,7 @@ class ReportNotificationService(BaseNotificationService):
         month_start = period_start
         last_day = calendar.monthrange(month_start.year, month_start.month)[1]
         completed_month_end = date(month_start.year, month_start.month, last_day)
-        month_end = completed_month_end if completed_month_end < date.today() else report_date
+        month_end = completed_month_end if completed_month_end < cairo_today() else report_date
 
         aggregates = self._fetch_monthly_aggregates(month_start, month_end)
 

@@ -5,6 +5,7 @@ Data access layer for BI analytics.
 """
 
 from datetime import date
+from app.shared.datetime_utils import cairo_today
 from sqlmodel import Session
 from sqlalchemy import text
 from app.modules.analytics.schemas import (
@@ -169,9 +170,8 @@ class BiRepository:
     def get_retention_cohorts(self, months: int = 6) -> list[RetentionCohortDTO]:
         """Cohort-based retention analysis showing student retention over time."""
         from dateutil.relativedelta import relativedelta
-        from datetime import date
-    
-        cutoff_date = date.today().replace(day=1) - relativedelta(months=months)
+
+        cutoff_date = cairo_today().replace(day=1) - relativedelta(months=months)
 
         stmt = text("""
             WITH monthly_cohorts AS (

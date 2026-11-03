@@ -5,6 +5,7 @@ Data access layer for academic analytics.
 """
 
 from datetime import date
+from app.shared.datetime_utils import cairo_today
 from typing import Optional
 from sqlmodel import Session
 from sqlalchemy import text
@@ -30,7 +31,7 @@ class AcademicRepository:
     def get_today_unpaid_attendees(self, target_date: Optional[date] = None) -> list[UnpaidAttendeeDTO]:
         """Students who attended today but have debt (P6: account balance < 0) on any enrollment."""
         if target_date is None:
-            target_date = date.today()
+            target_date = cairo_today()
         stmt = text("""
             SELECT DISTINCT
                 st.id AS student_id,
@@ -124,7 +125,7 @@ class AcademicRepository:
                     ELSE 'behind'
                 END AS progress_status,
                 NULL AS estimated_completion_date,
-                en.created_at::date AS enrollment_date,
+                (en.created_at AT TIME ZONE 'Africa/Cairo')::date AS enrollment_date,
                 NULL AS last_attendance_date
             FROM enrollments en
             JOIN students st ON en.student_id = st.id

@@ -5,6 +5,7 @@ Tests for the Dashboard API endpoints.
 """
 
 from datetime import date, timedelta
+from app.shared.datetime_utils import cairo_today
 import pytest
 
 
@@ -13,7 +14,7 @@ class TestDashboardDailyOverview:
 
     def test_dashboard_overview_success(self, client, mock_admin_headers, override_auth):
         """Test successful dashboard overview retrieval."""
-        target_date = date.today().isoformat()
+        target_date = cairo_today().isoformat()
         response = client.get(
             f"/api/v1/dashboard/daily-overview?date={target_date}",
             headers=mock_admin_headers
@@ -35,7 +36,7 @@ class TestDashboardDailyOverview:
 
     def test_dashboard_overview_with_attendance(self, client, mock_admin_headers, override_auth):
         """Test dashboard with include_attendance=true."""
-        target_date = date.today().isoformat()
+        target_date = cairo_today().isoformat()
         response = client.get(
             f"/api/v1/dashboard/daily-overview?date={target_date}&include_attendance=true",
             headers=mock_admin_headers
@@ -46,7 +47,7 @@ class TestDashboardDailyOverview:
 
     def test_dashboard_overview_without_attendance(self, client, mock_admin_headers, override_auth):
         """Test dashboard with include_attendance=false."""
-        target_date = date.today().isoformat()
+        target_date = cairo_today().isoformat()
         response = client.get(
             f"/api/v1/dashboard/daily-overview?date={target_date}&include_attendance=false",
             headers=mock_admin_headers
@@ -58,7 +59,7 @@ class TestDashboardDailyOverview:
     def test_dashboard_overview_empty_date(self, client, mock_admin_headers, override_auth):
         """Test dashboard with date that has no sessions."""
         # Use a date far in the future
-        future_date = (date.today() + timedelta(days=365)).isoformat()
+        future_date = (cairo_today() + timedelta(days=365)).isoformat()
         response = client.get(
             f"/api/v1/dashboard/daily-overview?date={future_date}",
             headers=mock_admin_headers
@@ -87,7 +88,7 @@ class TestDashboardDailyOverview:
 
     def test_dashboard_overview_unauthorized(self, client):
         """Test dashboard without authentication."""
-        target_date = date.today().isoformat()
+        target_date = cairo_today().isoformat()
         response = client.get(
             f"/api/v1/dashboard/daily-overview?date={target_date}"
         )
@@ -95,7 +96,7 @@ class TestDashboardDailyOverview:
 
     def test_dashboard_overview_forbidden(self, client, instructor_headers):
         """Test dashboard with non-admin user (should fail)."""
-        target_date = date.today().isoformat()
+        target_date = cairo_today().isoformat()
         response = client.get(
             f"/api/v1/dashboard/daily-overview?date={target_date}",
             headers=instructor_headers
@@ -106,7 +107,7 @@ class TestDashboardDailyOverview:
 
     def test_dashboard_response_lookup_table_pattern(self, client, mock_admin_headers, override_auth):
         """Verify lookup table pattern is used correctly."""
-        target_date = date.today().isoformat()
+        target_date = cairo_today().isoformat()
         response = client.get(
             f"/api/v1/dashboard/daily-overview?date={target_date}",
             headers=mock_admin_headers
@@ -125,7 +126,7 @@ class TestDashboardDailyOverview:
 
     def test_dashboard_summary_structure(self, client, mock_admin_headers, override_auth):
         """Verify summary has correct structure."""
-        target_date = date.today().isoformat()
+        target_date = cairo_today().isoformat()
         response = client.get(
             f"/api/v1/dashboard/daily-overview?date={target_date}",
             headers=mock_admin_headers

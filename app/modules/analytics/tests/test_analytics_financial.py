@@ -12,6 +12,7 @@ Tests all endpoints in app/api/routers/analytics/financial.py:
 All endpoints require admin authentication.
 """
 from datetime import date, timedelta
+from app.shared.datetime_utils import cairo_today
 
 
 class TestRevenueByDate:
@@ -19,8 +20,8 @@ class TestRevenueByDate:
 
     def test_revenue_by_date_success(self, client, mock_admin_headers, override_auth):
         """Test getting revenue breakdown by date with valid range."""
-        start_date = (date.today() - timedelta(days=30)).isoformat()
-        end_date = date.today().isoformat()
+        start_date = (cairo_today() - timedelta(days=30)).isoformat()
+        end_date = cairo_today().isoformat()
 
         response = client.get(
             f"/api/v1/analytics/finance/revenue-by-date?start={start_date}&end={end_date}",
@@ -34,7 +35,7 @@ class TestRevenueByDate:
 
     def test_revenue_by_date_missing_start(self, client, mock_admin_headers, override_auth):
         """Test getting revenue without start date returns 422."""
-        end_date = date.today().isoformat()
+        end_date = cairo_today().isoformat()
         response = client.get(
             f"/api/v1/analytics/finance/revenue-by-date?end={end_date}",
             headers=mock_admin_headers
@@ -43,7 +44,7 @@ class TestRevenueByDate:
 
     def test_revenue_by_date_missing_end(self, client, mock_admin_headers, override_auth):
         """Test getting revenue without end date returns 422."""
-        start_date = (date.today() - timedelta(days=30)).isoformat()
+        start_date = (cairo_today() - timedelta(days=30)).isoformat()
         response = client.get(
             f"/api/v1/analytics/finance/revenue-by-date?start={start_date}",
             headers=mock_admin_headers
@@ -52,8 +53,8 @@ class TestRevenueByDate:
 
     def test_revenue_by_date_invalid_range(self, client, mock_admin_headers, override_auth):
         """Test getting revenue with end date before start date."""
-        start_date = date.today().isoformat()
-        end_date = (date.today() - timedelta(days=30)).isoformat()
+        start_date = cairo_today().isoformat()
+        end_date = (cairo_today() - timedelta(days=30)).isoformat()
 
         response = client.get(
             f"/api/v1/analytics/finance/revenue-by-date?start={start_date}&end={end_date}",
@@ -64,8 +65,8 @@ class TestRevenueByDate:
 
     def test_revenue_by_date_unauthorized(self, client):
         """Test getting revenue by date without auth returns 401."""
-        start_date = (date.today() - timedelta(days=30)).isoformat()
-        end_date = date.today().isoformat()
+        start_date = (cairo_today() - timedelta(days=30)).isoformat()
+        end_date = cairo_today().isoformat()
 
         response = client.get(
             f"/api/v1/analytics/finance/revenue-by-date?start={start_date}&end={end_date}"
@@ -78,8 +79,8 @@ class TestRevenueByMethod:
 
     def test_revenue_by_method_success(self, client, mock_admin_headers, override_auth):
         """Test getting revenue breakdown by payment method."""
-        start_date = (date.today() - timedelta(days=30)).isoformat()
-        end_date = date.today().isoformat()
+        start_date = (cairo_today() - timedelta(days=30)).isoformat()
+        end_date = cairo_today().isoformat()
 
         response = client.get(
             f"/api/v1/analytics/finance/revenue-by-method?start={start_date}&end={end_date}",
@@ -101,8 +102,8 @@ class TestRevenueByMethod:
 
     def test_revenue_by_method_grouping(self, client, mock_admin_headers, override_auth):
         """Test revenue is properly grouped by payment method."""
-        start_date = (date.today() - timedelta(days=30)).isoformat()
-        end_date = date.today().isoformat()
+        start_date = (cairo_today() - timedelta(days=30)).isoformat()
+        end_date = cairo_today().isoformat()
 
         response = client.get(
             f"/api/v1/analytics/finance/revenue-by-method?start={start_date}&end={end_date}",
@@ -118,8 +119,8 @@ class TestRevenueByMethod:
 
     def test_revenue_by_method_unauthorized(self, client):
         """Test getting revenue by method without auth returns 401."""
-        start_date = (date.today() - timedelta(days=30)).isoformat()
-        end_date = date.today().isoformat()
+        start_date = (cairo_today() - timedelta(days=30)).isoformat()
+        end_date = cairo_today().isoformat()
 
         response = client.get(
             f"/api/v1/analytics/finance/revenue-by-method?start={start_date}&end={end_date}"
@@ -404,3 +405,26 @@ class TestRevenueForecast:
         """Test getting revenue forecast without auth returns 401."""
         response = client.get("/api/v1/analytics/finance/revenue-forecast")
         assert response.status_code == 401
+
+
+class TestRevenueByDateCairoDay:
+    def test_late_utc_receipt_is_bucketed_on_the_cairo_day(self, uow):
+        from datetime import datetime, timezone
+
+        from app.modules.analytics.repositories.financial_repository import FinancialRepository
+        from app.testing.db_helpers import create_test_payment, create_test_receipt, create_test_student
+
+        session = uow.session
+        repo = FinancialRepository(session)
+        day, prev = date(2026, 10, 14), date(2026, 10, 13)
+
+        def revenue(d):
+            return sum(float(r.net_revenue) for r in repo.get_revenue_by_date(d, d))
+
+        before_day, before_prev = revenue(day), revenue(prev)
+        student = create_test_student(session, status="inactive")
+        receipt = create_test_receipt(session, paid_at=datetime(2026, 10, 13, 22, 30, tzinfo=timezone.utc))
+        create_test_payment(session, receipt.id, student.id, 50.0)
+
+        assert revenue(day) == before_day + 50.0
+        assert revenue(prev) == before_prev

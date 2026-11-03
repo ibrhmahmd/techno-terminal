@@ -3,7 +3,7 @@ app/modules/finance/repositories/receipt_repository.py
 ─────────────────────────────────────────────────────
 Concrete implementation of receipt repository.
 """
-from datetime import date, timedelta
+from datetime import date
 from decimal import Decimal
 from typing import Optional, List
 
@@ -17,7 +17,7 @@ from app.modules.finance.schemas import (
     SearchReceiptsDTO,
 )
 from app.modules.finance.schemas import DailyReceiptItem, ReceiptSearchItem
-from app.shared.datetime_utils import date_at_utc_midnight, utc_now
+from app.shared.datetime_utils import cairo_day_bounds, utc_now
 from app.modules.finance.models import Payment
 
 
@@ -98,8 +98,7 @@ class ReceiptRepository:
         self, target_date: date, limit: int = 1000
     ) -> List[DailyReceiptItem]:
         """List receipts issued on a specific date."""
-        fd_start = date_at_utc_midnight(target_date)
-        td_end = fd_start + timedelta(days=1)
+        fd_start, td_end = cairo_day_bounds(target_date)
 
         stmt = text(
             """
@@ -137,8 +136,8 @@ class ReceiptRepository:
 
     def search(self, criteria: SearchReceiptsDTO) -> List[ReceiptSearchItem]:
         """Search receipts with filters."""
-        fd_start = date_at_utc_midnight(criteria.from_date)
-        td_end = date_at_utc_midnight(criteria.to_date) + timedelta(days=1)
+        fd_start = cairo_day_bounds(criteria.from_date)[0]
+        td_end = cairo_day_bounds(criteria.to_date)[1]
         where_clauses = ["COALESCE(r.paid_at, r.created_at) >= :fd_start AND COALESCE(r.paid_at, r.created_at) < :td_end"]
         params: dict = {"fd_start": fd_start, "td_end": td_end, "limit": criteria.limit}
 

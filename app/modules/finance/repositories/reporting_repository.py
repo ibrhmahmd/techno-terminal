@@ -3,14 +3,14 @@ app/modules/finance/repositories/reporting_repository.py
 ────────────────────────────────────────────────────────
 Reporting repository implementation.
 """
-from datetime import date, timedelta
+from datetime import date
 from typing import List
 
 from sqlalchemy import text
 from sqlmodel import Session
 
 from app.modules.finance.schemas import DailyCollectionItem, UnpaidCompFeeItem
-from app.shared.datetime_utils import date_at_utc_midnight
+from app.shared.datetime_utils import cairo_day_bounds
 
 
 class ReportingRepository:
@@ -23,8 +23,7 @@ class ReportingRepository:
         self, target_date: date
     ) -> List[DailyCollectionItem]:
         """Get daily collections grouped by payment method."""
-        fd_start = date_at_utc_midnight(target_date)
-        fd_end = fd_start + timedelta(days=1)
+        fd_start, fd_end = cairo_day_bounds(target_date)
 
         stmt = text(
             """

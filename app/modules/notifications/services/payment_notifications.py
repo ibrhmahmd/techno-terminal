@@ -16,7 +16,7 @@ from app.modules.crm.models.student_models import Student
 from app.modules.academics.models.group_models import Group
 from app.modules.enrollments.models.enrollment_models import Enrollment
 from sqlmodel import select
-from datetime import datetime
+from app.shared.datetime_utils import CAIRO_TZ, utc_now
 from app.modules.auth.models.auth_models import User
 from app.modules.hr.models.employee_models import Employee
 from app.modules.finance import build_receipt_pdf
@@ -95,7 +95,7 @@ class PaymentNotificationService(BaseNotificationService):
             actual_receipt_number = receipt.receipt_number or f"REC-{receipt.id}"
             actual_receipt_id = receipt.id
             
-            dt_obj = receipt.paid_at or receipt.created_at or datetime.now()
+            dt_obj = (receipt.paid_at or receipt.created_at or utc_now()).astimezone(CAIRO_TZ)
             payment_date = dt_obj.strftime("%Y-%m-%d")
             payment_time = dt_obj.strftime("%H:%M")
 

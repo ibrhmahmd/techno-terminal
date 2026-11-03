@@ -19,6 +19,7 @@ __all__ = [
     "utc_now_iso",
     "date_at_utc_midnight",
     "cairo_day_bounds",
+    "cairo_today",
     "time_to_str",
 ]
 
@@ -45,6 +46,11 @@ def cairo_day_bounds(d: date) -> tuple[datetime, datetime]:
     start = datetime.combine(d, time.min, tzinfo=CAIRO_TZ)
     end = datetime.combine(d + timedelta(days=1), time.min, tzinfo=CAIRO_TZ)
     return start, end
+
+
+def cairo_today() -> date:
+    """Today's calendar date in Africa/Cairo."""
+    return datetime.now(CAIRO_TZ).date()
 
 
 def time_to_str(value) -> Optional[str]:
