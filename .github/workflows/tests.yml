@@ -1,0 +1,65 @@
+# The backend test gate: architecture contracts + every test that does not need
+# real Supabase, against a throwaway Postgres. No secrets: external services get
+# dummy values (tests use fake notifiers).
+
+name: Tests
+
+on:
+  pull_request:
+    branches: [staging, main]
+  push:
+    branches: [staging]
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: techno_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/techno_test
+      TEST_ENV_FILE: .env.ci
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
+      - run: uv sync --locked
+
+      - name: Apply schema
+        working-directory: db
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f schema.sql
+
+      - name: Write dummy test env
+        run: |
+          cat > .env.ci <<EOF
+          DATABASE_URL=$DATABASE_URL
+          SUPABASE_URL=https://example.supabase.co
+          SUPABASE_ANON_KEY=dummy
+          SUPABASE_SERVICE_ROLE_KEY=dummy
+          TWILIO_ACCOUNT_SID=ACdummy
+          TWILIO_AUTH_TOKEN=dummy
+          TWILIO_WHATSAPP_FROM=whatsapp:+10000000000
+          GMAIL_SENDER_ADDRESS=ci@example.com
+          GMAIL_APP_PASSWORD=dummy
+          INTERNAL_TRIGGER_SECRET=ci-secret
+          EOF
+
+      - name: Architecture contracts
+        run: uv run pytest tests/architecture -q
+
+      - name: Test suite
+        run: uv run pytest -m "not supabase" -q -p no:cacheprovider

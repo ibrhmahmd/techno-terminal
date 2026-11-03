@@ -102,7 +102,7 @@ Rules that hold everywhere:
 `app/api/main.py` lifespan starts the tasks scheduler (`app/modules/tasks/scheduler.py`) and the Logfire metrics collector (`app/observability/scheduler.py`). `TestClient(app)` used as a context manager triggers lifespan, so they run during tests too. Scheduled reports have no in-process scheduler: an external cron calls `/internal/reports/*` (`app/modules/notifications/api/internal_scheduler_router.py`), guarded by the `X-Internal-Trigger-Secret` header ↔ `settings.internal_trigger_secret` (an empty secret is always rejected).
 
 ### Migrations
-Plain SQL files in `db/migrations/`. Duplicate prefix numbers exist (`008`, `020`, `021`, `022`, `026`, `030`, `036`, `051`, `057`) — apply in **chronological order**, not numeric. Cleanup migrations: `042`–`049`. Schema: 18 modular files in `db/schema/` applied via `db/schema.sql`. There is no Alembic: migrations are plain SQL files applied by hand.
+Plain SQL files in `db/migrations/`. Duplicate prefix numbers exist (`008`, `020`, `021`, `022`, `026`, `030`, `036`, `051`, `057`) — apply in **chronological order**, not numeric. Cleanup migrations: `042`–`049`. Schema: 19 modular files in `db/schema/` applied via `db/schema.sql`. There is no Alembic: migrations are plain SQL files applied by hand.
 
 ### Database Pool (code truth in `app/db/connection.py`)
 `pool_size=10, max_overflow=5 (15 total), pool_timeout=30, pool_pre_ping=True, pool_recycle=240s`, `sslmode=prefer`, `statement_timeout=30000`, `expire_on_commit=False`.
@@ -130,7 +130,9 @@ Tests live with the code they test (#109): `app/modules/<module>/tests/` (API pi
 - Migration ladder: write migration → apply to testing project → green HR/CI gates there → then prod.
 
 ### CI
-The only workflow is `.github/workflows/deploy-staging.yml`, which deploys the `staging` branch to the FastAPI Cloud staging app on every push. It runs no tests, so run the tests yourself, against `localhost` Postgres for anything that writes.
+- `.github/workflows/tests.yml` runs on every PR into `staging`/`main` and every push to `staging`: a throwaway `postgres:17` service, `db/schema.sql`, `uv sync --locked`, then `pytest tests/architecture` and `pytest -m "not supabase"`. It needs no secrets: external services get dummy values from a generated `.env.ci`. The suite must stay at 0 failures on a fresh DB; a production bug a test exposes is a strict `xfail` naming its issue, never a loosened test.
+- `.github/workflows/deploy-staging.yml` deploys the `staging` branch to the FastAPI Cloud staging app on every push.
+- `supabase`-marked tests never run in CI; run them once per sprint against the testing project (see the environment ladder).
 
 ### Dead Code Discipline
 Before any refactoring, grep for callers of every method. Delete dead code immediately — never migrate it into a new structure. Zero tolerance for commented-out code, deprecated shims, or superseded subset methods.
