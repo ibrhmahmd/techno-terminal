@@ -5,6 +5,7 @@ Data access layer for financial analytics.
 """
 
 from datetime import date
+from app.shared.datetime_utils import cairo_today
 from sqlmodel import Session
 from sqlalchemy import text
 from app.modules.analytics.schemas import (
@@ -26,12 +27,12 @@ class FinancialRepository:
         """Daily revenue totals between two dates."""
         stmt = text("""
             SELECT
-                DATE(r.paid_at) AS day,
+                (r.paid_at AT TIME ZONE 'Africa/Cairo')::date AS day,
                 COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type IN ('payment','charge')), 0)
                   - COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type = 'refund'), 0) AS net_revenue
             FROM receipts r
             JOIN payments p ON p.receipt_id = r.id
-            WHERE DATE(r.paid_at) BETWEEN :start AND :end
+            WHERE (r.paid_at AT TIME ZONE 'Africa/Cairo')::date BETWEEN :start AND :end
             GROUP BY day
             ORDER BY day
         """)
@@ -49,7 +50,7 @@ class FinancialRepository:
                 COUNT(DISTINCT r.id) AS receipt_count
             FROM receipts r
             JOIN payments p ON p.receipt_id = r.id
-            WHERE DATE(r.paid_at) BETWEEN :start AND :end
+            WHERE (r.paid_at AT TIME ZONE 'Africa/Cairo')::date BETWEEN :start AND :end
             GROUP BY r.payment_method
             ORDER BY net_revenue DESC
         """)
@@ -101,19 +102,19 @@ class FinancialRepository:
 
     def get_revenue_metrics(self, months: int = 6) -> RevenueMetricsDTO:
         """Extended revenue metrics with trend analysis for the last N months."""
-        period_end = date.today()
+        period_end = cairo_today()
         period_start = period_end - relativedelta(months=months)
         previous_period_start = period_start - relativedelta(months=months)
     
         # 1. Fetch ALL daily revenue across previous + current periods in ONE query
         daily_revenue_stmt = text("""
             SELECT
-                DATE(r.paid_at) AS day,
+                (r.paid_at AT TIME ZONE 'Africa/Cairo')::date AS day,
                 COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type IN ('payment','charge')), 0)
                   - COALESCE(SUM(p.amount) FILTER (WHERE p.transaction_type = 'refund'), 0) AS net_revenue
             FROM receipts r
             JOIN payments p ON p.receipt_id = r.id
-            WHERE DATE(r.paid_at) BETWEEN :prev_start AND :end
+            WHERE (r.paid_at AT TIME ZONE 'Africa/Cairo')::date BETWEEN :prev_start AND :end
             GROUP BY day
             ORDER BY day
         """)
@@ -143,7 +144,7 @@ class FinancialRepository:
         total_receipts_stmt = text("""
             SELECT COUNT(DISTINCT r.id) 
             FROM receipts r
-            WHERE DATE(r.paid_at) BETWEEN :start AND :end
+            WHERE (r.paid_at AT TIME ZONE 'Africa/Cairo')::date BETWEEN :start AND :end
         """)
         total_receipts = self._session.execute(
             total_receipts_stmt, 
@@ -186,7 +187,7 @@ class FinancialRepository:
         """Generate revenue forecast for future months based on historical trends."""
     
         # Get historical data for trend calculation (last 6 months)
-        end_date = date.today()
+        end_date = cairo_today()
         start_date = end_date - relativedelta(months=6)
     
         historical = self.get_revenue_by_date(start_date, end_date)

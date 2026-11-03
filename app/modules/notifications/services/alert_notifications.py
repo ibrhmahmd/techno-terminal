@@ -1,6 +1,7 @@
 """Admin-facing alerts: admin login alert and student absence alert."""
 import logging
 from datetime import datetime
+from app.shared.datetime_utils import CAIRO_TZ
 from typing import Optional
 
 from fastapi import BackgroundTasks
@@ -35,7 +36,7 @@ class AlertNotificationService(BaseNotificationService):
             "username": username,
             "email": email,
             "role": role,
-            "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "time": datetime.now(CAIRO_TZ).strftime("%Y-%m-%d %H:%M:%S"),
             "ip_address": ip_address or "Unknown",
             "user_agent": user_agent or "Unknown",
             "alert_reason": alert_reason,
@@ -111,8 +112,8 @@ class AlertNotificationService(BaseNotificationService):
             "student_name": student_name,
             "session_name": session_name,
             "session_date": session_date,
-            "date": datetime.now().strftime("%Y-%m-%d"),
-            "time": datetime.now().strftime("%I:%M %p"),
+            "date": datetime.now(CAIRO_TZ).strftime("%Y-%m-%d"),
+            "time": datetime.now(CAIRO_TZ).strftime("%I:%M %p"),
         }
 
         recipients = self._resolve_notification_recipients(

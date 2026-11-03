@@ -4,6 +4,7 @@ app/modules/finance/services/reporting_service.py
 Reporting service implementation for financial reports.
 """
 from datetime import date
+from app.shared.datetime_utils import cairo_today
 from typing import Optional, List
 
 from app.modules.finance.schemas import DailyCollectionItem, DailyReceiptItem, UnpaidCompFeeItem
@@ -32,7 +33,7 @@ class ReportingService:
     ) -> List[DailyCollectionItem]:
         """Get daily collection summary by payment method."""
         if target_date is None:
-            target_date = date.today()
+            target_date = cairo_today()
 
         return self._reporting.get_daily_collections(target_date)
 
@@ -41,7 +42,7 @@ class ReportingService:
     ) -> List[DailyReceiptItem]:
         """Get all receipts issued on a specific date."""
         if target_date is None:
-            target_date = date.today()
+            target_date = cairo_today()
 
         return self._receipts.list_by_date(target_date)
 

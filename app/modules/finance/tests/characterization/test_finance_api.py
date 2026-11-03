@@ -30,6 +30,7 @@ See the tests marked "current behaviour".
 
 import uuid
 from datetime import date, time
+from app.shared.datetime_utils import cairo_today
 
 import pytest
 
@@ -501,7 +502,7 @@ def test_search_receipts(client_with_uow, override_auth, mock_admin_headers, db_
     _, _, student, enrollment = _seed_enrollment(db_session)
     payer = f"Payer {_short()}"
     created = _create_receipt(client_with_uow, mock_admin_headers, student, enrollment, amount=120.0, payer=payer).json()["data"]
-    today = date.today().isoformat()
+    today = cairo_today().isoformat()
 
     r = client_with_uow.get(
         f"/api/v1/finance/receipts?from_date={today}&to_date={today}&payer_name={payer}",
@@ -608,7 +609,7 @@ def test_daily_collections_and_receipts(client_with_uow, override_auth, mock_adm
     cash = [c for c in col.json()["data"] if c["payment_method"] == "cash"]
     assert len(cash) == 1
     assert set(cash[0]) == {"payment_method", "total_amount", "receipt_count", "target_date"}
-    assert cash[0]["target_date"] == date.today().isoformat()
+    assert cash[0]["target_date"] == cairo_today().isoformat()
     assert rec.status_code == 200
     mine = [x for x in rec.json()["data"] if x["receipt_id"] == created["receipt_id"]]
     assert len(mine) == 1

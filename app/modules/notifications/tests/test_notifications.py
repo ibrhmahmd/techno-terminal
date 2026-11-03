@@ -6,6 +6,7 @@ import pytest
 from unittest.mock import Mock, patch, AsyncMock
 import os
 from datetime import datetime, date
+from app.shared.datetime_utils import cairo_today
 
 from app.testing.notification_mocks import (
     MockNotificationRepository,
@@ -390,7 +391,7 @@ class TestDailyReportIntegration:
         repo = NotificationRepository(db_session)
         svc = ReportNotificationService(repo)
 
-        today = date.today()
+        today = cairo_today()
         aggregates = svc._fetch_daily_aggregates(today)
 
         assert isinstance(aggregates, DailyReportAggregateDTO)
@@ -472,7 +473,7 @@ class TestDailyReportIntegration:
         # 1. Fetch real data from DB
         repo = NotificationRepository(db_session)
         svc = ReportNotificationService(repo)
-        today = date.today()
+        today = cairo_today()
         aggregates = svc._fetch_daily_aggregates(today)
 
         # 2. Get template and build variables (mirrors send_daily_report logic)
@@ -550,3 +551,24 @@ class TestDailyReportIntegration:
         print("  - HTML: Open in browser, use print preview -> verify @media print styles")
         print("  - PDF: Open PDF attachment -> verify B&W readability (no colored backgrounds)")
 
+
+
+class TestDailyReportCairoDay:
+    def test_late_utc_receipt_counts_in_the_cairo_day_total(self, uow):
+        from datetime import timezone
+
+        from app.modules.notifications.repositories.reports_repository import ReportsRepository
+        from app.testing.db_helpers import create_test_payment, create_test_receipt, create_test_student
+
+        session = uow.session
+        repo = ReportsRepository(session)
+        day, prev = date(2026, 10, 14), date(2026, 10, 13)
+
+        before_day = repo.get_daily_aggregates(day).total_revenue
+        before_prev = repo.get_daily_aggregates(prev).total_revenue
+        student = create_test_student(session, status="inactive")
+        receipt = create_test_receipt(session, paid_at=datetime(2026, 10, 13, 22, 30, tzinfo=timezone.utc))
+        create_test_payment(session, receipt.id, student.id, 50.0)
+
+        assert repo.get_daily_aggregates(day).total_revenue == before_day + 50.0
+        assert repo.get_daily_aggregates(prev).total_revenue == before_prev

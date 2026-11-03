@@ -5,6 +5,7 @@ Domain service for Business Intelligence (BI) analytics.
 """
 
 from datetime import date, timedelta
+from app.shared.datetime_utils import cairo_today
 from app.db.uow import UnitOfWork
 from app.modules.analytics.repositories.bi_repository import BiRepository
 from app.modules.analytics.schemas import (
@@ -29,7 +30,7 @@ class BIAnalyticsService:
     def get_new_enrollments_trend(self, cutoff_date: date | None = None) -> list[EnrollmentTrendDTO]:
         """Get enrollment trend. Defaults to 90 days ago if cutoff not provided."""
         if cutoff_date is None:
-            cutoff_date = date.today() - timedelta(days=90)
+            cutoff_date = cairo_today() - timedelta(days=90)
         return self._repo.get_new_enrollments_trend(cutoff_date)
 
     def get_retention_metrics(self) -> list[RetentionMetricsDTO]:

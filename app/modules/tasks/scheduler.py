@@ -1,9 +1,9 @@
 import asyncio
-import zoneinfo
 import logging
 from datetime import datetime
 from typing import Callable
 
+from app.shared.datetime_utils import CAIRO_TZ
 from app.db.uow import UnitOfWork, unit_of_work
 from app.modules.tasks.services.task_service import TaskService
 
@@ -24,11 +24,10 @@ async def start_task_scheduler(make_service: Callable[[UnitOfWork], TaskService]
     """
     logger.info("Recurring tasks spawner scheduler started.")
     last_spawn_date = None
-    cairo_tz = zoneinfo.ZoneInfo("Africa/Cairo")
 
     while True:
         try:
-            now = datetime.now(cairo_tz)
+            now = datetime.now(CAIRO_TZ)
 
             if now.hour == SPAWN_HOUR and now.minute >= SPAWN_MINUTE and now.minute < SPAWN_MINUTE + 5:
                 today = now.date()

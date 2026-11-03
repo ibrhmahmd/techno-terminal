@@ -12,6 +12,7 @@ Tests all endpoints in app/api/routers/analytics/academic.py:
 All endpoints require admin authentication.
 """
 from datetime import date, timedelta
+from app.shared.datetime_utils import cairo_today
 
 import pytest
 
@@ -33,7 +34,7 @@ class TestUnpaidAttendees:
 
     def test_unpaid_attendees_with_target_date(self, client, mock_admin_headers, override_auth):
         """Test getting unpaid attendees with specific target date."""
-        today = date.today().isoformat()
+        today = cairo_today().isoformat()
         response = client.get(
             f"/api/v1/analytics/academics/unpaid-attendees?target_date={today}",
             headers=mock_admin_headers

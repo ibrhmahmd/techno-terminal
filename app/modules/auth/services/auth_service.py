@@ -2,7 +2,7 @@ import base64
 import json
 import logging
 from typing import Optional
-from datetime import date
+from app.shared.datetime_utils import CAIRO_TZ, cairo_today
 
 from app.core.supabase_clients import get_supabase_admin, get_supabase_anon
 from app.db.uow import UnitOfWork
@@ -293,7 +293,7 @@ class AuthService:
         """
         if user.last_login is None:
             return "First time this user has ever logged in."
-        if user.last_login.date() < date.today():
+        if user.last_login.astimezone(CAIRO_TZ).date() < cairo_today():
             return "First login of the day for this user."
         last_log = self._audit.get_last_login_event(user.id)
         if last_log:

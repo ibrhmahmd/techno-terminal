@@ -23,6 +23,7 @@ See the tests marked "current behaviour".
 
 import uuid
 from datetime import date, time
+from app.shared.datetime_utils import cairo_today
 
 import pytest
 
@@ -169,7 +170,7 @@ def test_retention_analysis_counts_active_and_completed_as_retained(
     tests' rows share the database."""
     from app.modules.finance.tests.characterization.test_finance_api import _seed_enrollment
 
-    this_month = date.today().strftime("%Y-%m")
+    this_month = cairo_today().strftime("%Y-%m")
 
     def cohort():
         rows = _get(client_with_uow, mock_admin_headers, "/analytics/bi/retention-analysis?months=1").json()["data"]
@@ -180,7 +181,7 @@ def test_retention_analysis_counts_active_and_completed_as_retained(
     for status in ("active", "completed", "dropped", "transferred"):
         *_, enrollment = _seed_enrollment(uow.session)
         enrollment.status = status
-        enrollment.enrolled_at = date.today()
+        enrollment.enrolled_at = cairo_today()
         uow.session.add(enrollment)
     uow.session.commit()
     after = cohort()

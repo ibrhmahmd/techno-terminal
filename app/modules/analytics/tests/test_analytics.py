@@ -21,6 +21,7 @@ Covers all analytics endpoints:
 """
 import pytest
 from datetime import date, timedelta
+from app.shared.datetime_utils import cairo_today
 
 
 class TestAcademicAnalytics:
@@ -30,7 +31,7 @@ class TestAcademicAnalytics:
         """
         GET /analytics/academics/unpaid-attendees returns unpaid students.
         """
-        today = date.today().isoformat()
+        today = cairo_today().isoformat()
         
         response = client.get(
             f"/api/v1/analytics/academics/unpaid-attendees?target_date={today}",
@@ -86,7 +87,7 @@ class TestBIAnalytics:
         """
         GET /analytics/bi/enrollment-trend with cutoff date.
         """
-        cutoff = (date.today() - timedelta(days=30)).isoformat()
+        cutoff = (cairo_today() - timedelta(days=30)).isoformat()
         
         response = client.get(
             f"/api/v1/analytics/bi/enrollment-trend?cutoff={cutoff}",
@@ -207,8 +208,8 @@ class TestFinancialAnalytics:
         """
         GET /analytics/finance/revenue-by-date returns revenue data.
         """
-        start = (date.today() - timedelta(days=30)).isoformat()
-        end = date.today().isoformat()
+        start = (cairo_today() - timedelta(days=30)).isoformat()
+        end = cairo_today().isoformat()
         
         response = client.get(
             f"/api/v1/analytics/finance/revenue-by-date?start={start}&end={end}",
@@ -235,8 +236,8 @@ class TestFinancialAnalytics:
         """
         GET /analytics/finance/revenue-by-method returns revenue by method.
         """
-        start = (date.today() - timedelta(days=30)).isoformat()
-        end = date.today().isoformat()
+        start = (cairo_today() - timedelta(days=30)).isoformat()
+        end = cairo_today().isoformat()
         
         response = client.get(
             f"/api/v1/analytics/finance/revenue-by-method?start={start}&end={end}",

@@ -14,17 +14,14 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 import logfire
-import zoneinfo
 
 from app.modules.notifications.api.deps import get_report_service
 from app.core.config import settings
 from app.modules.notifications.schemas.report_dto import ReportDeliveryResult
 from app.modules.notifications.services.report_notifications import ReportNotificationService
-from datetime import datetime
+from app.shared.datetime_utils import cairo_today
 
 router = APIRouter(prefix="/internal/reports", tags=["Internal — Scheduled Reports"])
-
-CAIRO_TZ = zoneinfo.ZoneInfo("Africa/Cairo")
 
 _DELIVERY_SUCCESS_OUTCOMES = {"delivered", "nothing_to_send", "disabled"}
 _REPORT_DELIVERY_ERROR = "ScheduledReportDeliveryError"
@@ -53,7 +50,7 @@ def _verify_internal_secret(x_internal_trigger_secret: Optional[str] = Header(de
 
 def _get_yesterday_cairo() -> date:
     """Get yesterday's date in Cairo timezone."""
-    now_cairo = datetime.now(CAIRO_TZ).date()
+    now_cairo = cairo_today()
     return now_cairo - timedelta(days=1)
 
 

@@ -6,6 +6,7 @@ Kept simple: one public method per notification type.
 """
 import logging
 from datetime import datetime
+from app.shared.datetime_utils import CAIRO_TZ
 from typing import Optional
 from fastapi import BackgroundTasks
 
@@ -153,8 +154,8 @@ class EnrollmentNotificationService(BaseNotificationService):
             "schedule": schedule,
             "enrollment_id": str(enrollment_id),
             "enrollment_date": enrollment_date,
-            "date": datetime.now().strftime("%Y-%m-%d"),
-            "time": datetime.now().strftime("%I:%M %p"),
+            "date": datetime.now(CAIRO_TZ).strftime("%Y-%m-%d"),
+            "time": datetime.now(CAIRO_TZ).strftime("%I:%M %p"),
         }
         
         # Send to all enabled recipients
@@ -189,8 +190,8 @@ class EnrollmentNotificationService(BaseNotificationService):
             "admin_email": admin_info["email"],
             "changes_summary": changes_summary,
             "enrollment_id": str(enrollment_id),
-            "date": datetime.now().strftime("%Y-%m-%d"),
-            "time": datetime.now().strftime("%I:%M %p"),
+            "date": datetime.now(CAIRO_TZ).strftime("%Y-%m-%d"),
+            "time": datetime.now(CAIRO_TZ).strftime("%I:%M %p"),
         }
         
         # Send to all enabled recipients
@@ -225,8 +226,8 @@ class EnrollmentNotificationService(BaseNotificationService):
             "admin_email": admin_info["email"],
             "reason": reason or "No reason provided",
             "enrollment_id": str(enrollment_id),
-            "date": datetime.now().strftime("%Y-%m-%d"),
-            "time": datetime.now().strftime("%I:%M %p"),
+            "date": datetime.now(CAIRO_TZ).strftime("%Y-%m-%d"),
+            "time": datetime.now(CAIRO_TZ).strftime("%I:%M %p"),
         }
         
         # Send to all enabled recipients
@@ -262,8 +263,8 @@ class EnrollmentNotificationService(BaseNotificationService):
             "admin_email": admin_info["email"],
             "from_enrollment_id": str(from_enrollment_id),
             "to_enrollment_id": str(to_enrollment_id),
-            "date": datetime.now().strftime("%Y-%m-%d"),
-            "time": datetime.now().strftime("%I:%M %p"),
+            "date": datetime.now(CAIRO_TZ).strftime("%Y-%m-%d"),
+            "time": datetime.now(CAIRO_TZ).strftime("%I:%M %p"),
         }
         
         # Send to all enabled recipients

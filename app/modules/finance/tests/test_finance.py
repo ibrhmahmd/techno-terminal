@@ -20,6 +20,7 @@ All tests verify:
 """
 import pytest
 from datetime import date
+from app.shared.datetime_utils import cairo_today
 
 
 class TestReceiptsRead:
@@ -63,7 +64,7 @@ class TestReceiptsSearch:
     """Tests for searching receipts."""
     
     def test_search_receipts_success(self, client, mock_admin_headers, override_auth):
-        today = date.today().isoformat()
+        today = cairo_today().isoformat()
         response = client.get(
             f"/api/v1/finance/receipts?from_date=2024-01-01&to_date={today}",
             headers=mock_admin_headers
@@ -235,7 +236,7 @@ class TestFinanceAuth:
         """
         GET /finance/receipts requires admin role.
         """
-        today = date.today().isoformat()
+        today = cairo_today().isoformat()
         response = client.get(
             f"/api/v1/finance/receipts?from_date=2024-01-01&to_date={today}",
             headers=mock_admin_headers
@@ -428,3 +429,35 @@ class TestPaymentMethodNormalization:
         assert response.status_code == 422  # missing lines, not method error
         data = response.json()
         assert data["success"] is False
+
+
+class TestCairoBusinessDay:
+    """A receipt paid at 01:30 Cairo (22:30 UTC the day before) belongs to the Cairo day."""
+
+    def test_late_utc_receipt_counts_on_the_cairo_day(self, uow):
+        from datetime import datetime, timezone
+
+        from app.modules.finance.repositories.receipt_repository import ReceiptRepository
+        from app.modules.finance.repositories.reporting_repository import ReportingRepository
+        from app.modules.finance.schemas import SearchReceiptsDTO
+        from app.testing.db_helpers import create_test_payment, create_test_receipt, create_test_student
+
+        session = uow.session
+        receipts, reports = ReceiptRepository(session), ReportingRepository(session)
+        day, prev = date(2026, 10, 14), date(2026, 10, 13)
+
+        def ids(d):
+            return {r.id for r in receipts.search(SearchReceiptsDTO(from_date=d, to_date=d))}
+
+        def count(d):
+            return sum(c.receipt_count for c in reports.get_daily_collections(d))
+
+        before_day, before_prev = count(day), count(prev)
+        student = create_test_student(session, status="inactive")
+        receipt = create_test_receipt(session, paid_at=datetime(2026, 10, 13, 22, 30, tzinfo=timezone.utc))
+        create_test_payment(session, receipt.id, student.id, 50.0)
+
+        assert receipt.id in ids(day)
+        assert receipt.id not in ids(prev)
+        assert count(day) == before_day + 1
+        assert count(prev) == before_prev

@@ -30,6 +30,7 @@ See the tests marked "current behaviour".
 
 import uuid
 from datetime import date, timedelta
+from app.shared.datetime_utils import cairo_today
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -186,7 +187,7 @@ def test_get_logs_date_filters(client_with_uow, override_auth, mock_admin_header
         body=token, status="SENT", created_at=datetime.now(timezone.utc),
     ))
     db_session.commit()
-    today = date.today()
+    today = cairo_today()
 
     def found(start, end):
         r = client_with_uow.get(
@@ -252,7 +253,7 @@ def test_daily_report_trigger_failure_is_500(app, override_auth, mock_admin_head
 
 
 def test_report_triggers_reject_future_dates(client_with_uow, override_auth, mock_admin_headers, fake_svc):
-    future = (date.today() + timedelta(days=2)).isoformat()
+    future = (cairo_today() + timedelta(days=2)).isoformat()
     for period in ("daily", "weekly", "monthly"):
         r = client_with_uow.post(f"{BASE}/reports/{period}?target_date={future}", headers=mock_admin_headers)
         assert r.status_code == 400, period
@@ -603,7 +604,7 @@ def test_internal_trigger_defaults_to_yesterday(client_with_uow, fake_svc, monke
 
     assert r.status_code == 200
     passed = fake_svc.send_daily_report.call_args.kwargs["target_date"]
-    assert isinstance(passed, date) and passed < date.today() + timedelta(days=1)
+    assert isinstance(passed, date) and passed < cairo_today() + timedelta(days=1)
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────

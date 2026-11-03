@@ -4,6 +4,7 @@ Comprehensive integration tests for all analytics routes.
 
 import pytest
 from datetime import date, timedelta, time
+from app.shared.datetime_utils import cairo_today
 import uuid
 
 
@@ -23,7 +24,7 @@ class TestAcademicAnalytics:
         att = create_test_attendance(db_session, student.id, sessions[0].id, enrollment.id)
         db_session.commit()
 
-        today = date.today().isoformat()
+        today = cairo_today().isoformat()
         resp = client.get(
             f"/api/v1/analytics/academics/unpaid-attendees?target_date={today}",
             headers=mock_admin_headers,
@@ -118,8 +119,8 @@ class TestFinancialAnalytics:
         pmt = create_test_payment(db_session, receipt.id, student.id, 500.0)
         db_session.commit()
 
-        start = (date.today() - timedelta(days=30)).isoformat()
-        end = date.today().isoformat()
+        start = (cairo_today() - timedelta(days=30)).isoformat()
+        end = cairo_today().isoformat()
         resp = client.get(
             f"/api/v1/analytics/finance/revenue-by-date?start={start}&end={end}",
             headers=mock_admin_headers,
@@ -141,8 +142,8 @@ class TestFinancialAnalytics:
         pmt = create_test_payment(db_session, receipt.id, student.id, 300.0)
         db_session.commit()
 
-        start = (date.today() - timedelta(days=30)).isoformat()
-        end = date.today().isoformat()
+        start = (cairo_today() - timedelta(days=30)).isoformat()
+        end = cairo_today().isoformat()
         resp = client.get(
             f"/api/v1/analytics/finance/revenue-by-method?start={start}&end={end}",
             headers=mock_admin_headers,
@@ -214,8 +215,8 @@ class TestFinancialAnalytics:
 
     def test_revenue_by_date_unauthorized(self, client):
         """401 without auth for revenue-by-date."""
-        start = (date.today() - timedelta(days=30)).isoformat()
-        end = date.today().isoformat()
+        start = (cairo_today() - timedelta(days=30)).isoformat()
+        end = cairo_today().isoformat()
         resp = client.get(
             f"/api/v1/analytics/finance/revenue-by-date?start={start}&end={end}"
         )
@@ -449,7 +450,7 @@ class TestDashboard:
         parent, student, enrollment = create_student_with_enrollment(db_session, group.id)
         db_session.commit()
 
-        today = date.today().isoformat()
+        today = cairo_today().isoformat()
         resp = client.get(
             f"/api/v1/dashboard/daily-overview?date={today}",
             headers=mock_admin_headers,
@@ -462,6 +463,6 @@ class TestDashboard:
 
     def test_daily_overview_unauthorized(self, client):
         """401 without auth."""
-        today = date.today().isoformat()
+        today = cairo_today().isoformat()
         resp = client.get(f"/api/v1/dashboard/daily-overview?date={today}")
         assert resp.status_code == 401
