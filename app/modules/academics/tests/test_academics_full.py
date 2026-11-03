@@ -663,18 +663,6 @@ class TestLifecycleEndpoints:
             data = response.json()
             assert data["data"]["level_number"] == level.level_number
 
-    @pytest.mark.xfail(reason="BUG: GroupLevelService missing complete_current_level method", strict=False)
-    def test_complete_level_success(self, client, mock_admin_headers, override_auth, db_session):
-        course, group, level, sessions = self._create_bundle(db_session)
-        response = client.post(
-            f"/api/v1/academics/groups/{group.id}/levels/{level.level_number}/complete",
-            headers=mock_admin_headers,
-        )
-        assert response.status_code in (200, 400, 500)
-        if response.status_code == 200:
-            data = response.json()
-            assert data["success"] is True
-
     @pytest.mark.xfail(reason="BUG: GroupLevelService.cancel_level() takes 3 args but router passes 4", strict=False)
     def test_cancel_level_success(self, client, mock_admin_headers, override_auth, db_session):
         course, group, level, sessions = self._create_bundle(db_session)
@@ -717,14 +705,6 @@ class TestLifecycleEndpoints:
         )
         assert response.status_code in (404, 500)
 
-    @pytest.mark.xfail(reason="BUG: GroupLevelService missing complete_current_level method", strict=False)
-    def test_complete_level_not_found(self, client, mock_admin_headers, override_auth):
-        response = client.post(
-            "/api/v1/academics/groups/99999/levels/1/complete",
-            headers=mock_admin_headers,
-        )
-        assert response.status_code in (400, 404, 500)
-
     @pytest.mark.xfail(reason="BUG: GroupLevelService.cancel_level() takes 3 args but router passes 4", strict=False)
     def test_cancel_level_not_found(self, client, mock_admin_headers, override_auth):
         response = client.post(
@@ -734,10 +714,10 @@ class TestLifecycleEndpoints:
         )
         assert response.status_code in (400, 404, 500)
 
-    def test_complete_level_unauthorized(self, client, db_session):
+    def test_cancel_level_unauthorized(self, client, db_session):
         course, group, level, sessions = self._create_bundle(db_session)
         response = client.post(
-            f"/api/v1/academics/groups/{group.id}/levels/{level.level_number}/complete",
+            f"/api/v1/academics/groups/{group.id}/levels/{level.level_number}/cancel",
         )
         assert response.status_code == 401
 

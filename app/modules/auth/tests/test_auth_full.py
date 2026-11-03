@@ -56,7 +56,11 @@ def db_user(db_session):
 class TestAuthMe:
     """Tests for GET /api/v1/auth/me and PATCH /api/v1/auth/me."""
 
-    def test_auth_me_success(self, client, override_auth, mock_admin_headers, db_user):
+    def test_auth_me_success(self, client, override_auth, mock_admin_headers, db_session):
+        # override_auth resolves every request to the "test-admin-001" user.
+        expected = db_session.exec(
+            select(User).where(User.supabase_uid == "test-admin-001")
+        ).one()
         response = client.get("/api/v1/auth/me", headers=mock_admin_headers)
 
         assert response.status_code == 200
@@ -64,7 +68,7 @@ class TestAuthMe:
         assert "id" in data
         assert "username" in data
         assert "role" in data
-        assert data["id"] == db_user.id
+        assert data["id"] == expected.id
         assert data["role"] == "admin"
 
     def test_auth_me_no_token(self, client):

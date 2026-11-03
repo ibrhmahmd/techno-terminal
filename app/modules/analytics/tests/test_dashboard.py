@@ -93,7 +93,7 @@ class TestDashboardDailyOverview:
         )
         assert response.status_code == 401
 
-    def test_dashboard_overview_forbidden(self, client, instructor_headers):
+    def test_dashboard_overview_forbidden(self, client, instructor_headers, override_instructor_auth):
         """Test dashboard with non-admin user (should fail)."""
         target_date = date.today().isoformat()
         response = client.get(
