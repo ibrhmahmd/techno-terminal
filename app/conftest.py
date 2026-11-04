@@ -26,6 +26,38 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(pytest.mark.supabase)
 
 
+def _smtp_blocked(*args, **kwargs):
+    raise RuntimeError("Test tried to open a real SMTP connection; patch smtplib in the test.")
+
+
+@pytest.fixture(autouse=True)
+def dispatch_recorder(request, monkeypatch):
+    """Keep tests off the network: dispatchers record in memory, smtplib refuses to connect.
+
+    Tests of the dispatcher code itself opt out of the recording with
+    @pytest.mark.real_dispatchers; the smtplib guard stays and their own patches win.
+    """
+    import smtplib
+
+    from app.modules.notifications.dispatchers.email_dispatcher import GmailEmailDispatcher
+    from app.modules.notifications.dispatchers.whatsapp_dispatcher import TwilioWhatsAppDispatcher
+    from app.testing.notification_mocks import MockEmailDispatcher, MockWhatsAppDispatcher
+
+    email, whatsapp = MockEmailDispatcher(), MockWhatsAppDispatcher()
+    if request.node.get_closest_marker("real_dispatchers") is None:
+        monkeypatch.setattr(
+            GmailEmailDispatcher, "send",
+            lambda self, *a, **kw: email.send(*a, **kw),
+        )
+        monkeypatch.setattr(
+            TwilioWhatsAppDispatcher, "send",
+            lambda self, *a, **kw: whatsapp.send(*a, **kw),
+        )
+    monkeypatch.setattr(smtplib, "SMTP_SSL", _smtp_blocked)
+    monkeypatch.setattr(smtplib, "SMTP", _smtp_blocked)
+    return email, whatsapp
+
+
 @pytest.fixture(scope="session")
 def app():
     """FastAPI application instance."""
