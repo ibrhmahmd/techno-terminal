@@ -18,6 +18,15 @@ All tests verify:
 import pytest
 
 
+@pytest.fixture
+def noop_notifications(app):
+    """Replace every notifier port provider with a no-op so nothing can be dispatched."""
+    from app.testing.noop_notifiers import noop_notifiers
+
+    with noop_notifiers(app) as stub:
+        yield stub
+
+
 class TestEnrollmentsRead:
     """Tests for reading enrollment data."""
     
@@ -58,36 +67,38 @@ class TestEnrollmentsRead:
 class TestEnrollmentsCreate:
     """Tests for enrolling students."""
     
-    def test_enroll_student_success(self, client, mock_admin_headers, override_auth):
+    def test_enroll_student_success(
+        self, client_with_uow, uow, mock_admin_headers, override_auth, noop_notifications
+    ):
         """
         POST /enrollments enrolls a student in a group.
         Requires admin role.
         Uses EnrollStudentInput schema.
         """
-        # This test requires valid student_id and group_id
-        # Using IDs that may exist, or expect 404/422 if not
-        response = client.post(
+        from app.testing.db_helpers import create_test_student, create_test_course, create_test_group
+
+        student = create_test_student(uow.session, status="active")
+        course = create_test_course(uow.session)
+        group = create_test_group(uow.session, course_id=course.id)
+
+        response = client_with_uow.post(
             "/api/v1/enrollments",
             headers=mock_admin_headers,
             json={
-                "student_id": 1,
-                "group_id": 1,
+                "student_id": student.id,
+                "group_id": group.id,
                 "amount_due": 100.0,
                 "discount": 0.0,
                 "notes": "Test enrollment"
             }
         )
-        
-        # May succeed (201) or fail validation (422) or not found (404)
-        assert response.status_code in [201, 404, 422]
-        
-        if response.status_code == 201:
-            data = response.json()
-            assert data["success"] is True
-            assert "data" in data
-            assert data["data"]["student_id"] == 1
-            assert data["data"]["group_id"] == 1
-    
+
+        assert response.status_code == 201, response.text
+        data = response.json()
+        assert data["success"] is True
+        assert data["data"]["student_id"] == student.id
+        assert data["data"]["group_id"] == group.id
+
     def test_enroll_student_validation_error(self, client, mock_admin_headers, override_auth):
         """
         POST /enrollments with invalid data returns 422.

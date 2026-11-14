@@ -143,11 +143,12 @@ class TestEnrollmentNotifications:
         mock_repo.templates["enrollment_confirmation"] = enrollment_template
         svc = EnrollmentNotificationService(mock_repo)
         svc._email = mock_email
+        # The processor reads templates through a fresh DB session, not mock_repo.
+        svc._get_template_by_name = Mock(return_value=enrollment_template)
 
         await svc._process_created(student_id=1, enrollment_id=10, group_id=5, level_number=1)
 
-        # Should be 0 when template is inactive, but fallback mechanism may still send
-        assert len(mock_email.sent_emails) in [0, 1]
+        assert mock_email.sent_emails == []
 
     @pytest.mark.anyio
     async def test_enrollment_dropped_sends_notification(self, mock_repo, mock_email,
