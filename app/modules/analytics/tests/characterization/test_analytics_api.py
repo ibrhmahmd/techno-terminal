@@ -96,11 +96,24 @@ def test_unpaid_attendees(client_with_uow, override_auth, mock_admin_headers):
     )
 
 
-def test_attendance_heatmap(client_with_uow, override_auth, mock_admin_headers):
-    _assert_list(
-        _get(client_with_uow, mock_admin_headers, "/analytics/academics/groups/999999999/heatmap?level_number=1"),
+def test_attendance_heatmap(client_with_uow, override_auth, mock_admin_headers, db_session):
+    """A known group with no rows at this level is 200 [] (#143 keeps it)."""
+    from app.testing.db_helpers import create_minimal_group_bundle
+
+    _, group, _, _ = create_minimal_group_bundle(db_session, session_count=1)
+    db_session.commit()
+    rows = _assert_list(
+        _get(client_with_uow, mock_admin_headers, f"/analytics/academics/groups/{group.id}/heatmap?level_number=999"),
         "heatmap",
     )
+    assert rows == []
+
+
+def test_attendance_heatmap_unknown_group_is_404(client_with_uow, override_auth, mock_admin_headers):
+    """#143: an unknown group is 404 NotFoundError (was 200 with an empty list)."""
+    r = _get(client_with_uow, mock_admin_headers, "/analytics/academics/groups/999999999/heatmap?level_number=1")
+    assert r.status_code == 404
+    assert r.json()["error"] == "NotFoundError"
 
 
 def test_attendance_heatmap_requires_valid_level(client_with_uow, override_auth, mock_admin_headers):

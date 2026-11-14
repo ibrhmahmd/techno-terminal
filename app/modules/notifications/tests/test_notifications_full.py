@@ -128,11 +128,10 @@ class TestNotificationLogs:
         assert response.status_code == 401
 
     def test_get_parent_logs_not_found(self, client, mock_admin_headers, override_auth):
-        response = client.get(f"{BASE}/logs/parent/99999", headers=mock_admin_headers)
+        response = client.get(f"{BASE}/logs/parent/99999999", headers=mock_admin_headers)
 
-        assert response.status_code == 200
-        data = response.json()
-        assert data["success"] is True
+        assert response.status_code == 404
+        assert response.json()["error"] == "NotFoundError"
 
 
 # ── Notification Reports ──────────────────────────────────────────────────

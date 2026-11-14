@@ -10,6 +10,7 @@ from app.modules.enrollments.schemas.enrollment_directory_schemas import Student
 from app.modules.enrollments.repositories.enrollment_directory_repository import (
     EnrollmentDirectoryRepository,
 )
+from app.shared.exceptions import NotFoundError
 
 
 class EnrollmentDirectoryService:
@@ -17,7 +18,16 @@ class EnrollmentDirectoryService:
         self._uow = uow
         self._repo = EnrollmentDirectoryRepository(uow.session)
 
+    def _require_student(self, student_id: int) -> None:
+        if self._uow.session.get(Student, student_id) is None:
+            raise NotFoundError(f"Student {student_id} not found.")
+
+    def _require_group(self, group_id: int) -> None:
+        if self._uow.session.get(Group, group_id) is None:
+            raise NotFoundError(f"Group {group_id} not found.")
+
     def get_student_enrollments(self, student_id: int) -> list[EnrollmentDTO]:
+        self._require_student(student_id)
         enrollments = self._repo.get_enrollments_by_student(student_id)
         result = []
         for enrollment in enrollments:
@@ -34,6 +44,7 @@ class EnrollmentDirectoryService:
     def get_enrollments_summary_by_group(
         self, group_id: int, level_number: int | None = None
     ) -> list[StudentEnrollmentSummaryDTO]:
+        self._require_group(group_id)
         session = self._uow.session
 
         stmt = select(Enrollment, Student).join(

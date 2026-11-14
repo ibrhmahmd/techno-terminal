@@ -7,6 +7,8 @@ Domain service for academic analytics.
 from datetime import date
 from typing import Optional
 from app.db.uow import UnitOfWork
+from app.modules.academics.models import Group
+from app.shared.exceptions import NotFoundError
 from app.modules.analytics.repositories.academic_repository import AcademicRepository
 from app.modules.analytics.schemas import (
     UnpaidAttendeeDTO,
@@ -30,6 +32,8 @@ class AcademicAnalyticsService:
         return self._repo.get_today_unpaid_attendees(target_date)
 
     def get_attendance_heatmap(self, group_id: int, level_number: int) -> list[AttendanceHeatmapRowDTO]:
+        if self._uow.session.get(Group, group_id) is None:
+            raise NotFoundError(f"Group {group_id} not found.")
         return self._repo.get_attendance_heatmap(group_id, level_number)
 
     def get_student_progress(

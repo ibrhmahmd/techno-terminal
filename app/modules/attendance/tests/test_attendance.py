@@ -64,20 +64,25 @@ class TestAttendanceRead:
     def test_get_session_attendance_not_found(self, client, mock_admin_headers, override_auth):
         """Test getting attendance for non-existent session."""
         response = client.get(
-            "/api/v1/attendance/session/99999",
+            "/api/v1/attendance/session/99999999",
             headers=mock_admin_headers
         )
-        assert response.status_code in [200, 404]
+        assert response.status_code == 404
+        assert response.json()["error"] == "NotFoundError"
 
     def test_get_session_attendance_unauthorized(self, client):
         """Test getting attendance without auth returns 401."""
         response = client.get("/api/v1/attendance/session/1")
         assert response.status_code == 401
 
-    def test_get_session_attendance_forbidden(self, client, mock_admin_headers, override_system_admin_auth):
+    def test_get_session_attendance_forbidden(self, client, mock_admin_headers, override_system_admin_auth, db_session):
         """Test getting attendance with system_admin token (may be 403 or may be allowed)."""
+        from app.testing.db_helpers import create_minimal_group_bundle
+
+        _, _, _, sessions = create_minimal_group_bundle(db_session, session_count=1)
+        db_session.commit()
         response = client.get(
-            "/api/v1/attendance/session/1",
+            f"/api/v1/attendance/session/{sessions[0].id}",
             headers=mock_admin_headers
         )
         # system_admin may be treated as admin (200) or forbidden (403)

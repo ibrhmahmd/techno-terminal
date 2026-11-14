@@ -205,12 +205,12 @@ def test_get_session_attendance_empty_when_nothing_marked(
     assert r.json()["data"] == []
 
 
-def test_get_session_attendance_unknown_session_is_200_empty(client_with_uow, override_auth, mock_admin_headers):
-    """current behaviour (pinned, not endorsed): unknown session returns 200 with an empty list."""
+def test_get_session_attendance_unknown_session_is_404(client_with_uow, override_auth, mock_admin_headers):
+    """#143: an unknown session is 404 NotFoundError (was 200 with an empty list)."""
     r = client_with_uow.get("/api/v1/attendance/session/999999999", headers=mock_admin_headers)
 
-    assert r.status_code == 200
-    assert r.json()["data"] == []
+    assert r.status_code == 404
+    assert r.json()["error"] == "NotFoundError"
 
 
 def test_get_session_attendance_bad_id_is_422(client_with_uow, override_auth, mock_admin_headers):

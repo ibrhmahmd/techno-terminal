@@ -24,6 +24,10 @@ class NotificationRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
 
+    def entity_exists(self, model: type, entity_id: int) -> bool:
+        """True if a row of ``model`` (any module's model, ADR-0004 read) has this id."""
+        return self._session.get(model, entity_id) is not None
+
     # ── Templates ────────────────────────────────────────────────────────────
 
     def get_template_by_name(self, name: str) -> Optional[NotificationTemplate]:

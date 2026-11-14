@@ -20,8 +20,8 @@ Buckets
 
 Pinned quirks (pinned, not endorsed)
 ------------------------------------
-* GET /enrollments/student/{id} for an unknown student is a 200 with an empty
-  ``data`` list, not a 404. Same for an unknown group on the summary route.
+* GET /enrollments/student/{id} for an unknown student is a 404 NotFoundError, and so is
+  an unknown group on the summary route (#143); a KNOWN id with no rows is a 200 ``[]``.
 * ``amount_remaining`` is computed two different ways. The student route returns
   ``max(0, -balance)`` (never negative, and always positive for an unpaid
   enrollment). The summary route returns the raw view ``balance``, which is
@@ -220,19 +220,28 @@ def test_student_enrollments_hydrates_group_and_course(
     assert isinstance(data["enrolled_at"], str)
 
 
-def test_student_enrollments_unknown_student_returns_empty_list(
+def test_student_enrollments_unknown_student_is_404(
     client_with_uow, override_auth, mock_admin_headers
 ):
-    """Unknown student id is a 200 with an empty list, not a 404."""
+    """#143: unknown student id is 404 NotFoundError (was 200 with an empty list)."""
     r = client_with_uow.get(
         "/api/v1/enrollments/student/999999999", headers=mock_admin_headers
     )
 
+    assert r.status_code == 404
+    assert r.json()["error"] == "NotFoundError"
+
+
+def test_student_enrollments_known_student_without_rows_is_200_empty(
+    client_with_uow, override_auth, mock_admin_headers, db_session
+):
+    student = _make_student(db_session)
+    r = client_with_uow.get(
+        f"/api/v1/enrollments/student/{student.id}", headers=mock_admin_headers
+    )
+
     assert r.status_code == 200
-    body = r.json()
-    assert set(body) == {"success", "data", "message"}
-    assert body["success"] is True
-    assert body["data"] == []
+    assert r.json()["data"] == []
 
 
 def test_student_enrollments_only_returns_that_student(
@@ -432,20 +441,30 @@ def test_group_summary_sessions_total_zero_without_level_row(
     assert data[0]["sessions_total"] == 0
 
 
-def test_group_summary_unknown_group_returns_empty_list(
+def test_group_summary_unknown_group_is_404(
     client_with_uow, override_auth, mock_admin_headers
 ):
-    """Unknown group id is a 200 with an empty list, not a 404."""
+    """#143: unknown group id is 404 NotFoundError (was 200 with an empty list)."""
     r = client_with_uow.get(
         "/api/v1/enrollments/group/999999999/students-summary",
         headers=mock_admin_headers,
     )
 
+    assert r.status_code == 404
+    assert r.json()["error"] == "NotFoundError"
+
+
+def test_group_summary_known_group_without_rows_is_200_empty(
+    client_with_uow, override_auth, mock_admin_headers, db_session
+):
+    group = _make_group(db_session, _make_course(db_session).id)
+    r = client_with_uow.get(
+        f"/api/v1/enrollments/group/{group.id}/students-summary",
+        headers=mock_admin_headers,
+    )
+
     assert r.status_code == 200
-    body = r.json()
-    assert set(body) == {"success", "data", "message"}
-    assert body["success"] is True
-    assert body["data"] == []
+    assert r.json()["data"] == []
 
 
 def test_group_summary_requires_auth(client_with_uow, db_session):
