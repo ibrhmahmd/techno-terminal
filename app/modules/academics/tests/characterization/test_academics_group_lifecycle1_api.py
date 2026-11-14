@@ -384,7 +384,7 @@ def test_update_level_unknown_level_is_404(client_with_uow, override_auth, mock_
     assert r.status_code == 404
     body = r.json()
     assert body["success"] is False
-    assert body["error"] == "NotFound"
+    assert body["error"] == "NotFoundError"
     assert body["message"] == f"Level 9 not found for group {group.id}"
 
 
@@ -422,7 +422,7 @@ def test_update_level_unknown_course_is_404(client_with_uow, override_auth, mock
     assert r.status_code == 404
     body = r.json()
     assert body["success"] is False
-    assert body["error"] == "NotFound"
+    assert body["error"] == "NotFoundError"
     assert body["message"] == "Course 999999999 not found"
 
 

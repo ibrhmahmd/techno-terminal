@@ -304,7 +304,7 @@ def test_set_waiting_priority_unknown_student(client_with_uow, override_auth, mo
     assert r.status_code == 404
     body = r.json()
     assert body["success"] is False
-    assert body["error"] == "NotFound"
+    assert body["error"] == "NotFoundError"
 
 
 # ── DELETE /crm/students/{student_id} ──────────────────────────────────────────
@@ -398,7 +398,7 @@ def test_get_student_details_not_found(client_with_uow, override_auth, mock_admi
     body = r.json()
     assert body["success"] is False
     # Router catches NotFoundError and raises HTTPException(404) -> http_exception_handler maps 404 to "NotFound"
-    assert body["error"] == "NotFound"
+    assert body["error"] == "NotFoundError"
 
 
 # ── GET /crm/students/{student_id}/siblings ────────────────────────────────────
@@ -516,7 +516,7 @@ def test_soft_delete_student_not_found(client_with_uow, override_auth, mock_admi
     assert r.status_code == 404
     body = r.json()
     assert body["success"] is False
-    assert body["error"] == "NotFound"
+    assert body["error"] == "NotFoundError"
 
 
 # ── POST /crm/students/{student_id}/restore ────────────────────────────────────
@@ -565,7 +565,7 @@ def test_restore_student_not_found_or_not_deleted(client_with_uow, override_auth
     assert r.status_code == 404
     body = r.json()
     assert body["success"] is False
-    assert body["error"] == "NotFound"
+    assert body["error"] == "NotFoundError"
 
 
 def test_restore_student_unknown(client_with_uow, override_auth, mock_admin_headers):
@@ -578,7 +578,7 @@ def test_restore_student_unknown(client_with_uow, override_auth, mock_admin_head
     assert r.status_code == 404
     body = r.json()
     assert body["success"] is False
-    assert body["error"] == "NotFound"
+    assert body["error"] == "NotFoundError"
 
 
 # ── DELETE /crm/students/{student_id}/hard ─────────────────────────────────────
@@ -614,7 +614,7 @@ def test_hard_delete_student_not_found(client_with_uow, override_auth, mock_admi
     assert r.status_code == 404
     body = r.json()
     assert body["success"] is False
-    assert body["error"] == "NotFound"
+    assert body["error"] == "NotFoundError"
 
 
 # ── GET /crm/admin/deleted-students ────────────────────────────────────────────

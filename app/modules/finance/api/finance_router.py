@@ -336,54 +336,45 @@ def get_payment_details(
     - Student snapshot at time of payment
     - Parent contact information
     """
-    try:
-        result = svc.get_payment_details(payment_id)
-        
-        # Import nested schemas
-        
-        # Map to response schema
-        return ApiResponse(
-            data=PaymentDetailsResponse(
-                id=result.payment_id,
-                student_id=result.student_id,
-                amount=result.amount,
-                payment_type=result.payment_type,
-                transaction_type=result.transaction_type,
-                discount_amount=result.discount_amount,
-                notes=result.notes,
-                created_at=result.created_at,
-                receipt=ReceiptDetails(
-                    receipt_id=result.receipt_id,
-                    receipt_number=result.receipt_number,
-                    issued_date=result.paid_at,
-                    payment_method=result.payment_method,
-                    issued_by=result.received_by_name,
-                    notes=result.receipt_notes,
-                ),
-                enrollment=EnrollmentInfo(
-                    enrollment_id=result.enrollment_id,
-                    group_id=result.group_id,
-                    group_name=result.group_name,
-                    course_name=result.course_name,
-                    level_number=result.level_number,
-                    instructor_id=result.instructor_id,
-                    instructor_name=result.instructor_name,
-                ),
-                student=StudentSnapshot(
-                    full_name=result.student_name,
-                    phone=result.student_phone,
-                ),
-                parent=ParentInfo(
-                    parent_id=result.parent_id,
-                    full_name=result.parent_name,
-                    phone=result.parent_phone,
-                ),
-            )
+    result = svc.get_payment_details(payment_id)
+    return ApiResponse(
+        data=PaymentDetailsResponse(
+            id=result.payment_id,
+            student_id=result.student_id,
+            amount=result.amount,
+            payment_type=result.payment_type,
+            transaction_type=result.transaction_type,
+            discount_amount=result.discount_amount,
+            notes=result.notes,
+            created_at=result.created_at,
+            receipt=ReceiptDetails(
+                receipt_id=result.receipt_id,
+                receipt_number=result.receipt_number,
+                issued_date=result.paid_at,
+                payment_method=result.payment_method,
+                issued_by=result.received_by_name,
+                notes=result.receipt_notes,
+            ),
+            enrollment=EnrollmentInfo(
+                enrollment_id=result.enrollment_id,
+                group_id=result.group_id,
+                group_name=result.group_name,
+                course_name=result.course_name,
+                level_number=result.level_number,
+                instructor_id=result.instructor_id,
+                instructor_name=result.instructor_name,
+            ),
+            student=StudentSnapshot(
+                full_name=result.student_name,
+                phone=result.student_phone,
+            ),
+            parent=ParentInfo(
+                parent_id=result.parent_id,
+                full_name=result.parent_name,
+                phone=result.parent_phone,
+            ),
         )
-    except Exception as e:
-        if isinstance(e, NotFoundError):
-            raise HTTPException(status_code=404, detail=str(e))
-        raise
+    )
 
 
 @router.post(
@@ -425,5 +416,5 @@ def send_payment_receipt(
         )
     except Exception as e:
         if isinstance(e, NotFoundError):
-            raise HTTPException(status_code=404, detail=str(e))
+            raise
         raise HTTPException(status_code=500, detail=str(e))

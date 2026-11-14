@@ -6,7 +6,8 @@ Base path: /api/v1/notifications/admin
 """
 from app.db.uow import unit_of_work
 from typing import List, Dict
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
+from app.shared.exceptions import NotFoundError
 
 from app.api.deps import require_admin
 from app.api.schemas import ApiResponse
@@ -137,7 +138,7 @@ def get_notification_setting(
     """Get specific notification type setting."""
     setting = repo.get_setting(SYSTEM_ADMIN_ID, notification_type)
     if not setting:
-        raise HTTPException(status_code=404, detail="Notification setting not found")
+        raise NotFoundError("Notification setting not found")
     
     return ApiResponse(
         data=AdminNotificationSettingDTO(
@@ -244,7 +245,7 @@ def update_recipient(
     """Update additional recipient settings."""
     existing = repo.get_recipient(recipient_id)
     if not existing:
-        raise HTTPException(status_code=404, detail="Recipient not found")
+        raise NotFoundError("Recipient not found")
     
     updated = repo.update_recipient(
         recipient_id=recipient_id,
@@ -255,7 +256,7 @@ def update_recipient(
     )
     
     if not updated:
-        raise HTTPException(status_code=404, detail="Recipient not found")
+        raise NotFoundError("Recipient not found")
     
     # Get updated data
     recipient = repo.get_recipient(recipient_id)
@@ -283,6 +284,6 @@ def delete_recipient(
     """Remove additional recipient."""
     deleted = repo.delete_recipient(recipient_id)
     if not deleted:
-        raise HTTPException(status_code=404, detail="Recipient not found")
+        raise NotFoundError("Recipient not found")
     
     return ApiResponse(data={"message": "Recipient removed successfully"})

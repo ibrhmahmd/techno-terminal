@@ -5,7 +5,8 @@ Courses router.
 
 Endpoints for course management.
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
+from app.shared.exceptions import NotFoundError
 
 from app.api.schemas.common import ApiResponse, PaginatedResponse
 from app.modules.academics.api.schemas import CoursePublic
@@ -73,7 +74,7 @@ def get_course_stats(
 ):
     stats = svc.get_course_stats(course_id)
     if not stats:
-        raise HTTPException(status_code=404, detail=f"Course {course_id} not found")
+        raise NotFoundError(f"Course {course_id} not found")
     return ApiResponse(data=stats)
 
 

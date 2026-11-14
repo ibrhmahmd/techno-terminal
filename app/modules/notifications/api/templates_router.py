@@ -1,5 +1,6 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
+from app.shared.exceptions import NotFoundError
 
 from app.api.deps import require_admin
 from app.modules.notifications.api.deps import get_template_service
@@ -26,7 +27,7 @@ def get_template(
 ):
     template = svc.get_template_by_id(template_id)
     if not template:
-        raise HTTPException(status_code=404, detail="Template not found")
+        raise NotFoundError("Template not found")
     return ApiResponse(data=TemplateDTO.model_validate(template))
 
 @router.post("/templates", response_model=ApiResponse[TemplateDTO], summary="Create custom template")
@@ -54,7 +55,7 @@ def update_template(
 ):
     template = svc.get_template_by_id(template_id)
     if not template:
-        raise HTTPException(status_code=404, detail="Template not found")
+        raise NotFoundError("Template not found")
     if template.is_standard:
         kwargs = body.model_dump(exclude_unset=True)
         if "name" in kwargs or "variables" in kwargs or "channel" in kwargs:
@@ -63,7 +64,7 @@ def update_template(
     dump = body.model_dump(exclude_unset=True)
     updated = svc.update_template(template_id, **dump)
     if not updated:
-        raise HTTPException(status_code=404, detail="Template not found")
+        raise NotFoundError("Template not found")
     return ApiResponse(data=TemplateDTO.model_validate(updated), message="Template updated")
 
 @router.delete("/templates/{template_id}", response_model=ApiResponse[str], summary="Delete template")
@@ -74,7 +75,7 @@ def delete_template(
 ):
     template = svc.get_template_by_id(template_id)
     if not template:
-        raise HTTPException(status_code=404, detail="Template not found")
+        raise NotFoundError("Template not found")
     if template.is_standard:
         raise HTTPException(status_code=400, detail="Standard templates cannot be deleted")
 

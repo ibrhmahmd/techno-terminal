@@ -117,8 +117,6 @@ def update_group_level(
             data=GroupLevelPublic.model_validate(level),
             message=f"Level {level_number} updated successfully.",
         )
-    except NotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
     except BusinessRuleError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

@@ -134,7 +134,7 @@ def test_get_competition_not_found(client_with_uow, override_auth, mock_admin_he
     assert r.status_code == 404
     body = r.json()
     assert body["success"] is False
-    assert body["error"] == "NotFound"
+    assert body["error"] == "NotFoundError"
     assert body["message"] == "Competition not found"
 
 

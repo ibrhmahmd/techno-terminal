@@ -7,6 +7,7 @@ Handles: Competition lifecycle (CRUD, restore, categories, summary)
 """
 
 from fastapi import APIRouter, Depends, HTTPException
+from app.shared.exceptions import NotFoundError
 
 from app.api.schemas.common import ApiResponse
 from app.modules.competitions.api.schemas.competition_schemas import (
@@ -76,7 +77,7 @@ def get_competition(
     """Get single competition by ID."""
     comp = svc.get_competition_by_id(competition_id)
     if not comp:
-        raise HTTPException(status_code=404, detail="Competition not found")
+        raise NotFoundError("Competition not found")
     return ApiResponse(data=comp)
 
 
@@ -99,7 +100,7 @@ def update_competition_full(
     # Check exists first
     existing = svc.get_competition_by_id(competition_id)
     if not existing:
-        raise HTTPException(status_code=404, detail="Competition not found")
+        raise NotFoundError("Competition not found")
     
     # Filter out None values for update
     update_data = {k: v for k, v in body.model_dump().items() if v is not None}

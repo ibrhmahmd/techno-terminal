@@ -123,7 +123,7 @@ def get_team(
     """Get team by ID (admin or coach only)."""
     team = svc.get_team_for_user(team_id, current_user)
     if not team:
-        raise HTTPException(status_code=404, detail="Team not found")
+        raise NotFoundError("Team not found")
     return ApiResponse(data=team)
 
 
@@ -149,7 +149,7 @@ def update_team_full(
     
     team = svc.update_team(team_id, **update_data)
     if not team:
-        raise HTTPException(status_code=404, detail="Team not found")
+        raise NotFoundError("Team not found")
     
     return ApiResponse(data=team, message="Team updated successfully.")
 

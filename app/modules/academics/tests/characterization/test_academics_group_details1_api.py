@@ -168,7 +168,7 @@ def test_delete_level_unknown_group_is_404(client_with_uow, override_auth, mock_
     assert r.status_code == 404
     body = r.json()
     assert body["success"] is False
-    assert body["error"] == "NotFound"
+    assert body["error"] == "NotFoundError"
     assert body["message"] == "Group 999999999 not found"
 
 
@@ -186,7 +186,7 @@ def test_delete_level_unknown_level_is_404(client_with_uow, override_auth, mock_
     assert r.status_code == 404
     body = r.json()
     assert body["success"] is False
-    assert body["error"] == "NotFound"
+    assert body["error"] == "NotFoundError"
     assert body["message"] == f"Level 9 not found for group {group.id}"
 
 

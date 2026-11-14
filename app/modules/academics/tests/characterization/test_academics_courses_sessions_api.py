@@ -329,7 +329,7 @@ def test_get_course_stats_not_found(client_with_uow, override_auth, mock_admin_h
     assert set(body) == {"success", "error", "message"}
     assert body["success"] is False
     # Current behaviour: returns "NotFound" not "NotFoundError"
-    assert body["error"] == "NotFound"
+    assert body["error"] == "NotFoundError"
     assert "not found" in body["message"].lower()
     # current behaviour (pinned, not endorsed)
 
