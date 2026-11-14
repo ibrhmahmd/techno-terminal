@@ -317,15 +317,13 @@ class TestSessionsWrite:
     def test_delete_session_not_found(self, client, mock_admin_headers, override_auth):
         """
         DELETE /academics/sessions/{id} for non-existent ID.
-        Note: API may return 200 even for non-existent IDs.
         """
         response = client.delete(
             "/api/v1/academics/sessions/99999",
             headers=mock_admin_headers
         )
         
-        # Should return 404, but API may return 200
-        assert response.status_code in [200, 404]
+        assert response.status_code == 404
     
     def test_cancel_session_not_found(self, client, mock_admin_headers, override_auth):
         """
@@ -338,7 +336,7 @@ class TestSessionsWrite:
         
         assert response.status_code == 404
     
-    @pytest.mark.xfail(reason="mark_substitute_instructor not implemented on SessionService", strict=False)
+    @pytest.mark.xfail(reason="mark_substitute_instructor not implemented on SessionService")
     def test_substitute_instructor_not_found(self, client, mock_admin_headers, override_auth):
         response = client.post(
             "/api/v1/academics/sessions/99999/substitute",

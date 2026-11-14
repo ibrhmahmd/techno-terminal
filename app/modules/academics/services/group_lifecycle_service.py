@@ -151,6 +151,8 @@ class GroupLifecycleService:
             NextLevelCreationResult with old/new level details and session count.
         """
         session = self._uow.session
+        if not session.get(Group, data.group_id):
+            raise NotFoundError(f"Group {data.group_id} not found.")
 
         # Phase 1: Get current active level
         current_level = repo.get_current_group_level(session, data.group_id)

@@ -6,7 +6,8 @@ Service for Group Details API endpoints.
 Follows dashboard API patterns with lookup tables and 4-query strategy.
 """
 from app.db.uow import UnitOfWork
-from app.modules.academics.models import CourseSession
+from app.modules.academics.models import CourseSession, Group
+from app.shared.exceptions import NotFoundError
 from app.modules.academics.models.course_models import Course
 from app.modules.hr.models import Employee
 from app.modules.academics.schemas.group_details_schemas import (
@@ -59,6 +60,10 @@ class GroupDetailsService:
     def __init__(self, uow: UnitOfWork) -> None:
         self._uow = uow
 
+    def _require_group(self, group_id: int) -> None:
+        if not self._uow.session.get(Group, group_id):
+            raise NotFoundError(f"Group {group_id} not found.")
+
     # ═══════════════════════════════════════════════════════════════════════════
 
 
@@ -81,6 +86,7 @@ class GroupDetailsService:
         3. Get enrollment stats per level
         4. Get payment aggregates per level
         """
+        self._require_group(group_id)
         session = self._uow.session
         # Query 1: Get levels for group
         if level_number is not None:
@@ -271,6 +277,7 @@ class GroupDetailsService:
         Returns roster + sessions with attendance map.
         Uses 3-query pattern similar to dashboard.
         """
+        self._require_group(group_id)
         session = self._uow.session
         details_repo = GroupDetailsRepository(session)
         # Query 1: Get roster (active enrollments with billing status)

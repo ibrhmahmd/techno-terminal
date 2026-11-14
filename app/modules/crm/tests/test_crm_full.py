@@ -60,7 +60,7 @@ class TestStudentCRUD:
         assert get_resp.status_code == 200
         assert get_resp.json()["data"]["full_name"] == name
 
-    @pytest.mark.xfail(strict=False, reason="App bug: ImportError cannot import name 'StudentParent'")
+    @pytest.mark.xfail(reason="App bug: ImportError cannot import name 'StudentParent'")
     def test_create_student_with_parent(self, client, mock_admin_headers, override_auth, db_session):
         parent = create_test_parent(db_session)
         name = _unique("Student")
@@ -80,7 +80,7 @@ class TestStudentCRUD:
         parent_ids = [p["id"] for p in parents_resp.json()["data"]]
         assert parent.id in parent_ids
 
-    @pytest.mark.xfail(strict=False, reason="App bug: no empty-string validation on full_name")
+    @pytest.mark.xfail(reason="App bug: no empty-string validation on full_name")
     def test_create_student_validation_error(self, client, mock_admin_headers, override_auth):
         resp = client.post(
             "/api/v1/crm/students",
@@ -160,7 +160,7 @@ class TestStudentCRUD:
         resp = client.delete("/api/v1/crm/students/99999/hard", headers=mock_admin_headers)
         assert resp.status_code == 404
 
-    @pytest.mark.xfail(strict=False, reason="App bug: restore returns 200 but student does not reappear in listing")
+    @pytest.mark.xfail(reason="App bug: restore returns 200 but student does not reappear in listing")
     def test_soft_delete_and_restore(self, client, mock_admin_headers, override_auth):
         create_resp = create_student_via_api(client, mock_admin_headers)
         sid = create_resp.json()["data"]["id"]
@@ -539,7 +539,6 @@ class TestParentCRUD:
         # Phone is cleaned by RegisterParentInput validator (strips non-digits)
         assert body["data"]["phone_primary"] == phone.lstrip("+")
 
-    @pytest.mark.xfail(strict=False, reason="App bug: no empty-string validation on full_name/phone_primary")
     def test_create_parent_validation(self, client, mock_admin_headers, override_auth):
         resp = client.post(
             "/api/v1/crm/parents",

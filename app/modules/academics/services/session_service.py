@@ -47,6 +47,8 @@ class SessionService:
 
         When level_number is None, defaults to the group's current active level.
         """
+        if not self._repo_group.get_group_by_id(group_id):
+            raise NotFoundError(f"Group {group_id} not found.")
         if level_number is not None:
             return list(repo.list_sessions_by_level(self._uow.session, group_id, level_number))
         active_level = level_repo.get_current_group_level(self._uow.session, group_id)
@@ -142,6 +144,8 @@ class SessionService:
         return cs
 
     def delete_session(self, session_id: int) -> bool:
+        if not repo.get_session_by_id(self._uow.session, session_id):
+            raise NotFoundError(f"Session {session_id} not found.")
         res = repo.delete_session(self._uow.session, session_id)
         self._uow.commit()
         return res
