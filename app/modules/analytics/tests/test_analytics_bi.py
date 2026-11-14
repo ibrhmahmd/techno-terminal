@@ -180,9 +180,18 @@ class TestInstructorValueMatrix:
         assert data["success"] is True
         assert isinstance(data["data"], list)
 
-    def test_instructor_value_matrix_data_types(self, client, mock_admin_headers, override_auth):
-        """Test value matrix includes revenue and attendance correlation."""
-        response = client.get(
+    def test_instructor_value_matrix_data_types(self, client_with_uow, uow, mock_admin_headers, override_auth):
+        """Every item has exactly the InstructorValueMatrixDTO keys and types."""
+        import uuid
+        from app.modules.auth.models.auth_models import User
+        from app.testing.db_helpers import create_test_employee
+
+        name = f"Instr {uuid.uuid4().hex}"
+        emp = create_test_employee(uow.session, full_name=name)
+        uow.session.add(User(username=f"{name}@test.com", role="instructor", employee_id=emp.id))
+        uow.session.commit()
+
+        response = client_with_uow.get(
             "/api/v1/analytics/bi/instructor-value",
             headers=mock_admin_headers
         )
@@ -190,9 +199,12 @@ class TestInstructorValueMatrix:
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
-        # Should contain financial and attendance metrics per instructor
         for item in data["data"]:
-            assert any(key in item for key in ["instructor_id", "revenue", "attendance_rate", "efficiency"])
+            assert set(item) == {"instructor_name", "total_revenue", "avg_attendance_pct"}
+            assert isinstance(item["instructor_name"], str)
+            assert isinstance(item["total_revenue"], (int, float))
+            assert isinstance(item["avg_attendance_pct"], (int, float))
+        assert any(i["instructor_name"] == name for i in data["data"])
 
     def test_instructor_value_matrix_unauthorized(self, client):
         """Test getting instructor value matrix without auth returns 401."""

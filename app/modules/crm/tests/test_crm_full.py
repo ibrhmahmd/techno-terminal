@@ -432,22 +432,29 @@ class TestStudentDetails:
         group = create_test_group(db_session, course_id=course.id, name=_unique("GGroup"))
         create_test_enrollment(db_session, student_id=s_active.id, group_id=group.id, status="active", amount_due=200.0)
 
-        resp = client.get(
-            "/api/v1/crm/students/grouped?group_by=status&limit=200",
-            headers=mock_admin_headers,
-        )
-        assert resp.status_code == 200, resp.text
-        body = resp.json()
-        assert "groups" in body["data"]
-        # Check unified DTO fields on grouped students
-        for bucket in body["data"]["groups"]:
-            for student in bucket["students"]:
-                assert "has_unpaid_balance" in student
-                assert isinstance(student["has_unpaid_balance"], bool)
-                assert "age" in student
-        # Active student should have has_unpaid_balance true and age computed
-        active_bucket = next(b for b in body["data"]["groups"] if b["key"] == "active")
-        active_student = next(s for s in active_bucket["students"] if s["id"] == s_active.id)
+        # No search param: page through the active bucket until our student shows up.
+        active_student = None
+        skip = 0
+        while active_student is None:
+            resp = client.get(
+                f"/api/v1/crm/students/grouped?group_by=status&limit=200&skip={skip}",
+                headers=mock_admin_headers,
+            )
+            assert resp.status_code == 200, resp.text
+            body = resp.json()
+            assert "groups" in body["data"]
+            # Check unified DTO fields on grouped students
+            for bucket in body["data"]["groups"]:
+                for student in bucket["students"]:
+                    assert "has_unpaid_balance" in student
+                    assert isinstance(student["has_unpaid_balance"], bool)
+                    assert "age" in student
+            active_bucket = next((b for b in body["data"]["groups"] if b["key"] == "active"), None)
+            page = active_bucket["students"] if active_bucket else []
+            if not page:
+                pytest.fail(f"student {s_active.id} not found in the active bucket (scanned {skip} students)")
+            active_student = next((s for s in page if s["id"] == s_active.id), None)
+            skip += 200
         assert active_student["has_unpaid_balance"] is True
         assert active_student["age"] is not None
         assert active_student["current_group_name"] is not None
