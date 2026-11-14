@@ -168,19 +168,17 @@ def test_progress_group_level(client_with_uow, override_auth, mock_admin_headers
     assert body["message"] == data["message"]
 
 
-def test_progress_group_level_no_active_level(client_with_uow, override_auth, mock_admin_headers):
-    """POST /academics/groups/999999999/progress-level with a body returns 400 (router maps ValueError)."""
+def test_progress_group_level_unknown_group_is_404(client_with_uow, override_auth, mock_admin_headers):
+    """POST /academics/groups/999999999/progress-level returns 404 NotFoundError (#71)."""
     r = client_with_uow.post(
         "/api/v1/academics/groups/999999999/progress-level",
         headers=mock_admin_headers,
         json={},
     )
-    # Current behaviour: ValueError from the lifecycle service becomes HTTPException(400).
-    assert r.status_code == 400
+    assert r.status_code == 404
     body = r.json()
     assert body["success"] is False
-    assert body["error"] == "BadRequest"
-    # current behaviour (pinned, not endorsed) - an unknown group is a 400, not 404
+    assert body["error"] == "NotFoundError"
 
 
 def test_progress_group_level_missing_body(client_with_uow, override_auth, mock_admin_headers):
@@ -257,18 +255,16 @@ def test_list_group_sessions_defaults_to_active_level(client_with_uow, override_
     assert [item["id"] for item in body["data"]] == [session.id]
 
 
-def test_list_group_sessions_unknown_group_returns_empty(client_with_uow, override_auth, mock_admin_headers):
-    """GET /academics/groups/999999999/sessions returns 200 with an empty list (no 404)."""
+def test_list_group_sessions_unknown_group_is_404(client_with_uow, override_auth, mock_admin_headers):
+    """GET /academics/groups/999999999/sessions returns 404 NotFoundError (#71)."""
     r = client_with_uow.get(
         "/api/v1/academics/groups/999999999/sessions",
         headers=mock_admin_headers,
     )
-    # Current behaviour: unknown group yields an empty list, not a 404.
-    assert r.status_code == 200
+    assert r.status_code == 404
     body = r.json()
-    assert body["success"] is True
-    assert body["data"] == []
-    # current behaviour (pinned, not endorsed)
+    assert body["success"] is False
+    assert body["error"] == "NotFoundError"
 
 
 def test_list_group_sessions_requires_auth(client):

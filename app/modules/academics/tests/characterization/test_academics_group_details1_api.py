@@ -353,25 +353,16 @@ def test_get_levels_detailed_single(client_with_uow, override_auth, mock_admin_h
     assert body["data"]["levels"][0]["level_id"] == level1.id
 
 
-def test_get_levels_detailed_unknown_group_is_200_empty(client_with_uow, override_auth, mock_admin_headers):
-    """GET for a nonexistent group returns 200 with empty lookups — no 404.
-
-    Pinned quirk (not endorsed): an unknown group is indistinguishable from an
-    existing group that has no levels.
-    """
+def test_get_levels_detailed_unknown_group_is_404(client_with_uow, override_auth, mock_admin_headers):
+    """GET levels/detailed for a nonexistent group returns 404 NotFoundError (#71)."""
     r = client_with_uow.get(
         "/api/v1/academics/groups/999999999/levels/detailed",
         headers=mock_admin_headers,
     )
-
-    assert r.status_code == 200
+    assert r.status_code == 404
     body = r.json()
-    assert body["success"] is True
-    data = body["data"]
-    assert data["group_id"] == 999999999
-    assert data["courses"] == {}
-    assert data["instructors"] == {}
-    assert data["levels"] == []
+    assert body["success"] is False
+    assert body["error"] == "NotFoundError"
 
 
 def test_get_levels_detailed_unknown_level_is_200_empty(client_with_uow, override_auth, mock_admin_headers, db_session):
@@ -454,21 +445,16 @@ def test_get_attendance_grid_happy_path(client_with_uow, override_auth, mock_adm
     assert session["attendance"] == {}
 
 
-def test_get_attendance_unknown_group_is_200_empty(client_with_uow, override_auth, mock_admin_headers):
-    """GET attendance for a nonexistent group returns 200 empty — no 404."""
+def test_get_attendance_unknown_group_is_404(client_with_uow, override_auth, mock_admin_headers):
+    """GET attendance for a nonexistent group returns 404 NotFoundError (#71)."""
     r = client_with_uow.get(
         "/api/v1/academics/groups/999999999/attendance?level_number=1",
         headers=mock_admin_headers,
     )
-
-    assert r.status_code == 200
+    assert r.status_code == 404
     body = r.json()
-    assert body["success"] is True
-    data = body["data"]
-    assert data["group_id"] == 999999999
-    assert data["level_number"] == 1
-    assert data["roster"] == []
-    assert data["sessions"] == []
+    assert body["success"] is False
+    assert body["error"] == "NotFoundError"
 
 
 def test_get_attendance_missing_level_number_is_422(client_with_uow, override_auth, mock_admin_headers):
