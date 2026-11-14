@@ -223,10 +223,10 @@ def test_delete_competition_with_teams_is_409(client_with_uow, override_auth, mo
 
 
 def test_delete_competition_unknown_id(client_with_uow, override_auth, mock_admin_headers):
-    """current behaviour (pinned, not endorsed): 200 with data=False and the success message."""
+    """Unknown competition id -> 404 NotFoundError (#89)."""
     r = client_with_uow.delete("/api/v1/competitions/999999999", headers=mock_admin_headers)
-    assert r.status_code == 200
-    assert r.json() == {"success": True, "data": False, "message": "Competition deleted successfully."}
+    assert r.status_code == 404
+    assert r.json()["error"] == "NotFoundError"
 
 
 # ── GET /competitions/{id}/summary ────────────────────────────────────────────
@@ -275,10 +275,10 @@ def test_list_categories(client_with_uow, override_auth, mock_admin_headers, db_
 
 
 def test_list_categories_unknown_competition(client_with_uow, override_auth, mock_admin_headers):
-    """current behaviour (pinned, not endorsed): unknown competition -> 200 empty list."""
+    """Unknown competition id -> 404 NotFoundError (#89)."""
     r = client_with_uow.get("/api/v1/competitions/999999999/categories", headers=mock_admin_headers)
-    assert r.status_code == 200
-    assert r.json()["data"] == []
+    assert r.status_code == 404
+    assert r.json()["error"] == "NotFoundError"
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────

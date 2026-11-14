@@ -21,6 +21,8 @@ class TeamRosterService(TeamServiceBase):
         Returns all teams a student is in, nested with category and competition info.
         Uses batch loading: single JOIN query instead of N+1.
         """
+        if self._uow.session.get(Student, student_id) is None:
+            raise NotFoundError(f"Student {student_id} not found")
         rows = self._teams.list_student_memberships_enriched(student_id)
 
         result = []
@@ -126,7 +128,9 @@ class TeamRosterService(TeamServiceBase):
 
     def remove_team_member(self, team_id: int, student_id: int) -> bool:
         member = self._teams.get_team_member(team_id, student_id)
-        if member and member.amount_paid > 0:
+        if member is None:
+            raise NotFoundError(f"Student {student_id} is not a member of team {team_id}")
+        if member.amount_paid > 0:
             raise BusinessRuleError(
                 "Cannot remove a team member who has already paid the competition fee."
             )

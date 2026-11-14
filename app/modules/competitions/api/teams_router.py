@@ -25,6 +25,7 @@ from app.modules.competitions.api.deps import (
     get_team_service,
 )
 from app.modules.auth import User
+from app.shared.exceptions import NotFoundError
 from app.modules.competitions import (
     TeamPlacementService,
     TeamRegistrationService,
@@ -215,9 +216,11 @@ def list_team_members(
     roster: TeamRosterService = Depends(get_team_roster_service),
 ):
     """List all members of a team (admin or coach only)."""
-    svc.get_team_for_user(team_id, current_user)  # Auth check
+    team = svc.get_team_for_user(team_id, current_user)  # Auth check
+    if team is None:
+        raise NotFoundError(f"Team {team_id} not found")
     members = roster.list_team_members(team_id)
-    team_name = members[0].team_name if members else "Unknown"
+    team_name = team.team_name
     return ApiResponse(data=TeamMemberListResponse(
         team_id=team_id,
         team_name=team_name,
