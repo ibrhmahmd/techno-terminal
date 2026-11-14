@@ -175,8 +175,7 @@ class StudentActivityService:
         created_at: Optional[datetime] = None,
     ) -> StudentActivityLog:
         """Manually log a student activity."""
-        if self._uow.session.get(Student, student_id) is None:
-            raise NotFoundError(f"Student {student_id} not found")
+        self._require_student(student_id)
         return self._activities.create_activity_log(
             student_id=student_id,
             activity_type=activity_type,
@@ -221,6 +220,10 @@ class StudentActivityService:
 
         self._activities.delete_activity_log(activity_id)
 
+    def _require_student(self, student_id: int) -> None:
+        if self._uow.session.get(Student, student_id) is None:
+            raise NotFoundError(f"Student {student_id} not found")
+
     def _require_student_activity(self, student_id: int, activity_id: int) -> None:
         """404 unless the activity log exists and belongs to this student."""
         log = self._activities.get_activity_log_by_id(activity_id)
@@ -239,6 +242,7 @@ class StudentActivityService:
         filters: TimelineFilterDTO,
     ) -> List[ActivityLogDTO]:
         """Get activity timeline for a student."""
+        self._require_student(student_id)
         logs = self._activities.get_student_activity_timeline(
             student_id=student_id,
             start_date=filters.start_date,
@@ -278,24 +282,28 @@ class StudentActivityService:
 
     def get_activity_summary(self, student_id: int) -> ActivitySummaryDTO:
         """Get activity summary for a student."""
+        self._require_student(student_id)
         return self._activities.get_activity_summary(student_id)
 
     def get_enrollment_history(
         self, student_id: int, limit: int = 50, offset: int = 0
     ) -> Tuple[List[EnrollmentHistoryDTO], int]:
         """Get enrollment lifecycle history for a student with pagination."""
+        self._require_student(student_id)
         return self._activities.get_enrollment_history_by_student(student_id, limit, offset)
 
     def get_status_history(
         self, student_id: int, limit: int = 50, offset: int = 0
     ) -> Tuple[List[StatusHistoryDTO], int]:
         """Get status change history for a student with pagination."""
+        self._require_student(student_id)
         return self._activities.get_status_history_by_student(student_id, limit, offset)
 
     def get_competition_history(
         self, student_id: int, limit: int = 50, offset: int = 0
     ) -> Tuple[List[CompetitionHistoryDTO], int]:
         """Get competition participation history for a student with pagination."""
+        self._require_student(student_id)
         return self._activities.get_competition_history_by_student(student_id, limit, offset)
 
     # ── Private Helpers ──────────────────────────────────────────────────
