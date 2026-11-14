@@ -597,3 +597,44 @@ class TestDailyReportCairoDay:
 
         assert repo.get_daily_aggregates(day).total_revenue == before_day + 50.0
         assert repo.get_daily_aggregates(prev).total_revenue == before_prev
+
+
+class TestSession3Unpaid:
+    def test_amount_is_the_debt_of_the_enrollment_in_the_row_group(self, uow):
+        import uuid
+
+        from app.modules.notifications.repositories.reports_repository import ReportsRepository
+        from app.testing.db_helpers import (
+            create_test_course, create_test_enrollment, create_test_group,
+            create_test_payment, create_test_receipt, create_test_session, create_test_student,
+        )
+
+        session = uow.session
+        day = date(2031, 3, 5)
+        course = create_test_course(session)
+
+        def group(session3_today):
+            g = create_test_group(session, course.id)
+            if session3_today:
+                create_test_session(session, g.id, session_number=3, session_date=day)
+            return g
+
+        def enroll(student, g, due):
+            return create_test_enrollment(session, student.id, g.id, amount_due=due)
+
+        tag = uuid.uuid4().hex[:8]
+        s, t, u = (create_test_student(session, full_name=f"S3U {n} {tag}") for n in "STU")
+        enroll(s, group(True), 100)
+        enroll(s, group(False), 300)
+        enroll(t, group(True), 50)
+        enroll(t, group(True), 70)
+        paid = enroll(u, group(True), 100)
+        enroll(u, group(False), 200)
+        create_test_payment(session, create_test_receipt(session).id, u.id, 100, enrollment_id=paid.id)
+
+        rows = ReportsRepository(session).fetch_session3_unpaid(day)
+        owed = lambda st: sorted(r.amount_owed for r in rows if r.student_name == st.full_name)
+
+        assert owed(s) == [100.0]
+        assert owed(t) == [50.0, 70.0]
+        assert owed(u) == []

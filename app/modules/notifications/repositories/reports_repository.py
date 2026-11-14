@@ -254,13 +254,12 @@ class ReportsRepository:
                     st.id AS student_id,
                     st.full_name AS student_name,
                     COALESCE(g.name, '') AS group_name,
-                    SUM(CASE WHEN vb.balance < 0 THEN -vb.balance ELSE 0 END)
-                        OVER (PARTITION BY st.id) AS amount_owed
+                    -vb.balance AS amount_owed
                 FROM sessions s
                 JOIN groups g ON s.group_id = g.id
                 JOIN enrollments e ON e.group_id = s.group_id AND e.level_number = s.level_number AND e.status = 'active'
                 JOIN students st ON e.student_id = st.id
-                JOIN v_enrollment_balance vb ON vb.student_id = st.id
+                JOIN v_enrollment_balance vb ON vb.enrollment_id = e.id
                 WHERE s.session_date = :target_date
                   AND s.session_number = 3
                   AND s.status IN ('completed', 'scheduled')
