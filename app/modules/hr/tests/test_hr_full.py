@@ -194,7 +194,6 @@ class TestEmployeeCRUD:
         )
         assert resp.status_code == 401
 
-    @pytest.mark.xfail(strict=False, reason="App bug: empty validation fields cause unhandled Pydantic exception")
     def test_update_employee_validation_error(self, client, mock_admin_headers, override_auth, db_session):
         emp = create_test_employee(db_session)
 
@@ -234,14 +233,12 @@ class TestEmployeeEdgeCases:
         assert resp2.status_code == 409
         assert resp2.json()["error"] == "ConflictError"
 
-    @pytest.mark.xfail(strict=False, reason="App bug: literal validation in DTO causes unhandled exception instead of 422")
     def test_create_employee_invalid_employment_type(self, client, mock_admin_headers, override_auth):
         resp = client.post(
             "/api/v1/hr/employees",
             headers=mock_admin_headers,
             json=valid_employee_payload(employment_type="invalid_type"),
         )
-        # Pydantic or service may reject with 422
         assert resp.status_code == 422
         body = resp.json()
         assert body["success"] is False
