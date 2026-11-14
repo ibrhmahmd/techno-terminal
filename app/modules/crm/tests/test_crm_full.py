@@ -60,7 +60,6 @@ class TestStudentCRUD:
         assert get_resp.status_code == 200
         assert get_resp.json()["data"]["full_name"] == name
 
-    @pytest.mark.xfail(reason="App bug: ImportError cannot import name 'StudentParent'")
     def test_create_student_with_parent(self, client, mock_admin_headers, override_auth, db_session):
         parent = create_test_parent(db_session)
         name = _unique("Student")

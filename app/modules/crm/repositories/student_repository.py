@@ -407,7 +407,6 @@ class StudentRepository:
         is_primary: bool = False,
     ) -> "StudentParent":
         """Link a student to a parent."""
-        from app.modules.crm.models.student_models import StudentParent
         link = StudentParent(
             student_id=student_id,
             parent_id=parent_id,
@@ -420,7 +419,6 @@ class StudentRepository:
 
     def get_student_parents(self, student_id: int) -> list["StudentParent"]:
         """Get all parent links for a student."""
-        from app.modules.crm.models.link_models import StudentParent
         stmt = select(StudentParent).where(StudentParent.student_id == student_id)
         return list(self._session.exec(stmt).all())
 
@@ -485,7 +483,6 @@ class StudentRepository:
             Tuple of (student, parent) where parent may be None.
         """
         from app.modules.crm.models.parent_models import Parent
-        from app.modules.crm.models.link_models import StudentParent
         
         # Get student
         student = self.get_by_id(student_id)

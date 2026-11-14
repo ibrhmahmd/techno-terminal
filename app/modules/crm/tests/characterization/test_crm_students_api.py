@@ -775,3 +775,23 @@ def test_create_student_requires_admin_role(client_with_uow, override_auth, mock
     }
     r = client_with_uow.post("/api/v1/crm/students", headers=mock_admin_headers, json=payload)
     assert r.status_code == 201
+
+def test_create_student_with_parent_links_primary_parent(client_with_uow, override_auth, mock_admin_headers, db_session, uow):
+    """POST /crm/students with parent_id returns 201 and links that parent as primary (#211)."""
+    parent = _make_parent(db_session, full_name="Linked Parent")
+    payload = {
+        "student_data": {"full_name": f"Child {_short()}", "date_of_birth": "2010-01-01", "status": "waiting"},
+        "parent_id": parent.id,
+        "relationship": "mother",
+    }
+
+    r = client_with_uow.post("/api/v1/crm/students", headers=mock_admin_headers, json=payload)
+
+    assert r.status_code == 201, r.text
+    sid = r.json()["data"]["id"]
+    links = uow.session.exec(select(StudentParent).where(StudentParent.student_id == sid)).all()
+    assert [(l.parent_id, l.is_primary, l.relationship) for l in links] == [(parent.id, True, "mother")]
+
+    r = client_with_uow.get(f"/api/v1/crm/students/{sid}/parents", headers=mock_admin_headers)
+    assert r.status_code == 200, r.text
+    assert [p["id"] for p in r.json()["data"]] == [parent.id]
