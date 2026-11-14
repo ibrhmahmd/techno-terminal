@@ -92,7 +92,7 @@ class PaymentDetailsResponse(BaseModel):
 
 
 class SendReceiptRequest(BaseModel):
-    """Request to send receipt to parent."""
+    """Request to queue a receipt notification (method is validated but does not affect delivery)."""
     method: str  # "whatsapp" or "email"
     
     @field_validator('method')

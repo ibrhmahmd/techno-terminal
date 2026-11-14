@@ -6,7 +6,7 @@ Service for student payment operations.
 Handles:
 - Listing payments for a student
 - Getting detailed payment information
-- Sending receipts via WhatsApp/Email
+- Queueing receipt notifications
 """
 import logging
 from typing import Optional
@@ -78,85 +78,35 @@ class StudentPaymentService:
         
         return result
     
-    def send_receipt(
-        self,
-        payment_id: int,
-        method: str,  # "whatsapp" or "email"
-        sent_by_user_id: int,
-    ) -> SendReceiptResultDTO:
+    def send_receipt(self, payment_id: int) -> SendReceiptResultDTO:
         """
-        Send receipt to the student's primary parent via WhatsApp or Email.
-        
-        Args:
-            payment_id: The payment ID
-            method: Delivery method - "whatsapp" or "email"
-            sent_by_user_id: ID of the user triggering the send
-            
-        Returns:
-            SendReceiptResultDTO with success status and details
-            
+        Queue the payment-received notification for a payment's receipt.
+
+        The notifier sends to the system users configured for payment
+        notifications, not to the student's parent.
+
         Raises:
             NotFoundError: If payment doesn't exist
-            ValueError: If no parent contact found or invalid method
         """
-        # Get payment details
         payment = self._payments.get_payment_with_details(payment_id)
         if payment is None:
             raise NotFoundError(f"Payment ID {payment_id} not found.")
-        
-        # Validate we have parent info
-        if not payment.parent_id:
-            return SendReceiptResultDTO(
-                success=False,
-                message=f"No parent found for student {payment.student_name}.",
-                receipt_id=payment.receipt_id,
-                recipient_contact=None,
-                sent_at=utc_now(),
-            )
-        
-        # Format amount for display
-        amount_str = f"{float(payment.amount):,.2f}"
 
-        # Queue the notification (the adapter handles template rendering and dispatch)
         if self._notifier:
             try:
                 self._notifier.payment_received(
                     receipt_id=payment.receipt_id,
                     student_id=payment.student_id,
-                    amount=amount_str,
+                    amount=f"{float(payment.amount):,.2f}",
                     receipt_number=payment.receipt_number or f"REC-{payment.receipt_id}",
                 )
             except Exception:
                 logger.exception("Payment notifier failed for receipt %s", payment.receipt_id)
 
-        # Determine recipient contact based on method
-        if method == "whatsapp":
-            recipient_contact = payment.parent_phone
-            if not recipient_contact:
-                return SendReceiptResultDTO(
-                    success=False,
-                    message=f"Parent {payment.parent_name} has no phone number for WhatsApp.",
-                    receipt_id=payment.receipt_id,
-                    recipient_contact=None,
-                    sent_at=utc_now(),
-                )
-        elif method == "email":
-            # Email contact would need to be fetched from parent record
-            # For now, return the phone as contact (notification service handles actual dispatch)
-            recipient_contact = payment.parent_phone
-        else:
-            return SendReceiptResultDTO(
-                success=False,
-                message=f"Invalid method: {method}. Use 'whatsapp' or 'email'.",
-                receipt_id=payment.receipt_id,
-                recipient_contact=None,
-                sent_at=utc_now(),
-            )
-
         return SendReceiptResultDTO(
             success=True,
-            message=f"Receipt queued for sending to {payment.parent_name} via {method}.",
+            message="Receipt notification queued.",
             receipt_id=payment.receipt_id,
-            recipient_contact=recipient_contact,
+            recipient_contact=None,
             sent_at=utc_now(),
         )

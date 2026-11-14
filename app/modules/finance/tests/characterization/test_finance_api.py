@@ -118,11 +118,10 @@ def test_create_receipt(client_with_uow, override_auth, mock_admin_headers, db_s
     assert data["lines"] == 1
     assert data["total"] == 400.0
     assert len(data["payment_ids"]) == 1
-    # current behaviour (pinned, not endorsed): the creation response carries an empty
-    # receipt_number; the number is only visible when the receipt is read back.
-    assert data["receipt_number"] == ""
+    # #94: the creation response carries the real receipt number, same as the read-back.
+    assert data["receipt_number"].startswith("R-")
     detail = client_with_uow.get(f"/api/v1/finance/receipts/{data['receipt_id']}", headers=mock_admin_headers).json()["data"]
-    assert detail["receipt"]["receipt_number"].startswith("R-")
+    assert detail["receipt"]["receipt_number"] == data["receipt_number"]
 
 
 def test_create_receipt_records_who_received_it(
@@ -365,12 +364,22 @@ def test_student_balance(client_with_uow, override_auth, mock_admin_headers, db_
     assert e["is_paid"] is False
 
 
-def test_student_balance_unknown_student(client_with_uow, override_auth, mock_admin_headers):
-    """current behaviour (pinned, not endorsed): unknown student -> 200 with an all-zero summary."""
+def test_student_balance_unknown_student_is_404(client_with_uow, override_auth, mock_admin_headers):
     r = client_with_uow.get("/api/v1/students/999999999/balance", headers=mock_admin_headers)
+    assert r.status_code == 404
+    assert r.json()["error"] == "NotFoundError"
+
+
+def test_student_balance_without_enrollments_is_zeros(
+    client_with_uow, override_auth, mock_admin_headers, db_session
+):
+    student = Student(full_name=f"No Enrol {_short()}")
+    db_session.add(student)
+    db_session.commit()
+    r = client_with_uow.get(f"/api/v1/students/{student.id}/balance", headers=mock_admin_headers)
     assert r.status_code == 200
     assert r.json()["data"] == {
-        "student_id": 999999999, "total_amount_due": 0.0, "total_discounts": 0.0, "total_paid": 0.0,
+        "student_id": student.id, "total_amount_due": 0.0, "total_discounts": 0.0, "total_paid": 0.0,
         "net_balance": 0.0, "enrollment_count": 0, "unpaid_enrollments": 0, "enrollments": [],
     }
 
@@ -438,13 +447,13 @@ def test_send_receipt_unknown_payment_is_404(client_with_uow, override_auth, moc
         "/api/v1/finance/payments/999999999/send-receipt", headers=mock_admin_headers, json={"method": "email"},
     )
     assert r.status_code == 404
+    assert r.json()["error"] == "NotFoundError"
 
 
-def test_send_receipt_without_parent_is_200_with_failure_payload(
+def test_send_receipt_without_parent_is_200_and_queues_notification(
     client_with_uow, override_auth, mock_admin_headers, db_session, noop_notifications
 ):
-    """current behaviour (pinned, not endorsed): a student with no parent is a 200 whose payload
-    says success=false (the envelope still says success=true)."""
+    """#94: receipts go to system users, so a student with no parent still queues the notification."""
     _, _, student, enrollment = _seed_enrollment(db_session)
     payment_id = _create_receipt(client_with_uow, mock_admin_headers, student, enrollment, amount=100.0).json()["data"]["payment_ids"][0]
 
@@ -455,10 +464,31 @@ def test_send_receipt_without_parent_is_200_with_failure_payload(
     assert r.status_code == 200
     body = r.json()
     assert body["success"] is True
-    assert body["message"] == f"No parent found for student {student.full_name}."
-    assert body["data"]["success"] is False
+    assert body["message"] == "Receipt notification queued."
+    assert body["data"]["success"] is True
     assert body["data"]["recipient_contact"] is None
     assert set(body["data"]) == {"success", "message", "receipt_id", "recipient_contact", "sent_at"}
+
+
+def test_send_receipt_calls_notifier_once(
+    app, client_with_uow, override_auth, mock_admin_headers, db_session, noop_notifications
+):
+    from app.modules.finance.api.deps import get_payment_notifier
+    from app.modules.finance.tests.fakes import FakePaymentNotifier
+
+    _, _, student, enrollment = _seed_enrollment(db_session)
+    payment_id = _create_receipt(client_with_uow, mock_admin_headers, student, enrollment, amount=100.0).json()["data"]["payment_ids"][0]
+    fake = FakePaymentNotifier()
+    app.dependency_overrides[get_payment_notifier] = lambda: fake
+
+    r = client_with_uow.post(
+        f"/api/v1/finance/payments/{payment_id}/send-receipt", headers=mock_admin_headers, json={"method": "whatsapp"},
+    )
+
+    assert r.status_code == 200
+    assert [c[0] for c in fake.calls] == ["payment_received"]
+    assert fake.calls[0][1]["student_id"] == student.id
+    assert fake.calls[0][1]["receipt_number"].startswith("R-")
 
 
 def test_send_receipt_invalid_method_is_422(client_with_uow, override_auth, mock_admin_headers, noop_notifications):

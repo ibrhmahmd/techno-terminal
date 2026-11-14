@@ -17,7 +17,7 @@ Tag:    Finance
 from decimal import Decimal
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, status, HTTPException
+from fastapi import APIRouter, Depends, Query, status
 
 from app.api.schemas.common import ApiResponse, PaginatedResponse
 from app.modules.finance.api.schemas.receipt import (
@@ -48,7 +48,6 @@ from app.modules.finance.schemas import ReceiptLineInput, UnpaidCompFeeItem
 from app.modules.finance.schemas import CreateReceiptServiceDTO, IssueRefundDTO
 from app.modules.auth import User
 from app.modules.finance.api.schemas.payment import ReceiptDetails, EnrollmentInfo, StudentSnapshot, ParentInfo
-from app.shared.exceptions import NotFoundError
 
 router = APIRouter(tags=["Finance"])
 
@@ -380,8 +379,8 @@ def get_payment_details(
 @router.post(
     "/finance/payments/{payment_id}/send-receipt",
     response_model=ApiResponse[SendReceiptResponse],
-    summary="Send receipt to parent",
-    description="Send the receipt PDF to the student's primary parent via WhatsApp or Email."
+    summary="Queue receipt notification",
+    description="Queue the payment-received notification for the payment's receipt. It goes to the system users configured for payment notifications, not to the parent."
 )
 def send_payment_receipt(
     payment_id: int,
@@ -390,31 +389,20 @@ def send_payment_receipt(
     svc: StudentPaymentService = Depends(get_student_payment_service),
 ):
     """
-    Send the receipt to the student's primary parent.
-    
-    - Validates payment exists and has associated receipt
-    - Determines recipient contact based on method (whatsapp/email)
+    Queue the receipt notification for a payment.
+
+    - Validates the payment exists (404 otherwise)
     - Queues the notification via background tasks
-    - Returns success/failure with contact used
+    - ``method`` is validated for API compatibility but does not change delivery
     """
-    try:
-        result = svc.send_receipt(
-            payment_id=payment_id,
-            method=body.method,
-            sent_by_user_id=current_user.id,
-        )
-        
-        return ApiResponse(
-            data=SendReceiptResponse(
-                success=result.success,
-                message=result.message,
-                receipt_id=result.receipt_id,
-                recipient_contact=result.recipient_contact,
-                sent_at=result.sent_at,
-            ),
+    result = svc.send_receipt(payment_id=payment_id)
+    return ApiResponse(
+        data=SendReceiptResponse(
+            success=result.success,
             message=result.message,
-        )
-    except Exception as e:
-        if isinstance(e, NotFoundError):
-            raise
-        raise HTTPException(status_code=500, detail=str(e))
+            receipt_id=result.receipt_id,
+            recipient_contact=result.recipient_contact,
+            sent_at=result.sent_at,
+        ),
+        message=result.message,
+    )
