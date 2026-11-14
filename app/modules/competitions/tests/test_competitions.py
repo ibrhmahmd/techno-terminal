@@ -93,8 +93,23 @@ class TestCompetitionsRead:
         """
         GET /competitions/{id}/categories returns categories.
         """
+        import uuid
+        created = client.post(
+            "/api/v1/competitions",
+            headers=mock_admin_headers,
+            json={
+                "name": f"Categories Competition {uuid.uuid4().hex[:8]}",
+                "edition_year": 2024,
+                "competition_date": "2024-06-01",
+                "location": "Main Hall",
+                "fee_per_student": 0.0,
+            },
+        )
+        assert created.status_code == 201
+        competition_id = created.json()["data"]["id"]
+
         response = client.get(
-            "/api/v1/competitions/1/categories",
+            f"/api/v1/competitions/{competition_id}/categories",
             headers=mock_admin_headers
         )
         
