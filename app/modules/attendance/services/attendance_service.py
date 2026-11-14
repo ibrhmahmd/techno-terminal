@@ -56,5 +56,7 @@ class AttendanceService:
         """
         Returns existing attendance rows for a session as securely typed DTOs.
         """
+        if not self._attendance.get_course_session(session_id):
+            raise NotFoundError(f"Session ID {session_id} not found.")
         rows = self._attendance.get_session_attendance(session_id)
         return [SessionAttendanceRowDTO(student_id=r.student_id, status=r.status) for r in rows]

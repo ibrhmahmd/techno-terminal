@@ -30,14 +30,16 @@ def noop_notifications(app):
 class TestEnrollmentsRead:
     """Tests for reading enrollment data."""
     
-    def test_get_student_enrollments_success(self, client, mock_admin_headers, override_auth):
+    def test_get_student_enrollments_success(self, client, mock_admin_headers, override_auth, db_session):
         """
         GET /enrollments/student/{id} returns enrollment history.
         Requires authentication (any role).
         """
-        # Using student ID 1 - may not exist, test both cases
+        from app.testing.db_helpers import create_test_student
+
+        student = create_test_student(db_session)
         response = client.get(
-            "/api/v1/enrollments/student/1",
+            f"/api/v1/enrollments/student/{student.id}",
             headers=mock_admin_headers
         )
         
@@ -51,17 +53,15 @@ class TestEnrollmentsRead:
     def test_get_student_enrollments_not_found(self, client, mock_admin_headers, override_auth):
         """
         GET /enrollments/student/{id} for non-existent student.
-        Returns empty list (not 404) since it's a history endpoint.
+        Returns 404 NotFoundError (#143).
         """
         response = client.get(
-            "/api/v1/enrollments/student/99999",
+            "/api/v1/enrollments/student/99999999",
             headers=mock_admin_headers
         )
-        
-        assert response.status_code == 200
-        data = response.json()
-        assert data["success"] is True
-        assert data["data"] == []
+
+        assert response.status_code == 404
+        assert response.json()["error"] == "NotFoundError"
 
 
 class TestEnrollmentsCreate:

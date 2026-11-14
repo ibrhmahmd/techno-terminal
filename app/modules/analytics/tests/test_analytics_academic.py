@@ -107,15 +107,13 @@ class TestAttendanceHeatmap:
         assert response.status_code == 422
 
     def test_attendance_heatmap_not_found(self, client, mock_admin_headers, override_auth):
-        """Test getting heatmap for non-existent group returns 404 or empty list."""
+        """Heatmap for a non-existent group is 404 NotFoundError (#143)."""
         response = client.get(
-            "/api/v1/analytics/academics/groups/99999/heatmap?level_number=1",
+            "/api/v1/analytics/academics/groups/99999999/heatmap?level_number=1",
             headers=mock_admin_headers
         )
-        assert response.status_code in [200, 404]
-        if response.status_code == 200:
-            data = response.json()
-            assert isinstance(data["data"], list)
+        assert response.status_code == 404
+        assert response.json()["error"] == "NotFoundError"
 
     def test_attendance_heatmap_invalid_level(self, client, mock_admin_headers, override_auth):
         """Test getting heatmap with invalid level_number returns 422."""

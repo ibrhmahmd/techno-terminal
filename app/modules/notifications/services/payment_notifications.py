@@ -16,6 +16,7 @@ from app.modules.crm.models.student_models import Student
 from app.modules.academics.models.group_models import Group
 from app.modules.enrollments.models.enrollment_models import Enrollment
 from sqlmodel import select
+from app.shared.exceptions import NotFoundError
 from app.shared.datetime_utils import CAIRO_TZ, utc_now
 from app.modules.auth.models.auth_models import User
 from app.modules.hr.models.employee_models import Employee
@@ -35,7 +36,11 @@ class PaymentNotificationService(BaseNotificationService):
         self, receipt_id: int, student_id: int, amount: str,
         receipt_number: str, background_tasks: BackgroundTasks
     ) -> None:
-        """Payment confirmation receipt."""
+        """Payment confirmation receipt. 404 before anything is queued if either id is unknown."""
+        if not self._repo.entity_exists(Receipt, receipt_id):
+            raise NotFoundError(f"Receipt {receipt_id} not found.")
+        if not self._repo.entity_exists(Student, student_id):
+            raise NotFoundError(f"Student {student_id} not found.")
         background_tasks.add_task(
             self._process_received, receipt_id, student_id, amount, receipt_number
         )

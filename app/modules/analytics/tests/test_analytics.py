@@ -51,12 +51,16 @@ class TestAcademicAnalytics:
         
         assert response.status_code == 401
     
-    def test_attendance_heatmap_success(self, client, mock_admin_headers, override_auth):
+    def test_attendance_heatmap_success(self, client, mock_admin_headers, override_auth, db_session):
         """
         GET /analytics/academics/groups/{id}/heatmap returns heatmap data.
         """
+        from app.testing.db_helpers import create_minimal_group_bundle
+
+        _, group, _, _ = create_minimal_group_bundle(db_session, session_count=1)
+        db_session.commit()
         response = client.get(
-            "/api/v1/analytics/academics/groups/1/heatmap?level_number=1",
+            f"/api/v1/analytics/academics/groups/{group.id}/heatmap?level_number=1",
             headers=mock_admin_headers
         )
         

@@ -201,11 +201,52 @@ def test_get_logs_date_filters(client_with_uow, override_auth, mock_admin_header
     assert found("2020-01-01", "2020-01-02") == 0
 
 
-def test_get_parent_logs(client_with_uow, override_auth, mock_admin_headers):
-    r = client_with_uow.get(f"{BASE}/logs/parent/999999999", headers=mock_admin_headers)
+def test_get_parent_logs_known_parent_without_logs_is_200_empty(
+    client_with_uow, override_auth, mock_admin_headers, db_session
+):
+    from app.testing.db_helpers import create_test_parent
+
+    parent = create_test_parent(db_session, full_name=f"Parent {_short()}")
+    db_session.commit()
+    r = client_with_uow.get(f"{BASE}/logs/parent/{parent.id}", headers=mock_admin_headers)
 
     assert r.status_code == 200
     assert r.json()["data"] == []
+
+
+def test_get_parent_logs_unknown_parent_is_404(client_with_uow, override_auth, mock_admin_headers):
+    """#143: an unknown parent is 404 NotFoundError (was 200 with an empty list)."""
+    r = client_with_uow.get(f"{BASE}/logs/parent/999999999", headers=mock_admin_headers)
+
+    assert r.status_code == 404
+    assert r.json()["error"] == "NotFoundError"
+
+
+def test_receipt_notification_unknown_receipt_or_student_is_404_and_queues_nothing(
+    client_with_uow, override_auth, mock_admin_headers, db_session
+):
+    """#143: unknown receipt or student is 404 NotFoundError before any background task is scheduled."""
+    from unittest.mock import patch
+
+    from app.modules.notifications.services.payment_notifications import PaymentNotificationService
+    from app.testing.db_helpers import create_test_receipt, create_test_student
+
+    student = create_test_student(db_session)
+    receipt = create_test_receipt(db_session)
+    db_session.commit()
+    q = "amount=100.00&receipt_number=R-1"
+    with patch.object(PaymentNotificationService, "_process_received") as process:
+        unknown_receipt = client_with_uow.post(
+            f"{BASE}/receipt/999999999?student_id={student.id}&{q}", headers=mock_admin_headers
+        )
+        unknown_student = client_with_uow.post(
+            f"{BASE}/receipt/{receipt.id}?student_id=999999999&{q}", headers=mock_admin_headers
+        )
+
+    for r in (unknown_receipt, unknown_student):
+        assert r.status_code == 404
+        assert r.json()["error"] == "NotFoundError"
+    process.assert_not_called()
 
 
 # ── Report triggers (router logic; dispatch stubbed) ──────────────────────────

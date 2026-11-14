@@ -114,7 +114,7 @@ def get_parent_logs(
     _user: User = Depends(require_admin),
     svc: NotificationLogService = Depends(get_log_service)
 ):
-    logs = svc.get_logs(recipient_type="PARENT", recipient_id=parent_id, limit=limit, offset=offset)
+    logs = svc.get_parent_logs(parent_id, limit=limit, offset=offset)
     return ApiResponse(data=[NotificationLogDTO.model_validate(log) for log in logs])
 
 @router.post("/reports/daily", response_model=ApiResponse, summary="Trigger daily report")
