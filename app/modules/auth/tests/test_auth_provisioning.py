@@ -57,7 +57,7 @@ class TestProvisionLogin:
         emp = Employee(
             email=f"emp_{uuid.uuid4().hex[:8]}@test.com",
             full_name="Test Employee",
-            phone=f"1234567{uuid.uuid4().hex[:3]}",
+            phone=f"01{uuid.uuid4().int % 10**9:09d}",
             job_title="Coach",
             national_id=f"NAT{uuid.uuid4().hex[:8]}",
             university="Test University",
@@ -165,7 +165,7 @@ class TestProvisionLogin:
         emp = Employee(
             email=f"linked_{uuid.uuid4().hex[:8]}@test.com",
             full_name="Linked Employee",
-            phone=f"1234567{uuid.uuid4().hex[:3]}",
+            phone=f"01{uuid.uuid4().int % 10**9:09d}",
             job_title="Coach",
             national_id=f"NAT{uuid.uuid4().hex[:8]}",
             university="Test University",
@@ -302,7 +302,7 @@ class TestLinkEmployeeToNewUser:
         emp = Employee(
             email=f"emp2_{uuid.uuid4().hex[:8]}@test.com",
             full_name="Test Employee 2",
-            phone=f"1234567{uuid.uuid4().hex[:3]}",
+            phone=f"01{uuid.uuid4().int % 10**9:09d}",
             job_title="Coach",
             national_id=f"NAT{uuid.uuid4().hex[:8]}",
             university="Test University",

@@ -609,7 +609,6 @@ class TestReporting:
 class TestOverpaymentRisk:
     """POST /finance/risk/overpayment — Assess overpayment risk."""
 
-    @pytest.mark.xfail(reason="BUG: finance_router.py:206 accesses line.team_member_id on ReceiptLineRequest which has no such attr", strict=False)
     def test_assess_overpayment_risk_success(self, client, db_session, mock_admin_headers, override_auth):
         course, group, level, _ = create_minimal_group_bundle(db_session)
         _, student, enrollment = create_student_with_enrollment(
@@ -638,7 +637,6 @@ class TestOverpaymentRisk:
         assert data["success"] is True
         assert isinstance(data["data"], list)
 
-    @pytest.mark.xfail(reason="BUG: finance_router.py:206 accesses line.team_member_id on ReceiptLineRequest which has no such attr", strict=False)
     def test_assess_overpayment_risk_no_risk(self, client, db_session, mock_admin_headers, override_auth):
         course, group, level, _ = create_minimal_group_bundle(db_session)
         _, student, enrollment = create_student_with_enrollment(

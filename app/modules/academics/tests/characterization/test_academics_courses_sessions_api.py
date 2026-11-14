@@ -329,7 +329,7 @@ def test_get_course_stats_not_found(client_with_uow, override_auth, mock_admin_h
     assert set(body) == {"success", "error", "message"}
     assert body["success"] is False
     # Current behaviour: returns "NotFound" not "NotFoundError"
-    assert body["error"] == "NotFound"
+    assert body["error"] == "NotFoundError"
     assert "not found" in body["message"].lower()
     # current behaviour (pinned, not endorsed)
 
@@ -531,14 +531,13 @@ def test_add_extra_session_bad_body(client_with_uow, override_auth, mock_admin_h
 
 
 def test_add_extra_session_group_not_found(client_with_uow, override_auth, mock_admin_headers):
-    """POST /academics/groups/999999999/sessions returns 422 (current behaviour)."""
+    """POST /academics/groups/999999999/sessions returns 404 NotFoundError."""
     payload = {"level_number": 1, "extra_date": "2026-07-15"}
     r = client_with_uow.post("/api/v1/academics/groups/999999999/sessions", headers=mock_admin_headers, json=payload)
-    # Current behaviour: returns 422 Unprocessable Entity (NotFoundError mapped to 422?)
-    assert r.status_code == 422
+    assert r.status_code == 404
     body = r.json()
     assert body["success"] is False
-    # current behaviour (pinned, not endorsed)
+    assert body["error"] == "NotFoundError"
 
 
 # ── /api/v1/academics/sessions/{session_id} (GET) ─────────────────────────────
@@ -667,18 +666,12 @@ def test_delete_session(client_with_uow, override_auth, mock_admin_headers, db_s
 
 
 def test_delete_session_not_found(client_with_uow, override_auth, mock_admin_headers):
-    """DELETE /academics/sessions/999999999 returns 200 with success (current behaviour)."""
+    """DELETE /academics/sessions/999999999 returns 404 NotFoundError (#67)."""
     r = client_with_uow.delete("/api/v1/academics/sessions/999999999", headers=mock_admin_headers)
-    # Current behaviour: returns 200 with success even for non-existent session
-    assert r.status_code == 200
+    assert r.status_code == 404
     body = r.json()
-    assert body["success"] is True
-    assert body["data"] is None
-    assert body["message"] == "Session deleted successfully."
-    # current behaviour (pinned, not endorsed)
-
-
-# ── /api/v1/academics/sessions/{session_id}/cancel ────────────────────────────
+    assert body["success"] is False
+    assert body["error"] == "NotFoundError"
 
 
 def test_cancel_session(client_with_uow, override_auth, mock_admin_headers, db_session):

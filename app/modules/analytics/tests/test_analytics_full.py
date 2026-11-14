@@ -130,7 +130,6 @@ class TestFinancialAnalytics:
         assert body["success"] is True
         assert isinstance(body["data"], list)
 
-    @pytest.mark.xfail(strict=False, reason="App bug: receipts_payment_method_check violation on test data")
     def test_revenue_by_method_success(self, client, mock_admin_headers, override_auth, db_session):
         """200 + list for revenue by payment method."""
         from app.testing.db_helpers import (
@@ -138,7 +137,7 @@ class TestFinancialAnalytics:
         )
 
         student = create_test_student(db_session, full_name="Method Student")
-        receipt = create_test_receipt(db_session, payer_name="Test", payment_method="vodafone_cash")
+        receipt = create_test_receipt(db_session, payer_name="Test", payment_method="ewallet")
         pmt = create_test_payment(db_session, receipt.id, student.id, 300.0)
         db_session.commit()
 
@@ -152,6 +151,7 @@ class TestFinancialAnalytics:
         body = resp.json()
         assert body["success"] is True
         assert isinstance(body["data"], list)
+        assert "ewallet" in [row["payment_method"] for row in body["data"]]
 
     def test_outstanding_by_group_success(self, client, mock_admin_headers, override_auth, db_session):
         """200 + list for outstanding balances by group."""
@@ -242,18 +242,16 @@ class TestFinancialAnalytics:
 class TestCompetitionAnalytics:
     """GET /analytics/competitions/* — require_admin auth."""
 
-    @pytest.mark.xfail(strict=False, reason="App bug: competition_categories table does not exist")
     def test_competition_fee_summary_success(self, client, mock_admin_headers, override_auth):
-        """200 or 500 (table may be missing)."""
+        """200 + list."""
         resp = client.get(
             "/api/v1/analytics/competitions/fee-summary",
             headers=mock_admin_headers,
         )
-        assert resp.status_code in (200, 500)
-        if resp.status_code == 200:
-            body = resp.json()
-            assert body["success"] is True
-            assert isinstance(body["data"], list)
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["success"] is True
+        assert isinstance(body["data"], list)
 
     def test_competition_fee_summary_unauthorized(self, client):
         """401 without auth."""
@@ -339,7 +337,6 @@ class TestBIAnalytics:
         assert body["success"] is True
         assert isinstance(body["data"], list)
 
-    @pytest.mark.xfail(strict=False, reason="App bug: ScheduleUtilizationDTO float_type validation error")
     def test_schedule_utilization_success(self, client, mock_admin_headers, override_auth, db_session):
         """200 + list for schedule utilization."""
         from app.testing.db_helpers import (

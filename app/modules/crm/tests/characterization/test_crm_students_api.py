@@ -462,13 +462,27 @@ def test_get_students_by_status_waiting(client_with_uow, override_auth, mock_adm
 
 
 def test_get_students_by_status_invalid(client_with_uow, override_auth, mock_admin_headers):
-    """GET /crm/students/by-status/invalid returns 400 (ValueError -> HTTPException)."""
+    """GET /crm/students/by-status/invalid is a 422 (the path param is the StudentStatus enum)."""
     r = client_with_uow.get("/api/v1/crm/students/by-status/not_a_status", headers=mock_admin_headers)
 
-    assert r.status_code == 400
+    assert r.status_code == 422
     body = r.json()
     assert body["success"] is False
-    assert "invalid status" in body["message"].lower()
+    assert body["error"] == "ValidationError"
+
+
+def test_get_students_by_status_honours_skip_and_limit(client_with_uow, override_auth, mock_admin_headers, db_session):
+    """skip/limit reach the query: the page is at most `limit` long and skip shifts it."""
+    marker = _short()
+    for i in range(3):
+        _make_student(db_session, full_name=f"BSPage{i} {marker}", status=StudentStatus.ACTIVE)
+
+    url = "/api/v1/crm/students/by-status/active"
+    first = client_with_uow.get(f"{url}?limit=2", headers=mock_admin_headers).json()["data"]
+    shifted = client_with_uow.get(f"{url}?limit=2&skip=1", headers=mock_admin_headers).json()["data"]
+
+    assert len(first) <= 2 and len(shifted) <= 2
+    assert shifted[0]["id"] == first[1]["id"]
 
 
 # ── /api/v1/crm/students/status-summary ───────────────────────────────────────
@@ -761,3 +775,23 @@ def test_create_student_requires_admin_role(client_with_uow, override_auth, mock
     }
     r = client_with_uow.post("/api/v1/crm/students", headers=mock_admin_headers, json=payload)
     assert r.status_code == 201
+
+def test_create_student_with_parent_links_primary_parent(client_with_uow, override_auth, mock_admin_headers, db_session, uow):
+    """POST /crm/students with parent_id returns 201 and links that parent as primary (#211)."""
+    parent = _make_parent(db_session, full_name="Linked Parent")
+    payload = {
+        "student_data": {"full_name": f"Child {_short()}", "date_of_birth": "2010-01-01", "status": "waiting"},
+        "parent_id": parent.id,
+        "relationship": "mother",
+    }
+
+    r = client_with_uow.post("/api/v1/crm/students", headers=mock_admin_headers, json=payload)
+
+    assert r.status_code == 201, r.text
+    sid = r.json()["data"]["id"]
+    links = uow.session.exec(select(StudentParent).where(StudentParent.student_id == sid)).all()
+    assert [(l.parent_id, l.is_primary, l.relationship) for l in links] == [(parent.id, True, "mother")]
+
+    r = client_with_uow.get(f"/api/v1/crm/students/{sid}/parents", headers=mock_admin_headers)
+    assert r.status_code == 200, r.text
+    assert [p["id"] for p in r.json()["data"]] == [parent.id]

@@ -7,7 +7,7 @@ Endpoints for parent management.
 """
 from typing import List
 
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query
 
 from app.api.schemas.common import ApiResponse, PaginatedResponse
 from app.modules.crm.api.schemas import ParentPublic, ParentListItem
@@ -103,7 +103,7 @@ def update_parent(
             message="Parent updated successfully.",
         )
     except NotFoundError:
-        raise HTTPException(status_code=404, detail=f"Parent {parent_id} not found")
+        raise NotFoundError(f"Parent {parent_id} not found")
 
 # Delete parent by ID
 @router.delete(

@@ -8,7 +8,7 @@ Endpoints for student management.
 from typing import List, Literal, Optional
 from datetime import date
 
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query
 
 from app.api.schemas.common import ApiResponse, PaginatedResponse
 from app.modules.crm.api.schemas import (
@@ -247,21 +247,17 @@ def get_waiting_list(
     description="Retrieve students filtered by their enrollment status."
 )
 def get_students_by_status(
-    status: str,
+    status: StudentStatus,
     skip: int = Query(0, ge=0),
     limit: int = Query(200, ge=1, le=200),
     current_user: User = Depends(require_admin),
     svc: SearchService = Depends(get_student_search_service),
 ):
-    try:
-        status_enum = StudentStatus(status)
-        students = svc.get_by_status(status_enum)
-        return ApiResponse(
-            data=students,
-            message=f"Retrieved {len(students)} {status} students"
-        )
-    except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid status: {status}")
+    students = svc.get_by_status(status, skip, limit)
+    return ApiResponse(
+        data=students,
+        message=f"Retrieved {len(students)} {status.value} students"
+    )
 
 
 # Get student status summary
@@ -348,22 +344,16 @@ def update_student_status(
     current_user: User = Depends(require_admin),
     svc: StudentCrudService = Depends(get_student_crud_service),
 ):
-    try:
-        status_enum = StudentStatus(body.status)
-        student = svc.update_status(
-            student_id=student_id,
-            new_status=status_enum,
-            notes=body.notes,
-            changed_by_user_id=current_user.id,
-        )
-        return ApiResponse(
-            data=student,
-            message=f"Student status updated to {body.status}"
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except NotFoundError:
-        raise HTTPException(status_code=404, detail=f"Student {student_id} not found")
+    student = svc.update_status(
+        student_id=student_id,
+        new_status=body.status,
+        notes=body.notes,
+        changed_by_user_id=current_user.id,
+    )
+    return ApiResponse(
+        data=student,
+        message=f"Student status updated to {body.status.value}"
+    )
 
 
 # Toggle student status between active and waiting
@@ -379,16 +369,11 @@ def toggle_student_status(
     current_user: User = Depends(require_admin),
     svc: StudentCrudService = Depends(get_student_crud_service),
 ):
-    try:
-        student = svc.toggle_status(student_id=student_id)
-        return ApiResponse(
-            data=student,
-            message=f"Student status toggled to {student.status}"
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except NotFoundError:
-        raise HTTPException(status_code=404, detail=f"Student {student_id} not found")
+    student = svc.toggle_status(student_id=student_id)
+    return ApiResponse(
+        data=student,
+        message=f"Student status toggled to {student.status}"
+    )
 
 
 # Set waiting list priority
@@ -415,7 +400,7 @@ def set_waiting_priority(
             message=f"Waiting priority set to {body.priority}"
         )
     except NotFoundError:
-        raise HTTPException(status_code=404, detail=f"Student {student_id} not found or not on waiting list")
+        raise NotFoundError(f"Student {student_id} not found or not on waiting list")
 
 
 # Delete student by ID
@@ -460,7 +445,7 @@ def get_student_details(
         details = svc.get_student_details(student_id)
         return ApiResponse(data=details)
     except NotFoundError:
-        raise HTTPException(status_code=404, detail=f"Student {student_id} not found")
+        raise NotFoundError(f"Student {student_id} not found")
 
 
 @router.get(
@@ -511,14 +496,14 @@ def soft_delete_student(
     try:
         success = svc.soft_delete_student(student_id, deleted_by=current_user.id)
         if not success:
-            raise HTTPException(status_code=404, detail=f"Student {student_id} not found or already deleted")
+            raise NotFoundError(f"Student {student_id} not found or already deleted")
 
         return ApiResponse(
             data={"student_id": student_id, "status": "soft_deleted"},
             message="Student soft-deleted successfully. Use restore endpoint to recover."
         )
     except NotFoundError:
-        raise HTTPException(status_code=404, detail=f"Student {student_id} not found")
+        raise NotFoundError(f"Student {student_id} not found")
 
 
 @router.post(
@@ -536,14 +521,14 @@ def restore_student(
     try:
         success = svc.restore_student(student_id, restored_by=current_user.id)
         if not success:
-            raise HTTPException(status_code=404, detail=f"Student {student_id} not found or not deleted")
+            raise NotFoundError(f"Student {student_id} not found or not deleted")
 
         return ApiResponse(
             data={"student_id": student_id, "status": "restored"},
             message="Student restored successfully"
         )
     except NotFoundError:
-        raise HTTPException(status_code=404, detail=f"Student {student_id} not found")
+        raise NotFoundError(f"Student {student_id} not found")
 
 
 @router.delete(
@@ -561,14 +546,14 @@ def hard_delete_student(
     try:
         success = svc.hard_delete_student(student_id)
         if not success:
-            raise HTTPException(status_code=404, detail=f"Student {student_id} not found")
+            raise NotFoundError(f"Student {student_id} not found")
 
         return ApiResponse(
             data={"student_id": student_id, "status": "permanently_deleted"},
             message="Student permanently deleted. This action cannot be undone."
         )
     except NotFoundError:
-        raise HTTPException(status_code=404, detail=f"Student {student_id} not found")
+        raise NotFoundError(f"Student {student_id} not found")
 
 
 @router.get(

@@ -256,7 +256,6 @@ class TestGroupsWrite:
         assert data["success"] is True
         assert "level" in data["message"].lower()
 
-    @pytest.mark.xfail(strict=True, reason="#71 progress-level maps an unknown group to 400, not 404")
     def test_progress_group_level_not_found(self, client, mock_admin_headers, override_auth):
         """Test progressing non-existent group returns 404."""
         response = client.post(

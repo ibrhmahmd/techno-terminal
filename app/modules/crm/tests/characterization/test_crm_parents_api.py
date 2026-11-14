@@ -298,7 +298,7 @@ def test_update_parent_not_found(client_with_uow, override_auth, mock_admin_head
     body = r.json()
     assert body["success"] is False
     # Router catches NotFoundError and raises HTTPException -> error_type "NotFound"
-    assert body["error"] == "NotFound"
+    assert body["error"] == "NotFoundError"
 
 
 # ── /api/v1/crm/parents/{parent_id} (DELETE) ─────────────────────────────────

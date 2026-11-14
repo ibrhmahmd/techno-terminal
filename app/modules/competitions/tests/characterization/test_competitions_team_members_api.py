@@ -128,14 +128,14 @@ def test_list_team_members(client_with_uow, override_auth, mock_admin_headers, d
     assert m["amount_due"] == 80.0
 
 
-def test_list_team_members_empty_team_name_is_unknown(client_with_uow, override_auth, mock_admin_headers, db_session):
-    """current behaviour (pinned, not endorsed): a team with no members reports team_name 'Unknown'."""
+def test_list_team_members_empty_team_shows_real_name(client_with_uow, override_auth, mock_admin_headers, db_session):
+    """current behaviour (pinned, not endorsed): a team with no members still reports its real team_name (#89)."""
     _, team, _ = _setup(db_session)
 
     r = client_with_uow.get(f"/api/v1/teams/{team.id}/members", headers=mock_admin_headers)
 
     assert r.status_code == 200
-    assert r.json()["data"] == {"team_id": team.id, "team_name": "Unknown", "members": []}
+    assert r.json()["data"] == {"team_id": team.id, "team_name": team.team_name, "members": []}
 
 
 # ── POST /teams/{id}/members ──────────────────────────────────────────────────
@@ -233,15 +233,14 @@ def test_remove_paid_team_member_is_blocked(client_with_uow, override_auth, mock
     assert r.json()["message"] == "Cannot remove a team member who has already paid the competition fee."
 
 
-def test_remove_missing_team_member_still_reports_success(client_with_uow, override_auth, mock_admin_headers, db_session):
-    """current behaviour (pinned, not endorsed): removing a non-member is a 200 with data=False."""
+def test_remove_missing_team_member_is_404(client_with_uow, override_auth, mock_admin_headers, db_session):
+    """Removing a non-member -> 404 NotFoundError (#89)."""
     _, team, student = _setup(db_session)
 
     r = client_with_uow.delete(f"/api/v1/teams/{team.id}/members/{student.id}", headers=mock_admin_headers)
 
-    assert r.status_code == 200
-    assert r.json()["data"] is False
-    assert r.json()["message"] == "Member removed successfully."
+    assert r.status_code == 404
+    assert r.json()["error"] == "NotFoundError"
 
 
 # ── POST /teams/{id}/members/{student_id}/pay ─────────────────────────────────

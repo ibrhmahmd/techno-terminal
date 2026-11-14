@@ -204,7 +204,7 @@ class TestSessionsWrite:
         """Test deleting non-existent session."""
         response = client.delete("/api/v1/academics/sessions/99999", headers=mock_admin_headers)
 
-        assert response.status_code in [200, 404]
+        assert response.status_code == 404
 
     def test_cancel_session_success(self, client, mock_admin_headers, override_auth, db_session):
         """Test cancelling a session."""

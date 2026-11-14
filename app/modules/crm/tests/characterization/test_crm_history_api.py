@@ -147,15 +147,12 @@ def test_get_student_history_with_filters(client_with_uow, override_auth, mock_a
             assert "user_id" in item["performed_by"]
 
 
-def test_get_student_history_unknown_student(client_with_uow, override_auth, mock_admin_headers):
-    """GET /crm/students/999999999/history returns 200 with empty list (no student existence check)."""
+def test_get_student_history_unknown_student_is_404(client_with_uow, override_auth, mock_admin_headers):
+    """GET /crm/students/999999999/history for an unknown student is a 404 (#52)."""
     r = client_with_uow.get("/api/v1/crm/students/999999999/history", headers=mock_admin_headers)
 
-    assert r.status_code == 200
-    body = r.json()
-    assert body["success"] is True
-    assert isinstance(body["data"], list)
-    assert len(body["data"]) == 0
+    assert r.status_code == 404
+    assert r.json()["error"] == "NotFoundError"
 
 
 def test_get_student_history_filters_by_activity_types(client_with_uow, override_auth, mock_admin_headers, db_session):
@@ -236,15 +233,12 @@ def test_get_activity_summary_with_academic_activity(client_with_uow, override_a
     assert {"activity_type": "academic", "count": 1} in r.json()["data"]
 
 
-def test_get_activity_summary_unknown_student(client_with_uow, override_auth, mock_admin_headers):
-    """GET /crm/students/999999999/activity-summary returns 200 with empty list."""
+def test_get_activity_summary_unknown_student_is_404(client_with_uow, override_auth, mock_admin_headers):
+    """GET /crm/students/999999999/activity-summary for an unknown student is a 404 (#52)."""
     r = client_with_uow.get("/api/v1/crm/students/999999999/activity-summary", headers=mock_admin_headers)
 
-    assert r.status_code == 200
-    body = r.json()
-    assert body["success"] is True
-    assert isinstance(body["data"], list)
-    assert len(body["data"]) == 0
+    assert r.status_code == 404
+    assert r.json()["error"] == "NotFoundError"
 
 
 # ── /api/v1/crm/students/{student_id}/enrollment-history ───────────────────
@@ -279,17 +273,12 @@ def test_get_enrollment_history(client_with_uow, override_auth, mock_admin_heade
         assert isinstance(item["action_date"], str)  # ISO datetime string
 
 
-def test_get_enrollment_history_unknown_student(client_with_uow, override_auth, mock_admin_headers):
-    """GET /crm/students/999999999/enrollment-history returns 200 with empty paginated response."""
+def test_get_enrollment_history_unknown_student_is_404(client_with_uow, override_auth, mock_admin_headers):
+    """GET /crm/students/999999999/enrollment-history for an unknown student is a 404 (#52)."""
     r = client_with_uow.get("/api/v1/crm/students/999999999/enrollment-history", headers=mock_admin_headers)
 
-    assert r.status_code == 200
-    body = r.json()
-    assert body["success"] is True
-    assert isinstance(body["data"], list)
-    assert len(body["data"]) == 0
-    assert body["total"] == 0
-    assert body["skip"] == 0
+    assert r.status_code == 404
+    assert r.json()["error"] == "NotFoundError"
 
 
 # ── /api/v1/crm/students/{student_id}/status-history ───────────────────────
@@ -321,17 +310,12 @@ def test_get_status_history(client_with_uow, override_auth, mock_admin_headers, 
         assert isinstance(item["changed_at"], str)  # ISO datetime string
 
 
-def test_get_status_history_unknown_student(client_with_uow, override_auth, mock_admin_headers):
-    """GET /crm/students/999999999/status-history returns 200 with empty paginated response."""
+def test_get_status_history_unknown_student_is_404(client_with_uow, override_auth, mock_admin_headers):
+    """GET /crm/students/999999999/status-history for an unknown student is a 404 (#52)."""
     r = client_with_uow.get("/api/v1/crm/students/999999999/status-history", headers=mock_admin_headers)
 
-    assert r.status_code == 200
-    body = r.json()
-    assert body["success"] is True
-    assert isinstance(body["data"], list)
-    assert len(body["data"]) == 0
-    assert body["total"] == 0
-    assert body["skip"] == 0
+    assert r.status_code == 404
+    assert r.json()["error"] == "NotFoundError"
 
 
 # ── /api/v1/crm/students/{student_id}/competition-history ──────────────────
@@ -366,17 +350,12 @@ def test_get_competition_history(client_with_uow, override_auth, mock_admin_head
         assert isinstance(item["competition_id"], int)
 
 
-def test_get_competition_history_unknown_student(client_with_uow, override_auth, mock_admin_headers):
-    """GET /crm/students/999999999/competition-history returns 200 with empty paginated response."""
+def test_get_competition_history_unknown_student_is_404(client_with_uow, override_auth, mock_admin_headers):
+    """GET /crm/students/999999999/competition-history for an unknown student is a 404 (#52)."""
     r = client_with_uow.get("/api/v1/crm/students/999999999/competition-history", headers=mock_admin_headers)
 
-    assert r.status_code == 200
-    body = r.json()
-    assert body["success"] is True
-    assert isinstance(body["data"], list)
-    assert len(body["data"]) == 0
-    assert body["total"] == 0
-    assert body["skip"] == 0
+    assert r.status_code == 404
+    assert r.json()["error"] == "NotFoundError"
 
 
 # ── /api/v1/crm/students/{student_id}/log-activity (POST) ──────────────────

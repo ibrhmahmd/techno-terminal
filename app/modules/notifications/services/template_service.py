@@ -8,6 +8,7 @@ from app.modules.notifications.interfaces.i_notification_repository import (
 from app.modules.notifications.models.notification_template import NotificationTemplate
 from app.modules.notifications.repositories.admin_settings_repository import AdminSettingsRepository
 from app.modules.notifications.schemas.template_dto import TemplateTestResultDTO
+from app.shared.exceptions import NotFoundError
 from app.modules.notifications.services.report_notifications import ReportNotificationService
 
 
@@ -40,7 +41,7 @@ class TemplateService:
         # Load template
         template = self._repo.get_template_by_id(template_id)
         if not template:
-            raise ValueError(f"Template {template_id} not found")
+            raise NotFoundError(f"Template {template_id} not found")
 
         # Generate placeholder values
         placeholders = self._generate_placeholders(template.variables or [])

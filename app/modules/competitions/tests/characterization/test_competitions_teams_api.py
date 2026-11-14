@@ -351,10 +351,10 @@ def test_student_competitions(client_with_uow, override_auth, mock_admin_headers
 
 
 def test_student_competitions_unknown_student(client_with_uow, override_auth, mock_admin_headers):
-    """current behaviour (pinned, not endorsed): unknown student -> 200 empty list."""
+    """Unknown student id -> 404 NotFoundError (#89)."""
     r = client_with_uow.get("/api/v1/students/999999999/competitions", headers=mock_admin_headers)
-    assert r.status_code == 200
-    assert r.json()["data"] == {"student_id": 999999999, "competitions": []}
+    assert r.status_code == 404
+    assert r.json()["error"] == "NotFoundError"
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────

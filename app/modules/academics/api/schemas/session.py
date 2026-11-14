@@ -40,3 +40,10 @@ class GenerateLevelSessionsRequest(BaseModel):
     """Input for generating level sessions (without group_id which comes from path)."""
     level_number: int
     start_date: Optional[date] = None
+
+
+class AddExtraSessionRequest(BaseModel):
+    """Input for adding an extra session (group_id comes from path)."""
+    level_number: int
+    extra_date: date
+    notes: Optional[str] = None

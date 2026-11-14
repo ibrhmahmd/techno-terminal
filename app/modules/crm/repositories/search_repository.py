@@ -200,8 +200,8 @@ class SearchRepository:
         result = self._session.exec(sql, params={"active_only": active_only})
         return result.scalar()
 
-    def get_by_status(self, status) -> List:
-        """Get all students with a specific status using raw SQL."""
+    def get_by_status(self, status, skip: int = 0, limit: int | None = None) -> List:
+        """Get students with a specific status using raw SQL (paged when limit is set)."""
         from app.modules.crm.models.student_models import Student
         status_value = status.value if hasattr(status, 'value') else str(status)
 
@@ -209,9 +209,12 @@ class SearchRepository:
             SELECT * FROM students
             WHERE status = :status AND deleted_at IS NULL
             ORDER BY id
+            LIMIT :limit OFFSET :skip
         """)
 
-        result = self._session.exec(sql, params={"status": status_value})
+        result = self._session.exec(
+            sql, params={"status": status_value, "limit": limit, "skip": skip}
+        )
         return [Student.model_validate(row) for row in result.mappings()]
 
     def get_waiting_list(self) -> List[WaitingListStudentDTO]:

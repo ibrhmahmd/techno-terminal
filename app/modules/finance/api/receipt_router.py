@@ -95,7 +95,7 @@ def download_receipt_pdf(
 ):
     detail = service.get_detail(receipt_id)
     if not detail:
-        raise HTTPException(status_code=404, detail="Receipt not found")
+        raise NotFoundError("Receipt not found")
     pdf_bytes = service.generate_pdf(receipt_id)
     receipt_number = detail.receipt.receipt_number if detail.receipt else None
     return Response(

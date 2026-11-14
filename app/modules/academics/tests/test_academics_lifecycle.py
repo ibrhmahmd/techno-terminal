@@ -205,7 +205,7 @@ class TestGroupLifecycleWrite:
         )
 
         # Should fail because level is already completed
-        assert response.status_code == 400
+        assert response.status_code == 409
 
 
 class TestGroupLifecycleEdgeCases:

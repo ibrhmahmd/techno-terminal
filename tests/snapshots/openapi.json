@@ -479,17 +479,13 @@
         "title": "ActivityType",
         "type": "string"
       },
-      "AddExtraSessionInput": {
-        "description": "Input for SessionService.add_extra_session().",
+      "AddExtraSessionRequest": {
+        "description": "Input for adding an extra session (group_id comes from path).",
         "properties": {
           "extra_date": {
             "format": "date",
             "title": "Extra Date",
             "type": "string"
-          },
-          "group_id": {
-            "title": "Group Id",
-            "type": "integer"
           },
           "level_number": {
             "title": "Level Number",
@@ -508,11 +504,10 @@
           }
         },
         "required": [
-          "group_id",
           "level_number",
           "extra_date"
         ],
-        "title": "AddExtraSessionInput",
+        "title": "AddExtraSessionRequest",
         "type": "object"
       },
       "AddNewCourseInput": {
@@ -12233,6 +12228,7 @@
             "title": "Date Of Birth"
           },
           "full_name": {
+            "minLength": 1,
             "title": "Full Name",
             "type": "string"
           },
@@ -16990,6 +16986,7 @@
           "full_name": {
             "anyOf": [
               {
+                "minLength": 1,
                 "type": "string"
               },
               {
@@ -20363,7 +20360,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AddExtraSessionInput"
+                "$ref": "#/components/schemas/AddExtraSessionRequest"
               }
             }
           },
@@ -24617,8 +24614,7 @@
             "name": "status",
             "required": true,
             "schema": {
-              "title": "Status",
-              "type": "string"
+              "$ref": "#/components/schemas/StudentStatus"
             }
           },
           {

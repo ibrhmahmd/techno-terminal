@@ -179,10 +179,9 @@ class TestCompetitionRead:
             assert isinstance(body["data"], list)
 
     def test_list_categories_not_found(self, client, mock_admin_headers, override_auth, db_session):
-        """GET /api/v1/competitions/{id}/categories for non-existent ID returns empty list."""
+        """GET /api/v1/competitions/{id}/categories for non-existent ID returns 404."""
         response = client.get("/api/v1/competitions/99999/categories", headers=mock_admin_headers)
-        assert response.status_code == 200
-        assert response.json()["data"] == []
+        assert response.status_code == 404
 
 
 # ── Team CRUD ─────────────────────────────────────────────────────────────────
@@ -339,12 +338,8 @@ class TestTeamCRUD:
 class TestTeamMembers:
     """8 tests for add, list, remove, pay, refund team members."""
 
-    @pytest.mark.xfail(strict=False, reason="App bug: 'Student' object has no attribute 'is_active'")
     def test_add_team_member_success(self, client, mock_admin_headers, override_auth, db_session):
-        """POST /api/v1/teams/{id}/members returns 201.
-        Note: add_team_member_to_existing uses s.is_active which doesn't exist
-        on Student — may 500.
-        """
+        """POST /api/v1/teams/{id}/members returns 201."""
         comp = _create_comp(db_session)
         team = _create_team(db_session, competition_id=comp.id)
         student = _create_student(db_session)
@@ -353,15 +348,11 @@ class TestTeamMembers:
             headers=mock_admin_headers,
             json={"student_id": student.id, "amount_due": 25.0},
         )
-        assert response.status_code in (201, 404, 409, 500)
-        if response.status_code == 201:
-            assert response.json()["success"] is True
+        assert response.status_code == 201
+        assert response.json()["success"] is True
 
-    @pytest.mark.xfail(strict=False, reason="App bug: 'Student' object has no attribute 'is_active'")
     def test_add_team_member_duplicate(self, client, mock_admin_headers, override_auth, db_session):
-        """POST /api/v1/teams/{id}/members for duplicate student returns 409.
-        Known bug: s.is_active missing — may 500 instead.
-        """
+        """POST /api/v1/teams/{id}/members for duplicate student returns 409."""
         comp = _create_comp(db_session)
         team = _create_team(db_session, competition_id=comp.id)
         student = _create_student(db_session)
@@ -371,8 +362,8 @@ class TestTeamMembers:
             headers=mock_admin_headers,
             json={"student_id": student.id},
         )
-        # ConflictError for duplicate, or 500 for is_active bug
-        assert response.status_code in (409, 500)
+        assert response.status_code == 409
+        assert response.json()["error"] == "ConflictError"
 
     def test_list_team_members(self, client, mock_admin_headers, override_auth, db_session):
         """GET /api/v1/teams/{id}/members returns members with payment status."""
@@ -408,12 +399,12 @@ class TestTeamMembers:
             assert len(members_resp.json()["data"]["members"]) == 0
 
     def test_remove_team_member_not_found(self, client, mock_admin_headers, override_auth, db_session):
-        """DELETE /api/v1/teams/{id}/members/{sid} for non-existent returns 200 or 404."""
+        """DELETE /api/v1/teams/{id}/members/{sid} for non-existent returns 404."""
         response = client.delete(
             "/api/v1/teams/99999/members/99999",
             headers=mock_admin_headers,
         )
-        assert response.status_code in (200, 404)
+        assert response.status_code == 404
 
     def test_pay_competition_fee(self, client, mock_admin_headers, override_auth, db_session):
         """POST /api/v1/teams/{id}/members/{sid}/pay processes payment.

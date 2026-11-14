@@ -134,7 +134,7 @@ def test_get_competition_not_found(client_with_uow, override_auth, mock_admin_he
     assert r.status_code == 404
     body = r.json()
     assert body["success"] is False
-    assert body["error"] == "NotFound"
+    assert body["error"] == "NotFoundError"
     assert body["message"] == "Competition not found"
 
 
@@ -223,10 +223,10 @@ def test_delete_competition_with_teams_is_409(client_with_uow, override_auth, mo
 
 
 def test_delete_competition_unknown_id(client_with_uow, override_auth, mock_admin_headers):
-    """current behaviour (pinned, not endorsed): 200 with data=False and the success message."""
+    """Unknown competition id -> 404 NotFoundError (#89)."""
     r = client_with_uow.delete("/api/v1/competitions/999999999", headers=mock_admin_headers)
-    assert r.status_code == 200
-    assert r.json() == {"success": True, "data": False, "message": "Competition deleted successfully."}
+    assert r.status_code == 404
+    assert r.json()["error"] == "NotFoundError"
 
 
 # ── GET /competitions/{id}/summary ────────────────────────────────────────────
@@ -255,7 +255,8 @@ def test_competition_summary(client_with_uow, override_auth, mock_admin_headers,
 def test_competition_summary_not_found(client_with_uow, override_auth, mock_admin_headers):
     r = client_with_uow.get("/api/v1/competitions/999999999/summary", headers=mock_admin_headers)
     assert r.status_code == 404
-    assert r.json()["message"] == "Competition not found"
+    assert r.json()["error"] == "NotFoundError"
+    assert r.json()["message"] == "Competition 999999999 not found"
 
 
 # ── GET /competitions/{id}/categories ─────────────────────────────────────────
@@ -275,10 +276,10 @@ def test_list_categories(client_with_uow, override_auth, mock_admin_headers, db_
 
 
 def test_list_categories_unknown_competition(client_with_uow, override_auth, mock_admin_headers):
-    """current behaviour (pinned, not endorsed): unknown competition -> 200 empty list."""
+    """Unknown competition id -> 404 NotFoundError (#89)."""
     r = client_with_uow.get("/api/v1/competitions/999999999/categories", headers=mock_admin_headers)
-    assert r.status_code == 200
-    assert r.json()["data"] == []
+    assert r.status_code == 404
+    assert r.json()["error"] == "NotFoundError"
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────

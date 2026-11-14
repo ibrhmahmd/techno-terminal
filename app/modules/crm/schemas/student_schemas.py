@@ -4,15 +4,16 @@ app/modules/crm/schemas/student_schemas.py
 Pydantic DTOs scoped to Student operations.
 """
 from datetime import date, datetime
-from typing import Literal, Optional, List
+from typing import Annotated, Literal, Optional, List
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
 
 
 from app.modules.crm.models.student_models import Student, StudentStatus
 
 # The values the students.gender CHECK constraint accepts.
 Gender = Literal["male", "female"]
+StudentName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
 
 class RegisterStudentDTO(BaseModel):
@@ -20,7 +21,7 @@ class RegisterStudentDTO(BaseModel):
     Input for CRMService.register_student().
     Streamlit date_input returns datetime.date; APIs may send ISO date strings.
     """
-    full_name: str
+    full_name: StudentName
     date_of_birth: Optional[date] = None
     gender: Optional[Gender] = None
     phone: Optional[str] = None
@@ -41,7 +42,7 @@ class UpdateStudentDTO(BaseModel):
     Input for CRMService.update_student().
     All fields are optional; only provided fields will be written.
     """
-    full_name: Optional[str] = None
+    full_name: Optional[StudentName] = None
     date_of_birth: Optional[date] = None
     gender: Optional[Gender] = None
     phone: Optional[str] = None

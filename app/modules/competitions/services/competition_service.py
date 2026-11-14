@@ -1,7 +1,7 @@
 from app.db.uow import UnitOfWork
 from app.modules.competitions.repositories.competition_repository import CompetitionRepository
 from app.modules.competitions.repositories.team_repository import TeamRepository
-from app.shared.exceptions import BusinessRuleError
+from app.shared.exceptions import BusinessRuleError, NotFoundError
 from app.modules.competitions.schemas.competition_schemas import (
     CreateCompetitionInput,
     CompetitionDTO,
@@ -53,8 +53,13 @@ class CompetitionService:
             db.refresh(comp)
         return CompetitionDTO.model_validate(comp) if comp else None
 
+    def _require_competition(self, competition_id: int) -> None:
+        if self._comps.get_competition(competition_id) is None:
+            raise NotFoundError(f"Competition {competition_id} not found")
+
     def delete_competition(self, competition_id: int) -> bool:
         """Hard delete a competition."""
+        self._require_competition(competition_id)
         teams = self._teams.list_teams(competition_id)
         if teams:
             raise BusinessRuleError(
@@ -69,6 +74,7 @@ class CompetitionService:
         List all distinct categories with their subcategories for a competition.
         Uses the teams table to derive categories (3-table design).
         """
+        self._require_competition(competition_id)
         cat_rows = self._teams.get_distinct_categories(competition_id)
 
         cat_map = {}
@@ -86,14 +92,14 @@ class CompetitionService:
             for cat, subs in cat_map.items()
         ]
 
-    def get_competition_summary(self, competition_id: int) -> CompetitionSummaryDTO | None:
+    def get_competition_summary(self, competition_id: int) -> CompetitionSummaryDTO:
         """
         Returns competition + all categories + teams + member fee status.
         Uses batch loading: single JOIN query instead of N+1.
         """
         summary_data = self._comps.get_competition_summary_data(competition_id)
         if not summary_data.competition:
-            return None
+            raise NotFoundError(f"Competition {competition_id} not found")
 
         category_map: dict[tuple, list] = {}
         for team_dto in summary_data.teams:

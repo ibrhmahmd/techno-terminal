@@ -38,9 +38,9 @@ class SearchService:
         """Count total students."""
         return self._search_repo.count(active_only)
 
-    def get_by_status(self, status) -> List:
-        """Get all students with a specific status."""
-        return self._search_repo.get_by_status(status)
+    def get_by_status(self, status, skip: int = 0, limit: int | None = None) -> List:
+        """Get students with a specific status."""
+        return self._search_repo.get_by_status(status, skip, limit)
 
     def get_waiting_list(self) -> List[WaitingListStudentDTO]:
         """Get all students on the waiting list with unpaid balance and age."""

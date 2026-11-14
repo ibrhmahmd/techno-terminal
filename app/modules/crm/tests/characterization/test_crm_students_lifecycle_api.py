@@ -165,7 +165,7 @@ def test_update_student_status_bad_body(client_with_uow, override_auth, mock_adm
 
 
 def test_update_student_status_not_found(client_with_uow, override_auth, mock_admin_headers):
-    """PATCH /crm/students/999999999/status returns 404 with error 'NotFound' (router converts NotFoundError to HTTPException)."""
+    """PATCH /crm/students/999999999/status returns 404 NotFoundError."""
     payload = {"status": "active", "notes": "test"}
 
     r = client_with_uow.patch(
@@ -177,8 +177,7 @@ def test_update_student_status_not_found(client_with_uow, override_auth, mock_ad
     assert r.status_code == 404
     body = r.json()
     assert body["success"] is False
-    # Router catches NotFoundError and raises HTTPException(404) -> http_exception_handler maps 404 to "NotFound"
-    assert body["error"] == "NotFound"
+    assert body["error"] == "NotFoundError"
     assert "not found" in body["message"].lower()
 
 
@@ -226,7 +225,7 @@ def test_toggle_student_status_active_to_inactive(client_with_uow, override_auth
 
 
 def test_toggle_student_status_not_found(client_with_uow, override_auth, mock_admin_headers):
-    """POST /crm/students/999999999/status/toggle returns 404 with error 'NotFound'."""
+    """POST /crm/students/999999999/status/toggle returns 404 NotFoundError."""
     r = client_with_uow.post(
         "/api/v1/crm/students/999999999/status/toggle",
         headers=mock_admin_headers,
@@ -236,7 +235,7 @@ def test_toggle_student_status_not_found(client_with_uow, override_auth, mock_ad
     assert r.status_code == 404
     body = r.json()
     assert body["success"] is False
-    assert body["error"] == "NotFound"
+    assert body["error"] == "NotFoundError"
 
 
 # ── PATCH /crm/students/{student_id}/waiting-priority ─────────────────────────
@@ -305,7 +304,7 @@ def test_set_waiting_priority_unknown_student(client_with_uow, override_auth, mo
     assert r.status_code == 404
     body = r.json()
     assert body["success"] is False
-    assert body["error"] == "NotFound"
+    assert body["error"] == "NotFoundError"
 
 
 # ── DELETE /crm/students/{student_id} ──────────────────────────────────────────
@@ -399,7 +398,7 @@ def test_get_student_details_not_found(client_with_uow, override_auth, mock_admi
     body = r.json()
     assert body["success"] is False
     # Router catches NotFoundError and raises HTTPException(404) -> http_exception_handler maps 404 to "NotFound"
-    assert body["error"] == "NotFound"
+    assert body["error"] == "NotFoundError"
 
 
 # ── GET /crm/students/{student_id}/siblings ────────────────────────────────────
@@ -517,7 +516,7 @@ def test_soft_delete_student_not_found(client_with_uow, override_auth, mock_admi
     assert r.status_code == 404
     body = r.json()
     assert body["success"] is False
-    assert body["error"] == "NotFound"
+    assert body["error"] == "NotFoundError"
 
 
 # ── POST /crm/students/{student_id}/restore ────────────────────────────────────
@@ -566,7 +565,7 @@ def test_restore_student_not_found_or_not_deleted(client_with_uow, override_auth
     assert r.status_code == 404
     body = r.json()
     assert body["success"] is False
-    assert body["error"] == "NotFound"
+    assert body["error"] == "NotFoundError"
 
 
 def test_restore_student_unknown(client_with_uow, override_auth, mock_admin_headers):
@@ -579,7 +578,7 @@ def test_restore_student_unknown(client_with_uow, override_auth, mock_admin_head
     assert r.status_code == 404
     body = r.json()
     assert body["success"] is False
-    assert body["error"] == "NotFound"
+    assert body["error"] == "NotFoundError"
 
 
 # ── DELETE /crm/students/{student_id}/hard ─────────────────────────────────────
@@ -615,7 +614,7 @@ def test_hard_delete_student_not_found(client_with_uow, override_auth, mock_admi
     assert r.status_code == 404
     body = r.json()
     assert body["success"] is False
-    assert body["error"] == "NotFound"
+    assert body["error"] == "NotFoundError"
 
 
 # ── GET /crm/admin/deleted-students ────────────────────────────────────────────
