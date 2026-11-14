@@ -255,7 +255,8 @@ def test_competition_summary(client_with_uow, override_auth, mock_admin_headers,
 def test_competition_summary_not_found(client_with_uow, override_auth, mock_admin_headers):
     r = client_with_uow.get("/api/v1/competitions/999999999/summary", headers=mock_admin_headers)
     assert r.status_code == 404
-    assert r.json()["message"] == "Competition not found"
+    assert r.json()["error"] == "NotFoundError"
+    assert r.json()["message"] == "Competition 999999999 not found"
 
 
 # ── GET /competitions/{id}/categories ─────────────────────────────────────────

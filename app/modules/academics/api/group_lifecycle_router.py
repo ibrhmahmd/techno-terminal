@@ -80,22 +80,17 @@ def cancel_group_level_endpoint(
     Cancel a group level that hasn't been completed yet.
     Requires admin privileges.
     """
-    try:
-        cancelled_level = svc.cancel_level(group_id, level_number, body.reason)
-        return ApiResponse(
-            data=CancelLevelResult(
-                level_id=cancelled_level.id,
-                level_number=cancelled_level.level_number,
-                status=cancelled_level.status,
-                cancelled_at=cancelled_level.updated_at or utc_now(),
-                reason=body.reason,
-            ),
-            message=f"Level {level_number} cancelled successfully.",
-        )
-    except NotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    cancelled_level = svc.cancel_level(group_id, level_number, body.reason)
+    return ApiResponse(
+        data=CancelLevelResult(
+            level_id=cancelled_level.id,
+            level_number=cancelled_level.level_number,
+            status=cancelled_level.status,
+            cancelled_at=cancelled_level.updated_at or utc_now(),
+            reason=body.reason,
+        ),
+        message=f"Level {level_number} cancelled successfully.",
+    )
 
 
 # ── PATCH /academics/groups/{group_id}/levels/{level_number} ──────────────────

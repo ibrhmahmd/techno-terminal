@@ -702,7 +702,6 @@ class TestLifecycleEndpoints:
         assert response.status_code == 404
         assert response.json()["error"] == "NotFoundError"
 
-    @pytest.mark.xfail(strict=True, reason="#144 cancel route raises a bare HTTPException: 404 but error is 'NotFound', not 'NotFoundError'")
     def test_cancel_level_not_found(self, client, mock_admin_headers, override_auth):
         response = client.post(
             "/api/v1/academics/groups/99999/levels/1/cancel",

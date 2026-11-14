@@ -247,21 +247,17 @@ def get_waiting_list(
     description="Retrieve students filtered by their enrollment status."
 )
 def get_students_by_status(
-    status: str,
+    status: StudentStatus,
     skip: int = Query(0, ge=0),
     limit: int = Query(200, ge=1, le=200),
     current_user: User = Depends(require_admin),
     svc: SearchService = Depends(get_student_search_service),
 ):
-    try:
-        status_enum = StudentStatus(status)
-        students = svc.get_by_status(status_enum)
-        return ApiResponse(
-            data=students,
-            message=f"Retrieved {len(students)} {status} students"
-        )
-    except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid status: {status}")
+    students = svc.get_by_status(status, skip, limit)
+    return ApiResponse(
+        data=students,
+        message=f"Retrieved {len(students)} {status.value} students"
+    )
 
 
 # Get student status summary
@@ -348,22 +344,16 @@ def update_student_status(
     current_user: User = Depends(require_admin),
     svc: StudentCrudService = Depends(get_student_crud_service),
 ):
-    try:
-        status_enum = StudentStatus(body.status)
-        student = svc.update_status(
-            student_id=student_id,
-            new_status=status_enum,
-            notes=body.notes,
-            changed_by_user_id=current_user.id,
-        )
-        return ApiResponse(
-            data=student,
-            message=f"Student status updated to {body.status}"
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except NotFoundError:
-        raise HTTPException(status_code=404, detail=f"Student {student_id} not found")
+    student = svc.update_status(
+        student_id=student_id,
+        new_status=body.status,
+        notes=body.notes,
+        changed_by_user_id=current_user.id,
+    )
+    return ApiResponse(
+        data=student,
+        message=f"Student status updated to {body.status.value}"
+    )
 
 
 # Toggle student status between active and waiting
@@ -379,16 +369,11 @@ def toggle_student_status(
     current_user: User = Depends(require_admin),
     svc: StudentCrudService = Depends(get_student_crud_service),
 ):
-    try:
-        student = svc.toggle_status(student_id=student_id)
-        return ApiResponse(
-            data=student,
-            message=f"Student status toggled to {student.status}"
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except NotFoundError:
-        raise HTTPException(status_code=404, detail=f"Student {student_id} not found")
+    student = svc.toggle_status(student_id=student_id)
+    return ApiResponse(
+        data=student,
+        message=f"Student status toggled to {student.status}"
+    )
 
 
 # Set waiting list priority

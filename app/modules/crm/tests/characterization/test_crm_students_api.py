@@ -462,13 +462,27 @@ def test_get_students_by_status_waiting(client_with_uow, override_auth, mock_adm
 
 
 def test_get_students_by_status_invalid(client_with_uow, override_auth, mock_admin_headers):
-    """GET /crm/students/by-status/invalid returns 400 (ValueError -> HTTPException)."""
+    """GET /crm/students/by-status/invalid is a 422 (the path param is the StudentStatus enum)."""
     r = client_with_uow.get("/api/v1/crm/students/by-status/not_a_status", headers=mock_admin_headers)
 
-    assert r.status_code == 400
+    assert r.status_code == 422
     body = r.json()
     assert body["success"] is False
-    assert "invalid status" in body["message"].lower()
+    assert body["error"] == "ValidationError"
+
+
+def test_get_students_by_status_honours_skip_and_limit(client_with_uow, override_auth, mock_admin_headers, db_session):
+    """skip/limit reach the query: the page is at most `limit` long and skip shifts it."""
+    marker = _short()
+    for i in range(3):
+        _make_student(db_session, full_name=f"BSPage{i} {marker}", status=StudentStatus.ACTIVE)
+
+    url = "/api/v1/crm/students/by-status/active"
+    first = client_with_uow.get(f"{url}?limit=2", headers=mock_admin_headers).json()["data"]
+    shifted = client_with_uow.get(f"{url}?limit=2&skip=1", headers=mock_admin_headers).json()["data"]
+
+    assert len(first) <= 2 and len(shifted) <= 2
+    assert shifted[0]["id"] == first[1]["id"]
 
 
 # ── /api/v1/crm/students/status-summary ───────────────────────────────────────

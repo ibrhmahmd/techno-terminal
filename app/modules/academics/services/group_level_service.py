@@ -39,7 +39,7 @@ class GroupLevelService:
             GroupLevelDetailDTO with related entity names
 
         Raises:
-            ValueError: If level not found
+            NotFoundError: If level not found
         """
         session = self._uow.session
         level = repo.get_group_level_by_number(session, group_id, level_number)
@@ -128,9 +128,9 @@ class GroupLevelService:
 
         # 2. Check if already completed or cancelled
         if level.status == "completed":
-            raise ValueError("Cannot cancel an already completed level")
+            raise BusinessRuleError("Cannot cancel an already completed level")
         if level.status == "cancelled":
-            raise ValueError("Level is already cancelled")
+            raise BusinessRuleError("Level is already cancelled")
 
         # 3. Cancel it
         level.status = "cancelled"

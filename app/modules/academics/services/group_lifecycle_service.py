@@ -157,7 +157,7 @@ class GroupLifecycleService:
         # Phase 1: Get current active level
         current_level = repo.get_current_group_level(session, data.group_id)
         if not current_level:
-            raise ValueError(f"No active level found for group {data.group_id}")
+            raise BusinessRuleError(f"No active level found for group {data.group_id}")
 
         current_level_number = current_level.level_number
         # Use target_level if provided, otherwise default to next sequential level
@@ -165,7 +165,7 @@ class GroupLifecycleService:
 
         # Validate: target level must be greater than current level
         if new_level_number <= current_level_number:
-            raise ValueError(
+            raise BusinessRuleError(
                 f"Target level {new_level_number} must be greater than current level {current_level_number}"
             )
 
@@ -174,7 +174,7 @@ class GroupLifecycleService:
             session, data.group_id, new_level_number
         )
         if existing_next:
-            raise ValueError(
+            raise BusinessRuleError(
                 f"Level {new_level_number} already exists for group {data.group_id}"
             )
 
@@ -185,7 +185,7 @@ class GroupLifecycleService:
         # Phase 4: Get group and handle course override
         group = session.get(Group, data.group_id)
         if not group:
-            raise ValueError(f"Group {data.group_id} not found")
+            raise NotFoundError(f"Group {data.group_id} not found")
 
         old_course_id = group.course_id
         new_course_id = data.course_id or group.course_id
@@ -194,7 +194,7 @@ class GroupLifecycleService:
         if data.course_id:
             new_course = session.get(Course, data.course_id)
             if not new_course:
-                raise ValueError(f"Course {data.course_id} not found")
+                raise NotFoundError(f"Course {data.course_id} not found")
             # Update group's course_id
             group.course_id = data.course_id
             # Log course change in history
@@ -211,14 +211,14 @@ class GroupLifecycleService:
             # Validate instructor exists (employees table)
             instructor = session.get(Employee, data.instructor_id)
             if not instructor:
-                raise ValueError(f"Instructor {data.instructor_id} not found")
+                raise NotFoundError(f"Instructor {data.instructor_id} not found")
             # Update group's instructor_id
             group.instructor_id = data.instructor_id
 
         # Get course for pricing (may be new course if overridden)
         course = session.get(Course, new_course_id)
         if not course:
-            raise ValueError(f"Course {new_course_id} not found")
+            raise NotFoundError(f"Course {new_course_id} not found")
 
         # Phase 5: Create new level
         new_level = GroupLevel(

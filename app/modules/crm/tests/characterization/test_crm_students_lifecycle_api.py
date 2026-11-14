@@ -165,7 +165,7 @@ def test_update_student_status_bad_body(client_with_uow, override_auth, mock_adm
 
 
 def test_update_student_status_not_found(client_with_uow, override_auth, mock_admin_headers):
-    """PATCH /crm/students/999999999/status returns 404 with error 'NotFound' (router converts NotFoundError to HTTPException)."""
+    """PATCH /crm/students/999999999/status returns 404 NotFoundError."""
     payload = {"status": "active", "notes": "test"}
 
     r = client_with_uow.patch(
@@ -177,8 +177,7 @@ def test_update_student_status_not_found(client_with_uow, override_auth, mock_ad
     assert r.status_code == 404
     body = r.json()
     assert body["success"] is False
-    # Router catches NotFoundError and raises HTTPException(404) -> http_exception_handler maps 404 to "NotFound"
-    assert body["error"] == "NotFound"
+    assert body["error"] == "NotFoundError"
     assert "not found" in body["message"].lower()
 
 
@@ -226,7 +225,7 @@ def test_toggle_student_status_active_to_inactive(client_with_uow, override_auth
 
 
 def test_toggle_student_status_not_found(client_with_uow, override_auth, mock_admin_headers):
-    """POST /crm/students/999999999/status/toggle returns 404 with error 'NotFound'."""
+    """POST /crm/students/999999999/status/toggle returns 404 NotFoundError."""
     r = client_with_uow.post(
         "/api/v1/crm/students/999999999/status/toggle",
         headers=mock_admin_headers,
@@ -236,7 +235,7 @@ def test_toggle_student_status_not_found(client_with_uow, override_auth, mock_ad
     assert r.status_code == 404
     body = r.json()
     assert body["success"] is False
-    assert body["error"] == "NotFound"
+    assert body["error"] == "NotFoundError"
 
 
 # ── PATCH /crm/students/{student_id}/waiting-priority ─────────────────────────

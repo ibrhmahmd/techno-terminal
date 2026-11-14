@@ -37,6 +37,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.core.config import settings
+from app.shared.exceptions import NotFoundError
 from app.modules.notifications.schemas.report_dto import ReportDeliveryResult
 
 BASE = "/api/v1/notifications"
@@ -429,12 +430,24 @@ def test_template_test_endpoint(client_with_uow, override_auth, mock_admin_heade
 
 
 def test_template_test_unknown_template_is_404(client_with_uow, override_auth, mock_admin_headers, fake_svc):
-    fake_svc.test_and_send_template.side_effect = ValueError("Template 9 not found")
+    fake_svc.test_and_send_template.side_effect = NotFoundError("Template 9 not found")
 
     r = client_with_uow.post(f"{BASE}/templates/9/test", headers=mock_admin_headers)
 
     assert r.status_code == 404
+    assert r.json()["error"] == "NotFoundError"
     assert r.json()["message"] == "Template 9 not found"
+
+
+def test_template_service_test_unknown_template_raises_not_found():
+    import asyncio
+
+    from app.modules.notifications.services.template_service import TemplateService
+
+    repo = MagicMock()
+    repo.get_template_by_id.return_value = None
+    with pytest.raises(NotFoundError):
+        asyncio.run(TemplateService(repo).test_and_send_template(9))
 
 
 # ── Admin settings (global rows; restored by the tests) ───────────────────────

@@ -94,8 +94,6 @@ class ActivityRepository:
         """Update fields of an activity log entry."""
         # Retrieve the existing ORM entity so we can update it
         log = self._session.get(StudentActivityLog, activity_id)
-        if not log:
-            raise ValueError(f"Activity log with ID {activity_id} not found")
 
         if activity_type is not None:
             log.activity_type = activity_type

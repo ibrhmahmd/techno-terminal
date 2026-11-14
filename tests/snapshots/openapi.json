@@ -24617,8 +24617,7 @@
             "name": "status",
             "required": true,
             "schema": {
-              "title": "Status",
-              "type": "string"
+              "$ref": "#/components/schemas/StudentStatus"
             }
           },
           {

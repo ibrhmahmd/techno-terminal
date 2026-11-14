@@ -101,11 +101,8 @@ async def test_template(
     2. ACTUALLY sending test email to all additional recipients
     3. Returning full render details and actual send status
     """
-    try:
-        result = await svc.test_and_send_template(template_id)
-        return ApiResponse(
-            data=result,
-            message=f"Test email sent to {result.recipients_sent} recipients, {result.recipients_failed} failed"
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    result = await svc.test_and_send_template(template_id)
+    return ApiResponse(
+        data=result,
+        message=f"Test email sent to {result.recipients_sent} recipients, {result.recipients_failed} failed"
+    )

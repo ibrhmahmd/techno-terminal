@@ -267,7 +267,7 @@ def test_cancel_level_without_reason(client_with_uow, override_auth, mock_admin_
 
 
 def test_cancel_level_unknown_level_is_404(client_with_uow, override_auth, mock_admin_headers, db_session):
-    """POST cancel a nonexistent level returns the HTTPException NotFound envelope."""
+    """POST cancel a nonexistent level returns the NotFoundError envelope."""
     course = _make_course(db_session)
     group = _make_group(db_session, course.id)
     _make_group_level(db_session, group.id, course.id, level_number=1)
@@ -281,12 +281,12 @@ def test_cancel_level_unknown_level_is_404(client_with_uow, override_auth, mock_
     assert r.status_code == 404
     body = r.json()
     assert body["success"] is False
-    assert body["error"] == "NotFound"
+    assert body["error"] == "NotFoundError"
     assert body["message"] == f"Level 9 not found for group {group.id}"
 
 
-def test_cancel_level_already_cancelled_is_400(client_with_uow, override_auth, mock_admin_headers, db_session):
-    """POST cancel a level already in 'cancelled' status returns 400 BadRequest."""
+def test_cancel_level_already_cancelled_is_409(client_with_uow, override_auth, mock_admin_headers, db_session):
+    """POST cancel a level already in 'cancelled' status returns 409 BusinessRuleError."""
     course = _make_course(db_session)
     group = _make_group(db_session, course.id)
     _make_group_level(db_session, group.id, course.id, level_number=1, status="cancelled")
@@ -297,15 +297,15 @@ def test_cancel_level_already_cancelled_is_400(client_with_uow, override_auth, m
         json={"reason": "again"},
     )
 
-    assert r.status_code == 400
+    assert r.status_code == 409
     body = r.json()
     assert body["success"] is False
-    assert body["error"] == "BadRequest"
+    assert body["error"] == "BusinessRuleError"
     assert body["message"] == "Level is already cancelled"
 
 
-def test_cancel_level_completed_is_400(client_with_uow, override_auth, mock_admin_headers, db_session):
-    """POST cancel a 'completed' level returns 400 BadRequest."""
+def test_cancel_level_completed_is_409(client_with_uow, override_auth, mock_admin_headers, db_session):
+    """POST cancel a 'completed' level returns 409 BusinessRuleError."""
     course = _make_course(db_session)
     group = _make_group(db_session, course.id)
     _make_group_level(db_session, group.id, course.id, level_number=1, status="completed")
@@ -316,10 +316,10 @@ def test_cancel_level_completed_is_400(client_with_uow, override_auth, mock_admi
         json={"reason": "too late"},
     )
 
-    assert r.status_code == 400
+    assert r.status_code == 409
     body = r.json()
     assert body["success"] is False
-    assert body["error"] == "BadRequest"
+    assert body["error"] == "BusinessRuleError"
     assert body["message"] == "Cannot cancel an already completed level"
 
 

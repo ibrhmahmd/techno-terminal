@@ -11,7 +11,7 @@ Role policy:
   WRITE -> require_admin
 """
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 
 from app.api.schemas.common import ApiResponse
 from app.modules.enrollments.api.schemas.enrollment import EnrollmentPublic, StudentEnrollmentSummaryPublic
@@ -213,10 +213,7 @@ def progress_group_level(
         group_name=body.group_name,
     )
 
-    try:
-        result = svc.progress_group_level(data)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    result = svc.progress_group_level(data)
 
     return ApiResponse(
         data=ProgressGroupLevelResult(

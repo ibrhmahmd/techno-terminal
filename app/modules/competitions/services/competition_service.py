@@ -92,14 +92,14 @@ class CompetitionService:
             for cat, subs in cat_map.items()
         ]
 
-    def get_competition_summary(self, competition_id: int) -> CompetitionSummaryDTO | None:
+    def get_competition_summary(self, competition_id: int) -> CompetitionSummaryDTO:
         """
         Returns competition + all categories + teams + member fee status.
         Uses batch loading: single JOIN query instead of N+1.
         """
         summary_data = self._comps.get_competition_summary_data(competition_id)
         if not summary_data.competition:
-            return None
+            raise NotFoundError(f"Competition {competition_id} not found")
 
         category_map: dict[tuple, list] = {}
         for team_dto in summary_data.teams:
