@@ -50,6 +50,10 @@ class ReceiptRepository:
             """
         )
         self._session.execute(stmt, {"rid": receipt_id})
+        # The raw UPDATE bypasses the ORM: reload so the loaded Receipt carries the number.
+        receipt = self._session.get(Receipt, receipt_id)
+        if receipt is not None:
+            self._session.refresh(receipt)
 
     def get_by_id(self, receipt_id: int) -> Optional[Receipt]:
         """Get receipt by ID."""

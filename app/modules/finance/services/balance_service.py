@@ -14,6 +14,8 @@ from app.modules.finance.schemas import (
 from app.modules.finance.schemas import ReceiptLineInput, EnrollmentBalanceItem
 from app.db.uow import UnitOfWork
 from app.modules.finance.repositories.payment_repository import PaymentRepository
+from app.modules.crm.models.student_models import Student
+from app.shared.exceptions import NotFoundError
 
 
 class BalanceService:
@@ -61,7 +63,12 @@ class BalanceService:
         - Aggregated totals (amount_due, discounts, paid, net_balance)
         - Enrollment counts (total and unpaid)
         - Full list of enrollment balances (enrollments field)
+
+        Raises:
+            NotFoundError: If the student does not exist
         """
+        if self._uow.session.get(Student, student_id) is None:
+            raise NotFoundError(f"Student {student_id} not found.")
 
         enrollments = self._payments.get_student_balances(student_id)
         
