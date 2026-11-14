@@ -478,6 +478,39 @@ def test_admin_update_user_invalid_role_is_422(client_with_uow, override_system_
         assert r.status_code == 422, role
         assert r.json()["error"] == "ValidationError"
 
+def test_admin_list_users_filters_by_instructor_role(client_with_uow, override_system_admin_auth, system_admin_headers, db_session):
+    """role=instructor is a valid filter and returns only instructors (#194)."""
+    marker = _short()
+    _make_user(db_session, username=f"ca_{marker}_i", role="instructor")
+    _make_user(db_session, username=f"ca_{marker}_a", role="admin")
+
+    r = client_with_uow.get(
+        "/api/v1/admin/users", params={"q": marker, "role": "instructor"}, headers=system_admin_headers
+    )
+
+    assert r.status_code == 200, r.text
+    assert [u["role"] for u in r.json()["data"]] == ["instructor"]
+
+
+def test_admin_list_users_unknown_role_filter_is_422(client_with_uow, override_system_admin_auth, system_admin_headers):
+    r = client_with_uow.get(
+        "/api/v1/admin/users", params={"role": "bogus"}, headers=system_admin_headers
+    )
+
+    assert r.status_code == 422
+
+
+def test_admin_invite_instructor_is_422(client_with_uow, override_system_admin_auth, system_admin_headers):
+    """Assigning the instructor role stays closed through the API (#194)."""
+    r = client_with_uow.post(
+        "/api/v1/admin/users/invite",
+        headers=system_admin_headers,
+        json={"email": f"{_short()}@test.local", "role": "instructor", "employee_id": None},
+    )
+
+    assert r.status_code == 422
+
+
 def test_admin_delete_user(client_with_uow, override_system_admin_auth, system_admin_headers, db_session):
     target = _make_user(db_session, supabase_uid=_uid())
     admin = MagicMock()

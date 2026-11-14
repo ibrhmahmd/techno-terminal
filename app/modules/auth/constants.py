@@ -10,10 +10,11 @@ from typing import Literal, TypeAlias
 class UserRole(str, Enum):
     """User roles for the application."""
     ADMIN = "admin"
+    INSTRUCTOR = "instructor"
     SYSTEM_ADMIN = "system_admin"
 
 
-# The roles an admin may assign through the API (#150); keep in step with UserRole.
+# The roles an admin may assign through the API (#150). Instructor is deliberately excluded (#194).
 UserRoleValue: TypeAlias = Literal["admin", "system_admin"]
 
 
