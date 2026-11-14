@@ -322,7 +322,6 @@ class TestGroupEndpoints:
         response = client.patch("/api/v1/academics/groups/1", json={"name": "Hack"})
         assert response.status_code == 401
 
-    @pytest.mark.xfail(reason="BUG: group_id required in body despite being in URL path")
     def test_create_group_with_all_optional_fields(self, client, mock_admin_headers, override_auth, db_session):
         course, instructor = self._setup_prerequisites(db_session)
         response = client.post(
@@ -333,14 +332,14 @@ class TestGroupEndpoints:
                 "instructor_id": instructor.id,
                 "schedule": {
                     "day": "Wednesday",
-                    "time_start": "10:00:00",
-                    "time_end": "11:30:00",
+                    "time_start": "12:00:00",
+                    "time_end": "13:30:00",
                 },
                 "max_capacity": 20,
                 "notes": "Optional notes for test group",
             },
         )
-        assert response.status_code == 201
+        assert response.status_code == 201, response.text
         data = response.json()
         assert data["data"]["max_capacity"] == 20
 
@@ -502,7 +501,6 @@ class TestSessionEndpoints:
         db_session.commit()
         return bundle
 
-    @pytest.mark.xfail(reason="BUG: group_id required in body despite being in URL path")
     def test_add_extra_session_success(self, client, mock_admin_headers, override_auth, db_session):
         course, group, level, sessions = self._create_bundle(db_session)
         response = client.post(
@@ -563,7 +561,7 @@ class TestSessionEndpoints:
         if response.status_code == 200:
             assert response.json()["success"] is True
 
-    @pytest.mark.xfail(reason="BUG: SessionService missing mark_substitute_instructor method")
+    @pytest.mark.xfail(strict=True, reason="#66 SessionService missing mark_substitute_instructor method")
     def test_substitute_instructor(self, client, mock_admin_headers, override_auth, db_session):
         course, group, level, sessions = self._create_bundle(db_session)
         instructor = create_test_employee(db_session, full_name=_unique("Sub"))
@@ -582,7 +580,6 @@ class TestSessionEndpoints:
         data = response.json()
         assert data["success"] is False
 
-    @pytest.mark.xfail(reason="BUG: group_id required in body despite being in URL path")
     def test_add_session_group_not_found(self, client, mock_admin_headers, override_auth):
         response = client.post(
             "/api/v1/academics/groups/99999/sessions",
@@ -628,7 +625,7 @@ class TestSessionEndpoints:
         )
         assert response.status_code == 404
 
-    @pytest.mark.xfail(reason="BUG: SessionService missing mark_substitute_instructor method")
+    @pytest.mark.xfail(strict=True, reason="#66 SessionService missing mark_substitute_instructor method")
     def test_substitute_instructor_not_found(self, client, mock_admin_headers, override_auth, db_session):
         course, group, level, sessions = self._create_bundle(db_session)
         s = sessions[0]

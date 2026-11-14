@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from app.api.schemas.common import ApiResponse
-from app.modules.academics.api.schemas.session import SessionPublic
+from app.modules.academics.api.schemas.session import SessionPublic, AddExtraSessionRequest
 from app.api.deps import require_admin, require_any
 from app.modules.academics.api.deps import get_session_service
 from app.modules.academics.schemas.session_schemas import AddExtraSessionInput, UpdateSessionDTO
@@ -27,11 +27,11 @@ router = APIRouter(tags=["Academics — Sessions"])
 )
 def add_extra_session(
     group_id: int,
-    body: AddExtraSessionInput,
+    body: AddExtraSessionRequest,
     _user: User = Depends(require_admin),
     svc: SessionService = Depends(get_session_service),
 ):
-    session_data = body.model_copy(update={"group_id": group_id})
+    session_data = AddExtraSessionInput(group_id=group_id, **body.model_dump())
     session = svc.add_extra_session(session_data)
     return ApiResponse(
         data=SessionPublic.model_validate(session),

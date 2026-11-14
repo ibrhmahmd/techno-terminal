@@ -531,14 +531,13 @@ def test_add_extra_session_bad_body(client_with_uow, override_auth, mock_admin_h
 
 
 def test_add_extra_session_group_not_found(client_with_uow, override_auth, mock_admin_headers):
-    """POST /academics/groups/999999999/sessions returns 422 (current behaviour)."""
+    """POST /academics/groups/999999999/sessions returns 404 NotFoundError."""
     payload = {"level_number": 1, "extra_date": "2026-07-15"}
     r = client_with_uow.post("/api/v1/academics/groups/999999999/sessions", headers=mock_admin_headers, json=payload)
-    # Current behaviour: returns 422 Unprocessable Entity (NotFoundError mapped to 422?)
-    assert r.status_code == 422
+    assert r.status_code == 404
     body = r.json()
     assert body["success"] is False
-    # current behaviour (pinned, not endorsed)
+    assert body["error"] == "NotFoundError"
 
 
 # ── /api/v1/academics/sessions/{session_id} (GET) ─────────────────────────────

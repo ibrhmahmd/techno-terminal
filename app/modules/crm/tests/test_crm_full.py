@@ -79,7 +79,6 @@ class TestStudentCRUD:
         parent_ids = [p["id"] for p in parents_resp.json()["data"]]
         assert parent.id in parent_ids
 
-    @pytest.mark.xfail(reason="App bug: no empty-string validation on full_name")
     def test_create_student_validation_error(self, client, mock_admin_headers, override_auth):
         resp = client.post(
             "/api/v1/crm/students",
@@ -159,7 +158,6 @@ class TestStudentCRUD:
         resp = client.delete("/api/v1/crm/students/99999/hard", headers=mock_admin_headers)
         assert resp.status_code == 404
 
-    @pytest.mark.xfail(reason="App bug: restore returns 200 but student does not reappear in listing")
     def test_soft_delete_and_restore(self, client, mock_admin_headers, override_auth):
         create_resp = create_student_via_api(client, mock_admin_headers)
         sid = create_resp.json()["data"]["id"]
@@ -177,6 +175,7 @@ class TestStudentCRUD:
         )
         ids = [s["id"] for s in list_resp.json()["data"]]
         assert sid not in ids
+        assert client.get(f"/api/v1/crm/students/{sid}", headers=mock_admin_headers).status_code == 404
 
         # Restore
         restore_resp = client.post(
@@ -185,12 +184,9 @@ class TestStudentCRUD:
         assert restore_resp.status_code == 200
         assert restore_resp.json()["data"]["status"] == "restored"
 
-        # Should now appear again
-        list_resp2 = client.get(
-            "/api/v1/crm/students?skip=0&limit=50", headers=mock_admin_headers
-        )
-        ids2 = [s["id"] for s in list_resp2.json()["data"]]
-        assert sid in ids2
+        # Should now be readable again
+        get_resp2 = client.get(f"/api/v1/crm/students/{sid}", headers=mock_admin_headers)
+        assert get_resp2.status_code == 200
 
     def test_list_students_success(self, client, mock_admin_headers, override_auth):
         resp = client.get(

@@ -336,7 +336,7 @@ class TestSessionsWrite:
         
         assert response.status_code == 404
     
-    @pytest.mark.xfail(reason="mark_substitute_instructor not implemented on SessionService")
+    @pytest.mark.xfail(strict=True, reason="#66 mark_substitute_instructor not implemented on SessionService")
     def test_substitute_instructor_not_found(self, client, mock_admin_headers, override_auth):
         response = client.post(
             "/api/v1/academics/sessions/99999/substitute",
