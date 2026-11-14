@@ -10,11 +10,11 @@ Exports:
 - Models: Enrollment, EnrollmentBase, EnrollmentLevelHistory
 - Ports: EnrollmentNotifier
 - Services: EnrollmentService, EnrollmentDirectoryService,
-            EnrollmentLifecycleService, EnrollmentAnalyticsService
+            EnrollmentLifecycleService
 - DTOs: EnrollStudentInput, TransferStudentInput, UpdateEnrollmentInput,
         UpdateEnrollmentResult, EnrollmentDTO, EnrollmentCoreResult,
-        StudentEnrollmentSummaryDTO, GroupRosterEntryDTO, GroupEnrollmentDTO,
-        MigrateEnrollmentsDTO, EnrollmentMigrationResult, LevelProgressionResult
+        StudentEnrollmentSummaryDTO, MigrateEnrollmentsDTO,
+        EnrollmentMigrationResult, LevelProgressionResult
 """
 
 # Models (ADR-0004: anyone may import models directly)
@@ -38,10 +38,6 @@ from app.modules.enrollments.schemas.enrollment_lifecycle_schemas import (
     EnrollmentMigrationResult,
     LevelProgressionResult,
 )
-from app.modules.enrollments.schemas.enrollment_analytics_schemas import (
-    GroupRosterEntryDTO,
-    GroupEnrollmentDTO,
-)
 
 __all__ = [
     # Models
@@ -54,7 +50,6 @@ __all__ = [
     "EnrollmentService",
     "EnrollmentDirectoryService",
     "EnrollmentLifecycleService",
-    "EnrollmentAnalyticsService",
     # DTOs
     "EnrollStudentInput",
     "TransferStudentInput",
@@ -63,8 +58,6 @@ __all__ = [
     "EnrollmentDTO",
     "EnrollmentCoreResult",
     "StudentEnrollmentSummaryDTO",
-    "GroupRosterEntryDTO",
-    "GroupEnrollmentDTO",
     "MigrateEnrollmentsDTO",
     "EnrollmentMigrationResult",
     "LevelProgressionResult",
@@ -75,7 +68,6 @@ _LAZY_SERVICES = {
     "EnrollmentService": "app.modules.enrollments.services.enrollment_service",
     "EnrollmentDirectoryService": "app.modules.enrollments.services.enrollment_directory_service",
     "EnrollmentLifecycleService": "app.modules.enrollments.services.enrollment_lifecycle_service",
-    "EnrollmentAnalyticsService": "app.modules.enrollments.services.enrollment_analytics_service",
 }
 
 
