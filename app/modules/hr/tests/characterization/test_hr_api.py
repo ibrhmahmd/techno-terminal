@@ -456,6 +456,18 @@ def test_list_staff_accounts(client_with_uow, db_session, override_auth, mock_ad
         }
 
 
+def test_list_staff_accounts_includes_instructor_login(client_with_uow, db_session, override_auth, mock_admin_headers):
+    """An instructor login linked to an employee is listed, not a 500 (#194)."""
+    emp = _make_employee(db_session, full_name=f"Instr {_short()}")
+    user = _make_user(db_session, username=f"instr_{_short()}@test.com", employee_id=emp.id, role="instructor")
+
+    r = client_with_uow.get("/api/v1/hr/staff-accounts", headers=mock_admin_headers)
+
+    assert r.status_code == 200, r.text
+    row = next(a for a in r.json()["data"] if a["id"] == user.id)
+    assert row["employee_id"] == emp.id
+
+
 def test_list_staff_accounts_unauthorized(client):
     """GET /hr/staff-accounts without auth returns 401."""
     r = client.get("/api/v1/hr/staff-accounts")

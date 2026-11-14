@@ -17638,6 +17638,16 @@
         "title": "UserPublic",
         "type": "object"
       },
+      "UserRole": {
+        "description": "User roles for the application.",
+        "enum": [
+          "admin",
+          "instructor",
+          "system_admin"
+        ],
+        "title": "UserRole",
+        "type": "string"
+      },
       "UserSessionDTO": {
         "properties": {
           "created_at": {
@@ -21059,11 +21069,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "enum": [
-                    "admin",
-                    "system_admin"
-                  ],
-                  "type": "string"
+                  "$ref": "#/components/schemas/UserRole"
                 },
                 {
                   "type": "null"
