@@ -1,7 +1,7 @@
 from typing import Optional
 from sqlmodel import select
 from fastapi import HTTPException
-from app.shared.exceptions import BusinessRuleError
+from app.shared.exceptions import BusinessRuleError, NotFoundError
 from app.modules.competitions.schemas.team_schemas import TeamDTO, TeamMemberDTO, TeamWithMembersDTO
 from app.modules.competitions.models.team_models import Team
 from app.modules.competitions.services.team_base import TeamServiceBase
@@ -101,6 +101,8 @@ class TeamService(TeamServiceBase):
 
     def delete_team(self, team_id: int) -> bool:
         """Hard delete a team."""
+        if self._teams.get_team(team_id) is None:
+            raise NotFoundError(f"Team {team_id} not found.")
         members = self._teams.list_team_members(team_id)
         for m in members:
             if m.amount_paid > 0:

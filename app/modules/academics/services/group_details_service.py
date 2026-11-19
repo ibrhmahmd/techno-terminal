@@ -356,7 +356,7 @@ class GroupDetailsService:
         
         Returns payment summary and per-level breakdown.
         """
-        
+        self._require_group(group_id)
         session = self._uow.session
         # Get all levels for this group
         levels = list_group_levels(session, group_id, include_inactive=True)
@@ -470,7 +470,7 @@ class GroupDetailsService:
         
         Returns enrollments with student lookup table and transfer options.
         """
-        
+        self._require_group(group_id)
         session = self._uow.session
         # Get all levels for this group
         levels = list_group_levels(session, group_id, include_inactive=True)

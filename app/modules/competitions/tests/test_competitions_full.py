@@ -312,7 +312,6 @@ class TestTeamCRUD:
         get_resp = client.get(f"/api/v1/teams/{team.id}", headers=mock_admin_headers)
         assert get_resp.status_code == 404
 
-    @pytest.mark.xfail(strict=True, reason="#223: DELETE /teams/{unknown id} returns 200 instead of 404 NotFoundError")
     def test_delete_team_not_found(self, client, mock_admin_headers, override_auth, db_session):
         """DELETE /api/v1/teams/{id} for non-existent ID returns 404."""
         response = client.delete("/api/v1/teams/999999999", headers=mock_admin_headers)

@@ -198,24 +198,15 @@ def test_get_group_payments_happy_path(client_with_uow, override_auth, mock_admi
     assert payment["transaction_type"] == "payment"
 
 
-def test_get_group_payments_unknown_group_is_200_empty(client_with_uow, override_auth, mock_admin_headers):
-    """GET payments for a nonexistent group returns 200 with empty by_level — no 404."""
+def test_get_group_payments_unknown_group_is_404(client_with_uow, override_auth, mock_admin_headers):
+    """A nonexistent group is 404 NotFoundError, not an empty 200 (#223)."""
     r = client_with_uow.get(
         "/api/v1/finance/groups/999999999/payments",
         headers=mock_admin_headers,
     )
 
-    assert r.status_code == 200
-    body = r.json()
-    assert body["success"] is True
-    assert body["message"] == "Group payments loaded successfully."
-    data = body["data"]
-    assert data["group_id"] == 999999999
-    assert data["by_level"] == []
-    assert data["summary"]["total_expected_all_levels"] == 0.0
-    assert data["summary"]["total_collected_all_levels"] == 0.0
-    assert data["summary"]["total_due_all_levels"] == 0.0
-    assert data["summary"]["collection_rate"] == 0.0
+    assert r.status_code == 404
+    assert r.json()["error"] == "NotFoundError"
 
 
 def test_get_group_payments_invalid_group_is_422(client_with_uow, override_auth, mock_admin_headers):
@@ -320,22 +311,15 @@ def test_get_group_enrollments_happy_path(client_with_uow, override_auth, mock_a
     assert transfer["available_slots"] == 7
 
 
-def test_get_group_enrollments_unknown_group_is_200_empty(client_with_uow, override_auth, mock_admin_headers):
-    """GET enrollments for a nonexistent group returns 200 with empty level groups — no 404."""
+def test_get_group_enrollments_unknown_group_is_404(client_with_uow, override_auth, mock_admin_headers):
+    """A nonexistent group is 404 NotFoundError, not an empty 200 (#223)."""
     r = client_with_uow.get(
         "/api/v1/academics/groups/999999999/enrollments/all",
         headers=mock_admin_headers,
     )
 
-    assert r.status_code == 200
-    body = r.json()
-    assert body["success"] is True
-    assert body["message"] == "Group enrollments loaded successfully."
-    data = body["data"]
-    assert data["group_id"] == 999999999
-    assert data["students"] == {}
-    assert data["grouped_by_level"] == []
-    assert isinstance(data["transfer_options"], list)
+    assert r.status_code == 404
+    assert r.json()["error"] == "NotFoundError"
 
 
 def test_get_group_enrollments_invalid_group_is_422(client_with_uow, override_auth, mock_admin_headers):
