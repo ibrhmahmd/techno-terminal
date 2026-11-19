@@ -75,9 +75,10 @@ class TestNotificationActions:
 
     def test_send_receipt_notification_success(self, client, db_session, mock_admin_headers, override_auth):
         receipt = create_test_receipt(db_session, payer_name=_unique("Payer"))
+        student = create_test_student(db_session, full_name=_unique("Student"))
         db_session.commit()
 
-        params = {"student_id": 1, "amount": "500.0", "receipt_number": receipt.receipt_number or "RCP-001"}
+        params = {"student_id": student.id, "amount": "500.0", "receipt_number": receipt.receipt_number or "RCP-001"}
         response = client.post(f"{BASE}/receipt/{receipt.id}", headers=mock_admin_headers, params=params)
 
         assert response.status_code in (200, 500)
