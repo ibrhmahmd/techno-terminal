@@ -8,9 +8,8 @@ Covers:
 - GET /finance/receipts/{id} (get receipt)
 - GET /finance/receipts (search receipts)
 - POST /finance/refunds (issue refund)
-- GET /finance/balance/student/{id} (get balances)
-- GET /finance/competition-fees/student/{id} (get unpaid fees)
-- POST /finance/receipts/preview-risk (preview risk)
+- GET /finance/competition-fees?student_id= (get unpaid fees)
+- POST /finance/risk/overpayment (overpayment risk)
 - GET /finance/receipts/{id}/pdf (download PDF)
 
 All tests verify:
@@ -19,31 +18,30 @@ All tests verify:
 - Response schema compliance (ApiResponse envelope)
 """
 import pytest
-from datetime import date
+from datetime import date, timedelta
 from app.shared.datetime_utils import cairo_today
 
 
 class TestReceiptsRead:
     """Tests for reading receipt data."""
     
-    def test_get_receipt_success(self, client, mock_admin_headers, override_auth):
+    def test_get_receipt_success(self, client, mock_admin_headers, override_auth, db_session):
         """
         GET /finance/receipts/{id} returns receipt details.
         Requires authentication (any role).
         """
-        # Using receipt ID 1 - may not exist
+        from app.testing.db_helpers import create_test_receipt
+
+        receipt = create_test_receipt(db_session)
         response = client.get(
-            "/api/v1/finance/receipts/1",
+            f"/api/v1/finance/receipts/{receipt.id}",
             headers=mock_admin_headers
         )
-        
-        # May succeed (200) or not found (404)
-        assert response.status_code in [200, 404]
-        
-        if response.status_code == 200:
-            data = response.json()
-            assert data["success"] is True
-            assert "data" in data
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["data"]["receipt"]["id"] == receipt.id
     
     def test_get_receipt_not_found(self, client, mock_admin_headers, override_auth):
         """
@@ -64,12 +62,23 @@ class TestReceiptsSearch:
     """Tests for searching receipts."""
     
     def test_search_receipts_success(self, client, mock_admin_headers, override_auth):
-        today = cairo_today().isoformat()
+        today = cairo_today()
         response = client.get(
-            f"/api/v1/finance/receipts?from_date=2024-01-01&to_date={today}",
+            f"/api/v1/finance/receipts?from_date={today - timedelta(days=30)}&to_date={today}",
             headers=mock_admin_headers
         )
-        assert response.status_code in [200, 422]
+        assert response.status_code == 200
+        assert isinstance(response.json()["data"], list)
+
+    def test_search_receipts_range_too_large(self, client, mock_admin_headers, override_auth):
+        """A date range over 90 days returns 422."""
+        today = cairo_today()
+        response = client.get(
+            f"/api/v1/finance/receipts?from_date={today - timedelta(days=200)}&to_date={today}",
+            headers=mock_admin_headers
+        )
+        assert response.status_code == 422
+        assert response.json()["error"] == "ValidationError"
     
     def test_search_receipts_missing_dates(self, client, mock_admin_headers, override_auth):
         """
@@ -80,9 +89,10 @@ class TestReceiptsSearch:
             headers=mock_admin_headers
         )
         
-        assert response.status_code in [422, 405]
+        assert response.status_code == 422
         data = response.json()
         assert data["success"] is False
+        assert data["error"] == "ValidationError"
 
 
 class TestReceiptsCreate:
@@ -127,51 +137,20 @@ class TestRefunds:
         assert data["success"] is False
 
 
-class TestBalances:
-    """Tests for student financial balances."""
-    
-    def test_get_student_balance_success(self, client, mock_admin_headers, override_auth):
-        """
-        GET /finance/balance/student/{id} returns financial summary.
-        Requires authentication (any role).
-        """
-        response = client.get(
-            "/api/v1/finance/balance/student/1",
-            headers=mock_admin_headers
-        )
-        
-        # May succeed (200) or not found (404)
-        assert response.status_code in [200, 404]
-        
-        if response.status_code == 200:
-            data = response.json()
-            assert data["success"] is True
-            assert "data" in data
-            assert isinstance(data["data"], list)
-    
-    def test_get_student_balance_not_found(self, client, mock_admin_headers, override_auth):
-        """
-        GET /finance/balance/student/{id} for non-existent student.
-        Returns empty list or 404.
-        """
-        response = client.get(
-            "/api/v1/finance/balance/student/99999",
-            headers=mock_admin_headers
-        )
-        
-        # May return empty list (200) or 404
-        assert response.status_code in [200, 404]
-
-
 class TestCompetitionFees:
     """Tests for competition fee endpoints."""
     
-    def test_get_unpaid_competition_fees(self, client, mock_admin_headers, override_auth):
+    def test_get_unpaid_competition_fees(self, client, mock_admin_headers, override_auth, db_session):
+        from app.testing.db_helpers import create_test_student
+
+        student = create_test_student(db_session)
+        db_session.commit()
         response = client.get(
-            "/api/v1/finance/competition-fees/student/1",
+            f"/api/v1/finance/competition-fees?student_id={student.id}",
             headers=mock_admin_headers
         )
-        assert response.status_code in [200, 404]
+        assert response.status_code == 200
+        assert response.json()["data"] == []
 
 
 class TestRiskPreview:
@@ -179,34 +158,15 @@ class TestRiskPreview:
     
     def test_preview_risk_validation_error(self, client, mock_admin_headers, override_auth):
         response = client.post(
-            "/api/v1/finance/receipts/preview-risk",
+            "/api/v1/finance/risk/overpayment",
             headers=mock_admin_headers,
             json={
                 "lines": "not-a-list"
             }
         )
         
-        assert response.status_code in [422, 405, 404]
-
-
-class TestReceiptTemplates:
-    """Tests for receipt template management endpoints."""
-
-    def test_list_templates_requires_auth(self, client):
-        response = client.get("/api/v1/receipts/templates")
-        assert response.status_code in [401, 404]
-
-    def test_list_templates_admin_access(self, client, mock_admin_headers, override_auth):
-        response = client.get("/api/v1/receipts/templates", headers=mock_admin_headers)
-        assert response.status_code in [200, 401, 404]
-        if response.status_code == 200:
-            data = response.json()
-            assert data["success"] is True
-            assert isinstance(data["data"], list)
-
-    def test_set_default_template_requires_auth(self, client):
-        response = client.post("/api/v1/receipts/templates/standard/set-default")
-        assert response.status_code in [401, 404]
+        assert response.status_code == 422
+        assert response.json()["error"] == "ValidationError"
 
 
 class TestFinanceAuth:

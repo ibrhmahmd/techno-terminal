@@ -194,9 +194,10 @@ class TestEnrollmentUpdate:
             headers=mock_admin_headers,
             json={"amount_due": 100.0},
         )
-        assert response.status_code in (400, 409), response.text
+        assert response.status_code == 409, response.text
         data = response.json()
         assert data["success"] is False
+        assert data["error"] == "BusinessRuleError"
 
     def test_update_enrollment_unauthorized(self, client, db_session):
         from app.testing.db_helpers import create_test_course, create_test_group, create_test_employee, create_test_student, create_test_enrollment

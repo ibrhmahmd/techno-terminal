@@ -94,8 +94,8 @@ class TestRevenueByDate:
             headers=mock_admin_headers
         )
         
-        # Should fail validation (422) or return error
-        assert response.status_code in [200, 422]
+        assert response.status_code == 422
+        assert response.json()["error"] == "ValidationError"
     
     def test_revenue_by_date_requires_admin(self, client):
         """

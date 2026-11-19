@@ -52,7 +52,7 @@ class TestRevenueByDate:
         assert response.status_code == 422
 
     def test_revenue_by_date_invalid_range(self, client, mock_admin_headers, override_auth):
-        """Test getting revenue with end date before start date."""
+        """Owner decision pending: a reversed date range returns 200 (empty data), not 422."""
         start_date = cairo_today().isoformat()
         end_date = (cairo_today() - timedelta(days=30)).isoformat()
 
@@ -60,8 +60,7 @@ class TestRevenueByDate:
             f"/api/v1/analytics/finance/revenue-by-date?start={start_date}&end={end_date}",
             headers=mock_admin_headers
         )
-        # May return 200 with empty data or 422 depending on validation
-        assert response.status_code in [200, 422]
+        assert response.status_code == 200
 
     def test_revenue_by_date_unauthorized(self, client):
         """Test getting revenue by date without auth returns 401."""

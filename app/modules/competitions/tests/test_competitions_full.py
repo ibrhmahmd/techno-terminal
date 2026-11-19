@@ -158,25 +158,23 @@ class TestCompetitionRead:
     """4 tests for summary and categories endpoints."""
 
     def test_get_competition_summary(self, client, mock_admin_headers, override_auth, db_session):
-        """GET /api/v1/competitions/{id}/summary returns dashboard data or 500."""
+        """GET /api/v1/competitions/{id}/summary returns dashboard data."""
         comp = _create_comp(db_session)
         response = client.get(f"/api/v1/competitions/{comp.id}/summary", headers=mock_admin_headers)
-        # Migration 036 dropped competition_categories — may 500
-        assert response.status_code in (200, 500)
+        assert response.status_code == 200
 
     def test_get_competition_summary_not_found(self, client, mock_admin_headers, override_auth, db_session):
-        """GET /api/v1/competitions/{id}/summary for non-existent ID returns 404 or 500."""
-        response = client.get("/api/v1/competitions/99999/summary", headers=mock_admin_headers)
-        assert response.status_code in (404, 500)
+        """GET /api/v1/competitions/{id}/summary for non-existent ID returns 404."""
+        response = client.get("/api/v1/competitions/999999999/summary", headers=mock_admin_headers)
+        assert response.status_code == 404
+        assert response.json()["error"] == "NotFoundError"
 
     def test_list_categories(self, client, mock_admin_headers, override_auth, db_session):
-        """GET /api/v1/competitions/{id}/categories returns categories list or 500."""
+        """GET /api/v1/competitions/{id}/categories returns categories list."""
         comp = _create_comp(db_session)
         response = client.get(f"/api/v1/competitions/{comp.id}/categories", headers=mock_admin_headers)
-        assert response.status_code in (200, 500)
-        if response.status_code == 200:
-            body = response.json()
-            assert isinstance(body["data"], list)
+        assert response.status_code == 200
+        assert isinstance(response.json()["data"], list)
 
     def test_list_categories_not_found(self, client, mock_admin_headers, override_auth, db_session):
         """GET /api/v1/competitions/{id}/categories for non-existent ID returns 404."""
@@ -266,8 +264,8 @@ class TestTeamCRUD:
                 "student_ids": [student.id],
             },
         )
-        # Service warns but creates — 201 with warning or 409 if backend rejects
-        assert response.status_code in (201, 409)
+        # Service warns but creates
+        assert response.status_code == 201
 
     def test_get_team_success(self, client, mock_admin_headers, override_auth, db_session):
         """GET /api/v1/teams/{id} returns 200."""
@@ -314,10 +312,12 @@ class TestTeamCRUD:
         get_resp = client.get(f"/api/v1/teams/{team.id}", headers=mock_admin_headers)
         assert get_resp.status_code == 404
 
+    @pytest.mark.xfail(strict=True, reason="#223: DELETE /teams/{unknown id} returns 200 instead of 404 NotFoundError")
     def test_delete_team_not_found(self, client, mock_admin_headers, override_auth, db_session):
         """DELETE /api/v1/teams/{id} for non-existent ID returns 404."""
-        response = client.delete("/api/v1/teams/99999", headers=mock_admin_headers)
-        assert response.status_code in (404, 200)  # 200 if delete is idempotent
+        response = client.delete("/api/v1/teams/999999999", headers=mock_admin_headers)
+        assert response.status_code == 404
+        assert response.json()["error"] == "NotFoundError"
 
     def test_register_team_unauthorized(self, client, db_session):
         """POST /api/v1/teams without auth returns 401."""
@@ -372,13 +372,12 @@ class TestTeamMembers:
         student = _create_student(db_session)
         _create_member(db_session, team_id=team.id, student_id=student.id)
         response = client.get(f"/api/v1/teams/{team.id}/members", headers=mock_admin_headers)
-        assert response.status_code in (200, 500)
-        if response.status_code == 200:
-            body = response.json()
-            assert body["success"] is True
-            data = body["data"]
-            assert "members" in data
-            assert isinstance(data["members"], list)
+        assert response.status_code == 200
+        body = response.json()
+        assert body["success"] is True
+        data = body["data"]
+        assert "members" in data
+        assert isinstance(data["members"], list)
 
     def test_remove_team_member_success(self, client, mock_admin_headers, override_auth, db_session):
         """DELETE /api/v1/teams/{id}/members/{sid} returns 200."""
@@ -419,13 +418,31 @@ class TestTeamMembers:
             headers=mock_admin_headers,
             json={"amount": 100.0},
         )
-        # Payment depends on finance module (receipts, unit of work)
-        assert response.status_code in (200, 400, 404, 500)
+        assert response.status_code == 200
 
     def test_refund_competition_fee(self, client, mock_admin_headers, override_auth, db_session):
         """POST /api/v1/teams/{id}/members/{sid}/refund processes refund.
         Requires FinanceUnitOfWork and refund service.
         """
+        comp = _create_comp(db_session, fee_per_student=100.0)
+        team = _create_team(db_session, competition_id=comp.id)
+        student = _create_student(db_session)
+        _create_member(db_session, team_id=team.id, student_id=student.id, amount_due=100.0)
+        pay = client.post(
+            f"/api/v1/teams/{team.id}/members/{student.id}/pay",
+            headers=mock_admin_headers,
+            json={"amount": 100.0},
+        )
+        assert pay.status_code == 200
+        response = client.post(
+            f"/api/v1/teams/{team.id}/members/{student.id}/refund",
+            headers=mock_admin_headers,
+            json={"amount": 50.0},
+        )
+        assert response.status_code == 200
+
+    def test_refund_competition_fee_without_payment(self, client, mock_admin_headers, override_auth, db_session):
+        """A refund with no recorded payment to refund returns 409."""
         comp = _create_comp(db_session, fee_per_student=100.0)
         team = _create_team(db_session, competition_id=comp.id)
         student = _create_student(db_session)
@@ -435,7 +452,8 @@ class TestTeamMembers:
             headers=mock_admin_headers,
             json={"amount": 50.0},
         )
-        assert response.status_code in (200, 400, 404, 409, 500)
+        assert response.status_code == 409
+        assert response.json()["error"] == "BusinessRuleError"
 
     def test_add_team_member_unauthorized(self, client, db_session):
         """POST /api/v1/teams/{id}/members without auth returns 401."""

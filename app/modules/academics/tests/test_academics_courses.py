@@ -113,21 +113,19 @@ class TestCoursesWrite:
 
         assert response.status_code == 401
 
-    @pytest.mark.supabase
-    def test_create_course_non_admin(self, client, system_admin_headers):
-        """Test creating a course with non-admin token fails."""
-        # Note: This test may return 401 (auth failed) or 403 (forbidden) depending on token validation
+    def test_create_course_non_admin(self, client, instructor_headers, override_instructor_auth):
+        """Creating a course as a non-admin (instructor) returns 403."""
         unique_id = str(uuid.uuid4())[:8]
         payload = {"name": f"Test Course {unique_id}", "category": "software"}
 
         response = client.post(
             "/api/v1/academics/courses",
-            headers=system_admin_headers,
+            headers=instructor_headers,
             json=payload
         )
 
-        # Mock token may fail validation (401) or be rejected for insufficient permissions (403)
-        assert response.status_code in [401, 403]
+        assert response.status_code == 403
+        assert response.json()["error"] == "Forbidden"
 
     def test_update_course_success(self, client, mock_admin_headers, override_auth, db_session):
         """Test updating a course with valid data."""
@@ -213,7 +211,7 @@ class TestCoursesEdgeCases:
         payload = {
             "name": f"Free Course {unique_id}",
             "category": "software",
-            "price_per_level": 0.0  # Zero price - API may reject this
+            "price_per_level": 0.0  # Zero price is rejected
         }
 
         response = client.post(
@@ -222,10 +220,8 @@ class TestCoursesEdgeCases:
             json=payload
         )
 
-        # API may reject 0.0 price as invalid, accept either 201 or 422
-        assert response.status_code in [201, 422]
-        if response.status_code == 201:
-            assert response.json()["data"]["price_per_level"] == 0.0
+        assert response.status_code == 422
+        assert response.json()["error"] == "ValidationError"
 
     def test_create_course_long_name(self, client, mock_admin_headers, override_auth):
         """Test creating a course with very long name."""
@@ -240,8 +236,8 @@ class TestCoursesEdgeCases:
             json=payload
         )
 
-        # Should either succeed or fail with validation error
-        assert response.status_code in [201, 422]
+        assert response.status_code == 422
+        assert response.json()["error"] == "ValidationError"
 
     def test_update_course_no_changes(self, client, mock_admin_headers, override_auth, db_session):
         """Test updating a course with empty payload."""

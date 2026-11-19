@@ -2,7 +2,6 @@
 Test module for Sessions router.
 
 Tests all endpoints in sessions_router.py:
-- GET /academics/sessions/daily-schedule - Get daily schedule
 - POST /academics/groups/{group_id}/sessions - Add extra session
 - GET /academics/sessions/{session_id} - Get session details
 - PATCH /academics/sessions/{session_id} - Update session
@@ -297,8 +296,8 @@ class TestSessionsWrite:
             headers=mock_admin_headers
         )
 
-        # Should return 400 for business rule violation
-        assert response.status_code in [400, 409]
+        assert response.status_code == 409
+        assert response.json()["error"] == "BusinessRuleError"
 
     @pytest.mark.xfail(strict=True, reason="#66 substitute endpoint calls SessionService.mark_substitute_instructor, which does not exist")
     def test_substitute_instructor_success(self, client, mock_admin_headers, override_auth, db_session):
@@ -338,7 +337,7 @@ class TestSessionsEdgeCases:
     """Edge cases and boundary conditions"""
 
     def test_add_session_past_date(self, client, mock_admin_headers, override_auth, db_session):
-        """Test adding session in the past."""
+        """Owner decision pending: an extra session in the past is accepted (201)."""
         from app.testing.db_helpers import create_test_course, create_test_group
         course = create_test_course(db_session)
         group = create_test_group(db_session, course_id=course.id)
@@ -356,11 +355,10 @@ class TestSessionsEdgeCases:
             json=payload
         )
 
-        # May succeed or fail depending on business rules
-        assert response.status_code in [201, 400, 422]
+        assert response.status_code == 201
 
     def test_add_session_duplicate_date(self, client, mock_admin_headers, override_auth, db_session):
-        """Test adding session on same date as existing session."""
+        """Owner decision pending: an extra session on an already used date is accepted (201)."""
         from app.testing.db_helpers import create_test_course, create_test_group
         course = create_test_course(db_session)
         group = create_test_group(db_session, course_id=course.id)
@@ -391,8 +389,7 @@ class TestSessionsEdgeCases:
             json=payload
         )
 
-        # May succeed or fail depending on business rules
-        assert response.status_code in [201, 400, 409]
+        assert response.status_code == 201
 
     def test_cancel_already_cancelled_session(self, client, mock_admin_headers, override_auth, db_session):
         """Test cancelling an already cancelled session."""
@@ -416,8 +413,7 @@ class TestSessionsEdgeCases:
             headers=mock_admin_headers
         )
 
-        # May return 200 (idempotent) or 400 if already cancelled
-        assert response.status_code in [200, 400]
+        assert response.status_code == 200
 
     def test_cancel_and_reactivate_workflow(self, client, mock_admin_headers, override_auth, db_session):
         """Test full cancel and reactivate workflow with session numbering."""

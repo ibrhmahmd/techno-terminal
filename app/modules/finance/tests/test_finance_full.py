@@ -295,11 +295,12 @@ class TestReceiptRead:
 
     def test_generate_receipt_not_found(self, client, mock_admin_headers, override_auth):
         response = client.get(
-            "/api/v1/finance/receipts/99999/generate",
+            "/api/v1/finance/receipts/999999999/generate",
             headers=mock_admin_headers,
         )
 
-        assert response.status_code in [200, 404]
+        assert response.status_code == 404
+        assert response.json()["error"] == "NotFoundError"
 
     def test_download_receipt_pdf(self, client, db_session, mock_admin_headers, override_auth):
         course, group, level, _ = create_minimal_group_bundle(db_session)
@@ -390,9 +391,10 @@ class TestRefund:
             },
         )
 
-        assert response.status_code in [400, 409]
+        assert response.status_code == 409
         data = response.json()
         assert data["success"] is False
+        assert data["error"] == "BusinessRuleError"
 
     def test_issue_refund_not_found(self, client, mock_admin_headers, override_auth):
         response = client.post(

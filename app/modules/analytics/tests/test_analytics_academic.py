@@ -4,7 +4,6 @@ Test module for Academic Analytics router.
 Tests all endpoints in app/api/routers/analytics/academic.py:
 - GET /analytics/dashboard/summary
 - GET /analytics/academics/unpaid-attendees
-- GET /analytics/academics/groups/{group_id}/roster
 - GET /analytics/academics/groups/{group_id}/heatmap
 - GET /analytics/academics/student-progress
 - GET /analytics/academics/course-completion
@@ -50,32 +49,15 @@ class TestUnpaidAttendees:
         response = client.get("/api/v1/analytics/academics/unpaid-attendees")
         assert response.status_code == 401
 
-    @pytest.mark.supabase
-    def test_unpaid_attendees_forbidden(self, client, system_admin_headers):
-        """Test getting unpaid attendees with system_admin token (may be 200 or 403)."""
+    def test_unpaid_attendees_system_admin_allowed(
+        self, client, system_admin_headers, override_system_admin_auth
+    ):
+        """A system_admin user may read unpaid attendees (200)."""
         response = client.get(
             "/api/v1/analytics/academics/unpaid-attendees",
             headers=system_admin_headers
         )
-        assert response.status_code in [200, 403]
-
-
-class TestGroupRoster:
-    """GET /analytics/academics/groups/{group_id}/roster - require_admin auth"""
-
-    def test_group_roster_not_found(self, client, mock_admin_headers, override_auth):
-        """Test getting roster for non-existent group returns 404 or empty list."""
-        response = client.get(
-            "/api/v1/analytics/academics/groups/99999/roster?level_number=1",
-            headers=mock_admin_headers
-        )
-        # May return 200 with empty list or 404 depending on implementation
-        assert response.status_code in [200, 404]
-        if response.status_code == 200:
-            data = response.json()
-            assert data["success"] is True
-            assert isinstance(data["data"], list)
-
+        assert response.status_code == 200
 
 
 class TestAttendanceHeatmap:
@@ -248,11 +230,12 @@ class TestCourseCompletion:
         response = client.get("/api/v1/analytics/academics/course-completion")
         assert response.status_code == 401
 
-    @pytest.mark.supabase
-    def test_course_completion_forbidden(self, client, system_admin_headers):
-        """Test getting course completion with system_admin token (may be 200 or 403)."""
+    def test_course_completion_system_admin_allowed(
+        self, client, system_admin_headers, override_system_admin_auth
+    ):
+        """A system_admin user may read course completion (200)."""
         response = client.get(
             "/api/v1/analytics/academics/course-completion",
             headers=system_admin_headers
         )
-        assert response.status_code in [200, 403]
+        assert response.status_code == 200

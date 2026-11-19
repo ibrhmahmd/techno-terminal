@@ -390,10 +390,9 @@ class TestGroupEndpoints:
             headers=mock_admin_headers,
             json={"auto_migrate_enrollments": False},
         )
-        assert response.status_code in (200, 400, 500)
-        if response.status_code == 200:
-            data = response.json()
-            assert data["data"]["new_level_number"] == 2
+        assert response.status_code == 200
+        data = response.json()
+        assert data["data"]["new_level_number"] == 2
 
     def test_generate_level_sessions(self, client, mock_admin_headers, override_auth, db_session):
         course, group, level, sessions = create_minimal_group_bundle(db_session)
@@ -403,10 +402,9 @@ class TestGroupEndpoints:
             headers=mock_admin_headers,
             json={"level_number": 2, "start_date": str(date.today() + timedelta(days=90))},
         )
-        assert response.status_code in (201, 400, 500)
-        if response.status_code == 201:
-            data = response.json()
-            assert data["success"] is True
+        assert response.status_code == 201
+        data = response.json()
+        assert data["success"] is True
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -557,9 +555,8 @@ class TestSessionEndpoints:
         s = sessions[0]
         client.post(f"/api/v1/academics/sessions/{s.id}/cancel", headers=mock_admin_headers)
         response = client.post(f"/api/v1/academics/sessions/{s.id}/reactivate", headers=mock_admin_headers)
-        assert response.status_code in (200, 500)
-        if response.status_code == 200:
-            assert response.json()["success"] is True
+        assert response.status_code == 200
+        assert response.json()["success"] is True
 
     @pytest.mark.xfail(strict=True, reason="#66 SessionService missing mark_substitute_instructor method")
     def test_substitute_instructor(self, client, mock_admin_headers, override_auth, db_session):
@@ -572,7 +569,7 @@ class TestSessionEndpoints:
             headers=mock_admin_headers,
             json={"instructor_id": instructor.id},
         )
-        assert response.status_code in (200, 500)
+        assert response.status_code == 200
 
     def test_session_not_found(self, client, mock_admin_headers, override_auth):
         response = client.get("/api/v1/academics/sessions/99999", headers=mock_admin_headers)
@@ -594,7 +591,8 @@ class TestSessionEndpoints:
         course, group, level, sessions = self._create_bundle(db_session)
         s = sessions[0]
         response = client.post(f"/api/v1/academics/sessions/{s.id}/reactivate", headers=mock_admin_headers)
-        assert response.status_code in (409, 500)
+        assert response.status_code == 409
+        assert response.json()["error"] == "BusinessRuleError"
 
     def test_add_session_unauthorized(self, client, db_session):
         course, group, level, sessions = self._create_bundle(db_session)
@@ -632,9 +630,9 @@ class TestSessionEndpoints:
         response = client.post(
             f"/api/v1/academics/sessions/{s.id}/substitute",
             headers=mock_admin_headers,
-            json={"instructor_id": 99999},
+            json={"instructor_id": 999999999},
         )
-        assert response.status_code in (404, 500)
+        assert response.status_code == 404
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -655,10 +653,9 @@ class TestLifecycleEndpoints:
             f"/api/v1/academics/groups/{group.id}/levels/{level.level_number}",
             headers=mock_admin_headers,
         )
-        assert response.status_code in (200, 500)
-        if response.status_code == 200:
-            data = response.json()
-            assert data["data"]["level_number"] == level.level_number
+        assert response.status_code == 200
+        data = response.json()
+        assert data["data"]["level_number"] == level.level_number
 
     def test_cancel_level_success(self, client, mock_admin_headers, override_auth, db_session):
         course, group, level, sessions = self._create_bundle(db_session)
@@ -784,10 +781,9 @@ class TestGroupDetailsEndpoints:
             f"/api/v1/academics/groups/{group.id}/levels/{level.level_number}",
             headers=mock_admin_headers,
         )
-        assert response.status_code in (409, 500)
-        if response.status_code == 409:
-            data = response.json()
-            assert data["success"] is False
+        assert response.status_code == 409
+        data = response.json()
+        assert data["success"] is False
 
     def test_delete_level_unauthorized(self, client):
         response = client.delete("/api/v1/academics/groups/1/levels/1")
