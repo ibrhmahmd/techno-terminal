@@ -9,7 +9,6 @@ Tests all endpoints in app/api/routers/analytics/bi.py:
 - GET /analytics/bi/instructor-value
 - GET /analytics/bi/schedule-utilization
 - GET /analytics/bi/flight-risk
-- GET /analytics/bi/user-engagement
 - GET /analytics/bi/retention-analysis
 
 All endpoints require admin authentication.
@@ -52,14 +51,15 @@ class TestEnrollmentTrend:
         response = client.get("/api/v1/analytics/bi/enrollment-trend")
         assert response.status_code == 401
 
-    @pytest.mark.supabase
-    def test_enrollment_trend_forbidden(self, client, system_admin_headers):
-        """Test getting enrollment trend with system_admin token (may be 200 or 403)."""
+    def test_enrollment_trend_system_admin_allowed(
+        self, client, system_admin_headers, override_system_admin_auth
+    ):
+        """A system_admin user may read the enrollment trend (200)."""
         response = client.get(
             "/api/v1/analytics/bi/enrollment-trend",
             headers=system_admin_headers
         )
-        assert response.status_code in [200, 403, 401]  # 401 if token invalid, 403 if forbidden, 200 if allowed
+        assert response.status_code == 200
 
 
 class TestRetentionMetrics:
@@ -279,84 +279,6 @@ class TestFlightRiskStudents:
     def test_flight_risk_students_unauthorized(self, client):
         """Test getting flight-risk students without auth returns 401."""
         response = client.get("/api/v1/analytics/bi/flight-risk")
-        assert response.status_code == 401
-
-
-@pytest.mark.skip(reason="user_sessions table missing - see tech-debt.md")
-class TestUserEngagement:
-    """GET /analytics/bi/user-engagement - require_admin auth"""
-
-    def test_user_engagement_success(self, client, mock_admin_headers, override_auth):
-        """Test getting user engagement with default 30 days."""
-        response = client.get(
-            "/api/v1/analytics/bi/user-engagement",
-            headers=mock_admin_headers
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["success"] is True
-        assert isinstance(data["data"], list)
-
-    def test_user_engagement_default_days(self, client, mock_admin_headers, override_auth):
-        """Test default days parameter is 30."""
-        response = client.get(
-            "/api/v1/analytics/bi/user-engagement",
-            headers=mock_admin_headers
-        )
-
-        assert response.status_code == 200
-        # Default should return ~30 data points (one per day)
-        data = response.json()
-        assert len(data["data"]) <= 30
-
-    def test_user_engagement_custom_days(self, client, mock_admin_headers, override_auth):
-        """Test custom days parameter (1-90 range)."""
-        response = client.get(
-            "/api/v1/analytics/bi/user-engagement?days=7",
-            headers=mock_admin_headers
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["success"] is True
-        assert len(data["data"]) <= 7
-
-    def test_user_engagement_boundary_days(self, client, mock_admin_headers, override_auth):
-        """Test days parameter at boundaries (1 and 90)."""
-        # Test minimum
-        response_min = client.get(
-            "/api/v1/analytics/bi/user-engagement?days=1",
-            headers=mock_admin_headers
-        )
-        assert response_min.status_code == 200
-
-        # Test maximum
-        response_max = client.get(
-            "/api/v1/analytics/bi/user-engagement?days=90",
-            headers=mock_admin_headers
-        )
-        assert response_max.status_code == 200
-
-    def test_user_engagement_invalid_days(self, client, mock_admin_headers, override_auth):
-        """Test days parameter outside valid range (1-90) returns 422."""
-        # Test below minimum
-        response_low = client.get(
-            "/api/v1/analytics/bi/user-engagement?days=0",
-            headers=mock_admin_headers
-        )
-        assert response_low.status_code == 422
-
-        # Test above maximum
-        response_high = client.get(
-            "/api/v1/analytics/bi/user-engagement?days=91",
-            headers=mock_admin_headers
-        )
-        assert response_high.status_code == 422
-
-    def test_user_engagement_unauthorized(self, client):
-        """Test getting user engagement without auth returns 401."""
-        response = client.get("/api/v1/analytics/bi/user-engagement")
         assert response.status_code == 401
 
 

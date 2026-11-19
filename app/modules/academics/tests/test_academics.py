@@ -111,31 +111,27 @@ class TestCoursesWrite:
         data = response.json()
         assert data["success"] is False
     
-    def test_update_course_success(self, client, mock_admin_headers, override_auth):
+    def test_update_course_success(self, client, mock_admin_headers, override_auth, db_session):
         """
         PATCH /academics/courses/{id} updates course.
         Requires admin role.
         """
-        # First get a course to update
-        list_response = client.get(
-            "/api/v1/academics/courses?limit=1",
-            headers=mock_admin_headers
+        from app.testing.db_helpers import create_test_course
+
+        course = create_test_course(db_session)
+        db_session.commit()
+
+        response = client.patch(
+            f"/api/v1/academics/courses/{course.id}",
+            headers=mock_admin_headers,
+            json={
+                "name": f"Updated Course API {__import__('uuid').uuid4().hex[:8]}",
+                "price_per_level": 2000.0
+            }
         )
-        
-        if list_response.status_code == 200 and list_response.json()["data"]:
-            course_id = list_response.json()["data"][0]["id"]
-            
-            response = client.patch(
-                f"/api/v1/academics/courses/{course_id}",
-                headers=mock_admin_headers,
-                json={
-                    "name": f"Updated Course API {__import__('uuid').uuid4().hex[:8]}",
-                    "price_per_level": 2000.0
-                }
-            )
-            
-            # May succeed or fail with 404 if course doesn't exist
-            assert response.status_code in [200, 404]
+
+        assert response.status_code == 200
+        assert response.json()["data"]["price_per_level"] == 2000.0
     
     def test_update_course_not_found(self, client, mock_admin_headers, override_auth):
         """
@@ -155,28 +151,39 @@ class TestGroupsRead:
     
     def test_list_groups_success(self, client, mock_admin_headers, override_auth):
         response = client.get(
+            "/api/v1/academics/groups/grouped?group_by=day",
+            headers=mock_admin_headers
+        )
+        assert response.status_code == 200
+        assert response.json()["success"] is True
+
+    def test_list_groups_requires_group_by(self, client, mock_admin_headers, override_auth):
+        response = client.get(
             "/api/v1/academics/groups/grouped",
             headers=mock_admin_headers
         )
-        assert response.status_code in [200, 422]
+        assert response.status_code == 422
+        assert response.json()["error"] == "ValidationError"
     
-    def test_get_group_by_id(self, client, mock_admin_headers, override_auth):
+    def test_get_group_by_id(self, client, mock_admin_headers, override_auth, db_session):
         """
         GET /academics/groups/{id} returns group details.
         """
-        # Try with ID 1
+        from app.testing.db_helpers import create_test_course, create_test_group
+
+        course = create_test_course(db_session)
+        group = create_test_group(db_session, course_id=course.id)
+        db_session.commit()
+
         response = client.get(
-            "/api/v1/academics/groups/1",
+            f"/api/v1/academics/groups/{group.id}",
             headers=mock_admin_headers
         )
-        
-        # May succeed or return 404
-        assert response.status_code in [200, 404]
-        
-        if response.status_code == 200:
-            data = response.json()
-            assert data["success"] is True
-            assert "data" in data
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["data"]["id"] == group.id
     
     def test_list_group_sessions(self, client, mock_admin_headers, override_auth):
         """
@@ -241,34 +248,33 @@ class TestGroupsWrite:
     
     def test_progress_group_level_not_found(self, client, mock_admin_headers, override_auth):
         response = client.post(
-            "/api/v1/academics/groups/99999/progress-level",
-            headers=mock_admin_headers
+            "/api/v1/academics/groups/999999999/progress-level",
+            headers=mock_admin_headers,
+            json={"auto_migrate_enrollments": False}
         )
-        assert response.status_code in [404, 422]
+        assert response.status_code == 404
+        assert response.json()["error"] == "NotFoundError"
 
 
 class TestSessionsRead:
     """Tests for GET /academics/sessions endpoints."""
     
-    def test_get_daily_schedule(self, client, mock_admin_headers, override_auth):
-        today = date.today().isoformat()
-        response = client.get(
-            f"/api/v1/academics/sessions/daily-schedule?target_date={today}",
-            headers=mock_admin_headers
-        )
-        assert response.status_code in [200, 404, 422]
-    
-    def test_get_session_by_id(self, client, mock_admin_headers, override_auth):
+    def test_get_session_by_id(self, client, mock_admin_headers, override_auth, db_session):
         """
         GET /academics/sessions/{id} returns session details.
         """
+        from app.testing.db_helpers import create_minimal_group_bundle
+
+        _, _, _, sessions = create_minimal_group_bundle(db_session, session_count=1)
+        db_session.commit()
+
         response = client.get(
-            "/api/v1/academics/sessions/1",
+            f"/api/v1/academics/sessions/{sessions[0].id}",
             headers=mock_admin_headers
         )
-        
-        # May succeed or return 404
-        assert response.status_code in [200, 404]
+
+        assert response.status_code == 200
+        assert response.json()["data"]["id"] == sessions[0].id
     
     def test_get_session_not_found(self, client, mock_admin_headers, override_auth):
         """
@@ -354,7 +360,6 @@ class TestAcademicsAuth:
             "/api/v1/academics/courses",
             "/api/v1/academics/groups/1",
             "/api/v1/academics/groups/1/sessions",
-            "/api/v1/academics/sessions/daily-schedule",
             "/api/v1/academics/sessions/1",
         ]
         

@@ -207,13 +207,18 @@ class TestStudentsRead:
         assert data["success"] is False
         assert data["error"] == "NotFoundError"
     
-    def test_get_student_parents(self, client, mock_admin_headers, override_auth):
+    def test_get_student_parents(self, client, mock_admin_headers, override_auth, db_session):
+        from app.testing.db_helpers import create_test_student
+
+        student = create_test_student(db_session)
+        db_session.commit()
         response = client.get(
-            "/api/v1/crm/students/1/parents",
+            f"/api/v1/crm/students/{student.id}/parents",
             headers=mock_admin_headers
         )
-        
-        assert response.status_code in [200, 404]
+
+        assert response.status_code == 200
+        assert response.json()["data"] == []
 
 
 class TestStudentsCreate:
@@ -620,7 +625,7 @@ class TestParentsCreate:
     def test_create_parent_success(self, client, mock_admin_headers, override_auth):
         import uuid
         unique_name = f"Test Parent {uuid.uuid4().hex[:8]}"
-        unique_phone = f"+20100{uuid.uuid4().hex[:6]}"
+        unique_phone = f"+2010{str(uuid.uuid4().int)[:8]}"
         
         response = client.post(
             "/api/v1/crm/parents",
@@ -635,20 +640,18 @@ class TestParentsCreate:
             }
         )
         
-        assert response.status_code in [201, 422]
-        
-        if response.status_code == 201:
-            data = response.json()
-            assert data["success"] is True
-            created_id = data["data"]["id"]
-            
-            get_response = client.get(
-                f"/api/v1/crm/parents/{created_id}",
-                headers=mock_admin_headers
-            )
-            assert get_response.status_code == 200
-            get_data = get_response.json()
-            assert get_data["data"]["full_name"] == unique_name
+        assert response.status_code == 201
+        data = response.json()
+        assert data["success"] is True
+        created_id = data["data"]["id"]
+
+        get_response = client.get(
+            f"/api/v1/crm/parents/{created_id}",
+            headers=mock_admin_headers
+        )
+        assert get_response.status_code == 200
+        get_data = get_response.json()
+        assert get_data["data"]["full_name"] == unique_name
     
     def test_create_parent_validation_error(self, client, mock_admin_headers, override_auth):
         response = client.post(

@@ -452,11 +452,10 @@ class TestDashboard:
             f"/api/v1/dashboard/daily-overview?date={today}",
             headers=mock_admin_headers,
         )
-        assert resp.status_code in (200, 500)
-        if resp.status_code == 200:
-            body = resp.json()
-            assert body["success"] is True
-            assert "data" in body
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["success"] is True
+        assert "data" in body
 
     def test_daily_overview_unauthorized(self, client):
         """401 without auth."""

@@ -165,7 +165,7 @@ class TestGroupLifecycleWrite:
         assert "cancelled" in data["message"].lower()
 
     def test_cancel_group_level_not_found(self, client, mock_admin_headers, override_auth, db_session):
-        """Test cancelling non-existent level returns 404/400."""
+        """Test cancelling non-existent level returns 404."""
         from app.testing.db_helpers import create_test_course, create_test_group
         course = create_test_course(db_session)
         group = create_test_group(db_session, course_id=course.id)
@@ -178,7 +178,8 @@ class TestGroupLifecycleWrite:
             json=payload
         )
 
-        assert response.status_code in [400, 404]
+        assert response.status_code == 404
+        assert response.json()["error"] == "NotFoundError"
 
     def test_cancel_already_completed_level(self, client, mock_admin_headers, override_auth, db_session):
         """Test cancelling an already completed level fails."""
@@ -222,5 +223,5 @@ class TestGroupLifecycleEdgeCases:
             headers=mock_admin_headers
         )
 
-        # Should return 422 for invalid params
-        assert response.status_code in [200, 422]
+        assert response.status_code == 422
+        assert response.json()["error"] == "ValidationError"

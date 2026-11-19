@@ -67,11 +67,10 @@ class TestNotificationActions:
         payload = {"student_id": student.id, "session_name": "Test Session", "session_date": "2026-06-09"}
         response = client.post(f"{BASE}/absence", headers=mock_admin_headers, json=payload)
 
-        assert response.status_code in (200, 500)
-        if response.status_code == 200:
-            data = response.json()
-            assert data["success"] is True
-            assert "queued" in data["data"].lower()
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert "queued" in data["data"].lower()
 
     def test_send_receipt_notification_success(self, client, db_session, mock_admin_headers, override_auth):
         receipt = create_test_receipt(db_session, payer_name=_unique("Payer"))
@@ -81,16 +80,18 @@ class TestNotificationActions:
         params = {"student_id": student.id, "amount": "500.0", "receipt_number": receipt.receipt_number or "RCP-001"}
         response = client.post(f"{BASE}/receipt/{receipt.id}", headers=mock_admin_headers, params=params)
 
-        assert response.status_code in (200, 500)
-        if response.status_code == 200:
-            data = response.json()
-            assert data["success"] is True
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
 
-    def test_send_receipt_notification_not_found(self, client, mock_admin_headers, override_auth):
-        params = {"student_id": 1, "amount": "500.0", "receipt_number": "RCP-XXX"}
-        response = client.post(f"{BASE}/receipt/99999", headers=mock_admin_headers, params=params)
+    def test_send_receipt_notification_not_found(self, client, db_session, mock_admin_headers, override_auth):
+        student = create_test_student(db_session, full_name=_unique("Student"))
+        db_session.commit()
+        params = {"student_id": student.id, "amount": "500.0", "receipt_number": "RCP-XXX"}
+        response = client.post(f"{BASE}/receipt/999999999", headers=mock_admin_headers, params=params)
 
-        assert response.status_code in (200, 404, 500)
+        assert response.status_code == 404
+        assert response.json()["error"] == "NotFoundError"
 
     def test_send_absence_alert_unauthorized(self, client):
         payload = {"student_id": 1, "session_name": "Test", "session_date": "2026-06-09"}
@@ -143,50 +144,44 @@ class TestNotificationReports:
     def test_trigger_daily_report_success(self, client, mock_admin_headers, override_auth):
         response = client.post(f"{BASE}/reports/daily", headers=mock_admin_headers)
 
-        assert response.status_code in (200, 404, 500)
-        if response.status_code == 200:
-            data = response.json()
-            assert data["success"] is True
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
 
     def test_get_daily_report_data(self, client, mock_admin_headers, override_auth):
         response = client.get(f"{BASE}/reports/daily/data", headers=mock_admin_headers)
 
-        assert response.status_code in (200, 404, 500)
-        if response.status_code == 200:
-            data = response.json()
-            assert data["success"] is True
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
 
     def test_trigger_weekly_report_success(self, client, mock_admin_headers, override_auth):
         response = client.post(f"{BASE}/reports/weekly", headers=mock_admin_headers)
 
-        assert response.status_code in (200, 500)
-        if response.status_code == 200:
-            data = response.json()
-            assert data["success"] is True
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
 
     def test_get_weekly_report_data(self, client, mock_admin_headers, override_auth):
         response = client.get(f"{BASE}/reports/weekly/data", headers=mock_admin_headers)
 
-        assert response.status_code in (200, 404, 500)
-        if response.status_code == 200:
-            data = response.json()
-            assert data["success"] is True
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
 
     def test_trigger_monthly_report_success(self, client, mock_admin_headers, override_auth):
         response = client.post(f"{BASE}/reports/monthly", headers=mock_admin_headers)
 
-        assert response.status_code in (200, 500)
-        if response.status_code == 200:
-            data = response.json()
-            assert data["success"] is True
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
 
     def test_get_monthly_report_data(self, client, mock_admin_headers, override_auth):
         response = client.get(f"{BASE}/reports/monthly/data", headers=mock_admin_headers)
 
-        assert response.status_code in (200, 404, 500)
-        if response.status_code == 200:
-            data = response.json()
-            assert data["success"] is True
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
 
 
 # ── Notification Templates ────────────────────────────────────────────────
@@ -309,11 +304,10 @@ class TestNotificationTemplates:
 
         response = client.post(f"{BASE}/templates/{template_id}/test", headers=mock_admin_headers)
 
-        assert response.status_code in (200, 500)
-        if response.status_code == 200:
-            data = response.json()
-            assert data["success"] is True
-            assert data["data"]["template_id"] == template_id
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["data"]["template_id"] == template_id
 
 
 # ── Admin Settings ────────────────────────────────────────────────────────
@@ -341,11 +335,10 @@ class TestAdminSettings:
     def test_get_specific_type(self, client, mock_admin_headers, override_auth):
         response = client.get(f"{BASE}/admin/settings/me/types/daily_report", headers=mock_admin_headers)
 
-        assert response.status_code in (200, 404)
-        if response.status_code == 200:
-            data = response.json()
-            assert data["success"] is True
-            assert data["data"]["notification_type"] == "daily_report"
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["data"]["notification_type"] == "daily_report"
 
     def test_toggle_notification_type(self, client, mock_admin_headers, override_auth):
         response = client.put(
@@ -414,11 +407,10 @@ class TestBulk:
         payload = {"parent_ids": [parent.id], "template_name": "daily_report", "extra_vars": {}}
         response = client.post(f"{BASE}/bulk", headers=mock_admin_headers, json=payload)
 
-        assert response.status_code in (200, 500)
-        if response.status_code == 200:
-            data = response.json()
-            assert data["success"] is True
-            assert "queued_count" in data["data"]
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert "queued_count" in data["data"]
 
     def test_bulk_send_unauthorized(self, client):
         payload = {"parent_ids": [1], "template_name": "daily_report", "extra_vars": {}}

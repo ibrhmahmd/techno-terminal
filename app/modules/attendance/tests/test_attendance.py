@@ -75,8 +75,8 @@ class TestAttendanceRead:
         response = client.get("/api/v1/attendance/session/1")
         assert response.status_code == 401
 
-    def test_get_session_attendance_forbidden(self, client, mock_admin_headers, override_system_admin_auth, db_session):
-        """Test getting attendance with system_admin token (may be 403 or may be allowed)."""
+    def test_get_session_attendance_system_admin_allowed(self, client, mock_admin_headers, override_system_admin_auth, db_session):
+        """A system_admin user may read session attendance (200)."""
         from app.testing.db_helpers import create_minimal_group_bundle
 
         _, _, _, sessions = create_minimal_group_bundle(db_session, session_count=1)
@@ -85,8 +85,7 @@ class TestAttendanceRead:
             f"/api/v1/attendance/session/{sessions[0].id}",
             headers=mock_admin_headers
         )
-        # system_admin may be treated as admin (200) or forbidden (403)
-        assert response.status_code in [200, 403]
+        assert response.status_code == 200
 
 
 class TestAttendanceMark:
@@ -159,18 +158,13 @@ class TestAttendanceMark:
             ]
         }
 
-        try:
-            response = client.post(
-                "/api/v1/attendance/session/1/mark",
-                headers=mock_admin_headers,
-                json=payload
-            )
-            # Due to a serialization bug with Pydantic's ValueError in FastAPI error handlers,
-            # this may return 422 (correct) or 500 (serialization error)
-            assert response.status_code in [422, 500]
-        except TypeError:
-            # TestClient re-raises 500 errors; accept this as equivalent failure
-            pass
+        response = client.post(
+            "/api/v1/attendance/session/1/mark",
+            headers=mock_admin_headers,
+            json=payload
+        )
+        assert response.status_code == 422
+        assert response.json()["error"] == "ValidationError"
 
     def test_mark_attendance_validation_invalid_status(self, client, mock_admin_headers, override_auth):
         """Test marking attendance with invalid status fails validation."""
@@ -235,8 +229,8 @@ class TestAttendanceMark:
 
         assert response.status_code == 401
 
-    def test_mark_attendance_forbidden(self, client, mock_admin_headers, override_system_admin_auth, db_session):
-        """Test marking attendance with system_admin token (may be 403 or may be allowed)."""
+    def test_mark_attendance_system_admin_allowed(self, client, mock_admin_headers, override_system_admin_auth, db_session):
+        """A system_admin user may mark attendance (200)."""
         from app.testing.db_helpers import create_test_course, create_test_group, create_test_student
         from app.modules.academics.models import CourseSession
 
@@ -273,8 +267,7 @@ class TestAttendanceMark:
             json=payload
         )
 
-        # system_admin may be treated as admin (200) or forbidden (403)
-        assert response.status_code in [200, 403]
+        assert response.status_code == 200
 
     def test_mark_attendance_all_valid_statuses(self, client, mock_admin_headers, override_auth, db_session):
         """Test marking attendance with all valid status values."""
@@ -480,8 +473,12 @@ class TestAttendanceValidationExtended:
 
         assert response.status_code == 422
 
-    def test_mark_attendance_max_int_student_id(self, client, mock_admin_headers, override_auth):
-        """Test marking attendance with very large student_id."""
+    def test_mark_attendance_max_int_student_id(self, client, mock_admin_headers, override_auth, db_session):
+        """A student id with no enrollment in the session's group is skipped, not an error."""
+        from app.testing.db_helpers import create_minimal_group_bundle
+
+        _, _, _, sessions = create_minimal_group_bundle(db_session, session_count=1)
+        db_session.commit()
         payload = {
             "entries": [
                 {"student_id": 2147483647, "status": "present"}
@@ -489,13 +486,15 @@ class TestAttendanceValidationExtended:
         }
 
         response = client.post(
-            "/api/v1/attendance/session/1/mark",
+            f"/api/v1/attendance/session/{sessions[0].id}/mark",
             headers=mock_admin_headers,
             json=payload
         )
 
-        # Should be accepted (200), validation (422), or session not found (404)
-        assert response.status_code in [200, 404, 422]
+        assert response.status_code == 200
+        data = response.json()["data"]
+        assert data["marked"] == 0
+        assert data["skipped"] == [2147483647]
 
     def test_mark_attendance_empty_string_status(self, client, mock_admin_headers, override_auth):
         """Test marking attendance with empty status string."""

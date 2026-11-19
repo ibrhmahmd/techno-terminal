@@ -244,7 +244,7 @@ def test_create_receipt_without_credit_accepts_an_exact_payment(
             {"student_id": student.id, "enrollment_id": enrollment.id, "amount": 100.0}]},
     )
 
-    assert r.status_code in (200, 201)
+    assert r.status_code == 201
     assert r.json()["success"] is True
 
 

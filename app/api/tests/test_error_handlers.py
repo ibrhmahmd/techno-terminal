@@ -93,8 +93,7 @@ class TestErrorResponseStructure:
             headers=mock_admin_headers
         )
         
-        # May be 405 or 404 depending on router setup
-        assert response.status_code in [405, 404]
+        assert response.status_code == 405
         data = response.json()
         assert "success" in data
         assert data["success"] is False

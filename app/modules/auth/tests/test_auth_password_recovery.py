@@ -72,7 +72,8 @@ def test_is_recovery_session_rejects_malformed_tokens():
 
 
 def test_missing_bearer_is_rejected_not_500(client_with_uow, override_auth):
-    """Without an Authorization header the route answers 401/403, never 500."""
+    """Without an Authorization header the route answers 401, never 500."""
     r = client_with_uow.post("/api/v1/auth/reset-password-confirm", json={"new_password": "BrandNewPass123"})
 
-    assert r.status_code in (401, 403)
+    assert r.status_code == 401
+    assert r.json()["error"] == "Unauthorized"

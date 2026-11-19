@@ -60,10 +60,10 @@ class TestCompetitionFeeSummary:
         response = client.get("/api/v1/analytics/competitions/fee-summary")
         assert response.status_code == 401
 
-    def test_competition_fee_summary_forbidden(self, client, mock_admin_headers, override_system_admin_auth):
-        """Test getting fee summary with system_admin token (may be 200 or 403)."""
+    def test_competition_fee_summary_system_admin_allowed(self, client, mock_admin_headers, override_system_admin_auth):
+        """A system_admin user may read the fee summary (200)."""
         response = client.get(
             "/api/v1/analytics/competitions/fee-summary",
             headers=mock_admin_headers
         )
-        assert response.status_code in [200, 403]
+        assert response.status_code == 200

@@ -348,7 +348,7 @@ class TestGroupsEdgeCases:
         assert response.json()["data"]["name"] == "Test"
 
     def test_delete_already_inactive_group(self, client, mock_admin_headers, override_auth, db_session):
-        """Test deleting an already inactive group."""
+        """Test deleting an already inactive group is idempotent (200)."""
         from app.testing.db_helpers import create_test_course, create_test_group
         course = create_test_course(db_session)
         group = create_test_group(db_session, course_id=course.id, status="inactive")
@@ -358,5 +358,4 @@ class TestGroupsEdgeCases:
             headers=mock_admin_headers
         )
 
-        # May return 404 if already inactive, or handle gracefully
-        assert response.status_code in [200, 404]
+        assert response.status_code == 200
