@@ -183,21 +183,21 @@ class StudentRepository:
             {"student_id": student_id}
         )
         
-        # 2. Delete team_members records
-        self._session.execute(
-            text("DELETE FROM team_members WHERE student_id = :student_id"),
-            {"student_id": student_id}
-        )
-        
-        # 3. Delete attendance records
+        # 2. Delete attendance records
         self._session.execute(
             text("DELETE FROM attendance WHERE student_id = :student_id"),
             {"student_id": student_id}
         )
         
-        # 4. Delete payments records
+        # 3. Delete payments records (before team_members: payments.team_member_id has no ON DELETE rule)
         self._session.execute(
             text("DELETE FROM payments WHERE student_id = :student_id"),
+            {"student_id": student_id}
+        )
+        
+        # 4. Delete team_members records
+        self._session.execute(
+            text("DELETE FROM team_members WHERE student_id = :student_id"),
             {"student_id": student_id}
         )
         
