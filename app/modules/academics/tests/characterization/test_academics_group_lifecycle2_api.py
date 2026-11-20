@@ -19,12 +19,10 @@ Buckets
 
 Pinned quirks
 -------------
-* There is NO 404 for these routes. ``get_enrollment_history`` and
-  ``get_instructor_history`` fall back to ``group_name="Unknown"`` and empty
-  aggregates for a nonexistent ``group_id``, so the response is HTTP 200.
-* The ``status`` query filter narrows only ``enrollments[]``; the group-level
-  ``total_/active_/completed_/dropped_enrollments`` counts are always computed
-  over ALL enrollments of the group.
+* A nonexistent ``group_id`` is 404 ``NotFoundError`` on all 4 routes (#73, #223).
+* The ``status`` query filter narrows ``enrollments[]`` AND the group-level
+  ``total_/active_/completed_/dropped_enrollments`` counts (#73).
+* ``balance_remaining`` is clamped at 0 and soft-deleted payments are not counted (#73).
 * A level whose status is not ``active`` does not become ``current_instructor``.
 
 Run
@@ -40,6 +38,8 @@ from app.modules.academics.models.group_level_models import GroupLevel
 from app.modules.academics.models.group_models import Group
 from app.modules.crm.models.student_models import Student
 from app.modules.enrollments.models.enrollment_models import Enrollment
+from app.modules.finance.models.payment import Payment
+from app.modules.finance.models.receipt import Receipt
 from app.modules.hr.models.employee_models import Employee
 
 
@@ -237,30 +237,51 @@ def test_enrollment_analytics_happy_path(client_with_uow, override_auth, mock_ad
     assert item["balance_remaining"] == 800.0
 
 
-def test_enrollment_analytics_unknown_group_is_200_unknown(client_with_uow, override_auth, mock_admin_headers):
-    """GET analytics for a nonexistent group is 200 with group_name='Unknown' (no 404)."""
-    r = client_with_uow.get(
-        "/api/v1/academics/groups/999999999/enrollments/analytics",
-        headers=mock_admin_headers,
-    )
-
-    assert r.status_code == 200
-    body = r.json()
-    assert body["success"] is True
-    data = body["data"]
-    assert data["group_id"] == 999999999
-    assert data["group_name"] == "Unknown"
-    assert data["total_enrollments"] == 0
-    assert data["active_enrollments"] == 0
-    assert data["completed_enrollments"] == 0
-    assert data["dropped_enrollments"] == 0
-    assert data["enrollments"] == []
+def test_analytics_routes_unknown_group_is_404(client_with_uow, override_auth, mock_admin_headers):
+    """Every analytics/history route 404s NotFoundError for a nonexistent group (#73)."""
+    for path in ("enrollments/analytics", "enrollment-history", "instructors/analytics", "instructor-history"):
+        r = client_with_uow.get(f"/api/v1/academics/groups/999999999/{path}", headers=mock_admin_headers)
+        assert r.status_code == 404, path
+        assert r.json()["error"] == "NotFoundError", path
 
 
-def test_enrollment_analytics_status_filter_keeps_unfiltered_totals(
+def _add_payment(db_session, student_id, enrollment_id, amount, deleted=False) -> None:
+    receipt = Receipt(payer_name="t", payment_method="cash")
+    db_session.add(receipt)
+    db_session.commit()
+    db_session.refresh(receipt)
+    db_session.add(Payment(
+        receipt_id=receipt.id, student_id=student_id, enrollment_id=enrollment_id,
+        amount=amount, transaction_type="payment",
+        deleted_at=datetime.now(timezone.utc) if deleted else None,
+    ))
+    db_session.commit()
+
+
+def test_enrollment_analytics_overpaid_balance_is_zero_and_ignores_deleted_payments(
     client_with_uow, override_auth, mock_admin_headers, db_session
 ):
-    """The status filter narrows enrollments[] but group-level stats stay over ALL rows."""
+    """Overpaid -> balance_remaining 0 (never negative); a soft-deleted payment is not counted."""
+    course = _make_course(db_session)
+    group = _make_group(db_session, course.id)
+    student = _make_student(db_session)
+    enrollment = _make_enrollment(db_session, student.id, group.id, amount_due=1000.0)
+    _add_payment(db_session, student.id, enrollment.id, 1200.0)
+    _add_payment(db_session, student.id, enrollment.id, 500.0, deleted=True)
+
+    r = client_with_uow.get(
+        f"/api/v1/academics/groups/{group.id}/enrollments/analytics", headers=mock_admin_headers
+    )
+
+    item = r.json()["data"]["enrollments"][0]
+    assert item["payments_made"] == 1200.0
+    assert item["balance_remaining"] == 0.0
+
+
+def test_enrollment_analytics_status_filter_narrows_counts(
+    client_with_uow, override_auth, mock_admin_headers, db_session
+):
+    """The status filter narrows enrollments[] and the group-level counts alike (#73)."""
     course = _make_course(db_session)
     group = _make_group(db_session, course.id)
     active_student = _make_student(db_session)
@@ -276,9 +297,9 @@ def test_enrollment_analytics_status_filter_keeps_unfiltered_totals(
 
     assert r.status_code == 200
     data = r.json()["data"]
-    assert data["total_enrollments"] == 2
+    assert data["total_enrollments"] == 1
     assert data["active_enrollments"] == 1
-    assert data["completed_enrollments"] == 1
+    assert data["completed_enrollments"] == 0
     assert data["dropped_enrollments"] == 0
     assert len(data["enrollments"]) == 1
     assert data["enrollments"][0]["status"] == "active"

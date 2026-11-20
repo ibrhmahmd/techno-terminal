@@ -20,11 +20,10 @@ Buckets
 
 Pinned quirks
 -------------
-* GET surfaces the service's ``NotFoundError`` through the domain handler, so the
-  error key is ``"NotFoundError"``. The cancel/update routes instead convert to
-  ``HTTPException`` and the error key is ``"NotFound"``.
-* ``ValueError`` (cancel already completed/cancelled) and ``BusinessRuleError``
-  (edit a non-active level) are re-mapped to HTTP 400, not 404/409.
+* All routes surface domain errors through the domain handler: ``NotFoundError``
+  is 404 and ``BusinessRuleError`` (cancel completed/cancelled, edit a non-active
+  level) is 409.
+* PATCH rejects a negative ``price_override`` with 422 (#73).
 
 Run
 ---
@@ -367,6 +366,21 @@ def test_update_level_happy_path(client_with_uow, override_auth, mock_admin_head
     assert data["price_override"] == 1750.5
     assert data["notes"] == "updated"
     assert data["status"] == "active"
+
+
+def test_update_level_negative_price_override_is_422(client_with_uow, override_auth, mock_admin_headers, db_session):
+    """PATCH with a negative price_override fails request validation (#73)."""
+    course = _make_course(db_session)
+    group = _make_group(db_session, course.id)
+    _make_group_level(db_session, group.id, course.id, level_number=1)
+
+    r = client_with_uow.patch(
+        f"/api/v1/academics/groups/{group.id}/levels/1",
+        headers=mock_admin_headers,
+        json={"price_override": -1},
+    )
+
+    assert r.status_code == 422
 
 
 def test_update_level_unknown_level_is_404(client_with_uow, override_auth, mock_admin_headers, db_session):

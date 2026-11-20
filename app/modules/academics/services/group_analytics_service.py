@@ -41,10 +41,12 @@ class GroupAnalyticsService:
         session = self._uow.session
         # Get group info
         group = session.get(Group, group_id)
-        group_name = group.name if group else "Unknown"
+        if group is None:
+            raise NotFoundError(f"Group {group_id} not found.")
+        group_name = group.name
 
-        # Get enrollment stats
-        stats = get_group_enrollment_stats(session, group_id)
+        # Get enrollment stats (counts follow the status filter)
+        stats = get_group_enrollment_stats(session, group_id, status)
 
         # Get enrollments with student details
         enrollments_data = get_group_enrollments_with_details(
@@ -58,7 +60,7 @@ class GroupAnalyticsService:
             payments_made = get_enrollment_payments(session, dto.enrollment_id)
             amount_due = dto.amount_due
             discount_applied = dto.discount_applied
-            balance_remaining = amount_due - payments_made - discount_applied
+            balance_remaining = max(amount_due - payments_made - discount_applied, 0.0)
 
             enrollment_dtos.append(EnrollmentHistoryItemDTO(
                 enrollment_id=dto.enrollment_id,
