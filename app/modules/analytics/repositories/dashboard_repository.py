@@ -31,7 +31,7 @@ class DashboardRepository:
         self._session = session
 
     def get_groups_with_sessions_on_date(
-        self, target_date: date
+        self, target_date: date, instructor_id: Optional[int] = None
     ) -> list[GroupSessionInfoDTO]:
         """
         Query 1: Get groups that have sessions on the target date.
@@ -40,7 +40,11 @@ class DashboardRepository:
     
         Sorted by default_time_start ASC, then group_name ASC.
         """
-        stmt = text("""
+        instructor_filter = "AND g.instructor_id = :instructor_id" if instructor_id is not None else ""
+        params: dict = {"target_date": str(target_date)}
+        if instructor_id is not None:
+            params["instructor_id"] = instructor_id
+        stmt = text(f"""
             SELECT DISTINCT 
                 s.group_id,
                 s.id AS session_id,
@@ -55,9 +59,10 @@ class DashboardRepository:
             JOIN groups g ON s.group_id = g.id
             WHERE s.session_date = :target_date
               AND g.status = 'active'
+              {instructor_filter}
             ORDER BY g.default_time_start ASC, g.name ASC
         """)
-        rows = self._session.execute(stmt, {"target_date": str(target_date)}).all()
+        rows = self._session.execute(stmt, params).all()
     
         result: list[GroupSessionInfoDTO] = []
         for row in rows:

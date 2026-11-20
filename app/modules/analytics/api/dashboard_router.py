@@ -12,9 +12,9 @@ from fastapi import APIRouter, Depends, Query
 
 from app.api.schemas.common import ApiResponse, ErrorResponse
 from app.modules.analytics.schemas.dashboard_schemas import DashboardDailyOverviewDTO
-from app.api.deps import require_admin
+from app.api.deps import require_staff
 from app.modules.analytics.api.deps import get_dashboard_service
-from app.modules.auth import User
+from app.modules.auth import User, UserRole
 from app.modules.analytics.services.dashboard_service import DashboardService
 
 router = APIRouter(
@@ -35,7 +35,7 @@ router = APIRouter(
 def get_daily_overview(
     date_param: date = Query(..., alias="date", description="Target date (YYYY-MM-DD)"),
     include_attendance: bool = Query(True, description="Include full attendance grid data"),
-    _user: User = Depends(require_admin),
+    user: User = Depends(require_staff),
     svc: DashboardService = Depends(get_dashboard_service),
 ):
     """
@@ -53,8 +53,17 @@ def get_daily_overview(
     scheduled_groups array.
     
     Groups are sorted by default_time_start (earliest first).
+
+    Instructors see only their own groups (via users.employee_id) and no money
+    (roster balance = -1, billing_status = null). Admins see everything.
     """
-    result = svc.get_daily_overview(date_param, include_attendance)
+    is_instructor = user.role == UserRole.INSTRUCTOR.value
+    result = svc.get_daily_overview(
+        date_param,
+        include_attendance,
+        instructor_only=is_instructor,
+        instructor_employee_id=user.employee_id,
+    )
     return ApiResponse(
         data=result,
         message="Dashboard overview loaded successfully.",
