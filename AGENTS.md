@@ -108,7 +108,7 @@ Rules that hold everywhere:
 Plain SQL files in `db/migrations/`. Duplicate prefix numbers exist (`008`, `020`, `021`, `022`, `026`, `030`, `036`, `051`, `057`) — apply in **chronological order**, not numeric. Cleanup migrations: `042`–`049`. Schema: 19 modular files in `db/schema/` applied via `db/schema.sql`. There is no Alembic: migrations are plain SQL files applied by hand.
 
 ### Database Pool (code truth in `app/db/connection.py`)
-`pool_size=10, max_overflow=5 (15 total), pool_timeout=30, pool_pre_ping=True, pool_recycle=240s`, `sslmode=prefer`, `statement_timeout=30000`, `expire_on_commit=False`.
+`pool_size=10, max_overflow=5 (15 total), pool_timeout=30, pool_pre_ping=True, pool_recycle=240s`, `sslmode=prefer`, `statement_timeout` 60 s (`STATEMENT_TIMEOUT_MS`): set per transaction with `SET LOCAL` by a `begin` listener, because the Supabase transaction pooler drops the libpq startup option (#191); the startup option stays as a fallback for direct connections, `expire_on_commit=False`.
 
 ### Test Layout
 Tests live with the code they test (#109): `app/modules/<module>/tests/` (API pins in `characterization/`, notifier fakes in `fakes.py`), plus `app/db/tests`, `app/api/tests`, `app/core/tests`, `app/observability/tests`. Shared fixtures are in `app/conftest.py`, shared helpers in `app/testing/`. Cross-module tests go to the highest module involved. Only the repo-wide contracts stay in `tests/architecture/` (+ `tests/snapshots/`); `test_test_location.py` fails on a test file anywhere else. pytest runs with `--import-mode=importlib`; test code is excluded from the deploy and the built package.
