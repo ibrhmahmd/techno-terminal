@@ -4,6 +4,7 @@
 (see ``create_app``). The handler re-checks both locks before any DB access: the
 environment name AND the DATABASE_URL project ref must match the staging project.
 """
+import hmac
 from typing import Optional
 
 import logfire
@@ -34,7 +35,7 @@ def _verify_staging_target() -> None:
 def _verify_purge_secret(x_e2e_purge_secret: Optional[str] = Header(default=None)) -> None:
     """401 on a missing header, a wrong value or an unconfigured (empty) secret."""
     secret = settings.e2e_purge_secret
-    if not secret or x_e2e_purge_secret != secret:
+    if not secret or not hmac.compare_digest((x_e2e_purge_secret or "").encode(), secret.encode()):
         logfire.error("e2e_purge_secret_rejected")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid E2E purge secret")
 
