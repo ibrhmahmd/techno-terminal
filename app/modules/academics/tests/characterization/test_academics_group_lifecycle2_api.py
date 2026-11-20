@@ -412,20 +412,15 @@ def test_instructor_analytics_completed_level_not_current(
     assert data["current_instructor"] is None
 
 
-def test_instructor_analytics_unknown_group_is_200_empty(client_with_uow, override_auth, mock_admin_headers):
-    """GET instructor analytics for a nonexistent group is 200 with empty aggregates."""
+def test_instructor_analytics_unknown_group_is_404(client_with_uow, override_auth, mock_admin_headers):
+    """A nonexistent group is 404 NotFoundError, not an empty 200 (#223)."""
     r = client_with_uow.get(
         "/api/v1/academics/groups/999999999/instructors/analytics",
         headers=mock_admin_headers,
     )
 
-    assert r.status_code == 200
-    data = r.json()["data"]
-    assert data["group_id"] == 999999999
-    assert data["group_name"] == "Unknown"
-    assert data["total_instructors"] == 0
-    assert data["current_instructor"] is None
-    assert data["instructors"] == []
+    assert r.status_code == 404
+    assert r.json()["error"] == "NotFoundError"
 
 
 def test_instructor_analytics_bad_group_id_is_422(client_with_uow, override_auth, mock_admin_headers):
@@ -541,16 +536,12 @@ def test_instructor_history_alias_happy_path(client_with_uow, override_auth, moc
     assert data["current_instructor"]["instructor_id"] == instructor.id
 
 
-def test_instructor_history_alias_unknown_group_is_200_empty(client_with_uow, override_auth, mock_admin_headers):
-    """The alias also returns 200 with empty aggregates for a nonexistent group."""
+def test_instructor_history_alias_unknown_group_is_404(client_with_uow, override_auth, mock_admin_headers):
+    """A nonexistent group is 404 NotFoundError, not an empty 200 (#223)."""
     r = client_with_uow.get(
         "/api/v1/academics/groups/999999999/instructor-history",
         headers=mock_admin_headers,
     )
 
-    assert r.status_code == 200
-    data = r.json()["data"]
-    assert data["group_name"] == "Unknown"
-    assert data["total_instructors"] == 0
-    assert data["current_instructor"] is None
-    assert data["instructors"] == []
+    assert r.status_code == 404
+    assert r.json()["error"] == "NotFoundError"
