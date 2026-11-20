@@ -8,7 +8,7 @@ Handles: Team lifecycle, members, payments, placement
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 
 from app.api.schemas.common import ApiResponse
 from app.modules.competitions.api.schemas.team_schemas import (
@@ -25,7 +25,7 @@ from app.modules.competitions.api.deps import (
     get_team_service,
 )
 from app.modules.auth import User
-from app.shared.exceptions import NotFoundError
+from app.shared.exceptions import NotFoundError, ValidationError
 from app.modules.competitions import (
     TeamPlacementService,
     TeamRegistrationService,
@@ -54,7 +54,7 @@ router = APIRouter(tags=["Teams"])
     description="List teams with optional filters for competition, category, and subcategory.",
 )
 def list_teams(
-    competition_id: Optional[int] = Query(None, description="Filter by competition ID"),
+    competition_id: int = Query(..., description="Competition ID"),
     category: Optional[str] = Query(None, description="Filter by category"),
     subcategory: Optional[str] = Query(None, description="Filter by subcategory"),
     include_members: bool = Query(True, description="Include team members in response"),
@@ -62,9 +62,6 @@ def list_teams(
     svc: TeamService = Depends(get_team_service),
 ):
     """List teams with optional filters. Coaches see only their own teams."""
-    if competition_id is None:
-        raise HTTPException(status_code=400, detail="competition_id is required")
-
     if include_members:
         data = svc.get_teams_with_members_for_user(competition_id, current_user, category, subcategory)
     else:
@@ -145,7 +142,7 @@ def update_team_full(
     """Full update of team."""
     update_data = {k: v for k, v in body.model_dump().items() if v is not None}
     if not update_data:
-        raise HTTPException(status_code=400, detail="No fields provided for update")
+        raise ValidationError("No fields provided for update")
     
     team = svc.update_team(team_id, **update_data)
     if not team:

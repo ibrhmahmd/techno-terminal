@@ -11,7 +11,8 @@ handle each error condition differently:
     ValidationError   → 422  (input fails format / content rules)
     BusinessRuleError → 409  (valid input violates a domain rule)
     ConflictError     → 409  (uniqueness constraint would be violated)
-    AuthError         → 401  (authentication / authorisation failure)
+    AuthError         → 401  (authentication failure)
+    ForbiddenError    → 403  (authenticated, but not allowed to do this)
 
 Usage in a service:
     from app.shared.exceptions import NotFoundError, BusinessRuleError
@@ -119,4 +120,13 @@ class AuthError(AppError):
     Examples:
         raise AuthError("Current password is incorrect.")
         raise AuthError("User not found.")
+    """
+
+
+class ForbiddenError(AppError):
+    """
+    The caller is authenticated but may not access this resource.
+
+    Example:
+        raise ForbiddenError("Access denied. Admin or team coach required.")
     """

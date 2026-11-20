@@ -201,7 +201,7 @@ class TestGroupLevelsFeature:
             json={"notes": "Should block"},
             headers=mock_admin_headers
         )
-        assert response.status_code == 400
+        assert response.status_code == 409
         assert "cannot edit" in response.json()["message"].lower()
 
     def test_cancel_level_with_reason_and_rollback(self, client, mock_admin_headers, override_auth, db_session):

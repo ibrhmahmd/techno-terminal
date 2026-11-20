@@ -18,6 +18,7 @@ from app.db.uow import UnitOfWork, unit_of_work
 from app.core.supabase_clients import get_supabase_anon, get_supabase_admin
 from app.modules.auth import User
 from app.modules.auth.constants import UserRole
+from app.shared.exceptions import ForbiddenError
 
 logger = logging.getLogger(__name__)
 
@@ -71,10 +72,7 @@ async def get_current_user(
         raise credentials_exception
 
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Inactive user",
-        )
+        raise ForbiddenError("Inactive user")
 
     return user
 
@@ -94,10 +92,7 @@ def _require_roles(*roles: UserRole):
 
     async def _guard(user: User = Depends(get_current_user)) -> User:
         if user.role not in role_values:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Access denied. Required role(s): {sorted(role_values)}",
-            )
+            raise ForbiddenError(f"Access denied. Required role(s): {sorted(role_values)}")
         return user
 
     return _guard

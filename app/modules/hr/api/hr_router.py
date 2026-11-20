@@ -8,8 +8,7 @@ Tag:    HR
 """
 from datetime import datetime, timezone
 
-import pydantic
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 
 from app.api.schemas.common import ApiResponse
 from app.modules.hr.api.schemas import (
@@ -103,16 +102,11 @@ def create_employee(
     """
     Creates a new employee record. Restricted to admin.
     """
-    try:
-        # Map API input to internal DTO
-        dto = CreateEmployeeDTO(**body.model_dump())
-        emp = service.create(dto)
-        return ApiResponse(
-            data=EmployeePublic.model_validate(emp),
-            message="Employee created successfully.",
-        )
-    except pydantic.ValidationError as e:
-        raise HTTPException(status_code=422, detail=format_validation_error(e))
+    emp = service.create(CreateEmployeeDTO(**body.model_dump()))
+    return ApiResponse(
+        data=EmployeePublic.model_validate(emp),
+        message="Employee created successfully.",
+    )
 
 
 # update employee
@@ -180,14 +174,6 @@ def restore_employee_endpoint(
     return ApiResponse(
         data=EmployeePublic.model_validate(emp),
         message="Employee restored successfully.",
-    )
-
-
-def format_validation_error(exc: pydantic.ValidationError) -> str:
-    """Flatten pydantic ValidationError into a short, human-readable message."""
-    return "; ".join(
-        f"{'.'.join(str(part) for part in e['loc']) or 'body'}: {e['msg']}"
-        for e in exc.errors()
     )
 
 

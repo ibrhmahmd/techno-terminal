@@ -125,7 +125,7 @@ class TestCoursesWrite:
         )
 
         assert response.status_code == 403
-        assert response.json()["error"] == "Forbidden"
+        assert response.json()["error"] == "ForbiddenError"
 
     def test_update_course_success(self, client, mock_admin_headers, override_auth, db_session):
         """Test updating a course with valid data."""

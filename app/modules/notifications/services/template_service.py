@@ -8,7 +8,7 @@ from app.modules.notifications.interfaces.i_notification_repository import (
 from app.modules.notifications.models.notification_template import NotificationTemplate
 from app.modules.notifications.repositories.admin_settings_repository import AdminSettingsRepository
 from app.modules.notifications.schemas.template_dto import TemplateTestResultDTO
-from app.shared.exceptions import NotFoundError
+from app.shared.exceptions import BusinessRuleError, NotFoundError
 from app.modules.notifications.services.report_notifications import ReportNotificationService
 
 
@@ -27,9 +27,15 @@ class TemplateService:
         return self._repo.create_template(**data)
 
     def update_template(self, template_id: int, **data) -> Optional[NotificationTemplate]:
+        template = self._repo.get_template_by_id(template_id)
+        if template and template.is_standard and data.keys() & {"name", "variables", "channel"}:
+            raise BusinessRuleError("Cannot edit name, channel, or variables of a standard template")
         return self._repo.update_template(template_id, **data)
 
     def delete_template(self, template_id: int) -> bool:
+        template = self._repo.get_template_by_id(template_id)
+        if template and template.is_standard:
+            raise BusinessRuleError("Standard templates cannot be deleted")
         return self._repo.delete_template(template_id)
 
     async def test_and_send_template(self, template_id: int) -> "TemplateTestResultDTO":

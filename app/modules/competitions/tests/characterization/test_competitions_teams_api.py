@@ -17,8 +17,7 @@ Buckets
 
 Pinned quirks (pinned, not endorsed)
 ------------------------------------
-* GET /teams without ``competition_id`` is a 400.
-* PUT and PATCH /teams/{id} are the same handler; an empty body is a 400.
+* PUT and PATCH /teams/{id} are the same handler; an empty body is a 422.
 """
 
 import uuid
@@ -154,8 +153,8 @@ def test_list_teams_filters_by_category(client_with_uow, override_auth, mock_adm
 def test_list_teams_requires_competition_id(client_with_uow, override_auth, mock_admin_headers):
     r = client_with_uow.get("/api/v1/teams", headers=mock_admin_headers)
 
-    assert r.status_code == 400
-    assert r.json()["message"] == "competition_id is required"
+    assert r.status_code == 422
+    assert r.json()["error"] == "ValidationError"
 
 
 # ── POST /teams ───────────────────────────────────────────────────────────────
@@ -286,13 +285,14 @@ def test_patch_team(client_with_uow, override_auth, mock_admin_headers, db_sessi
     assert r.json()["data"]["notes"] == "n"
 
 
-def test_update_team_empty_body_is_400(client_with_uow, override_auth, mock_admin_headers, db_session):
+def test_update_team_empty_body_is_422(client_with_uow, override_auth, mock_admin_headers, db_session):
     comp = _make_competition(db_session)
     team = _make_team(db_session, comp.id)
 
     r = client_with_uow.patch(f"/api/v1/teams/{team.id}", headers=mock_admin_headers, json={})
 
-    assert r.status_code == 400
+    assert r.status_code == 422
+    assert r.json()["error"] == "ValidationError"
     assert r.json()["message"] == "No fields provided for update"
 
 

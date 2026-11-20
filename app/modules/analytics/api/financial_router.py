@@ -6,7 +6,7 @@ Financial analytics router.
 Endpoints for financial metrics: revenue, outstanding balances, debtors.
 """
 from datetime import date
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query
 
 from app.api.schemas.common import ApiResponse, ErrorResponse
 from app.modules.analytics.schemas.financial_schemas import (
@@ -44,8 +44,6 @@ def get_revenue_by_date(
     svc: FinancialAnalyticsService = Depends(get_financial_analytics_service),
 ):
     """Returns daily revenue totals within the specified date range."""
-    if (end - start).days > 365:
-        raise HTTPException(422, "Date range cannot exceed 365 days")
     return ApiResponse(data=svc.get_revenue_by_date(start, end))
 
 
@@ -61,8 +59,6 @@ def get_revenue_by_method(
     svc: FinancialAnalyticsService = Depends(get_financial_analytics_service),
 ):
     """Returns revenue totals grouped by payment method within the date range."""
-    if (end - start).days > 365:
-        raise HTTPException(422, "Date range cannot exceed 365 days")
     return ApiResponse(data=svc.get_revenue_by_method(start, end))
 
 

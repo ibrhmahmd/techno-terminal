@@ -102,7 +102,7 @@ class TestDashboardDailyOverview:
             headers=instructor_headers
         )
         assert response.status_code == 403
-        assert response.json()["error"] == "Forbidden"
+        assert response.json()["error"] == "ForbiddenError"
 
     def test_dashboard_response_lookup_table_pattern(self, client, mock_admin_headers, override_auth):
         """Verify lookup table pattern is used correctly."""

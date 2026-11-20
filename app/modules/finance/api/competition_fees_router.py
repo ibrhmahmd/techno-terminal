@@ -8,8 +8,7 @@ Paths, request bodies, responses and auth are unchanged:
   POST /teams/{team_id}/members/{student_id}/pay
   POST /teams/{team_id}/members/{student_id}/refund
 """
-from fastapi import APIRouter, Depends, HTTPException
-from app.shared.exceptions import NotFoundError
+from fastapi import APIRouter, Depends
 
 from app.api.deps import require_admin
 from app.modules.finance.api.deps import get_competition_fee_service
@@ -77,7 +76,7 @@ def pay_competition_fee(
     - Admin only
     """,
     responses={
-        400: {"description": "Invalid refund amount or business rule violation"},
+        409: {"description": "Invalid refund amount or business rule violation"},
         404: {"description": "Team or member not found"},
     },
 )
@@ -89,16 +88,9 @@ def refund_competition_fee(
     svc: CompetitionFeeService = Depends(get_competition_fee_service),
 ):
     """Refund a competition fee payment for a team member."""
-    member = svc.get_team_member(team_id, student_id)
-    if not member:
-        raise NotFoundError("Team member not found.")
-    if body.amount > member.amount_paid:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Refund amount ({body.amount}) exceeds amount paid ({member.amount_paid}).",
-        )
     result = svc.refund_competition_fee(
-        team_member_id=member.id,
+        team_id=team_id,
+        student_id=student_id,
         amount=body.amount,
         current_user_id=current_user.id,
     )

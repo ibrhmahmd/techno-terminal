@@ -6,7 +6,7 @@ API endpoints for receipt generation and management.
 from datetime import date
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, Query, Response, HTTPException
+from fastapi import APIRouter, Depends, Query, Response
 
 from app.api.deps import require_any, require_admin
 from app.modules.finance.api.deps import get_receipt_generation_service, get_receipt_service
@@ -61,14 +61,6 @@ def search_receipts(
     _user: User = Depends(require_admin),
     service: ReceiptService = Depends(get_receipt_service),
 ):
-    max_days = 90
-    date_range = (to_date - from_date).days
-    if date_range > max_days:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Date range too large. Maximum allowed is {max_days} days. Requested: {date_range} days.",
-        )
-
     results = service.search(
         SearchReceiptsDTO(
             from_date=from_date,

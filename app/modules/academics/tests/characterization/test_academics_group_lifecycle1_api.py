@@ -388,8 +388,8 @@ def test_update_level_unknown_level_is_404(client_with_uow, override_auth, mock_
     assert body["message"] == f"Level 9 not found for group {group.id}"
 
 
-def test_update_level_non_active_is_400(client_with_uow, override_auth, mock_admin_headers, db_session):
-    """PATCH a non-active level returns 400 BadRequest (BusinessRuleError re-mapped)."""
+def test_update_level_non_active_is_409(client_with_uow, override_auth, mock_admin_headers, db_session):
+    """PATCH a non-active level returns 409 BusinessRuleError."""
     course = _make_course(db_session)
     group = _make_group(db_session, course.id)
     _make_group_level(db_session, group.id, course.id, level_number=1, status="completed")
@@ -400,10 +400,10 @@ def test_update_level_non_active_is_400(client_with_uow, override_auth, mock_adm
         json={"notes": "edit"},
     )
 
-    assert r.status_code == 400
+    assert r.status_code == 409
     body = r.json()
     assert body["success"] is False
-    assert body["error"] == "BadRequest"
+    assert body["error"] == "BusinessRuleError"
     assert body["message"] == "Cannot edit level 1 with status 'completed'"
 
 

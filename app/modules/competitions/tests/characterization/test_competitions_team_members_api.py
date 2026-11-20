@@ -327,7 +327,7 @@ def test_refund_unknown_member_is_404(client_with_uow, override_auth, mock_admin
     assert r.json()["message"] == "Team member not found."
 
 
-def test_refund_more_than_paid_is_400(client_with_uow, override_auth, mock_admin_headers, db_session):
+def test_refund_more_than_paid_is_409(client_with_uow, override_auth, mock_admin_headers, db_session):
     _, team, student = _setup(db_session)
     _add_member(db_session, team.id, student.id, amount_paid=10.0)
 
@@ -335,7 +335,8 @@ def test_refund_more_than_paid_is_400(client_with_uow, override_auth, mock_admin
         f"/api/v1/teams/{team.id}/members/{student.id}/refund", headers=mock_admin_headers, json={"amount": 25.0}
     )
 
-    assert r.status_code == 400
+    assert r.status_code == 409
+    assert r.json()["error"] == "BusinessRuleError"
     assert r.json()["message"] == "Refund amount (25.0) exceeds amount paid (10.0)."
 
 

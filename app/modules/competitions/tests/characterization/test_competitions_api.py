@@ -168,14 +168,15 @@ def test_patch_competition_same_behaviour(client_with_uow, override_auth, mock_a
     assert r.json()["data"]["notes"] == "patched"
 
 
-def test_update_competition_empty_body_is_400(client_with_uow, override_auth, mock_admin_headers, db_session):
+def test_update_competition_empty_body_is_422(client_with_uow, override_auth, mock_admin_headers, db_session):
     comp = _make_competition(db_session)
 
     r = client_with_uow.patch(f"/api/v1/competitions/{comp.id}", headers=mock_admin_headers, json={})
 
-    assert r.status_code == 400
+    assert r.status_code == 422
     body = r.json()
     assert body["success"] is False
+    assert body["error"] == "ValidationError"
     assert body["message"] == "No fields provided for update"
 
 

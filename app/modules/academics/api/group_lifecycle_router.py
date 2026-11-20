@@ -11,10 +11,10 @@ Covers:
 
 Auth: GET = require_any, mutations = require_admin.
 """
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, Query
 
 from app.api.schemas.common import ApiResponse
-from app.shared.exceptions import NotFoundError, BusinessRuleError
+from app.shared.exceptions import NotFoundError
 from app.shared.constants import EnrollmentStatus
 from app.shared.datetime_utils import utc_now
 from app.api.deps import (
@@ -111,14 +111,11 @@ def update_group_level(
     Update active group level details.
     Requires admin privileges.
     """
-    try:
-        level = svc.update_level(group_id, level_number, body)
-        return ApiResponse(
-            data=GroupLevelPublic.model_validate(level),
-            message=f"Level {level_number} updated successfully.",
-        )
-    except BusinessRuleError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    level = svc.update_level(group_id, level_number, body)
+    return ApiResponse(
+        data=GroupLevelPublic.model_validate(level),
+        message=f"Level {level_number} updated successfully.",
+    )
 
 
 # ── GET /academics/groups/{group_id}/enrollments/analytics ───────────────────

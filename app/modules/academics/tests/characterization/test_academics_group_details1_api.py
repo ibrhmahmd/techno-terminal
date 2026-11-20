@@ -204,7 +204,7 @@ def test_delete_level_only_level_is_409(client_with_uow, override_auth, mock_adm
     assert r.status_code == 409
     body = r.json()
     assert body["success"] is False
-    assert body["error"] == "Conflict"
+    assert body["error"] == "BusinessRuleError"
     assert body["message"] == "Cannot delete the first/only level of a group"
 
 
@@ -227,7 +227,7 @@ def test_delete_level_not_latest_is_409(client_with_uow, override_auth, mock_adm
     assert r.status_code == 409
     body = r.json()
     assert body["success"] is False
-    assert body["error"] == "Conflict"
+    assert body["error"] == "BusinessRuleError"
     assert body["message"] == f"Can only delete the latest level 2 for group {group.id}"
 
 
