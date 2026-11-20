@@ -954,38 +954,6 @@
         "title": "ApiResponse[AdminSettingsResponse]",
         "type": "object"
       },
-      "ApiResponse_AttendanceLogOutput_": {
-        "properties": {
-          "data": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/AttendanceLogOutput"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "message": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Message"
-          },
-          "success": {
-            "default": true,
-            "title": "Success",
-            "type": "boolean"
-          }
-        },
-        "title": "ApiResponse[AttendanceLogOutput]",
-        "type": "object"
-      },
       "ApiResponse_BulkSendResultDTO_": {
         "properties": {
           "data": {
@@ -4741,90 +4709,6 @@
         "title": "AttendanceHeatmapRowDTO",
         "type": "object"
       },
-      "AttendanceLogInput": {
-        "description": "Input for logging employee attendance.",
-        "properties": {
-          "check_in": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Check In"
-          },
-          "check_out": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Check Out"
-          },
-          "employee_id": {
-            "title": "Employee Id",
-            "type": "integer"
-          },
-          "notes": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Notes"
-          },
-          "status": {
-            "title": "Status",
-            "type": "string"
-          }
-        },
-        "required": [
-          "employee_id",
-          "status"
-        ],
-        "title": "AttendanceLogInput",
-        "type": "object"
-      },
-      "AttendanceLogOutput": {
-        "description": "Output for attendance log confirmation.",
-        "properties": {
-          "employee_id": {
-            "title": "Employee Id",
-            "type": "integer"
-          },
-          "logged_at": {
-            "format": "date-time",
-            "title": "Logged At",
-            "type": "string"
-          },
-          "message": {
-            "title": "Message",
-            "type": "string"
-          },
-          "status": {
-            "title": "Status",
-            "type": "string"
-          }
-        },
-        "required": [
-          "employee_id",
-          "status",
-          "logged_at",
-          "message"
-        ],
-        "title": "AttendanceLogOutput",
-        "type": "object"
-      },
       "AttendanceRecordDTO": {
         "description": "Single attendance record for a student in a session.",
         "properties": {
@@ -6890,6 +6774,7 @@
           "email": {
             "anyOf": [
               {
+                "format": "email",
                 "maxLength": 255,
                 "type": "string"
               },
@@ -7242,6 +7127,7 @@
           "email": {
             "anyOf": [
               {
+                "format": "email",
                 "maxLength": 255,
                 "type": "string"
               },
@@ -27949,54 +27835,6 @@
         "tags": [
           "Finance",
           "Finance"
-        ]
-      }
-    },
-    "/api/v1/hr/attendance/log": {
-      "post": {
-        "description": "Placeholder endpoint for HR Attendance Logging.\nIn production, this would persist to attendance records.",
-        "operationId": "log_attendance_api_v1_hr_attendance_log_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AttendanceLogInput"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse_AttendanceLogOutput_"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "Log employee attendance (Stub)",
-        "tags": [
-          "HR",
-          "HR"
         ]
       }
     },

@@ -337,7 +337,7 @@ class TestSessionsEdgeCases:
     """Edge cases and boundary conditions"""
 
     def test_add_session_past_date(self, client, mock_admin_headers, override_auth, db_session):
-        """Owner decision pending: an extra session in the past is accepted (201)."""
+        """A past extra_date is allowed (make-up sessions)."""
         from app.testing.db_helpers import create_test_course, create_test_group
         course = create_test_course(db_session)
         group = create_test_group(db_session, course_id=course.id)
@@ -357,8 +357,8 @@ class TestSessionsEdgeCases:
 
         assert response.status_code == 201
 
-    def test_add_session_duplicate_date(self, client, mock_admin_headers, override_auth, db_session):
-        """Owner decision pending: an extra session on an already used date is accepted (201)."""
+    def test_add_session_duplicate_date_conflict(self, client, mock_admin_headers, override_auth, db_session):
+        """A second session on a date the group already has is a 409."""
         from app.testing.db_helpers import create_test_course, create_test_group
         course = create_test_course(db_session)
         group = create_test_group(db_session, course_id=course.id)
@@ -389,7 +389,28 @@ class TestSessionsEdgeCases:
             json=payload
         )
 
+        assert response.status_code == 409
+        assert response.json()["error"] == "BusinessRuleError"
+
+    def test_add_session_on_cancelled_session_date_ok(self, client, mock_admin_headers, override_auth, db_session):
+        """A cancelled session does not block a new one on its date."""
+        from app.testing.db_helpers import create_test_course, create_test_group
+        course = create_test_course(db_session)
+        group = create_test_group(db_session, course_id=course.id)
+        session_date = date.today() + timedelta(days=1)
+        db_session.add(CourseSession(
+            group_id=group.id, session_date=session_date, level_number=1,
+            session_number=1, status="cancelled",
+        ))
+        db_session.commit()
+
+        response = client.post(
+            f"/api/v1/academics/groups/{group.id}/sessions",
+            headers=mock_admin_headers,
+            json={"group_id": group.id, "extra_date": session_date.isoformat(), "level_number": 1},
+        )
         assert response.status_code == 201
+
 
     def test_cancel_already_cancelled_session(self, client, mock_admin_headers, override_auth, db_session):
         """Test cancelling an already cancelled session."""

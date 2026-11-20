@@ -66,7 +66,7 @@ class EmployeeCreateInput(BaseModel):
     # Same constraints as CreateEmployeeDTO, so bad input is a 422 at the request boundary.
     full_name: str = Field(..., min_length=2, max_length=100)
     phone: str = Field(..., pattern=r"^\+?\d{10,}$")
-    email: Optional[str] = Field(None, max_length=255)
+    email: Optional[EmailStr] = Field(None, max_length=255)
     national_id: str = Field(..., min_length=10)
     university: str = Field(..., min_length=1, max_length=100)
     major: str = Field(..., min_length=1, max_length=100)
@@ -87,7 +87,7 @@ class EmployeeUpdateInput(BaseModel):
     """
     full_name: Optional[str] = Field(None, min_length=2, max_length=100)
     phone: Optional[str] = Field(None, pattern=r"^\+?\d{10,}$")
-    email: Optional[str] = Field(None, max_length=255)
+    email: Optional[EmailStr] = Field(None, max_length=255)
     national_id: Optional[str] = Field(None, min_length=10)
     university: Optional[str] = Field(None, min_length=1, max_length=100)
     major: Optional[str] = Field(None, min_length=1, max_length=100)
@@ -130,31 +130,6 @@ class StaffAccountUpdateInput(BaseModel):
     """Input for updating a staff account."""
     is_active: bool
     role: str
-
-
-class AttendanceLogInput(BaseModel):
-    """
-    Input for logging employee attendance.
-    """
-    employee_id: int
-    status: str  # present, absenti 
-    check_in: Optional[datetime] = None
-    check_out: Optional[datetime] = None
-    notes: Optional[str] = None
-
-    model_config = {"from_attributes": True}
-
-
-class AttendanceLogOutput(BaseModel):
-    """
-    Output for attendance log confirmation.
-    """
-    employee_id: int
-    status: str
-    logged_at: datetime
-    message: str
-
-    model_config = {"from_attributes": True}
 
 
 class CreateEmployeeAccountRequest(BaseModel):

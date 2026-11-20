@@ -6,7 +6,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.modules.hr.constants import EmploymentType
 
@@ -17,7 +17,7 @@ class CreateEmployeeDTO(BaseModel):
 
     full_name: str = Field(..., min_length=2, max_length=100)
     phone: str = Field(..., pattern=r"^\+?\d{10,}$")
-    email: Optional[str] = Field(None, max_length=255)
+    email: Optional[EmailStr] = Field(None, max_length=255)
     national_id: str = Field(..., min_length=10)
     university: str = Field(..., min_length=1, max_length=100)
     major: str = Field(..., min_length=1, max_length=100)
@@ -41,7 +41,7 @@ class UpdateEmployeeDTO(BaseModel):
 
     full_name: Optional[str] = Field(None, min_length=2, max_length=100)
     phone: Optional[str] = Field(None, pattern=r"^\+?\d{10,}$")
-    email: Optional[str] = Field(None, max_length=255)
+    email: Optional[EmailStr] = Field(None, max_length=255)
     national_id: Optional[str] = Field(None, min_length=10)
     university: Optional[str] = Field(None, min_length=1, max_length=100)
     major: Optional[str] = Field(None, min_length=1, max_length=100)

@@ -332,9 +332,12 @@ def test_revenue_endpoints_validation(client_with_uow, override_auth, mock_admin
     too_wide = _get(client_with_uow, h, "/analytics/finance/revenue-by-date?start=2020-01-01&end=2026-01-01")
     assert too_wide.status_code == 422
     assert too_wide.json()["message"] == "Date range cannot exceed 365 days"
-    # current behaviour (pinned, not endorsed): an inverted range is not rejected, it is just empty
     inverted = _get(client_with_uow, h, "/analytics/finance/revenue-by-date?start=2026-02-01&end=2026-01-01")
-    assert inverted.status_code == 200 and inverted.json()["data"] == []
+    assert inverted.status_code == 422 and inverted.json()["error"] == "ValidationError"
+    inverted = _get(client_with_uow, h, "/analytics/finance/revenue-by-method?start=2026-02-01&end=2026-01-01")
+    assert inverted.status_code == 422
+    same_day = _get(client_with_uow, h, "/analytics/finance/revenue-by-date?start=2026-02-01&end=2026-02-01")
+    assert same_day.status_code == 200
     assert _get(client_with_uow, h, "/analytics/finance/top-debtors?limit=0").status_code == 422
     assert _get(client_with_uow, h, "/analytics/finance/revenue-metrics?months=25").status_code == 422
     assert _get(client_with_uow, h, "/analytics/finance/revenue-forecast?months_ahead=13").status_code == 422

@@ -474,59 +474,6 @@ def test_list_staff_accounts_unauthorized(client):
     assert r.status_code == 401
 
 
-# ── /api/v1/hr/attendance/log (stub) ───────────────────────────────────────────
-
-def test_log_attendance_stub(client_with_uow, override_auth, mock_admin_headers):
-    """POST /hr/attendance/log returns stub response (not persisted)."""
-    payload = {
-        "employee_id": 1,
-        "status": "check_in",
-        "notes": "Test attendance",
-    }
-
-    r = client_with_uow.post("/api/v1/hr/attendance/log", headers=mock_admin_headers, json=payload)
-
-    assert r.status_code == 200
-    body = r.json()
-    assert set(body) == {"success", "data", "message"}
-    assert body["success"] is True
-    assert body["message"] == "HR attendance logging stub completed."
-    data = body["data"]
-    assert set(data.keys()) == {"employee_id", "status", "logged_at", "message"}
-    assert data["employee_id"] == 1
-    assert data["status"] == "check_in"
-    assert "logged_at" in data
-
-
-def test_log_attendance_check_out(client_with_uow, override_auth, mock_admin_headers):
-    """POST /hr/attendance/log with check_out status."""
-    payload = {"employee_id": 1, "status": "check_out"}
-
-    r = client_with_uow.post("/api/v1/hr/attendance/log", headers=mock_admin_headers, json=payload)
-
-    assert r.status_code == 200
-    body = r.json()
-    assert body["data"]["status"] == "check_out"
-
-
-def test_log_attendance_validation_error(client_with_uow, override_auth, mock_admin_headers):
-    """POST /hr/attendance/log with invalid employee_id returns 422."""
-    payload = {"employee_id": "not-an-int", "status": "check_in"}
-
-    r = client_with_uow.post("/api/v1/hr/attendance/log", headers=mock_admin_headers, json=payload)
-
-    assert r.status_code == 422
-    body = r.json()
-    assert body["success"] is False
-    assert body["error"] == "ValidationError"
-
-
-def test_log_attendance_unauthorized(client):
-    """POST /hr/attendance/log without auth returns 401."""
-    r = client.post("/api/v1/hr/attendance/log", json={"employee_id": 1, "status": "check_in"})
-    assert r.status_code == 401
-
-
 # ── /api/v1/hr/employees/{id}/create-account (Supabase) ────────────────────────
 
 def test_create_employee_account_success(client_with_uow, db_session, override_auth, mock_admin_headers):

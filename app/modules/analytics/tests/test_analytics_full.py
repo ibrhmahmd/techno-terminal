@@ -359,22 +359,22 @@ class TestBIAnalytics:
         assert body["success"] is True
         assert isinstance(body["data"], list)
 
-    def test_schedule_utilization_null_capacity_is_null_pct(self, client, mock_admin_headers, override_auth, db_session):
+    def test_schedule_utilization_null_capacity_is_null_pct(self, client_with_uow, uow, mock_admin_headers, override_auth):
         """A slot whose groups have no max_capacity reports utilization_pct null (#224); a capped slot a number."""
         from app.testing.db_helpers import create_test_course, create_test_group
 
-        course = create_test_course(db_session)
+        course = create_test_course(uow.session)
         create_test_group(
-            db_session, course_id=course.id, default_day="Friday",
+            uow.session, course_id=course.id, default_day="Friday",
             default_time_start=time(3, 17), default_time_end=time(4, 17), max_capacity=None,
         )
         create_test_group(
-            db_session, course_id=course.id, default_day="Friday",
+            uow.session, course_id=course.id, default_day="Friday",
             default_time_start=time(3, 18), default_time_end=time(4, 18), max_capacity=8,
         )
-        db_session.commit()
+        uow.session.commit()
 
-        resp = client.get("/api/v1/analytics/bi/schedule-utilization", headers=mock_admin_headers)
+        resp = client_with_uow.get("/api/v1/analytics/bi/schedule-utilization", headers=mock_admin_headers)
         assert resp.status_code == 200
         slots = {(d["day"], d["time_start"]): d for d in resp.json()["data"]}
         assert slots[("Friday", "03:17:00")]["utilization_pct"] is None
@@ -382,21 +382,21 @@ class TestBIAnalytics:
         assert slots[("Friday", "03:18:00")]["utilization_pct"] == 0.0
         assert slots[("Friday", "03:18:00")]["total_capacity"] == 8
 
-    def test_schedule_utilization_counts_capacity_once_per_group(self, client, mock_admin_headers, override_auth, db_session):
+    def test_schedule_utilization_counts_capacity_once_per_group(self, client_with_uow, uow, mock_admin_headers, override_auth):
         """Capacity is summed per group, not once per enrolled student: 2 of 10 seats -> 20% (#224)."""
         from app.testing.db_helpers import create_test_course, create_test_enrollment, create_test_group, create_test_student
 
-        course = create_test_course(db_session)
+        course = create_test_course(uow.session)
         group = create_test_group(
-            db_session, course_id=course.id, default_day="Friday",
+            uow.session, course_id=course.id, default_day="Friday",
             default_time_start=time(3, 19), default_time_end=time(4, 19), max_capacity=10,
         )
         for i in range(2):
-            student = create_test_student(db_session, full_name=f"Util {uuid.uuid4().hex[:6]}")
-            create_test_enrollment(db_session, student_id=student.id, group_id=group.id)
-        db_session.commit()
+            student = create_test_student(uow.session, full_name=f"Util {uuid.uuid4().hex[:6]}")
+            create_test_enrollment(uow.session, student_id=student.id, group_id=group.id)
+        uow.session.commit()
 
-        resp = client.get("/api/v1/analytics/bi/schedule-utilization", headers=mock_admin_headers)
+        resp = client_with_uow.get("/api/v1/analytics/bi/schedule-utilization", headers=mock_admin_headers)
         assert resp.status_code == 200
         slot = {(d["day"], d["time_start"]): d for d in resp.json()["data"]}[("Friday", "03:19:00")]
         assert (slot["total_enrolled"], slot["total_capacity"], slot["utilization_pct"]) == (2, 10, 20.0)

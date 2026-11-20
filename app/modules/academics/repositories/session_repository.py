@@ -47,6 +47,15 @@ def count_sessions(session: Session, group_id: int, level_number: int) -> int:
     return result or 0
 
 
+def has_active_session_on(session: Session, group_id: int, on_date) -> bool:
+    stmt = select(CourseSession.id).where(
+        CourseSession.group_id == group_id,
+        CourseSession.session_date == on_date,
+        CourseSession.status != "cancelled",
+    )
+    return session.exec(stmt).first() is not None
+
+
 def create_session(session: Session, course_session: CourseSession) -> CourseSession:
     session.add(course_session)
     session.flush()
