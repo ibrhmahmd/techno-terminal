@@ -139,9 +139,7 @@ class PaymentNotificationService(BaseNotificationService):
             # Fetch Remaining Balance
             balance_remaining = 0.0
             try:
-                net_balance = ReportsRepository(session).get_student_net_balance(student.id)
-                if net_balance < 0:
-                    balance_remaining = abs(net_balance)
+                balance_remaining = ReportsRepository(session).get_student_remaining_debt(student.id)
             except Exception:
                 pass
 

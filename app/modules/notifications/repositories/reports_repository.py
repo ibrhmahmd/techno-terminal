@@ -867,10 +867,15 @@ class ReportsRepository:
         ).first()
         return check is not None
 
-    def get_student_net_balance(self, student_id: int) -> float:
-        """Sum of v_enrollment_balance.balance for a student (0.0 when none)."""
+    def get_student_remaining_debt(self, student_id: int) -> float:
+        """Positive debt on active enrollments: sum of v_enrollment_balance.amount_remaining."""
         result = self._session.execute(
-            text("SELECT COALESCE(SUM(balance), 0) FROM v_enrollment_balance WHERE student_id = :sid"),
+            text("""
+                SELECT COALESCE(SUM(vb.amount_remaining), 0)
+                FROM v_enrollment_balance vb
+                JOIN enrollments e ON e.id = vb.enrollment_id
+                WHERE vb.student_id = :sid AND e.status = 'active'
+            """),
             {"sid": student_id},
         ).first()
         return float(result[0] or 0) if result else 0.0

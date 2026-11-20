@@ -4,7 +4,7 @@ app/modules/academics/repositories/group_history_repository.py
 Repository functions for Group History and Lifecycle tracking.
 """
 from sqlmodel import Session, select, func
-from sqlalchemy import case
+from sqlalchemy import case, text
 
 from app.modules.academics.models.group_level_models import (
     GroupLevel,
@@ -13,7 +13,6 @@ from app.modules.hr.models import Employee
 from app.modules.crm.models.student_models import Student
 from app.modules.academics.constants import (
     LEVEL_STATUS_ACTIVE, ENROLLMENT_STATUS_ACTIVE, ENROLLMENT_STATUS_COMPLETED, ENROLLMENT_STATUS_DROPPED,
-    TRANSACTION_TYPE_PAYMENT,
 )
 from app.modules.academics.schemas.group_details_schemas import EnrollmentStatsDTO, PaymentStatsDTO
 from app.modules.academics.schemas.group_analytics_schemas import (
@@ -53,6 +52,15 @@ def get_group_enrollments_with_details(
     
     stmt = stmt.order_by(Enrollment.enrolled_at.desc()).offset(skip).limit(limit)
     rows = session.exec(stmt).all()
+    # v_enrollment_balance is the source of truth for paid/remaining (ADR-0012, #267).
+    balances = {
+        r.enrollment_id: r
+        for r in session.execute(
+            text("SELECT enrollment_id, total_paid, amount_remaining FROM v_enrollment_balance "
+                 "WHERE enrollment_id = ANY(:ids)"),
+            {"ids": [e.id for e, _, _ in rows]},
+        )
+    }
     return [
         GroupEnrollmentDetailDTO(
             enrollment_id=enrollment.id,
@@ -64,6 +72,8 @@ def get_group_enrollments_with_details(
             status=enrollment.status,
             amount_due=enrollment.amount_due or 0.0,
             discount_applied=enrollment.discount_applied or 0.0,
+            payments_made=float(balances[enrollment.id].total_paid),
+            amount_remaining=float(balances[enrollment.id].amount_remaining),
         )
         for enrollment, student_name, student_phone in rows
     ]
@@ -95,19 +105,6 @@ def get_group_enrollment_stats(
         completed=result[2] or 0,
         dropped=result[3] or 0,
     )
-
-
-def get_enrollment_payments(session: Session, enrollment_id: int) -> float:
-    """
-    Get total payments made for an enrollment.
-    """
-    stmt = (
-        select(func.coalesce(func.sum(Payment.amount), 0))
-        .where(Payment.enrollment_id == enrollment_id)
-        .where(Payment.transaction_type == TRANSACTION_TYPE_PAYMENT)
-        .where(Payment.deleted_at.is_(None))
-    )
-    return session.exec(stmt).one() or 0.0
 
 
 def get_group_instructors_summary(
