@@ -160,6 +160,7 @@ class StudentCrudService:
                     performed_by=changed_by_user_id,
                 )
             )
+        self._uow.commit()
 
         return student
 
@@ -274,7 +275,7 @@ class StudentCrudService:
     def soft_delete_student(self, student_id: int, deleted_by: int) -> bool:
         """
         Soft delete a student (marks as deleted without removing from database).
-        Also cascades soft-delete to related payments.
+        Payments stay live (#175).
         """
         student = self._students.get_by_id(student_id)
         if not student:
@@ -301,7 +302,7 @@ class StudentCrudService:
         return success
 
     def restore_student(self, student_id: int, restored_by: Optional[int] = None) -> bool:
-        """Restore a previously soft-deleted student and their payments."""
+        """Restore a previously soft-deleted student (and payments voided by the legacy delete cascade)."""
         student = self._students.get_by_id(student_id, include_deleted=True)
         if not student:
             return False
