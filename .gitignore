@@ -1,6 +1,7 @@
 # Environment
 .env
 *.env
+.env.staging
 .env.test
 .env.test.local
 

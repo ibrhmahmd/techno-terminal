@@ -52,6 +52,6 @@ pythonpath = ["."]
 addopts = "--import-mode=importlib"
 xfail_strict = true
 markers = [
-    "supabase: needs real Supabase auth/API (cloud testing project)",
+    "supabase: needs real Supabase auth/API (Supabase staging project)",
     "real_dispatchers: exercises the real email/WhatsApp dispatcher code (it patches smtplib/Twilio itself)",
 ]

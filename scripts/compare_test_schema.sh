@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # =============================================================================
-# compare_test_schema.sh — diff the local test schema against the cloud testing
+# compare_test_schema.sh — diff the local test schema against the Supabase staging
 # project's schema.
 #
 # Runs scripts/dump_schema.py twice into temp files:
 #   1. TESTING=true TEST_ENV_FILE=.env.test.local   (local disposable DB)
-#   2. TESTING=true TEST_ENV_FILE=.env.test         (cloud testing project)
+#   2. TESTING=true TEST_ENV_FILE=.env.staging      (Supabase staging project)
 # and prints a unified diff.
 #
 # Never loads .env (production): only the two test env files above.
@@ -23,9 +23,9 @@ echo "[compare_test_schema] Dumping local schema (.env.test.local)..."
 ( cd "$ROOT" && TESTING=true TEST_ENV_FILE="$ROOT/.env.test.local" \
     "$PY" scripts/dump_schema.py "$LOCAL_DUMP" )
 
-echo "[compare_test_schema] Dumping cloud testing schema (.env.test)..."
-( cd "$ROOT" && TESTING=true TEST_ENV_FILE="$ROOT/.env.test" \
+echo "[compare_test_schema] Dumping Supabase staging schema (.env.staging)..."
+( cd "$ROOT" && TESTING=true TEST_ENV_FILE="$ROOT/.env.staging" \
     "$PY" scripts/dump_schema.py "$CLOUD_DUMP" )
 
-echo "[compare_test_schema] Unified diff (local vs cloud testing):"
+echo "[compare_test_schema] Unified diff (local vs Supabase staging):"
 diff -u "$LOCAL_DUMP" "$CLOUD_DUMP" || true

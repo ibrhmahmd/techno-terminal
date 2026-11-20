@@ -10,7 +10,7 @@
 #   scripts/local_test_db.sh reset   # drop + recreate techno_test, reapply schema
 #   scripts/local_test_db.sh down    # remove the container
 #
-# Writes .env.test.local (a copy of .env.test with DATABASE_URL swapped, LOGFIRE_TOKEN dropped and the
+# Writes .env.test.local (a copy of .env.staging with DATABASE_URL swapped, LOGFIRE_TOKEN and APP_ENVIRONMENT dropped and the
 # Gmail/Twilio credentials replaced by dummies so tests cannot send real messages) for config.py to pick up. Supabase keys are never printed.
 # =============================================================================
 set -euo pipefail
@@ -21,7 +21,7 @@ IMAGE="postgres:17"
 PORT="55432"
 DB_NAME="techno_test"
 DB_USER="postgres"
-ENV_FILE="$ROOT/.env.test"
+ENV_FILE="$ROOT/.env.staging"
 LOCAL_ENV="$ROOT/.env.test.local"
 
 log()  { printf '[local_test_db] %s\n' "$*"; }
@@ -131,7 +131,7 @@ write_local_env() {
     log "Writing $LOCAL_ENV (DATABASE_URL -> 127.0.0.1:$PORT)."
     local tmp
     tmp="$(mktemp)"
-    awk -v url="$url" '/^DATABASE_URL=/{print "DATABASE_URL=" url; next} /^LOGFIRE_TOKEN=/{next}
+    awk -v url="$url" '/^DATABASE_URL=/{print "DATABASE_URL=" url; next} /^LOGFIRE_TOKEN=/{next} /^APP_ENVIRONMENT=/{next}
         /^GMAIL_SENDER_ADDRESS=/{print "GMAIL_SENDER_ADDRESS=test-sender@example.invalid"; next}
         /^GMAIL_APP_PASSWORD=/{print "GMAIL_APP_PASSWORD=dummy"; next}
         /^TWILIO_ACCOUNT_SID=/{print "TWILIO_ACCOUNT_SID=ACdummy"; next}

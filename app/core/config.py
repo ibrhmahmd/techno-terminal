@@ -128,7 +128,8 @@ def select_env_file(testing: bool, env: dict, project_root: str) -> str:
     Choose the settings env file.
 
     Under tests: an explicit TEST_ENV_FILE wins, then .env.test.local if it
-    exists (local disposable DB), else .env.test. Outside tests: .env.
+    exists (local disposable DB), else .env.staging (the Supabase staging
+    project). Outside tests: .env.
     """
     if not testing:
         return ".env"
@@ -138,7 +139,7 @@ def select_env_file(testing: bool, env: dict, project_root: str) -> str:
     local = os.path.join(project_root, ".env.test.local")
     if os.path.exists(local):
         return local
-    return os.path.join(project_root, ".env.test")
+    return os.path.join(project_root, ".env.staging")
 
 
 _env_file = select_env_file(is_testing(), os.environ, _PROJECT_ROOT)

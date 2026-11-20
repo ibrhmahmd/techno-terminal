@@ -7,7 +7,7 @@ Handles psql meta-commands (\\set, \\i includes).
 Usage:
     python scripts/verify_test_db.py [DATABASE_URL]
 
-Defaults to DATABASE_URL from .env.test if not provided.
+Defaults to DATABASE_URL from .env.staging if not provided.
 """
 
 import os
@@ -20,7 +20,7 @@ def get_database_url() -> str:
     if len(sys.argv) > 1:
         return sys.argv[1]
 
-    env_test_path = os.path.join(os.path.dirname(__file__), "..", ".env.test")
+    env_test_path = os.path.join(os.path.dirname(__file__), "..", ".env.staging")
     if os.path.exists(env_test_path):
         with open(env_test_path) as f:
             for line in f:
@@ -32,7 +32,7 @@ def get_database_url() -> str:
     if url:
         return url
 
-    print("No DATABASE_URL found. Provide it as argument or set in .env.test.")
+    print("No DATABASE_URL found. Provide it as argument or set in .env.staging.")
     sys.exit(1)
 
 
