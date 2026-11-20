@@ -59,7 +59,12 @@ from .constants import (
     ENROLLMENT_STATUS_DROPPED,
 )
 
+from app.modules.academics.services.e2e_purge_service import AcademicsE2EPurgeService
+from app.modules.academics.schemas.e2e_purge import AcademicsE2ESeedDTO
+
 __all__ = [
+    "AcademicsE2EPurgeService",
+    "AcademicsE2ESeedDTO",
     # Services
     "CourseService",
     "GroupCoreService",

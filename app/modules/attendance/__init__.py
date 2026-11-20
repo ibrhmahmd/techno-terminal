@@ -21,7 +21,10 @@ from app.modules.attendance.schemas.attendance_schemas import (
     StudentAttendanceItem,
 )
 
+from app.modules.attendance.services.e2e_purge_service import AttendanceE2EPurgeService
+
 __all__ = [
+    "AttendanceE2EPurgeService",
     "Attendance",
     "AttendanceService",
     "AttendanceStatus",

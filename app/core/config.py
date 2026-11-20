@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     # Frontend origin for links in emails, e.g. https://app.example.com (#148)
     frontend_base_url: str = ""
 
+    # Staging-only E2E purge (#218): the route exists only when app_environment == "staging"
+    app_environment: str = ""
+    staging_project_ref: str = ""
+    e2e_purge_secret: str = ""
+
     # Logging Configuration
     log_level: str = "INFO"
     slow_request_ms: int = 5000
