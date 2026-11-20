@@ -38,7 +38,9 @@ class DashboardService:
     def get_daily_overview(
         self, 
         target_date: date, 
-        include_attendance: bool = True
+        include_attendance: bool = True,
+        instructor_only: bool = False,
+        instructor_employee_id: int | None = None,
     ) -> DashboardDailyOverviewDTO:
         """
         Get daily dashboard overview for the specified date.
@@ -46,12 +48,19 @@ class DashboardService:
         Args:
             target_date: The date to query (YYYY-MM-DD)
             include_attendance: Whether to include full attendance grid data
+            instructor_only: Instructor view: only that employee's groups, no money
+            instructor_employee_id: The instructor's employee id (None -> empty view)
         
         Returns:
             DashboardDailyOverviewDTO with lookup tables and scheduled groups
         """
+        if instructor_only and instructor_employee_id is None:
+            return self._build_empty_response(target_date)
+
         # Query 1: Get groups with sessions on target date
-        groups_with_sessions = self._repo.get_groups_with_sessions_on_date(target_date)
+        groups_with_sessions = self._repo.get_groups_with_sessions_on_date(
+            target_date, instructor_employee_id if instructor_only else None
+        )
             
         if not groups_with_sessions:
             return self._build_empty_response(target_date)
@@ -139,6 +148,8 @@ class DashboardService:
                     
                 # Query 5: Get roster for this group/level
                 roster = self._repo.get_roster_for_group_level(group_id, group_info.current_level)
+                if instructor_only:
+                    roster = [r.model_copy(update={"billing_status": None, "balance": -1}) for r in roster]
                     
                 scheduled_group = ScheduledGroupDTO(
                     group_id=group_id,

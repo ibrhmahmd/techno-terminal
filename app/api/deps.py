@@ -104,5 +104,7 @@ require_admin = _require_roles(
     UserRole.SYSTEM_ADMIN,
 )
 require_system_admin = _require_roles(UserRole.SYSTEM_ADMIN)
+# Every staff role (admins and instructors); unlike require_any it rejects any future non-staff role.
+require_staff = _require_roles(UserRole.ADMIN, UserRole.SYSTEM_ADMIN, UserRole.INSTRUCTOR)
 # Any valid, active, authenticated user.
 require_any = get_current_user

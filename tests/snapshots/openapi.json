@@ -14317,8 +14317,15 @@
             "type": "number"
           },
           "billing_status": {
-            "title": "Billing Status",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Billing Status"
           },
           "gender": {
             "title": "Gender",
@@ -26539,7 +26546,7 @@
     },
     "/api/v1/dashboard/daily-overview": {
       "get": {
-        "description": "Get daily dashboard overview for the specified date.\n\nReturns:\n- Lookup tables for groups and instructors (deduplicated)\n- Scheduled groups with sessions on the target date\n- Full session history for each group's current level\n- Attendance data (if include_attendance=true)\n- Summary statistics\n\nThe response uses a lookup table pattern where group and instructor\nmetadata appears once in lookup tables, referenced by ID from the\nscheduled_groups array.\n\nGroups are sorted by default_time_start (earliest first).",
+        "description": "Get daily dashboard overview for the specified date.\n\nReturns:\n- Lookup tables for groups and instructors (deduplicated)\n- Scheduled groups with sessions on the target date\n- Full session history for each group's current level\n- Attendance data (if include_attendance=true)\n- Summary statistics\n\nThe response uses a lookup table pattern where group and instructor\nmetadata appears once in lookup tables, referenced by ID from the\nscheduled_groups array.\n\nGroups are sorted by default_time_start (earliest first).\n\nInstructors see only their own groups (via users.employee_id) and no money\n(roster balance = -1, billing_status = null). Admins see everything.",
         "operationId": "get_daily_overview_api_v1_dashboard_daily_overview_get",
         "parameters": [
           {

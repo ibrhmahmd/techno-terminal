@@ -94,15 +94,14 @@ class TestDashboardDailyOverview:
         )
         assert response.status_code == 401
 
-    def test_dashboard_overview_forbidden(self, client, instructor_headers, override_instructor_auth):
-        """Dashboard is admin-only: an instructor gets 403 (see #220)."""
+    def test_dashboard_overview_allowed_for_instructor(self, client, instructor_headers, override_instructor_auth):
+        """An instructor may call the dashboard (#220); scoping is pinned in test_dashboard_instructor.py."""
         target_date = cairo_today().isoformat()
         response = client.get(
             f"/api/v1/dashboard/daily-overview?date={target_date}",
             headers=instructor_headers
         )
-        assert response.status_code == 403
-        assert response.json()["error"] == "ForbiddenError"
+        assert response.status_code == 200
 
     def test_dashboard_response_lookup_table_pattern(self, client, mock_admin_headers, override_auth):
         """Verify lookup table pattern is used correctly."""

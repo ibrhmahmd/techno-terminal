@@ -112,8 +112,8 @@ class StudentRosterDTO(BaseModel):
     student_id: int
     student_name: str
     gender: str  # 'male' | 'female'
-    billing_status: str  # 'paid' | 'due'
-    balance: float
+    billing_status: Optional[str]  # 'paid' | 'due'; null for instructors (no money)
+    balance: float  # -1 = unknown (instructors)
 
 
 class CurrentLevelDTO(BaseModel):
