@@ -154,6 +154,7 @@ GitHub Issues. The prioritised roadmap is #111 (tiers by urgency, safety and siz
 - **Health**: `/health`, `/kaithhealthcheck`.
 - **Staging**: the `staging` branch auto-deploys via GitHub Actions to the staging app (token and app id are secrets of the GitHub `staging` environment). The local `.fastapicloud/cloud.json` links to production, so a manual staging deploy needs `fastapi deploy --app-id <staging-app-id>`.
 - **Production**: deployed manually by the owner from `main`, only after the sprint is green on staging. Never wire `main` to a workflow.
+- **Branch rules**: all work lands on `staging` through a PR; never push, merge or open a PR into `main` except the owner's release PR from `staging`. Enforcement is described in [docs/branch-protection.md](docs/branch-protection.md).
 
 ## Business Reports
 
