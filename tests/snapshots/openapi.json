@@ -12736,16 +12736,22 @@
             "type": "integer"
           },
           "utilization_pct": {
-            "title": "Utilization Pct",
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Utilization Pct"
           }
         },
         "required": [
           "day",
           "time_start",
           "total_enrolled",
-          "total_capacity",
-          "utilization_pct"
+          "total_capacity"
         ],
         "title": "ScheduleUtilizationDTO",
         "type": "object"
