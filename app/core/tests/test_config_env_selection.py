@@ -30,9 +30,9 @@ def test_testing_prefers_local_when_present(tmp_path):
     assert os.path.isabs(result)
 
 
-def test_testing_falls_back_to_env_test(tmp_path):
+def test_testing_falls_back_to_env_staging(tmp_path):
     result = select_env_file(True, {}, str(tmp_path))
-    assert result == str(tmp_path / ".env.test")
+    assert result == str(tmp_path / ".env.staging")
 
 
 def test_effective_database_url_is_local_under_local_env():

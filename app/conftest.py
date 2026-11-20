@@ -121,13 +121,13 @@ def admin_token():
     variable.
 
     Generate one (against the cloud *testing* project) with:
-        TESTING=true TEST_ENV_FILE=.env.test python scripts/get_test_jwt.py
+        TESTING=true TEST_ENV_FILE=.env.staging python scripts/get_test_jwt.py
     """
     token = os.environ.get("TEST_ADMIN_JWT")
     if not token:
         pytest.skip(
             "TEST_ADMIN_JWT not set — generate one with "
-            "TESTING=true TEST_ENV_FILE=.env.test python scripts/get_test_jwt.py"
+            "TESTING=true TEST_ENV_FILE=.env.staging python scripts/get_test_jwt.py"
         )
     return token
 

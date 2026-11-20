@@ -28,12 +28,12 @@ Optional PDF/receipt settings in `app/core/config.py`. `FRONTEND_BASE_URL` (the 
 | Single test | `pytest app/modules/crm/tests/test_crm.py::test_student_list -v` |
 | Local test DB | `scripts/local_test_db.sh up` (also `reset`/`down`; writes `.env.test.local`) |
 | Local gate | `pytest -m "not supabase" -v` |
-| Cloud Supabase tests | `TEST_ENV_FILE=.env.test pytest -m supabase -v` (needs `TEST_ADMIN_JWT`) |
+| Supabase staging tests | `TEST_ENV_FILE=.env.staging pytest -m supabase -v` |
 | All tests (local) | `pytest -v` (collects `app/` and `tests/`; env file chosen in `config.py`; `.env.test.local` wins under pytest) |
 | Coverage | `pytest -v --cov=app --cov-report=term-missing` |
 | DB init | `psql "$DATABASE_URL" -f db/schema.sql` |
 | Schema verify | `python scripts/verify_test_db.py` |
-| Get test JWT | `TESTING=true TEST_ENV_FILE=.env.test python scripts/get_test_jwt.py` |
+| Get test JWT | `TESTING=true TEST_ENV_FILE=.env.staging python scripts/get_test_jwt.py` |
 | Architecture contracts | `pytest tests/architecture -q` (snapshot regen: `UPDATE_OPENAPI_SNAPSHOT=1 pytest tests/architecture/test_openapi_snapshot.py`) |
 
 ### Architecture contracts
@@ -122,20 +122,20 @@ Tests live with the code they test (#109): `app/modules/<module>/tests/` (API pi
 | Tier | Target | Allowed |
 |------|--------|---------|
 | Dev/unit | Local `postgres:17` container (`techno-test-db`, `127.0.0.1:55432`) | Full fast gate, destructive resets (`scripts/local_test_db.sh reset`), migration dry-runs |
-| Staging | Supabase **testing** project (`qugffjtucavdseczbata`) | Forward-only migrations FIRST, full pytest gate, live smoke via `TESTING=true fastapi dev main.py` |
+| Staging | Supabase **staging** project (`qugffjtucavdseczbata`, named `techno-terminal-testingdb` until 2026-11-20) | Forward-only migrations FIRST, full pytest gate, live smoke via `TESTING=true fastapi dev main.py` |
 | Prod | production Supabase project (ID deliberately not recorded in this public repo) | Migrations only after the staging gate is green |
 
-- `.env.test` serves BOTH pytest and the server (`select_env_file` in `app/core/config.py` selects it when running under pytest or `TESTING=true`). Its `DATABASE_URL`, `SUPABASE_URL`, and keys must all point at the SAME project — `get_engine()` logs a warning on mismatch (`app/db/connection.py:_warn_on_project_mismatch`).
-- **Local gate (#28):** `scripts/local_test_db.sh up` spins up a throwaway `postgres:17` container (`techno-test-db`, `127.0.0.1:55432`), applies `db/schema.sql`, and writes `.env.test.local` (a copy of `.env.test` with `DATABASE_URL` swapped and `LOGFIRE_TOKEN` dropped). Under pytest, `config.py:select_env_file` prefers an explicit `TEST_ENV_FILE`, then `.env.test.local` if present, else `.env.test`. The gate is `pytest -m "not supabase"` — it never touches Supabase. Resets are localhost/container only.
-- **`supabase` marker:** registered in `pyproject.toml`. Tests that need real Supabase auth/API are either auto-marked (any test requesting the `admin_token` fixture, via the `pytest_collection_modifyitems` hook in `app/conftest.py`) or explicitly decorated `@pytest.mark.supabase`. Run them once per sprint against the cloud testing project with `TEST_ENV_FILE=.env.test pytest -m supabase`, after generating a token: `TESTING=true TEST_ENV_FILE=.env.test python scripts/get_test_jwt.py` (export it as `TEST_ADMIN_JWT`); without it, `admin_token` tests skip.
-- NEVER apply `db/schema.sql` or reset scripts to the cloud testing DB (it holds restored data) — resets are localhost/CI-container only.
-- Suite rows persist on the cloud testing DB by design; everything is uuid-tagged debris.
-- Migration ladder: write migration → apply to testing project → green HR/CI gates there → then prod.
+- `.env.staging` (the Supabase staging project; was `.env.test` until #230) serves BOTH pytest and the server (`select_env_file` in `app/core/config.py` selects it when running under pytest or `TESTING=true`). Its `DATABASE_URL`, `SUPABASE_URL`, and keys must all point at the SAME project — `get_engine()` logs a warning on mismatch (`app/db/connection.py:_warn_on_project_mismatch`).
+- **Local gate (#28):** `scripts/local_test_db.sh up` spins up a throwaway `postgres:17` container (`techno-test-db`, `127.0.0.1:55432`), applies `db/schema.sql`, and writes `.env.test.local` (a copy of `.env.staging` with `DATABASE_URL` swapped, `LOGFIRE_TOKEN` and `APP_ENVIRONMENT` dropped, Gmail/Twilio credentials replaced by dummies). Under pytest, `config.py:select_env_file` prefers an explicit `TEST_ENV_FILE`, then `.env.test.local` if present, else `.env.staging`. The gate is `pytest -m "not supabase"` — it never touches Supabase. Resets are localhost/container only.
+- **`supabase` marker:** registered in `pyproject.toml`. Tests that need real Supabase auth/API are either auto-marked (any test requesting the `admin_token` fixture, via the `pytest_collection_modifyitems` hook in `app/conftest.py`) or explicitly decorated `@pytest.mark.supabase`. Run them once per sprint against the Supabase staging project with `TEST_ENV_FILE=.env.staging pytest -m supabase`. No current test uses the `admin_token` fixture; if one does, generate a token with `TESTING=true TEST_ENV_FILE=.env.staging python scripts/get_test_jwt.py` (export it as `TEST_ADMIN_JWT`); without it, `admin_token` tests skip.
+- NEVER apply `db/schema.sql` or reset scripts to the Supabase staging DB (it holds restored data) — resets are localhost/CI-container only.
+- Suite rows persist on the Supabase staging DB by design; everything is uuid-tagged debris.
+- Migration ladder: write migration → apply to the staging project → green HR/CI gates there → then prod.
 
 ### CI
 - `.github/workflows/tests.yml` runs on every PR into `staging`/`main` and every push to `staging`: a throwaway `postgres:17` service, `db/schema.sql`, `uv sync --locked`, then `pytest tests/architecture` and `pytest -m "not supabase"`. It needs no secrets: external services get dummy values from a generated `.env.ci`. The suite must stay at 0 failures on a fresh DB; a production bug a test exposes is a strict `xfail` naming its issue, never a loosened test.
 - `.github/workflows/deploy-staging.yml` deploys the `staging` branch to the FastAPI Cloud staging app on every push.
-- `supabase`-marked tests never run in CI; run them once per sprint against the testing project (see the environment ladder).
+- `supabase`-marked tests never run in CI; run them once per sprint against the staging project (see the environment ladder).
 
 ### Dead Code Discipline
 Before any refactoring, grep for callers of every method. Delete dead code immediately — never migrate it into a new structure. Zero tolerance for commented-out code, deprecated shims, or superseded subset methods.
