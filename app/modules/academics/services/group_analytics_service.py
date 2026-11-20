@@ -15,7 +15,6 @@ from app.modules.academics.schemas.group_analytics_schemas import (
 from app.modules.academics.repositories.group_analytics_repository import (
     get_group_enrollments_with_details,
     get_group_enrollment_stats,
-    get_enrollment_payments,
     get_group_instructors_summary,
 )
 from app.modules.academics.models import Group
@@ -57,10 +56,8 @@ class GroupAnalyticsService:
         enrollment_dtos = []
         for dto in enrollments_data:
             # Calculate payments
-            payments_made = get_enrollment_payments(session, dto.enrollment_id)
-            amount_due = dto.amount_due
-            discount_applied = dto.discount_applied
-            balance_remaining = max(amount_due - payments_made - discount_applied, 0.0)
+            payments_made = dto.payments_made
+            balance_remaining = dto.amount_remaining
 
             enrollment_dtos.append(EnrollmentHistoryItemDTO(
                 enrollment_id=dto.enrollment_id,

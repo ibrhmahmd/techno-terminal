@@ -66,7 +66,6 @@ ENROLLMENT_STATUS_DROPPED = "dropped"
 PAYMENT_STATUS_PAID = "paid"
 PAYMENT_STATUS_DUE = "due"
 
-TRANSACTION_TYPE_PAYMENT = "payment"
 TRANSACTION_TYPE_REFUND = "refund"
 
 # ── Display Fallbacks ─────────────────────────────────────────────────────────

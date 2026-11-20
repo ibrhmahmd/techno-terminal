@@ -34,6 +34,8 @@ class GroupEnrollmentDetailDTO(BaseModel):
     status: str
     amount_due: float = 0.0
     discount_applied: float = 0.0
+    payments_made: float = 0.0
+    amount_remaining: float = 0.0
 
 
 class GroupInstructorSummaryDTO(BaseModel):

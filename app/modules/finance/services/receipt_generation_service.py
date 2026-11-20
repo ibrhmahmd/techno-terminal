@@ -9,6 +9,7 @@ from decimal import Decimal
 
 from app.db.uow import UnitOfWork
 from app.modules.finance.repositories.receipt_document_repository import ReceiptDocumentRepository
+from app.modules.finance.repositories.receipt_repository import ReceiptRepository
 from app.modules.finance.schemas.receipt_generation import BatchGenerateResponse, BatchReceiptItem
 from app.shared.datetime_utils import utc_now
 from app.shared.exceptions import NotFoundError
@@ -80,15 +81,15 @@ class ReceiptGenerationService:
             
         # Calculate totals
         subtotal = sum(line['amount'] for line in payment_lines)
-        total = subtotal - float(total_discount)
+        # Money actually on the receipt (payments - refunds), same as detail/PDF; the discount
+        # line is informational only (#254).
+        total = float(ReceiptRepository(self._uow.session).get_total(receipt_id))
             
         # Get balance if requested (query v_enrollment_balance directly)
         balance_remaining = 0.0
         if include_balance and student:
             try:
-                net_balance = self._receipts.get_student_net_balance(student.id)
-                if net_balance < 0:
-                    balance_remaining = abs(net_balance)
+                balance_remaining = self._receipts.get_student_remaining_debt(student.id)
             except Exception:
                 logger.warning("Balance query failed for student %s — continuing without balance", student.id)
             

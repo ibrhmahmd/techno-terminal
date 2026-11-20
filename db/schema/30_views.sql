@@ -168,7 +168,7 @@ SELECT e.id AS enrollment_id,
         END)::character varying(20) AS payment_status,
     ((COALESCE(sum(p.amount) FILTER (WHERE (p.transaction_type = ANY (ARRAY['payment'::text, 'charge'::text]))), (0)::numeric) - COALESCE(sum(p.amount) FILTER (WHERE (p.transaction_type = 'refund'::text)), (0)::numeric)) - (e.amount_due - COALESCE(e.discount_applied, (0)::numeric))) AS balance
    FROM (enrollments e
-     LEFT JOIN payments p ON ((p.enrollment_id = e.id)))
+     LEFT JOIN payments p ON ((p.enrollment_id = e.id) AND (p.deleted_at IS NULL)))
   GROUP BY e.id;
 
 -- -----------------------------------------------------------------------------

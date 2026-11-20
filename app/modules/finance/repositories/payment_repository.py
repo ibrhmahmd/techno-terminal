@@ -79,6 +79,7 @@ class PaymentRepository:
             FROM payments
             WHERE original_payment_id = :pid
             AND transaction_type = 'refund'
+            AND deleted_at IS NULL
         """)
         result = self._session.execute(stmt, {"pid": original_payment_id}).scalar()
         return Decimal(str(result or 0))
