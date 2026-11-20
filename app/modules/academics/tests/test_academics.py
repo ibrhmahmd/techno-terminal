@@ -185,12 +185,12 @@ class TestGroupsRead:
         assert data["success"] is True
         assert data["data"]["id"] == group.id
     
-    def test_list_group_sessions(self, client, mock_admin_headers, override_auth):
+    def test_list_group_sessions(self, client, mock_admin_headers, override_auth, db_session):
         """
         GET /academics/groups/{id}/sessions returns sessions for group.
         """
         response = client.get(
-            "/api/v1/academics/groups/1/sessions",
+            f"/api/v1/academics/groups/{_seed_group(db_session)}/sessions",
             headers=mock_admin_headers
         )
         
@@ -199,12 +199,12 @@ class TestGroupsRead:
         assert data["success"] is True
         assert isinstance(data["data"], list)
     
-    def test_list_group_sessions_with_level(self, client, mock_admin_headers, override_auth):
+    def test_list_group_sessions_with_level(self, client, mock_admin_headers, override_auth, db_session):
         """
         GET /academics/groups/{id}/sessions?level=1 filters by level.
         """
         response = client.get(
-            "/api/v1/academics/groups/1/sessions?level=1",
+            f"/api/v1/academics/groups/{_seed_group(db_session)}/sessions?level=1",
             headers=mock_admin_headers
         )
         
@@ -212,6 +212,15 @@ class TestGroupsRead:
         data = response.json()
         assert data["success"] is True
         assert isinstance(data["data"], list)
+
+
+def _seed_group(session) -> int:
+    """A group of the test's own: a hard-coded id 1 exists only if another test made it."""
+    from app.testing.db_helpers import create_minimal_group_bundle
+
+    _course, group, _level, _sessions = create_minimal_group_bundle(session, session_count=1)
+    session.commit()
+    return group.id
 
 
 class TestGroupsWrite:

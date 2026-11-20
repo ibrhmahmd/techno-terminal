@@ -11,6 +11,7 @@ from sqlmodel import Session, select
 from app.shared.datetime_utils import utc_now
 from app.modules.competitions.models.competition_models import Competition
 from app.modules.crm.models.student_models import Student
+from app.modules.finance.models.payment import Payment
 from app.modules.competitions.models.team_models import (
     Team,
     TeamMember,
@@ -170,6 +171,11 @@ class TeamRepository:
             self._session.flush()
         return m
 
+
+    def has_payment_history(self, team_member_id: int) -> bool:
+        """True when any payment or refund row references the member (FK, #260)."""
+        stmt = select(Payment.id).where(Payment.team_member_id == team_member_id).limit(1)
+        return self._session.exec(stmt).first() is not None
 
     def remove_team_member(self, team_id: int, student_id: int) -> bool:
         m = self.get_team_member(team_id, student_id)

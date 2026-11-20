@@ -121,24 +121,32 @@ class BalanceService:
         """
         risks: List[OverpaymentRiskItem] = []
 
+        # Lines on the same enrollment add up before meeting that enrollment's debt (#245).
+        # Lines without an enrollment (competition fees) are checked by their own flow.
+        totals: dict[int, Decimal] = {}
+        first_line: dict[int, ReceiptLineInput] = {}
         for line in lines:
             if not line.enrollment_id:
                 continue
+            totals[line.enrollment_id] = totals.get(line.enrollment_id, Decimal("0")) + Decimal(
+                str(line.amount)
+            )
+            first_line.setdefault(line.enrollment_id, line)
 
-            balance_dto = self._payments.get_enrollment_balance(line.enrollment_id)
+        for enrollment_id, pay_amount in totals.items():
+            balance_dto = self._payments.get_enrollment_balance(enrollment_id)
             if not balance_dto:
                 continue
 
             current_balance = balance_dto.balance
-            pay_amount = Decimal(str(line.amount))
             projected_balance = current_balance + pay_amount
 
             if projected_balance > 0:
                 debt_before = max(-current_balance, Decimal("0"))
                 risks.append(
                     OverpaymentRiskItem(
-                        student_id=line.student_id,
-                        enrollment_id=line.enrollment_id,
+                        student_id=first_line[enrollment_id].student_id,
+                        enrollment_id=enrollment_id,
                         amount=pay_amount,
                         debt_before=debt_before,
                         projected_balance=projected_balance,
