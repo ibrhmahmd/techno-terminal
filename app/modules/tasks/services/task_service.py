@@ -24,7 +24,7 @@ from app.modules.tasks.schemas.task_schemas import (
 from app.modules.auth.models.auth_models import User
 from app.modules.hr.models.employee_models import Employee
 from app.shared.exceptions import AuthError, NotFoundError
-from app.shared.datetime_utils import cairo_day_bounds, utc_now
+from app.shared.datetime_utils import CAIRO_TZ, cairo_day_bounds, utc_now
 from sqlmodel import select
 from datetime import timedelta
 from app.modules.tasks.models import Task, TaskSubtask
@@ -324,7 +324,7 @@ class TaskService:
                     )
                     latest_child = self._uow._session.exec(latest_child_stmt).first()
                     
-                    base_date = latest_child.created_at.date() if latest_child else parent.created_at.date()
+                    base_date = (latest_child or parent).created_at.astimezone(CAIRO_TZ).date()
                     if (target_date - base_date).days >= parent.recurrence_interval_days:
                         should_spawn = True
                         
@@ -363,7 +363,7 @@ class TaskService:
             
             # Calculate due date
             if parent.due_date:
-                parent_offset = (parent.due_date - parent.created_at.date()).days
+                parent_offset = (parent.due_date - parent.created_at.astimezone(CAIRO_TZ).date()).days
                 child.due_date = target_date + timedelta(days=max(0, parent_offset))
             else:
                 child.due_date = None
