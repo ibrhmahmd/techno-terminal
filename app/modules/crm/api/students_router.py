@@ -491,7 +491,7 @@ def soft_delete_student(
 ):
     """
     Soft delete a student (logically removed, recoverable).
-    Also cascades soft-delete to related payments.
+    Payments stay live (#175).
     """
     try:
         success = svc.soft_delete_student(student_id, deleted_by=current_user.id)
