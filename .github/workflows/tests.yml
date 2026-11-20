@@ -15,6 +15,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # main only accepts PRs from staging (all work lands on staging first).
+  source-branch:
+    name: source-branch
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          if [ "$HEAD_REF" != "staging" ]; then
+            echo "PRs into main must come from staging (got: $HEAD_REF)." >&2
+            exit 1
+          fi
+
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 20

@@ -10,7 +10,7 @@
 #   scripts/local_test_db.sh reset   # drop + recreate techno_test, reapply schema
 #   scripts/local_test_db.sh down    # remove the container
 #
-# Writes .env.test.local (a copy of .env.staging with DATABASE_URL swapped, LOGFIRE_TOKEN and APP_ENVIRONMENT dropped and the
+# Writes .env.test.local (a copy of .env.staging with DATABASE_URL swapped, LOGFIRE_TOKEN and the staging-deployment-only APP_ENVIRONMENT, STAGING_PROJECT_REF, E2E_PURGE_SECRET and FRONTEND_BASE_URL dropped and the
 # Gmail/Twilio credentials replaced by dummies so tests cannot send real messages) for config.py to pick up. Supabase keys are never printed.
 # =============================================================================
 set -euo pipefail
@@ -131,7 +131,7 @@ write_local_env() {
     log "Writing $LOCAL_ENV (DATABASE_URL -> 127.0.0.1:$PORT)."
     local tmp
     tmp="$(mktemp)"
-    awk -v url="$url" '/^DATABASE_URL=/{print "DATABASE_URL=" url; next} /^LOGFIRE_TOKEN=/{next} /^APP_ENVIRONMENT=/{next}
+    awk -v url="$url" '/^DATABASE_URL=/{print "DATABASE_URL=" url; next} /^LOGFIRE_TOKEN=/{next} /^(APP_ENVIRONMENT|STAGING_PROJECT_REF|E2E_PURGE_SECRET|FRONTEND_BASE_URL)=/{next}
         /^GMAIL_SENDER_ADDRESS=/{print "GMAIL_SENDER_ADDRESS=test-sender@example.invalid"; next}
         /^GMAIL_APP_PASSWORD=/{print "GMAIL_APP_PASSWORD=dummy"; next}
         /^TWILIO_ACCOUNT_SID=/{print "TWILIO_ACCOUNT_SID=ACdummy"; next}
