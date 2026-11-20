@@ -1,7 +1,7 @@
 from typing import Optional, Tuple, List
 from sqlmodel import Session, select, func
 from sqlalchemy import or_, text
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 from app.modules.crm.schemas import StudentBalanceSummaryDTO, StudentSummaryDTO
@@ -115,58 +115,44 @@ class StudentRepository:
         return student
 
     def soft_delete_student(self, student_id: int, deleted_by: int) -> bool:
-        """
-        Soft deletes a student and cascades to related payments.
-        The student and payments are marked deleted but recoverable.
-        """
-        from app.modules.finance.models.payment import Payment
-        
+        """Soft deletes a student. Their payments stay live: the cash was received (#175)."""
         student = self._session.get(Student, student_id)
         if not student or student.deleted_at is not None:
             return False
-        
-        # Soft delete student
+
         student.deleted_at = utc_now()
         student.deleted_by = deleted_by
         self._session.add(student)
-
-        # Cascade soft delete to related payments
-        stmt = select(Payment).where(Payment.student_id == student_id)
-        payments = self._session.exec(stmt).all()
-        for payment in payments:
-            payment.deleted_at = utc_now()
-            payment.deleted_by = deleted_by
-            self._session.add(payment)
-        
         self._session.flush()
         return True
-    
+
     def restore_student(self, student_id: int) -> bool:
-        """
-        Restores a soft-deleted student and their payments.
-        """
+        """Restores a soft-deleted student, plus payments voided by the legacy delete cascade."""
         from app.modules.finance.models.payment import Payment
-        
+
         student = self._session.get(Student, student_id)
         if not student or student.deleted_at is None:
             return False
-        
-        # Restore student
-        student.deleted_at = None
-        student.deleted_by = None
-        self._session.add(student)
-        
-        # Restore related payments
-        stmt = select(Payment).where(Payment.student_id == student_id)
-        payments = self._session.exec(stmt).all()
-        for payment in payments:
+
+        # The old cascade stamped each payment with its own utc_now() (#243), so match
+        # the student's deleted_at within 1s and deleted_by; later/earlier voids stay voided.
+        stmt = select(Payment).where(
+            Payment.student_id == student_id,
+            Payment.deleted_at >= student.deleted_at - timedelta(seconds=1),
+            Payment.deleted_at <= student.deleted_at + timedelta(seconds=1),
+            Payment.deleted_by.is_not_distinct_from(student.deleted_by),
+        )
+        for payment in self._session.exec(stmt).all():
             payment.deleted_at = None
             payment.deleted_by = None
             self._session.add(payment)
-        
+
+        student.deleted_at = None
+        student.deleted_by = None
+        self._session.add(student)
         self._session.flush()
         return True
-    
+
     def hard_delete(self, student_id: int) -> bool:
         """
         Permanently deletes a student and all related data.
