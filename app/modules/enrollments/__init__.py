@@ -39,7 +39,10 @@ from app.modules.enrollments.schemas.enrollment_lifecycle_schemas import (
     LevelProgressionResult,
 )
 
+from app.modules.enrollments.services.e2e_purge_service import EnrollmentsE2EPurgeService
+
 __all__ = [
+    "EnrollmentsE2EPurgeService",
     # Models
     "Enrollment",
     "EnrollmentBase",

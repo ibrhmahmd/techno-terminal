@@ -37,7 +37,12 @@ from .schemas import (
     TeamWithMembersDTO,
 )
 
+from app.modules.competitions.services.e2e_purge_service import CompetitionsE2EPurgeService
+from app.modules.competitions.schemas.e2e_purge import CompetitionsE2ESeedDTO
+
 __all__ = [
+    "CompetitionsE2EPurgeService",
+    "CompetitionsE2ESeedDTO",
     # Service Classes
     "CompetitionService",
     "TeamService",

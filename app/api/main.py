@@ -86,7 +86,7 @@ from app.modules.analytics.api import (
     bi_router,
     dashboard_router,
 )
-from app.modules.finance.api import receipt_router, finance_router, reporting_router, student_payments_router, competition_fees_router
+from app.modules.finance.api import e2e_purge_router, receipt_router, finance_router, reporting_router, student_payments_router, competition_fees_router
 from app.modules.auth.api import admin_auth_router
 from app.modules.tasks.api import router as tasks_router
 from app.modules.audit.api import router as audit_router
@@ -213,6 +213,10 @@ def create_app() -> FastAPI:
 
     # Notifications
     app.include_router(notifications_router, prefix="/api/v1")
+
+    # Staging-only E2E purge (#218): no such path at all elsewhere
+    if settings.app_environment == "staging":
+        app.include_router(e2e_purge_router, prefix="/api/v1")
 
     # 5. Utility endpoints
     @app.get("/health", tags=["Health"])

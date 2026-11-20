@@ -50,7 +50,12 @@ from app.modules.crm.schemas import (
     UpdateStudentDTO,
 )
 
+from app.modules.crm.services.e2e_purge_service import CrmE2EPurgeService
+from app.modules.crm.schemas.e2e_purge import CrmE2ESeedDTO
+
 __all__ = [
+    "CrmE2EPurgeService",
+    "CrmE2ESeedDTO",
     # Models
     "Parent",
     "Student",
