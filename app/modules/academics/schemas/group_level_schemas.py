@@ -7,7 +7,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class GroupLevelDetailDTO(BaseModel):
@@ -34,5 +34,5 @@ class UpdateLevelInput(BaseModel):
     """Partial update input for a group level."""
     instructor_id: Optional[int] = None
     course_id: Optional[int] = None
-    price_override: Optional[Decimal] = None
+    price_override: Optional[Decimal] = Field(None, ge=0)
     notes: Optional[str] = None

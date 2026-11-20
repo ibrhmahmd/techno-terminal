@@ -69,9 +69,11 @@ def get_group_enrollments_with_details(
     ]
 
 
-def get_group_enrollment_stats(session: Session, group_id: int) -> GroupEnrollmentStatsDTO:
+def get_group_enrollment_stats(
+    session: Session, group_id: int, status: str | None = None
+) -> GroupEnrollmentStatsDTO:
     """
-    Get enrollment statistics for a group.
+    Get enrollment statistics for a group (narrowed to ``status`` when given).
     Returns: total, active, completed, dropped counts.
     """
     stmt = (
@@ -83,7 +85,9 @@ def get_group_enrollment_stats(session: Session, group_id: int) -> GroupEnrollme
         )
         .where(Enrollment.group_id == group_id)
     )
-    
+    if status:
+        stmt = stmt.where(Enrollment.status == status)
+
     result = session.exec(stmt).first()
     return GroupEnrollmentStatsDTO(
         total=result[0] or 0,
@@ -101,6 +105,7 @@ def get_enrollment_payments(session: Session, enrollment_id: int) -> float:
         select(func.coalesce(func.sum(Payment.amount), 0))
         .where(Payment.enrollment_id == enrollment_id)
         .where(Payment.transaction_type == TRANSACTION_TYPE_PAYMENT)
+        .where(Payment.deleted_at.is_(None))
     )
     return session.exec(stmt).one() or 0.0
 
