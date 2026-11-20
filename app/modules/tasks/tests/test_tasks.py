@@ -394,3 +394,45 @@ class TestTasksCRUD:
 
         children = db_session.exec(select(Task).where(Task.parent_task_id == parent_id)).all()
         assert len(children) == 1
+
+
+def test_custom_interval_uses_cairo_date_of_child(client, db_session, mock_admin_headers, override_auth):
+    """#240: a child created 22:05 UTC is dated the next Cairo day, so interval 2 spawns on day +2 only."""
+    from datetime import date, datetime, timezone
+    from app.db.uow import UnitOfWork
+    from app.modules.tasks import TaskService
+    from app.modules.tasks.models import Task
+    from sqlmodel import select
+
+    resp = client.post(
+        "/api/v1/tasks",
+        json={
+            "title": f"Interval {uuid.uuid4().hex[:8]}",
+            "is_recurring": True,
+            "recurrence_pattern": "custom_interval",
+            "recurrence_interval_days": 2,
+            "priority": "medium",
+            "status": "todo",
+        },
+        headers=mock_admin_headers,
+    )
+    assert resp.status_code == 200
+    parent_id = resp.json()["data"]["id"]
+    parent = db_session.get(Task, parent_id)
+    # 22:05 UTC on Jul 10 = 00:05 Cairo (UTC+3) on Jul 11
+    db_session.add(Task(
+        title="child", parent_task_id=parent_id, status="todo", priority="medium",
+        assigned_to=parent.assigned_to, assigned_by=parent.assigned_by,
+        created_at=datetime(2026, 7, 10, 22, 5, tzinfo=timezone.utc),
+    ))
+    db_session.commit()
+
+    service = TaskService(UnitOfWork(db_session))
+
+    def count():
+        return len(db_session.exec(select(Task).where(Task.parent_task_id == parent_id)).all())
+
+    service.spawn_recurring_tasks(date(2026, 7, 12))
+    assert count() == 1
+    service.spawn_recurring_tasks(date(2026, 7, 13))
+    assert count() == 2
