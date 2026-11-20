@@ -5,6 +5,8 @@ Data Transfer Objects (DTOs) for the Business Intelligence analytics domain.
 """
 
 from datetime import date
+from typing import Optional
+
 from pydantic import BaseModel
 
 
@@ -43,7 +45,7 @@ class ScheduleUtilizationDTO(BaseModel):
     time_start: str
     total_enrolled: int
     total_capacity: int
-    utilization_pct: float
+    utilization_pct: Optional[float] = None  # null when no group in the slot has a capacity
 
 
 class FlightRiskStudentDTO(BaseModel):

@@ -131,11 +131,16 @@ class BiRepository:
             SELECT
                 g.default_day as day,
                 CAST(g.default_time_start AS TEXT) as time_start,
-                COUNT(e.id) as total_enrolled,
-                COALESCE(SUM(g.max_capacity), 1) as total_capacity,
-                ROUND(100.0 * COUNT(e.id) / NULLIF(SUM(g.max_capacity), 0), 1) as utilization_pct
+                COALESCE(SUM(ec.enrolled), 0) as total_enrolled,
+                COALESCE(SUM(g.max_capacity), 0) as total_capacity,
+                ROUND(100.0 * COALESCE(SUM(ec.enrolled), 0) / NULLIF(SUM(g.max_capacity), 0), 1) as utilization_pct
             FROM groups g
-            LEFT JOIN enrollments e ON e.group_id = g.id AND e.status = 'active'
+            -- count per group first: joining raw enrollments would sum max_capacity once per student
+            LEFT JOIN (
+                SELECT group_id, COUNT(*) AS enrolled
+                FROM enrollments WHERE status = 'active'
+                GROUP BY group_id
+            ) ec ON ec.group_id = g.id
             WHERE g.status = 'active' AND g.default_day IS NOT NULL AND g.default_time_start IS NOT NULL
             GROUP BY g.default_day, g.default_time_start
             ORDER BY g.default_day, g.default_time_start
