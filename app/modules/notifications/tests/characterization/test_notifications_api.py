@@ -298,11 +298,13 @@ def test_report_triggers_reject_future_dates(client_with_uow, override_auth, moc
     future = (cairo_today() + timedelta(days=2)).isoformat()
     for period in ("daily", "weekly", "monthly"):
         r = client_with_uow.post(f"{BASE}/reports/{period}?target_date={future}", headers=mock_admin_headers)
-        assert r.status_code == 400, period
+        assert r.status_code == 422, period
+        assert r.json()["error"] == "ValidationError"
         assert r.json()["message"] == "Report date cannot be in the future"
     for period in ("daily", "weekly", "monthly"):
         r = client_with_uow.get(f"{BASE}/reports/{period}/data?target_date={future}", headers=mock_admin_headers)
-        assert r.status_code == 400, period
+        assert r.status_code == 422, period
+        assert r.json()["error"] == "ValidationError"
 
 
 def test_weekly_and_monthly_triggers_force_send(client_with_uow, override_auth, mock_admin_headers, fake_svc):
@@ -444,9 +446,11 @@ def test_standard_template_protections(client_with_uow, override_auth, mock_admi
     rename = client_with_uow.put(f"{BASE}/templates/{std.id}", headers=mock_admin_headers, json={"name": "new"})
     delete = client_with_uow.delete(f"{BASE}/templates/{std.id}", headers=mock_admin_headers)
 
-    assert rename.status_code == 400
+    assert rename.status_code == 409
+    assert rename.json()["error"] == "BusinessRuleError"
     assert rename.json()["message"] == "Cannot edit name, channel, or variables of a standard template"
-    assert delete.status_code == 400
+    assert delete.status_code == 409
+    assert delete.json()["error"] == "BusinessRuleError"
     assert delete.json()["message"] == "Standard templates cannot be deleted"
     db_session.delete(std)
     db_session.commit()

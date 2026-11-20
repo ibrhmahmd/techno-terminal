@@ -327,9 +327,9 @@ class TestTeamCRUD:
         assert response.status_code == 401
 
     def test_list_teams_requires_competition(self, client, mock_admin_headers, override_auth, db_session):
-        """GET /api/v1/teams without competition_id returns 400."""
+        """GET /api/v1/teams without competition_id returns 422."""
         response = client.get("/api/v1/teams", headers=mock_admin_headers)
-        assert response.status_code == 400
+        assert response.status_code == 422
 
 
 # ── Team Members ──────────────────────────────────────────────────────────────

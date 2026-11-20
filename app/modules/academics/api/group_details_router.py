@@ -12,7 +12,7 @@ Endpoints for detailed group management:
 
 Auth: GET=require_any, DELETE=require_admin
 """
-from fastapi import APIRouter, Depends, Path, HTTPException, status, Query
+from fastapi import APIRouter, Depends, Path, Query
 
 from app.api.schemas.common import ApiResponse
 from app.api.deps import require_any, require_admin
@@ -27,7 +27,6 @@ from app.modules.academics.schemas.group_details_schemas import (
     GroupPaymentsResponseDTO,
     GroupEnrollmentsResponseDTO,
 )
-from app.shared.exceptions import BusinessRuleError
 from app.modules.academics.services.group_lifecycle_service import GroupLifecycleService
 from app.modules.academics.schemas.group_lifecycle_schemas import DeleteLevelResult
 
@@ -62,14 +61,11 @@ def delete_level(
     - 404: Level not found
     - 409: Level has payments or attendance records
     """
-    try:
-        result = svc.delete_level(group_id, level_number)
-        return ApiResponse(
-            data=result,
-            message=f"Level {level_number} deleted successfully.",
-        )
-    except BusinessRuleError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+    result = svc.delete_level(group_id, level_number)
+    return ApiResponse(
+        data=result,
+        message=f"Level {level_number} deleted successfully.",
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

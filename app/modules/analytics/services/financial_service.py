@@ -5,6 +5,7 @@ Domain service for financial analytics.
 """
 
 from datetime import date
+from app.shared.exceptions import ValidationError
 from app.db.uow import UnitOfWork
 from app.modules.analytics.repositories.financial_repository import FinancialRepository
 from app.modules.analytics.schemas import (
@@ -24,10 +25,17 @@ class FinancialAnalyticsService:
         self._uow = uow
         self._repo = FinancialRepository(uow.session)
 
+    @staticmethod
+    def _check_range(start: date, end: date) -> None:
+        if (end - start).days > 365:
+            raise ValidationError("Date range cannot exceed 365 days")
+
     def get_revenue_by_date(self, start: date, end: date) -> list[RevenueByDateDTO]:
+        self._check_range(start, end)
         return self._repo.get_revenue_by_date(start, end)
 
     def get_revenue_by_method(self, start: date, end: date) -> list[RevenueByMethodDTO]:
+        self._check_range(start, end)
         return self._repo.get_revenue_by_method(start, end)
 
     def get_outstanding_by_group(self) -> list[OutstandingByGroupDTO]:

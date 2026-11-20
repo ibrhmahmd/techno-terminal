@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from app.shared.exceptions import NotFoundError
 
 from app.api.deps import require_admin
@@ -56,10 +56,6 @@ def update_template(
     template = svc.get_template_by_id(template_id)
     if not template:
         raise NotFoundError("Template not found")
-    if template.is_standard:
-        kwargs = body.model_dump(exclude_unset=True)
-        if "name" in kwargs or "variables" in kwargs or "channel" in kwargs:
-            raise HTTPException(status_code=400, detail="Cannot edit name, channel, or variables of a standard template")
 
     dump = body.model_dump(exclude_unset=True)
     updated = svc.update_template(template_id, **dump)
@@ -76,8 +72,6 @@ def delete_template(
     template = svc.get_template_by_id(template_id)
     if not template:
         raise NotFoundError("Template not found")
-    if template.is_standard:
-        raise HTTPException(status_code=400, detail="Standard templates cannot be deleted")
 
     svc.delete_template(template_id)
     return ApiResponse(data="Template deleted successfully")

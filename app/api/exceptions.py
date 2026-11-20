@@ -12,7 +12,8 @@ from app.shared.exceptions import (
     ValidationError,
     BusinessRuleError,
     ConflictError,
-    AuthError
+    AuthError,
+    ForbiddenError,
 )
 
 logger = logging.getLogger("api.access")
@@ -83,6 +84,13 @@ def register_exception_handlers(app):
             status_code=401,
             content={"success": False, "error": "AuthError", "message": exc.message},
             headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    @app.exception_handler(ForbiddenError)
+    async def forbidden_exception_handler(request: Request, exc: ForbiddenError):
+        return JSONResponse(
+            status_code=403,
+            content={"success": False, "error": "ForbiddenError", "message": exc.message},
         )
 
     @app.exception_handler(StarletteHTTPException)

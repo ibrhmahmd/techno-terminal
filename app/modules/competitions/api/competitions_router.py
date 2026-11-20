@@ -6,8 +6,8 @@ Competitions domain router for 3-table schema.
 Handles: Competition lifecycle (CRUD, restore, categories, summary)
 """
 
-from fastapi import APIRouter, Depends, HTTPException
-from app.shared.exceptions import NotFoundError
+from fastapi import APIRouter, Depends
+from app.shared.exceptions import NotFoundError, ValidationError
 
 from app.api.schemas.common import ApiResponse
 from app.modules.competitions.api.schemas.competition_schemas import (
@@ -105,7 +105,7 @@ def update_competition_full(
     # Filter out None values for update
     update_data = {k: v for k, v in body.model_dump().items() if v is not None}
     if not update_data:
-        raise HTTPException(status_code=400, detail="No fields provided for update")
+        raise ValidationError("No fields provided for update")
     
     comp = svc.update_competition(competition_id, **update_data)
     return ApiResponse(

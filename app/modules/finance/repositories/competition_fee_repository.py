@@ -20,9 +20,6 @@ class CompetitionFeeRepository:
         )
         return self._session.exec(stmt).first()
 
-    def get_team_member_by_id(self, member_id: int) -> Optional[TeamMember]:
-        return self._session.get(TeamMember, member_id)
-
     def get_competition(self, competition_id: int) -> Optional[Competition]:
         return self._session.get(Competition, competition_id)
 

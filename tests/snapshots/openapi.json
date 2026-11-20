@@ -6890,6 +6890,7 @@
           "email": {
             "anyOf": [
               {
+                "maxLength": 255,
                 "type": "string"
               },
               {
@@ -6899,10 +6900,17 @@
             "title": "Email"
           },
           "employment_type": {
+            "enum": [
+              "full_time",
+              "part_time",
+              "contract"
+            ],
             "title": "Employment Type",
             "type": "string"
           },
           "full_name": {
+            "maxLength": 100,
+            "minLength": 2,
             "title": "Full Name",
             "type": "string"
           },
@@ -6919,6 +6927,7 @@
           "job_title": {
             "anyOf": [
               {
+                "maxLength": 100,
                 "type": "string"
               },
               {
@@ -6928,6 +6937,8 @@
             "title": "Job Title"
           },
           "major": {
+            "maxLength": 100,
+            "minLength": 1,
             "title": "Major",
             "type": "string"
           },
@@ -6943,14 +6954,18 @@
             "title": "Monthly Salary"
           },
           "national_id": {
+            "minLength": 10,
             "title": "National Id",
             "type": "string"
           },
           "phone": {
+            "pattern": "^\\+?\\d{10,}$",
             "title": "Phone",
             "type": "string"
           },
           "university": {
+            "maxLength": 100,
+            "minLength": 1,
             "title": "University",
             "type": "string"
           }
@@ -30887,21 +30902,14 @@
         "operationId": "list_teams_api_v1_teams_get",
         "parameters": [
           {
-            "description": "Filter by competition ID",
+            "description": "Competition ID",
             "in": "query",
             "name": "competition_id",
-            "required": false,
+            "required": true,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Filter by competition ID",
-              "title": "Competition Id"
+              "description": "Competition ID",
+              "title": "Competition Id",
+              "type": "integer"
             }
           },
           {
@@ -31568,11 +31576,11 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "description": "Invalid refund amount or business rule violation"
-          },
           "404": {
             "description": "Team or member not found"
+          },
+          "409": {
+            "description": "Invalid refund amount or business rule violation"
           },
           "422": {
             "content": {

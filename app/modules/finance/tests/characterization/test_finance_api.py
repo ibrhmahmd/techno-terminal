@@ -550,6 +550,7 @@ def test_search_receipts_range_too_large(client_with_uow, override_auth, mock_ad
         "/api/v1/finance/receipts?from_date=2025-01-01&to_date=2026-01-01", headers=mock_admin_headers
     )
     assert r.status_code == 422
+    assert r.json()["error"] == "ValidationError"
     assert "Date range too large" in r.json()["message"]
 
 

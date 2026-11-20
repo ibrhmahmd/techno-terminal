@@ -1,7 +1,6 @@
 from typing import Optional
 from sqlmodel import select
-from fastapi import HTTPException
-from app.shared.exceptions import BusinessRuleError, NotFoundError
+from app.shared.exceptions import BusinessRuleError, ForbiddenError, NotFoundError
 from app.modules.competitions.schemas.team_schemas import TeamDTO, TeamMemberDTO, TeamWithMembersDTO
 from app.modules.competitions.models.team_models import Team
 from app.modules.competitions.services.team_base import TeamServiceBase
@@ -21,7 +20,7 @@ class TeamService(TeamServiceBase):
             return TeamDTO.model_validate(team)
         if current_user.employee_id and team.coach_id == current_user.employee_id:
             return TeamDTO.model_validate(team)
-        raise HTTPException(status_code=403, detail="Access denied. Admin or team coach required.")
+        raise ForbiddenError("Access denied. Admin or team coach required.")
 
     def list_teams(
         self,

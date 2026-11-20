@@ -63,20 +63,21 @@ class EmployeeCreateInput(BaseModel):
     Input for creating/updating an employee via API.
     Includes all fields needed for HR operations.
     """
-    full_name: str
-    phone: str
-    email: Optional[str] = None
-    national_id: str
-    university: str
-    major: str
+    # Same constraints as CreateEmployeeDTO, so bad input is a 422 at the request boundary.
+    full_name: str = Field(..., min_length=2, max_length=100)
+    phone: str = Field(..., pattern=r"^\+?\d{10,}$")
+    email: Optional[str] = Field(None, max_length=255)
+    national_id: str = Field(..., min_length=10)
+    university: str = Field(..., min_length=1, max_length=100)
+    major: str = Field(..., min_length=1, max_length=100)
     is_graduate: bool = False
-    job_title: Optional[str] = None
-    employment_type: str  # full_time, part_time, contract
+    job_title: Optional[str] = Field(None, max_length=100)
+    employment_type: EmploymentType
     monthly_salary: Optional[float] = None
     contract_percentage: Optional[float] = None
     is_active: bool = True
 
-    model_config = {"from_attributes": True}
+    model_config = {"from_attributes": True, "str_strip_whitespace": True}
 
 
 class EmployeeUpdateInput(BaseModel):

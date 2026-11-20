@@ -38,10 +38,6 @@ class CompetitionFeeService:
 
     # ── reads used by the HTTP layer ──────────────────────────────────────────
 
-    def get_team_member(self, team_id: int, student_id: int):
-        """Returns the TeamMember row for (team, student), or None."""
-        return self._repo.get_team_member(team_id, student_id)
-
     # ── pay ───────────────────────────────────────────────────────────────────
 
     def pay_competition_fee(
@@ -188,16 +184,22 @@ class CompetitionFeeService:
 
     def refund_competition_fee(
         self,
-        team_member_id: int,
+        team_id: int,
+        student_id: int,
         amount: float,
         current_user_id: Optional[int] = None,
     ) -> RefundResultDTO:
         """Refund a competition payment; receipt, refund and fee adjustment in one transaction."""
-        member = self._repo.get_team_member_by_id(team_member_id)
+        member = self._repo.get_team_member(team_id, student_id)
         if not member:
-            raise NotFoundError(f"Team member {team_member_id} not found.")
+            raise NotFoundError("Team member not found.")
+        team_member_id = member.id
         if amount <= 0:
             raise BusinessRuleError("Refund amount must be greater than 0.")
+        if amount > member.amount_paid:
+            raise BusinessRuleError(
+                f"Refund amount ({amount}) exceeds amount paid ({member.amount_paid})."
+            )
 
         original_payment_id = self._get_refundable_competition_payment_id(
             team_member_id, amount

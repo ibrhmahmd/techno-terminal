@@ -27,10 +27,10 @@ from app.modules.notifications.constants import (
     SortOrder,
 )
 from datetime import datetime, time
-from fastapi import HTTPException
 from datetime import timedelta
 from app.shared.datetime_utils import CAIRO_TZ, cairo_today
 import calendar
+from app.shared.exceptions import ValidationError
 
 router = APIRouter()
 
@@ -117,6 +117,13 @@ def get_parent_logs(
     logs = svc.get_parent_logs(parent_id, limit=limit, offset=offset)
     return ApiResponse(data=[NotificationLogDTO.model_validate(log) for log in logs])
 
+def _resolve_report_date(target_date: Optional[date]) -> date:
+    report_date = target_date or cairo_today()
+    if report_date > cairo_today():
+        raise ValidationError("Report date cannot be in the future")
+    return report_date
+
+
 @router.post("/reports/daily", response_model=ApiResponse, summary="Trigger daily report")
 async def trigger_daily_report(
     body: Optional[DailyReportRequest] = None,
@@ -124,9 +131,7 @@ async def trigger_daily_report(
     _user: User = Depends(require_admin),
     svc: ReportNotificationService = Depends(get_report_service)
 ):
-    report_date = target_date or cairo_today()
-    if report_date > cairo_today():
-        raise HTTPException(status_code=400, detail="Report date cannot be in the future")
+    report_date = _resolve_report_date(target_date)
     svc_report = svc
 
     if body and body.email_recipients:
@@ -152,9 +157,7 @@ async def get_daily_report_data(
     _user: User = Depends(require_admin),
     svc: ReportNotificationService = Depends(get_report_service)
 ):
-    report_date = target_date or cairo_today()
-    if report_date > cairo_today():
-        raise HTTPException(status_code=400, detail="Report date cannot be in the future")
+    report_date = _resolve_report_date(target_date)
     aggregates = await asyncio.to_thread(svc.get_daily_report_data, report_date)
     return ApiResponse(data=aggregates.model_dump())
 
@@ -166,9 +169,7 @@ async def trigger_weekly_report(
     _user: User = Depends(require_admin),
     svc: ReportNotificationService = Depends(get_report_service)
 ):
-    report_date = target_date or cairo_today()
-    if report_date > cairo_today():
-        raise HTTPException(status_code=400, detail="Report date cannot be in the future")
+    report_date = _resolve_report_date(target_date)
     
     # We trigger the standard dispatch. Weekly report uses email only.
     await svc.send_weekly_report(target_date=report_date, force=True)
@@ -181,9 +182,7 @@ async def get_weekly_report_data(
     _user: User = Depends(require_admin),
     svc: ReportNotificationService = Depends(get_report_service)
 ):
-    report_date = target_date or cairo_today()
-    if report_date > cairo_today():
-        raise HTTPException(status_code=400, detail="Report date cannot be in the future")
+    report_date = _resolve_report_date(target_date)
     week_start = report_date - timedelta(days=report_date.weekday())
     completed_week_end = week_start + timedelta(days=6)
     week_end = completed_week_end if completed_week_end < cairo_today() else report_date
@@ -198,9 +197,7 @@ async def trigger_monthly_report(
     _user: User = Depends(require_admin),
     svc: ReportNotificationService = Depends(get_report_service)
 ):
-    report_date = target_date or cairo_today()
-    if report_date > cairo_today():
-        raise HTTPException(status_code=400, detail="Report date cannot be in the future")
+    report_date = _resolve_report_date(target_date)
     
     await svc.send_monthly_report(target_date=report_date, force=True)
     return ApiResponse(data="Monthly report email queued successfully.")
@@ -212,9 +209,7 @@ async def get_monthly_report_data(
     _user: User = Depends(require_admin),
     svc: ReportNotificationService = Depends(get_report_service)
 ):
-    report_date = target_date or cairo_today()
-    if report_date > cairo_today():
-        raise HTTPException(status_code=400, detail="Report date cannot be in the future")
+    report_date = _resolve_report_date(target_date)
     month_start = report_date.replace(day=1)
     last_day = calendar.monthrange(month_start.year, month_start.month)[1]
     completed_month_end = date(month_start.year, month_start.month, last_day)

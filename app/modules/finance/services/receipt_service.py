@@ -26,7 +26,7 @@ from app.modules.finance.repositories.receipt_repository import ReceiptRepositor
 from app.modules.finance.repositories.payment_repository import PaymentRepository
 from app.modules.finance.ports import PaymentNotifier
 from app.modules.finance.pdf.receipt_pdf import build_receipt_pdf
-from app.shared.exceptions import NotFoundError, BusinessRuleError
+from app.shared.exceptions import NotFoundError, BusinessRuleError, ValidationError
 from app.modules.finance.schemas import CreateReceiptDTO
 from app.modules.finance.schemas import AddPaymentLineDTO
 from app.modules.crm.models.student_models import Student
@@ -239,6 +239,12 @@ class ReceiptService:
         """Search receipts with date range and optional filters."""
         if criteria.to_date < criteria.from_date:
             raise BusinessRuleError("End date must be on or after start date.")
+        max_days = 90
+        days = (criteria.to_date - criteria.from_date).days
+        if days > max_days:
+            raise ValidationError(
+                f"Date range too large. Maximum allowed is {max_days} days. Requested: {days} days."
+            )
 
         return self._receipts.search(criteria)
 
