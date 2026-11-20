@@ -37,6 +37,7 @@ from app.modules.auth.api.schemas import (
 )
 
 from app.core.supabase_clients import get_supabase_anon
+from app.shared.exceptions import ForbiddenError
 
 logger = logging.getLogger(__name__)
 
@@ -90,9 +91,15 @@ def login(
             status_code=401, detail="User authenticated but no local identity found."
         )
 
-    # Detect suspicious / first login
     ip_address = request.client.host if request.client else "Unknown"
     user_agent = request.headers.get("user-agent", "Unknown")
+    try:
+        auth_svc.ensure_active(user)
+    except ForbiddenError:
+        auth_svc.record_login_failure(
+            reason="inactive_user", ip_address=ip_address, user_agent=user_agent, email=body.email
+        )
+        raise
 
     alert_reason = auth_svc.evaluate_login_alert(user, ip_address, user_agent)
 
@@ -148,6 +155,7 @@ def refresh_token(
     user = auth_svc.get_user_by_supabase_uid(res.user.id)
     if not user:
         raise HTTPException(status_code=401, detail="Local identity missing")
+    auth_svc.ensure_active(user)
 
     return ApiResponse(
         data=TokenResponse(
@@ -393,7 +401,6 @@ def register(
 ):
     user = auth_svc.register_with_invite(
         token=body.token,
-        username=body.username,
         password=body.password,
     )
     return ApiResponse(

@@ -58,15 +58,14 @@ def test_invite_emails_a_link_that_registers_the_user(
 
     admin = MagicMock()
     admin.auth.admin.create_user.return_value.user.id = f"sup-{uuid.uuid4().hex}"
-    username = f"inv_{uuid.uuid4().hex[:8]}"
     with patch(f"{PROVISIONING}.get_supabase_admin", return_value=admin):
         reg = client_with_uow.post(
             "/api/v1/auth/register",
-            json={"token": token, "username": username, "password": "StrongPassword12"},
+            json={"token": token, "username": "bob", "password": "StrongPassword12"},  # ignored (#258)
         )
 
     assert reg.status_code == 200
-    assert reg.json()["data"]["username"] == username
+    assert reg.json()["data"]["username"] == email
     assert reg.json()["data"]["is_active"] is True
 
 
@@ -138,7 +137,7 @@ def test_invite_is_void_once_the_employee_is_deactivated(
     with patch(f"{PROVISIONING}.get_supabase_admin", return_value=admin):
         reg = client_with_uow.post(
             "/api/v1/auth/register",
-            json={"token": token, "username": f"inv_{uuid.uuid4().hex[:8]}", "password": "StrongPassword12"},
+            json={"token": token, "password": "StrongPassword12"},
         )
 
     assert reg.status_code == 401

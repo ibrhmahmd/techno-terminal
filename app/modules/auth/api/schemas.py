@@ -26,7 +26,7 @@ class CreateUserRequest(BaseModel):
     employee_id: int | None = None
     username: str
     password: str
-    role: str
+    role: UserRoleValue
 
 class ResetPasswordRequest(BaseModel):
     new_password: str = Field(..., min_length=MIN_PASSWORD_LENGTH)
@@ -56,7 +56,6 @@ class InviteUserRequest(BaseModel):
 
 class RegisterUserRequest(BaseModel):
     token: str
-    username: str
     password: str = Field(..., min_length=MIN_PASSWORD_LENGTH)
 
 
