@@ -16,7 +16,7 @@ from app.modules.auth.schemas.auth_schemas import (
 )
 from app.modules.auth.constants import is_valid_role
 from app.shared.constants import MIN_PASSWORD_LENGTH
-from app.shared.exceptions import AuthError, BusinessRuleError, ConflictError, NotFoundError, ValidationError
+from app.shared.exceptions import AuthError, BusinessRuleError, ConflictError, ForbiddenError, NotFoundError, ValidationError
 from app.modules.auth.models.audit_log import AuditLogEventType
 from app.modules.auth.services.audit_service import AuditService
 from app.modules.auth.services.provisioning import provision_login, _create_supabase_user
@@ -36,6 +36,12 @@ class AuthService:
 
     def get_user_by_username(self, username: str) -> Optional[User]:
         return self._repo.get_user_by_username(username)
+
+    @staticmethod
+    def ensure_active(user: User) -> None:
+        """Deactivated users get no tokens or session refresh (#250)."""
+        if not user.is_active:
+            raise ForbiddenError("Account is deactivated.")
 
     def update_last_login(self, user_id: int) -> None:
         self._repo.update_last_login(user_id)
@@ -151,7 +157,7 @@ class AuthService:
         self._uow.session.refresh(user)
         return user
 
-    def register_with_invite(self, token: str, username: str, password: str) -> User:
+    def register_with_invite(self, token: str, password: str) -> User:
         from app.shared.datetime_utils import utc_now
 
         if len(password) < MIN_PASSWORD_LENGTH:
@@ -166,11 +172,8 @@ class AuthService:
         # An invite for an employee deactivated or deleted since is void (#184).
         if user.employee_id is not None and not self._repo.employee_can_log_in(user.employee_id):
             raise AuthError("Invalid or expired invite token.")
-        existing = self._repo.get_user_by_username(username)
-        if existing:
-            raise ConflictError(f"Username {username!r} already exists.")
-        native_uid = _create_supabase_user(username, password)
-        user.username = username
+        # The login is the invited email (users.username), never client-chosen (#258).
+        native_uid = _create_supabase_user(user.username, password)
         user.supabase_uid = native_uid
         user.is_active = True
         user.invite_token = None
@@ -181,6 +184,9 @@ class AuthService:
         return user
 
     def change_email(self, user: User, new_email: str) -> None:
+        existing = self._repo.get_user_by_username(new_email)
+        if existing and existing.id != user.id:
+            raise ConflictError(f"Username {new_email!r} already exists.")
         admin = get_supabase_admin()
         try:
             admin.auth.admin.update_user_by_id(
@@ -188,6 +194,10 @@ class AuthService:
             )
         except Exception as e:
             raise ConflictError(f"Email already in use: {e}") from e
+        # change_password signs in with users.username as the email (#251)
+        user.username = new_email
+        self._repo.update_user(user)
+        self._uow.commit()
 
     def logout_all_sessions(self, user: User) -> None:
         try:

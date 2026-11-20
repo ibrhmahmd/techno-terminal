@@ -415,7 +415,7 @@ class TestAuthLoginFlow:
 
         response = client.post(
             "/api/v1/auth/register",
-            json={"token": "invalid-token", "username": "new_user", "password": "strongpassword123"}
+            json={"token": "invalid-token", "password": "strongpassword123"}
         )
 
         assert response.status_code == 401

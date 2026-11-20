@@ -371,33 +371,33 @@ def test_mfa_enroll(client_with_uow, override_auth, mock_admin_headers):
 
 def test_register(client_with_uow, db_session):
     token = _uid()
+    invited = f"pending_{_short()}@test.local"
     _make_user(
         db_session,
         supabase_uid=None,
-        username=f"pending_{_short()}",
+        username=invited,
         is_active=False,
         invite_token=token,
         invite_expires_at=datetime.now(timezone.utc).replace(microsecond=0) + timedelta(days=1),
     )
     fake = _fake_admin(uid=_uid())
-    username = f"ca_{_short()}"
 
     with patch(f"{PROVISIONING}.get_supabase_admin", return_value=fake):
         r = client_with_uow.post(
             "/api/v1/auth/register",
-            json={"token": token, "username": username, "password": "StrongPassword12"},
+            json={"token": token, "password": "StrongPassword12"},
         )
 
     assert r.status_code == 200
     body = r.json()
     assert set(body) == {"success", "data", "message"}
     assert body["message"] == "Registration complete."
-    assert body["data"]["username"] == username
+    assert body["data"]["username"] == invited
     assert body["data"]["is_active"] is True
 
     bad = client_with_uow.post(
         "/api/v1/auth/register",
-        json={"token": "no-such-token", "username": username, "password": "StrongPassword12"},
+        json={"token": "no-such-token", "password": "StrongPassword12"},
     )
     assert bad.status_code == 401
     assert bad.json()["error"] == "AuthError"

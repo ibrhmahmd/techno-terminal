@@ -9,6 +9,7 @@ Supabase pg_cron + pg_net jobs call these endpoints on a schedule.
 All endpoints require the X-Internal-Trigger-Secret header matching
 settings.internal_trigger_secret. Empty secret is never allowed.
 """
+import hmac
 from datetime import date, timedelta
 from typing import Optional
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
@@ -40,7 +41,7 @@ def _verify_internal_secret(x_internal_trigger_secret: Optional[str] = Header(de
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Internal trigger secret not configured",
         )
-    if x_internal_trigger_secret != configured_secret:
+    if not hmac.compare_digest((x_internal_trigger_secret or "").encode(), configured_secret.encode()):
         logfire.error("internal_trigger_secret_mismatch")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

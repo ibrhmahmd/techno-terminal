@@ -6134,6 +6134,10 @@
             "type": "string"
           },
           "role": {
+            "enum": [
+              "admin",
+              "system_admin"
+            ],
             "title": "Role",
             "type": "string"
           },
@@ -12315,15 +12319,10 @@
           "token": {
             "title": "Token",
             "type": "string"
-          },
-          "username": {
-            "title": "Username",
-            "type": "string"
           }
         },
         "required": [
           "token",
-          "username",
           "password"
         ],
         "title": "RegisterUserRequest",
