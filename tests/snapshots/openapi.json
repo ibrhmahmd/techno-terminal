@@ -7522,6 +7522,7 @@
           },
           "discount": {
             "default": 0.0,
+            "minimum": 0.0,
             "title": "Discount",
             "type": "number"
           },
@@ -16403,6 +16404,7 @@
           "amount_due": {
             "anyOf": [
               {
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -16414,6 +16416,7 @@
           "discount_applied": {
             "anyOf": [
               {
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -26971,6 +26974,7 @@
             "required": false,
             "schema": {
               "default": 50.0,
+              "minimum": 0,
               "title": "Discount Amount",
               "type": "number"
             }

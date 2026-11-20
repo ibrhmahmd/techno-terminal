@@ -228,7 +228,7 @@ class TestEnrollmentUpdate:
             headers=mock_admin_headers,
             json={"amount_due": -50.0},
         )
-        assert response.status_code == 409, response.text
+        assert response.status_code == 422, response.text
         data = response.json()
         assert data["success"] is False
 

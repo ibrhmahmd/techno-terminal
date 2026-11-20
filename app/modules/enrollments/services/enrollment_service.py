@@ -59,6 +59,14 @@ class EnrollmentService:
             update["amount_remaining"] = max(0.0, -float(balance.balance))
         return EnrollmentDTO.model_validate(enrollment).model_copy(update=update)
 
+    @staticmethod
+    def _check_discount(amount_due: Optional[float], discount: Optional[float]) -> None:
+        """#256: a discount may not exceed the amount due (unset amount: nothing to compare)."""
+        if amount_due is not None and discount is not None and discount > amount_due:
+            raise BusinessRuleError(
+                f"Discount ({discount}) cannot exceed the amount due ({amount_due})."
+            )
+
     def _notify(self, method: str, **kwargs) -> None:
         """Call the notifier after commit; failures are logged, never raised."""
         if self._notifier is None:
@@ -93,6 +101,7 @@ class EnrollmentService:
         if group.status != "active":
             raise BusinessRuleError(f"Group '{group.name}' is not active (status: {group.status}).")
 
+        self._check_discount(data.amount_due, data.discount)
         try:
             existing = self._enrollments.get_active_enrollment(data.student_id, data.group_id)
             if existing:
@@ -174,17 +183,18 @@ class EnrollmentService:
 
         updates = {}
         if "amount_due" in data.model_fields_set:
-            if data.amount_due is not None and data.amount_due < 0:
-                raise BusinessRuleError("Amount due cannot be negative.")
             updates["amount_due"] = data.amount_due
 
         if "discount_applied" in data.model_fields_set:
-            if data.discount_applied is not None and data.discount_applied < 0:
-                raise BusinessRuleError("Discount applied cannot be negative.")
             updates["discount_applied"] = data.discount_applied
 
         if "notes" in data.model_fields_set:
             updates["notes"] = data.notes
+
+        self._check_discount(
+            updates.get("amount_due", enrollment.amount_due),
+            updates.get("discount_applied", enrollment.discount_applied),
+        )
 
         if not updates:
             return UpdateEnrollmentResult(enrollment=self._to_dto(enrollment))
@@ -262,6 +272,7 @@ class EnrollmentService:
             raise NotFoundError(f"Enrollment {enrollment_id} not found.")
         if enrollment.status != "active":
             raise BusinessRuleError("Can only apply discount to active enrollments.")
+        self._check_discount(enrollment.amount_due, discount_amount)
         updated = self._enrollments.update_discount(enrollment_id, discount_amount)
         self._uow.commit()
         session.refresh(updated)
@@ -283,6 +294,19 @@ class EnrollmentService:
         if source.status != "active":
             raise BusinessRuleError("Can only transfer an active enrollment.")
 
+        existing = self._enrollments.get_active_enrollment(source.student_id, data.to_group_id)
+        if existing:
+            raise ConflictError(
+                f"Student is already enrolled in the target group (Enrollment ID: {existing.id})."
+            )
+
+        # #238: the new enrollment owes only what the source still left unpaid
+        # (payments stay on the source); an unset amount_due stays unset.
+        carried_due = source.amount_due
+        if carried_due is not None:
+            balance = self._directory.get_enrollment_balance(source.id)
+            carried_due = max(0.0, -float(balance.balance)) if balance else carried_due
+
         self._enrollments.update_enrollment_status(data.from_enrollment_id, "transferred")
 
         new_enrollment = Enrollment(
@@ -290,8 +314,8 @@ class EnrollmentService:
             group_id=data.to_group_id,
             level_number=target_group.level_number,
             enrolled_at=utc_now(),
-            amount_due=source.amount_due,
-            discount_applied=source.discount_applied,
+            amount_due=carried_due,
+            discount_applied=0.0,
             transferred_from=data.from_enrollment_id,
             created_by=data.created_by,
         )
@@ -334,6 +358,8 @@ class EnrollmentService:
         enrollment = self._enrollments.get_enrollment(enrollment_id)
         if not enrollment:
             raise NotFoundError(f"Enrollment {enrollment_id} not found.")
+        if enrollment.status != "active":
+            raise BusinessRuleError("Can only drop an active enrollment.")
 
         group_id = enrollment.group_id
         student_id = enrollment.student_id

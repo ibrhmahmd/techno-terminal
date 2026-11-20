@@ -176,8 +176,9 @@ def test_transfer_student(
     assert data["group_id"] == target_group.id
     assert data["level_number"] == 3
     assert data["status"] == "active"
-    assert data["amount_due"] == 800.0
-    assert data["discount_applied"] == 30.0
+    # #238: the new enrollment carries only the unpaid net (800 - 30), no discount.
+    assert data["amount_due"] == 770.0
+    assert data["discount_applied"] == 0.0
     # Display names are filled on write responses (#83).
     assert data["group_name"] == target_group.name
     assert data["course_name"] == course.name
