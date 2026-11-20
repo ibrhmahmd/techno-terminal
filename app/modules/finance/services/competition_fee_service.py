@@ -60,6 +60,12 @@ class CompetitionFeeService:
         amount = cmd.amount
         if amount <= 0:
             raise BusinessRuleError("Payment amount must be greater than 0.")
+        # Competition lines carry no enrollment, so the receipt overpayment guard cannot see them (#245).
+        outstanding = Decimal(str(member.amount_due)) - Decimal(str(member.amount_paid))
+        if Decimal(str(amount)) > outstanding:
+            raise BusinessRuleError(
+                f"Payment ({amount}) exceeds the outstanding competition fee ({outstanding:.2f})."
+            )
 
         payer_name = None
         if cmd.parent_id:
@@ -172,6 +178,7 @@ class CompetitionFeeService:
         """Find the newest competition payment with enough refundable balance."""
         requested = Decimal(str(amount))
         for payment in self._payments.list_refundable_competition_payments(team_member_id):
+            self._payments.get_for_update(payment.id)  # lock before summing refunds (#241)
             available = Decimal(str(payment.amount)) - self._payments.get_total_refunded(
                 payment.id
             )

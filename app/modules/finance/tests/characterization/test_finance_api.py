@@ -309,8 +309,9 @@ def test_unpaid_competition_fees_requires_student_id(client_with_uow, override_a
 
 
 def test_overpayment_risk(client_with_uow, override_auth, mock_admin_headers, db_session):
-    """Fixed in #93 (every call was a 500): only lines that would leave the enrollment in
-    credit are returned, with the debt before, the projected balance and the excess."""
+    """Fixed in #93 (every call was a 500): only enrollments that would be left in credit are
+    returned, with the debt before, the projected balance and the excess. Lines on one
+    enrollment are summed (#245): 300 + 60 against a debt of 100 is one item of 360."""
     _, _, student, enrollment = _seed_enrollment(db_session, amount_due=100.0)
 
     r = client_with_uow.post(
@@ -324,8 +325,8 @@ def test_overpayment_risk(client_with_uow, override_auth, mock_admin_headers, db
 
     assert r.status_code == 200
     assert r.json()["data"] == [{
-        "student_id": student.id, "enrollment_id": enrollment.id, "amount": 300.0,
-        "debt_before": 100.0, "projected_balance": 200.0, "excess_credit": 200.0,
+        "student_id": student.id, "enrollment_id": enrollment.id, "amount": 360.0,
+        "debt_before": 100.0, "projected_balance": 260.0, "excess_credit": 260.0,
     }]
 
 

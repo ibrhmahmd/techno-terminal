@@ -53,6 +53,11 @@ class PaymentRepository:
         """Get payment by ID."""
         return self._session.get(Payment, payment_id)
 
+    def get_for_update(self, payment_id: int) -> Optional[Payment]:
+        """Get a payment and row-lock it until the transaction ends (refund race, #241)."""
+        stmt = select(Payment).where(Payment.id == payment_id).with_for_update()
+        return self._session.exec(stmt).first()
+
     def list_refundable_competition_payments(
         self, team_member_id: int
     ) -> List[Payment]:

@@ -134,6 +134,10 @@ class TeamRosterService(TeamServiceBase):
             raise BusinessRuleError(
                 "Cannot remove a team member who has already paid the competition fee."
             )
+        if self._teams.has_payment_history(member.id):
+            raise BusinessRuleError(
+                "Team member has payment history and cannot be removed."
+            )
         result = self._teams.remove_team_member(team_id, student_id)
         self._uow.commit()
         return result

@@ -56,9 +56,12 @@ class RefundService:
             raise BusinessRuleError("Refund amount must be positive.")
 
         # Get original payment
-        original = self._payments.get_by_id(dto.payment_id)
+        # Row lock: a concurrent refund of the same payment waits here, then sees our row.
+        original = self._payments.get_for_update(dto.payment_id)
         if not original:
             raise NotFoundError(f"Original payment {dto.payment_id} not found.")
+        if original.transaction_type != "payment":
+            raise BusinessRuleError("Only a payment can be refunded, not a refund row.")
 
         # Validate refund amount
         original_amount = Decimal(str(original.amount))
