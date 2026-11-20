@@ -22,13 +22,10 @@ Pinned quirks (pinned, not endorsed)
 ------------------------------------
 * GET /enrollments/student/{id} for an unknown student is a 404 NotFoundError, and so is
   an unknown group on the summary route (#143); a KNOWN id with no rows is a 200 ``[]``.
-* ``amount_remaining`` is computed two different ways. The student route returns
-  ``max(0, -balance)`` (never negative, and always positive for an unpaid
-  enrollment). The summary route returns the raw view ``balance``, which is
-  ``-net_due`` (negative) for an unpaid enrollment.
+* ``amount_remaining`` is ``max(0, -balance)`` on BOTH routes (#84): a positive
+  remaining amount, never negative (0 when overpaid).
 * The summary route restricts to the group's *current* ``level_number`` unless
-  ``?level=`` is given; ``?level=0`` is falsy and silently falls back to the
-  group level.
+  ``?level=`` is given; ``?level=0`` is a 422 (``ge=1``, #84).
 * ``sessions_total`` is 0 when no matching ``group_levels`` row exists.
 * A ``dropped`` enrollment is excluded from the summary but still returned by
   the student history route.
@@ -40,6 +37,8 @@ GMAIL_SENDER_ADDRESS= GMAIL_APP_PASSWORD= TWILIO_ACCOUNT_SID= TWILIO_AUTH_TOKEN=
 
 import uuid
 from datetime import date, time
+
+from sqlalchemy import text
 
 from app.modules.academics.models.course_models import Course
 from app.modules.academics.models.group_level_models import GroupLevel
@@ -321,10 +320,8 @@ def test_group_summary_happy_path(
     assert data["payment_status"] == "not_paid"
     assert data["amount_due"] == 500.0
     assert data["discount_applied"] == 50.0
-    # current behaviour (pinned, not endorsed): the summary returns the raw view
-    # balance, which is NEGATIVE for an unpaid enrollment (student route returns
-    # max(0, -balance) instead).
-    assert data["amount_remaining"] == -450.0
+    # #84: debt is a positive remaining amount (same as the student route).
+    assert data["amount_remaining"] == 450.0
 
 
 def test_group_summary_filters_to_group_current_level_by_default(
@@ -377,24 +374,81 @@ def test_group_summary_level_query_filter(
     assert data[0]["sessions_total"] == 6
 
 
-def test_group_summary_level_zero_falls_back_to_group_level(
+def test_group_summary_level_zero_is_422(
     client_with_uow, override_auth, mock_admin_headers, db_session
 ):
-    """?level=0 is falsy and silently falls back to the group current level."""
+    """?level=0 is rejected (#84), not silently replaced by the group level."""
     course = _make_course(db_session)
     group = _make_group(db_session, course.id, level_number=1)
-    _make_group_level(db_session, group.id, course.id, level_number=1, sessions_planned=8)
-    student = _make_student(db_session)
-    level1 = _make_enrollment(db_session, student.id, group.id, level_number=1)
 
     r = client_with_uow.get(
         f"/api/v1/enrollments/group/{group.id}/students-summary?level=0",
         headers=mock_admin_headers,
     )
 
-    assert r.status_code == 200
-    data = r.json()["data"]
-    assert {row["enrollment_id"] for row in data} == {level1.id}
+    assert r.status_code == 422
+    assert r.json()["error"] == "ValidationError"
+
+
+def _add_payment(db_session, student_id: int, enrollment_id: int, amount: float) -> None:
+    receipt_id = db_session.execute(
+        text("INSERT INTO receipts (receipt_number) VALUES (:n) RETURNING id"),
+        {"n": f"R-{_short()}"},
+    ).scalar_one()
+    db_session.execute(
+        text(
+            "INSERT INTO payments (receipt_id, student_id, enrollment_id, amount, "
+            "transaction_type, payment_type) "
+            "VALUES (:r, :s, :e, :a, 'payment', 'course_level')"
+        ),
+        {"r": receipt_id, "s": student_id, "e": enrollment_id, "a": amount},
+    )
+    db_session.commit()
+
+
+def _both_remaining(client, headers, student_id, group_id) -> tuple[float, float]:
+    summary = client.get(
+        f"/api/v1/enrollments/group/{group_id}/students-summary", headers=headers
+    ).json()["data"][0]["amount_remaining"]
+    student = client.get(
+        f"/api/v1/enrollments/student/{student_id}", headers=headers
+    ).json()["data"][0]["amount_remaining"]
+    return summary, student
+
+
+def test_summary_and_student_amount_remaining_agree_unpaid(
+    client_with_uow, override_auth, mock_admin_headers, db_session
+):
+    """Both routes report the same positive remaining amount for an unpaid enrollment (#84)."""
+    course = _make_course(db_session)
+    group = _make_group(db_session, course.id, level_number=1)
+    student = _make_student(db_session)
+    _make_enrollment(
+        db_session, student.id, group.id, amount_due=500.0, discount_applied=50.0
+    )
+
+    summary, by_student = _both_remaining(
+        client_with_uow, mock_admin_headers, student.id, group.id
+    )
+
+    assert summary == by_student == 450.0
+
+
+def test_summary_and_student_amount_remaining_overpaid_is_zero(
+    client_with_uow, override_auth, mock_admin_headers, db_session
+):
+    """An overpaid enrollment reports 0 remaining on both routes, never negative (#84)."""
+    course = _make_course(db_session)
+    group = _make_group(db_session, course.id, level_number=1)
+    student = _make_student(db_session)
+    enrollment = _make_enrollment(db_session, student.id, group.id, amount_due=500.0)
+    _add_payment(db_session, student.id, enrollment.id, 700.0)
+
+    summary, by_student = _both_remaining(
+        client_with_uow, mock_admin_headers, student.id, group.id
+    )
+
+    assert summary == by_student == 0.0
 
 
 def test_group_summary_excludes_dropped_enrollments(

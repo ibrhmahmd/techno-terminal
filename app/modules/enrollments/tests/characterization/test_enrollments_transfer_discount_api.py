@@ -371,6 +371,24 @@ def test_apply_sibling_discount_custom_amount(
     assert body["data"]["discount_applied"] == 25.0
 
 
+def test_apply_sibling_discount_second_call_replaces(
+    client_with_uow, override_auth, mock_admin_headers, db_session, noop_notifications
+):
+    """Two successive discount calls leave the LAST amount, not the sum (#84)."""
+    course = _make_course(db_session)
+    group = _make_group(db_session, course.id)
+    student = _make_student(db_session, status="active")
+    enrollment = _make_enrollment(db_session, student.id, group.id, status="active")
+    url = f"/api/v1/enrollments/{enrollment.id}/discount"
+
+    for amount, expected in ((40, 40.0), (25, 25.0)):
+        r = client_with_uow.post(
+            f"{url}?discount_amount={amount}", headers=mock_admin_headers
+        )
+        assert r.status_code == 200
+        assert r.json()["data"]["discount_applied"] == expected
+
+
 def test_apply_sibling_discount_not_found(
     client_with_uow, override_auth, mock_admin_headers, noop_notifications
 ):
