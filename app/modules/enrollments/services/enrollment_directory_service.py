@@ -76,7 +76,7 @@ class EnrollmentDirectoryService:
 
             balance_info = self._repo.get_enrollment_balance(enrollment.id)
             payment_status = balance_info.status if balance_info else 'not_paid'
-            amount_remaining = float(balance_info.balance) if balance_info else 0.0
+            amount_remaining = max(0.0, -float(balance_info.balance)) if balance_info else 0.0
 
             amount_due = float(enrollment.amount_due or 0)
             discount = float(enrollment.discount_applied or 0)

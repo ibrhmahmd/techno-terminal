@@ -26696,6 +26696,7 @@
             "required": false,
             "schema": {
               "description": "Filter to a specific level number",
+              "minimum": 1,
               "title": "Level",
               "type": "integer"
             }
@@ -26952,7 +26953,7 @@
     },
     "/api/v1/enrollments/{enrollment_id}/discount": {
       "post": {
-        "description": "Apply a sibling/family discount to an active enrollment.\nDiscount is added to existing discount_applied field.",
+        "description": "Set the sibling/family discount of an active enrollment.\nThe amount REPLACES discount_applied (a second call overwrites the first).",
         "operationId": "apply_sibling_discount_api_v1_enrollments__enrollment_id__discount_post",
         "parameters": [
           {
@@ -27002,7 +27003,7 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Apply sibling discount to enrollment",
+        "summary": "Set sibling discount on enrollment",
         "tags": [
           "Enrollments",
           "Enrollments"
