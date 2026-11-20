@@ -4,6 +4,7 @@ import threading
 from contextlib import contextmanager
 from urllib.parse import urlparse
 
+from sqlalchemy import event
 from sqlmodel import create_engine, Session
 
 from app.core.config import settings
@@ -14,6 +15,15 @@ _engine = None
 _engine_lock = threading.Lock()
 
 _PROJECT_REF_PATTERN = re.compile(r"^[a-z0-9]{20}$")
+
+# Owner decision (#191): 60 s, room for long reports.
+STATEMENT_TIMEOUT_MS = 60_000
+
+
+def _set_statement_timeout(conn) -> None:
+    # Supabase's transaction pooler drops libpq startup options, so set the
+    # timeout per transaction; SET LOCAL never leaks to other pooled clients.
+    conn.exec_driver_sql(f"SET LOCAL statement_timeout = {STATEMENT_TIMEOUT_MS}")
 
 
 def _extract_db_project_ref(database_url: str) -> str | None:
@@ -76,9 +86,10 @@ def get_engine():
                         "keepalives_interval": 10,
                         "keepalives_count": 5,
                         "sslmode": "prefer",
-                        "options": "-c statement_timeout=30000",
+                        "options": f"-c statement_timeout={STATEMENT_TIMEOUT_MS}",
                     },
                 )
+                event.listen(_engine, "begin", _set_statement_timeout)
                 _warn_on_project_mismatch()
                 from app.db.query_logger import install_query_logger
 
