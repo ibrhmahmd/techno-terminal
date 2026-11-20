@@ -27,7 +27,7 @@ def valid_employee_payload(**overrides) -> dict:
     payload = {
         "full_name": f"Del Target {_digits(6)}",
         "phone": "01" + _digits(9),
-        "email": f"{_unique()}@delete.test",
+        "email": f"{_unique()}@delete-test.example.com",
         "national_id": _digits(12),
         "university": "Cairo University",
         "major": "Computer Science",

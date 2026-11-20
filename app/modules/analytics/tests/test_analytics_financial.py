@@ -52,12 +52,21 @@ class TestRevenueByDate:
         assert response.status_code == 422
 
     def test_revenue_by_date_invalid_range(self, client, mock_admin_headers, override_auth):
-        """Owner decision pending: a reversed date range returns 200 (empty data), not 422."""
+        """A reversed date range is a 422 ValidationError."""
         start_date = cairo_today().isoformat()
         end_date = (cairo_today() - timedelta(days=30)).isoformat()
 
         response = client.get(
             f"/api/v1/analytics/finance/revenue-by-date?start={start_date}&end={end_date}",
+            headers=mock_admin_headers
+        )
+        assert response.status_code == 422
+        assert response.json()["error"] == "ValidationError"
+
+    def test_revenue_by_date_single_day_ok(self, client, mock_admin_headers, override_auth):
+        day = cairo_today().isoformat()
+        response = client.get(
+            f"/api/v1/analytics/finance/revenue-by-date?start={day}&end={day}",
             headers=mock_admin_headers
         )
         assert response.status_code == 200

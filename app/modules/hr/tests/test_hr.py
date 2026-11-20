@@ -7,7 +7,6 @@ Tests all endpoints in app/api/routers/hr_router.py:
 - POST /hr/employees
 - PUT /hr/employees/{employee_id}
 - GET /hr/staff-accounts
-- POST /hr/attendance/log
 
 All endpoints require admin authentication.
 """
@@ -369,81 +368,6 @@ class TestStaffAccounts:
         assert response.status_code == 401
 
 
-class TestHRAttendance:
-    """POST /hr/attendance/log"""
-
-    def test_log_attendance_success(self, client, mock_admin_headers, override_auth):
-        """POST /hr/attendance/log logs attendance (stub)."""
-        response = client.post(
-            "/api/v1/hr/attendance/log",
-            headers=mock_admin_headers,
-            json={
-                "employee_id": 1,
-                "status": "check_in",
-                "notes": "Test attendance log"
-            }
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["success"] is True
-        assert "data" in data
-        assert data["data"]["employee_id"] == 1
-        assert data["data"]["status"] == "check_in"
-        assert "logged_at" in data["data"]
-
-    def test_log_attendance_check_out(self, client, mock_admin_headers, override_auth):
-        """POST /hr/attendance/log with check_out status."""
-        response = client.post(
-            "/api/v1/hr/attendance/log",
-            headers=mock_admin_headers,
-            json={
-                "employee_id": 1,
-                "status": "check_out"
-            }
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["success"] is True
-        assert data["data"]["status"] == "check_out"
-
-    def test_log_attendance_invalid_employee_id(self, client, mock_admin_headers, override_auth):
-        """POST /hr/attendance/log with invalid employee_id returns 422."""
-        response = client.post(
-            "/api/v1/hr/attendance/log",
-            headers=mock_admin_headers,
-            json={
-                "employee_id": "not-an-int",
-                "status": "check_in"
-            }
-        )
-
-        assert response.status_code == 422
-
-    def test_log_attendance_missing_status(self, client, mock_admin_headers, override_auth):
-        """POST /hr/attendance/log without status returns 422."""
-        response = client.post(
-            "/api/v1/hr/attendance/log",
-            headers=mock_admin_headers,
-            json={
-                "employee_id": 1
-            }
-        )
-
-        assert response.status_code == 422
-        assert response.json()["error"] == "ValidationError"
-
-    def test_log_attendance_unauthorized(self, client):
-        """POST /hr/attendance/log without auth returns 401."""
-        response = client.post(
-            "/api/v1/hr/attendance/log",
-            json={"employee_id": 1, "status": "check_in"}
-        )
-
-        assert response.status_code == 401
-
-
 class TestEmployeesEdgeCases:
     """Edge cases and boundary conditions for employee operations."""
 
@@ -486,13 +410,36 @@ class TestEmployeesEdgeCases:
         assert response.json()["error"] == "ValidationError"
 
     def test_create_employee_invalid_email(self, client, mock_admin_headers, override_auth):
-        """POST /hr/employees accepts any email string today (no format check)."""
+        """POST /hr/employees rejects a malformed email with 422."""
         response = client.post(
             "/api/v1/hr/employees",
             headers=mock_admin_headers,
             json=self._generate_unique_employee_data(email=f"not-an-email-{uuid.uuid4().hex}")
         )
+        assert response.status_code == 422
+        assert response.json()["error"] == "ValidationError"
+
+    def test_create_employee_null_email_ok(self, client, mock_admin_headers, override_auth):
+        response = client.post(
+            "/api/v1/hr/employees",
+            headers=mock_admin_headers,
+            json=self._generate_unique_employee_data(email=None)
+        )
         assert response.status_code == 201
+
+    def test_update_employee_invalid_email(self, client, mock_admin_headers, override_auth):
+        created = client.post(
+            "/api/v1/hr/employees",
+            headers=mock_admin_headers,
+            json=self._generate_unique_employee_data()
+        ).json()["data"]
+        response = client.put(
+            f"/api/v1/hr/employees/{created['id']}",
+            headers=mock_admin_headers,
+            json={"email": "not-an-email"}
+        )
+        assert response.status_code == 422
+        assert response.json()["error"] == "ValidationError"
 
     def test_create_employee_employment_types(self, client, mock_admin_headers, override_auth):
         """POST /hr/employees with valid employment types."""
@@ -514,7 +461,6 @@ class TestHRAuth:
         ("POST", "/api/v1/hr/employees"),
         ("PUT", "/api/v1/hr/employees/99999"),
         ("GET", "/api/v1/hr/staff-accounts"),
-        ("POST", "/api/v1/hr/attendance/log"),
     ]
 
     def _call(self, client, method, endpoint, headers=None):

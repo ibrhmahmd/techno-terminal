@@ -3,8 +3,6 @@
 from app.modules.hr.api import hr_router
 from app.modules.hr.api.deps import get_employee_crud_service, get_staff_account_service
 from app.modules.hr.api.schemas import (
-    AttendanceLogInput,
-    AttendanceLogOutput,
     CreateEmployeeAccountRequest,
     EmployeeAccountResponse,
     EmployeeCreateInput,
@@ -27,8 +25,6 @@ __all__ = [
     "StaffAccountPublic",
     "StaffAccountCreateInput",
     "StaffAccountUpdateInput",
-    "AttendanceLogInput",
-    "AttendanceLogOutput",
     "CreateEmployeeAccountRequest",
     "EmployeeAccountResponse",
 ]

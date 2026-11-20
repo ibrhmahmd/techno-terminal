@@ -101,6 +101,11 @@ class SessionService:
         if not group:
             raise NotFoundError(f"Group {data.group_id} not found.")
 
+        if repo.has_active_session_on(self._uow.session, data.group_id, data.extra_date):
+            raise BusinessRuleError(
+                f"Group {data.group_id} already has a session on {data.extra_date}."
+            )
+
         next_num = repo.get_next_session_number(self._uow.session, data.group_id, data.level_number)
 
         gl_id = repo.get_group_level_id(self._uow.session, data.group_id, data.level_number)

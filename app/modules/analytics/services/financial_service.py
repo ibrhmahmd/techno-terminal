@@ -27,6 +27,8 @@ class FinancialAnalyticsService:
 
     @staticmethod
     def _check_range(start: date, end: date) -> None:
+        if end < start:
+            raise ValidationError("start date must not be after end date")
         if (end - start).days > 365:
             raise ValidationError("Date range cannot exceed 365 days")
 
