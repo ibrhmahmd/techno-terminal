@@ -147,7 +147,7 @@ def get_student_enrollments(
 )
 def apply_sibling_discount(
     enrollment_id: int,
-    discount_amount: float = 50.0,
+    discount_amount: float = Query(50.0, ge=0),
     _user: User = Depends(require_admin),
     svc: EnrollmentService = Depends(get_enrollment_service),
 ):

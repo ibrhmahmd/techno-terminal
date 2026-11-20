@@ -423,7 +423,7 @@ def test_update_enrollment_not_found(client_with_uow, override_auth, mock_admin_
 def test_update_enrollment_negative_amount(
     client_with_uow, override_auth, mock_admin_headers, db_session, noop_notifications
 ):
-    """PATCH /enrollments/{id} with a negative amount_due returns 409."""
+    """PATCH /enrollments/{id} with a negative amount_due returns 422 (#256)."""
     course = _make_course(db_session)
     group = _make_group(db_session, course.id)
     student = _make_student(db_session, status="active")
@@ -435,17 +435,16 @@ def test_update_enrollment_negative_amount(
         json={"amount_due": -5.0},
     )
 
-    assert r.status_code == 409
+    assert r.status_code == 422
     body = r.json()
     assert body["success"] is False
-    assert body["error"] == "BusinessRuleError"
-    assert body["message"] == "Amount due cannot be negative."
+    assert body["error"] == "ValidationError"
 
 
 def test_update_enrollment_negative_discount(
     client_with_uow, override_auth, mock_admin_headers, db_session, noop_notifications
 ):
-    """PATCH /enrollments/{id} with a negative discount_applied returns 409."""
+    """PATCH /enrollments/{id} with a negative discount_applied returns 422 (#256)."""
     course = _make_course(db_session)
     group = _make_group(db_session, course.id)
     student = _make_student(db_session, status="active")
@@ -457,11 +456,10 @@ def test_update_enrollment_negative_discount(
         json={"discount_applied": -1.0},
     )
 
-    assert r.status_code == 409
+    assert r.status_code == 422
     body = r.json()
     assert body["success"] is False
-    assert body["error"] == "BusinessRuleError"
-    assert body["message"] == "Discount applied cannot be negative."
+    assert body["error"] == "ValidationError"
 
 
 def test_update_dropped_enrollment(

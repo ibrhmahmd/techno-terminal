@@ -1,6 +1,6 @@
 from typing import Optional, Any
 from datetime import date, datetime
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from app.modules.enrollments.models.enrollment_models import EnrollmentBase
 
 
@@ -8,7 +8,7 @@ class EnrollStudentInput(BaseModel):
     student_id: int
     group_id: int
     amount_due: Optional[float] = None
-    discount: float = 0.0
+    discount: float = Field(default=0.0, ge=0)
     notes: Optional[str] = None
     created_by: Optional[int] = None
 
@@ -20,8 +20,8 @@ class TransferStudentInput(BaseModel):
 
 
 class UpdateEnrollmentInput(BaseModel):
-    amount_due: Optional[float] = None
-    discount_applied: Optional[float] = None
+    amount_due: Optional[float] = Field(default=None, ge=0)
+    discount_applied: Optional[float] = Field(default=None, ge=0)
     notes: Optional[str] = None
 
 
