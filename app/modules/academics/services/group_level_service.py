@@ -7,7 +7,10 @@ Service class for Group Level (OTS) management.
 from typing import Optional
 
 from app.db.uow import UnitOfWork
+from sqlmodel import select
+
 from app.modules.academics.models import Group, GroupLevel, Course
+from app.modules.enrollments.models.enrollment_models import Enrollment
 import app.modules.academics.repositories.group_level_repository as repo
 from app.modules.academics.schemas.group_level_schemas import (
     GroupLevelDetailDTO,
@@ -149,6 +152,38 @@ class GroupLevelService:
             if prev_active:
                 group.level_number = prev_active.level_number
                 session.add(group)
+                if prev_active.status == "completed":
+                    prev_active.status = "active"
+                    prev_active.effective_to = None
+                    session.add(prev_active)
+                    # Same ADR-0004 debt as delete_level (#80/#222): academics writes enrollments.
+                    # Only students the progression moved up (they have a row on the cancelled level).
+                    # Their cancelled-level row is dropped first: there is no 'cancelled' status and
+                    # idx_enrollments_active_unique allows one active row per (student, group).
+                    cancelled_enrs = session.exec(select(Enrollment).where(
+                        Enrollment.group_id == group_id,
+                        Enrollment.level_number == level_number,
+                        Enrollment.status == "active",
+                    )).all()
+                    for enr in cancelled_enrs:
+                        enr.status = "dropped"
+                        enr.updated_at = utc_now()
+                        session.add(enr)
+                    session.flush()
+                    moved = select(Enrollment.student_id).where(
+                        Enrollment.group_id == group_id,
+                        Enrollment.level_number == level_number,
+                    )
+                    stmt = select(Enrollment).where(
+                        Enrollment.group_id == group_id,
+                        Enrollment.level_number == prev_active.level_number,
+                        Enrollment.status == "completed",
+                        Enrollment.student_id.in_(moved),
+                    )
+                    for enr in session.exec(stmt).all():
+                        enr.status = "active"
+                        enr.updated_at = utc_now()
+                        session.add(enr)
 
         self._uow.commit()
         self._uow.session.refresh(level)

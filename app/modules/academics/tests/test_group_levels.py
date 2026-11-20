@@ -237,3 +237,33 @@ class TestGroupLevelsFeature:
         # Assert group.level_number rolled back to 1
         db_group = db_session.get(Group, group.id)
         assert db_group.level_number == 1
+
+
+def test_cancel_level_reactivates_previous_level_and_progress_works_again(
+    client, mock_admin_headers, override_auth, db_session
+):
+    """#246: progress L1->L2, cancel L2 -> L1 and its enrollments active, progress succeeds."""
+    from sqlmodel import select
+    from app.testing.db_helpers import create_test_enrollment, create_test_student
+
+    course = create_test_course(db_session, sessions_per_level=2)
+    group = create_test_group(db_session, course_id=course.id, level_number=1)
+    db_session.add(GroupLevel(group_id=group.id, level_number=1, course_id=course.id, sessions_planned=2, status="active"))
+    db_session.commit()
+    student = create_test_student(db_session)
+    enr = create_test_enrollment(db_session, student.id, group.id, level_number=1)
+    enr_id, group_id = enr.id, group.id
+
+    url = f"/api/v1/academics/groups/{group_id}"
+    assert client.post(f"{url}/progress-level", headers=mock_admin_headers, json={}).status_code == 200
+    assert client.post(f"{url}/levels/2/cancel", headers=mock_admin_headers, json={}).status_code == 200
+
+    db_session.expire_all()
+    level1 = db_session.exec(
+        select(GroupLevel).where(GroupLevel.group_id == group_id, GroupLevel.level_number == 1)
+    ).one()
+    assert level1.status == "active" and level1.effective_to is None
+    assert db_session.get(Enrollment, enr_id).status == "active"
+    assert db_session.get(Group, group_id).level_number == 1
+
+    assert client.post(f"{url}/progress-level", headers=mock_admin_headers, json={"target_level": 3}).status_code == 200
