@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
 from app.db.uow import UnitOfWork
-from app.modules.auth import set_login_active
+from app.modules.auth import set_login_active, sync_supabase_ban
 from app.modules.hr.repositories import EmployeeRepository, StaffAccountRepository
 from app.modules.hr.schemas import (
     CreateEmployeeDTO,
@@ -30,10 +30,15 @@ class EmployeeCrudService:
         self._employees = EmployeeRepository(uow.session)
         self._staff_accounts = StaffAccountRepository(uow.session)
 
-    def _block_logins(self, employee) -> None:
-        """Deactivate every login linked to the employee, whichever side holds the link (#184)."""
-        for user in self._staff_accounts.linked_users(employee):
+    def _block_logins(self, employee) -> list[str | None]:
+        """Deactivate every login linked to the employee, whichever side holds the link (#184).
+
+        Returns their Supabase uids; the caller bans them after commit (#274).
+        """
+        return [
             set_login_active(self._uow, user.id, False)
+            for user in self._staff_accounts.linked_users(employee)
+        ]
 
     def _to_dto(self, employee) -> EmployeeReadDTO:
         """EmployeeReadDTO with ``has_account`` filled (#177)."""
@@ -87,6 +92,7 @@ class EmployeeCrudService:
         self._validate_unique_fields(dto, exclude_id=employee_id)
         self._normalize_update_employment(dto, existing)
 
+        blocked: list[str | None] = []
         try:
             updated = self._employees.update(employee_id, dto)
             # FR-011: deactivating an employee blocks their linked logins.
@@ -95,13 +101,14 @@ class EmployeeCrudService:
                 & {"is_active"}
                 and dto.is_active is False
             ):
-                self._block_logins(existing)
+                blocked = self._block_logins(existing)
             self._uow.flush()
             self._uow.commit()
         except IntegrityError as exc:
             self._uow.rollback()
             raise translate_employee_integrity_error(exc) from exc
 
+        sync_supabase_ban(blocked, banned=True)
         return self._to_dto(updated)
 
     def get_by_id(self, employee_id: int) -> EmployeeReadDTO:
@@ -138,11 +145,12 @@ class EmployeeCrudService:
         if not existing:
             raise NotFoundError(f"Employee {employee_id} not found")
 
-        self._block_logins(existing)
+        blocked = self._block_logins(existing)
 
         self._employees.soft_delete(employee_id, actor_user_id)
         self._uow.flush()
         self._uow.commit()
+        sync_supabase_ban(blocked, banned=True)
 
     def restore_employee(self, employee_id: int) -> EmployeeReadDTO:
         """Restore a soft-deleted employee.
