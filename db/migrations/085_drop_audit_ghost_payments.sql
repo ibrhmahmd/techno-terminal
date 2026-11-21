@@ -79,6 +79,9 @@ WHERE s.deleted_at IS NULL
 
 ORDER BY code;
 
+COMMENT ON VIEW v_audit_summary IS
+'Balance integrity audit summary. Run SELECT * FROM v_audit_summary to get anomaly counts for all 8 scenarios (A-G, I). Drill into v_audit_<scenario> for detail rows. ERROR = immediate action; WARNING = review this week; INFO = document and clean.';
+
 DROP VIEW IF EXISTS v_audit_ghost_payments;
 
 COMMIT;
