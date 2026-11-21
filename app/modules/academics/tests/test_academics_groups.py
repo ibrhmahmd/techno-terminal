@@ -18,7 +18,7 @@ Tests all endpoints in groups_router.py:
 import uuid
 
 import pytest
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from app.modules.academics.models import Group, Course, CourseSession
 
 
@@ -142,8 +142,9 @@ class TestGroupsRead:
             session_date=date.today(),
             level_number=2,
             session_number=1,
-            start_time=datetime.now().time(),
-            end_time=datetime.now().time(),
+            # Fixed times: two now() calls can return the same instant and break start < end.
+            start_time=time(10, 0),
+            end_time=time(11, 0),
             status="scheduled"
         )
         db_session.add(session)
