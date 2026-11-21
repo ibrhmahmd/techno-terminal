@@ -50,6 +50,7 @@ class AcademicRepository:
             LEFT JOIN parents g ON g.id = sg.parent_id
             WHERE s.session_date = :target_date
               AND a.status IN ('present', 'late')
+              AND st.deleted_at IS NULL
               AND vb.balance < 0
             ORDER BY total_balance DESC
         """)
@@ -75,6 +76,7 @@ class AcademicRepository:
               AND en.level_number = :level
               AND s.group_id = :group_id
               AND s.level_number = :level
+              AND st.deleted_at IS NULL
             ORDER BY st.full_name, s.session_number
         """)
         rows = self._session.execute(stmt, {"group_id": group_id, "level": level_number}).all()
@@ -100,6 +102,7 @@ class AcademicRepository:
             params["group_id"] = group_id
         else:
             where_sql = "en.status = 'active'"
+        where_sql += " AND st.deleted_at IS NULL"
     
         base_sql = f"""
             SELECT

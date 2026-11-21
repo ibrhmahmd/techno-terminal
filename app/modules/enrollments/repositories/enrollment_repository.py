@@ -31,6 +31,14 @@ class EnrollmentRepository:
         )
         return self._session.exec(stmt).first()
 
+    def get_active_enrollments_for_student(self, student_id: int) -> list[Enrollment]:
+        stmt = (
+            select(Enrollment)
+            .where(Enrollment.student_id == student_id)
+            .where(Enrollment.status == "active")
+        )
+        return list(self._session.exec(stmt).all())
+
     def update_enrollment_status(
         self, enrollment_id: int, status: str
     ) -> Enrollment | None:

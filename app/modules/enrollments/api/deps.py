@@ -8,6 +8,7 @@ from app.modules.enrollments.ports import EnrollmentNotifier
 from app.modules.enrollments.services.enrollment_service import EnrollmentService
 from app.modules.enrollments.services.enrollment_directory_service import EnrollmentDirectoryService
 from app.modules.enrollments.services.enrollment_lifecycle_service import EnrollmentLifecycleService
+from app.modules.enrollments.services.student_deletion_service import StudentDeletionService
 
 
 def get_enrollment_notifier() -> EnrollmentNotifier:
@@ -35,3 +36,8 @@ def get_enrollment_lifecycle_service(
 ) -> EnrollmentLifecycleService:
     """Dependency provider for the group level progression use case."""
     return EnrollmentLifecycleService(uow)
+
+
+def get_student_deletion_service(uow: UoW) -> StudentDeletionService:
+    """Dependency provider for the student soft-delete use case."""
+    return StudentDeletionService(uow)

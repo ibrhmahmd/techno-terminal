@@ -10,7 +10,10 @@ from app.modules.enrollments.api.enrollments_router import (
     progress_router as enrollments_progress_router,
 )
 
+from app.modules.enrollments.api.student_deletion_router import router as student_deletion_router
+
 __all__ = [
+    "student_deletion_router",
     "enrollments_router",
     "enrollments_progress_router",
 ]

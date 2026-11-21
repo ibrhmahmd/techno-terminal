@@ -403,23 +403,6 @@ def set_waiting_priority(
         raise NotFoundError(f"Student {student_id} not found or not on waiting list")
 
 
-# Delete student by ID
-@router.delete(
-    "/students/{student_id}",
-    response_model=ApiResponse[None],
-    summary="Delete a student by ID",
-    description="Soft-deletes the student (recoverable via restore). Hard delete is DELETE /students/{student_id}/hard."
-)
-def delete_student_by_id(
-    student_id: int,
-    current_user: User = Depends(require_admin),
-    svc: StudentCrudService = Depends(get_student_crud_service),
-):
-    if not svc.soft_delete_student(student_id, deleted_by=current_user.id):
-        raise NotFoundError(f"Student {student_id} not found")
-    return ApiResponse(data=None, message="Student deleted successfully.")
-
-
 # ── NEW: Student Detail Endpoints ────────────────────────────────────────────
 
 @router.get(
@@ -477,34 +460,6 @@ def get_student_siblings(
 
 
 # ── Soft Delete Endpoints ─────────────────────────────────────────────────────
-
-@router.delete(
-    "/students/{student_id}/soft",
-    response_model=ApiResponse[StudentDeletionResult],
-    summary="Soft delete a student",
-    description="Marks a student as deleted without removing from database. Student can be restored later."
-)
-def soft_delete_student(
-    student_id: int,
-    current_user: User = Depends(require_admin),
-    svc: StudentCrudService = Depends(get_student_crud_service),
-):
-    """
-    Soft delete a student (logically removed, recoverable).
-    Payments stay live (#175).
-    """
-    try:
-        success = svc.soft_delete_student(student_id, deleted_by=current_user.id)
-        if not success:
-            raise NotFoundError(f"Student {student_id} not found or already deleted")
-
-        return ApiResponse(
-            data={"student_id": student_id, "status": "soft_deleted"},
-            message="Student soft-deleted successfully. Use restore endpoint to recover."
-        )
-    except NotFoundError:
-        raise NotFoundError(f"Student {student_id} not found")
-
 
 @router.post(
     "/students/{student_id}/restore",

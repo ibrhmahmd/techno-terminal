@@ -44,6 +44,7 @@ Run
 GMAIL_SENDER_ADDRESS= GMAIL_APP_PASSWORD= TWILIO_ACCOUNT_SID= TWILIO_AUTH_TOKEN= SUPABASE_URL=http://127.0.0.1:9 /home/ibrahim/Desktop/techno-projects/techno-terminal/.venv/bin/python -m pytest app/modules/crm/tests/characterization/test_crm_students_lifecycle_api.py -q -p no:cacheprovider
 """
 
+from app.shared.datetime_utils import utc_now
 import uuid
 from datetime import date, datetime
 from sqlmodel import select
@@ -665,7 +666,11 @@ def test_list_deleted_students_fills_age_group_and_balance(client_with_uow, over
     course = create_test_course(db_session, name=f"DelCourse {_short()}")
     group = create_test_group(db_session, course_id=course.id, name=f"DelGroup {_short()}")
     create_test_enrollment(db_session, student_id=student.id, group_id=group.id, status="active", amount_due=300.0)
-    assert client_with_uow.delete(f"/api/v1/crm/students/{student.id}/soft", headers=mock_admin_headers).status_code == 200
+    # Deleting through the API now drops the active enrollment (#175); mark the student
+    # deleted directly to keep the enrollment active, which is what this read needs.
+    student.deleted_at = utc_now()
+    db_session.add(student)
+    db_session.commit()
 
     r = client_with_uow.get("/api/v1/crm/admin/deleted-students?limit=100", headers=mock_admin_headers)
 

@@ -114,6 +114,7 @@ class GroupDetailsRepository:
             WHERE e.group_id = :group_id
                 AND e.level_number = :level_number
                 AND e.status IN ('active', 'completed')
+                AND s.deleted_at IS NULL
             ORDER BY s.full_name
         """)
 
@@ -182,6 +183,7 @@ class GroupDetailsRepository:
                 GROUP BY enrollment_id
             ) sess ON e.id = sess.enrollment_id
             WHERE e.group_id = :group_id
+              AND s.deleted_at IS NULL
             ORDER BY e.level_number, s.full_name
         """)
 

@@ -62,6 +62,7 @@ from app.modules.attendance.api import router as attendance_router
 from app.modules.enrollments.api import (
     enrollments_router,
     enrollments_progress_router,
+    student_deletion_router,
 )
 from app.modules.notifications.api import router as notifications_router
 from app.modules.competitions.api import competitions_router, teams_router
@@ -152,6 +153,8 @@ def create_app() -> FastAPI:
     # CRM (Students and Parents)
     app.include_router(students_router.router, prefix="/api/v1", tags=["CRM — Students"])
     app.include_router(student_payments_router, prefix="/api/v1", tags=["CRM — Students"])
+    # Student delete also drops enrollments (ADR-0006), so enrollments owns the route
+    app.include_router(student_deletion_router, prefix="/api/v1", tags=["CRM — Students"])
     app.include_router(parents_router.router, prefix="/api/v1", tags=["CRM — Parents"])
     # Academics (Courses, Groups, Sessions) + Attendance
     app.include_router(courses_router, prefix="/api/v1", tags=["Academics — Courses"])

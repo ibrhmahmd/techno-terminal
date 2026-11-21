@@ -1,7 +1,7 @@
 """
 app/modules/audit/api/router.py
 ───────────────────────────────
-Integrity checks (scenarios A–I): the anomalies the audit views detect. Admin-only, read-only.
+Integrity checks (scenarios A–G and I): the anomalies the audit views detect. Admin-only, read-only.
 """
 from datetime import date
 
@@ -33,7 +33,7 @@ def list_audit_scenarios(
     _user: User = Depends(require_admin),
     svc: AuditService = Depends(get_audit_service),
 ):
-    """Scenarios A–I, errors first, then warnings, then info."""
+    """Scenarios A–G and I, errors first, then warnings, then info."""
     return ApiResponse(data=svc.list_scenarios())
 
 
@@ -51,6 +51,6 @@ def list_audit_scenario_rows(
     _user: User = Depends(require_admin),
     svc: AuditService = Depends(get_audit_service),
 ):
-    """The rows of one check (A–I); the row shape depends on the check."""
+    """The rows of one check (A–G and I); the row shape depends on the check."""
     result = svc.get_scenario_rows(code, since=since, skip=skip, limit=limit)
     return PaginatedResponse(data=result.rows, total=result.total, skip=skip, limit=limit)

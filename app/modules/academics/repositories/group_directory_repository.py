@@ -168,6 +168,7 @@ def filter_groups_query(
                     JOIN students st ON enr.student_id = st.id
                     WHERE enr.group_id = g.id
                       AND enr.status = 'active'
+                      AND st.deleted_at IS NULL
                       AND st.full_name ILIKE :q
                 )
             )

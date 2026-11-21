@@ -39,6 +39,7 @@ from app.modules.crm.schemas import (
     StudentFilterDTO,
     StudentFilterResultDTO,
     StudentGroupedResultDTO,
+    StudentDeletionResult,
 )
 
 # Legacy DTOs kept for backward compatibility (used by existing callers)
@@ -54,6 +55,7 @@ from app.modules.crm.services.e2e_purge_service import CrmE2EPurgeService
 from app.modules.crm.schemas.e2e_purge import CrmE2ESeedDTO
 
 __all__ = [
+    "StudentDeletionResult",
     "CrmE2EPurgeService",
     "CrmE2ESeedDTO",
     # Models
