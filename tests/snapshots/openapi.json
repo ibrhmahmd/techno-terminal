@@ -8202,131 +8202,6 @@
         "title": "GenerateLevelSessionsRequest",
         "type": "object"
       },
-      "GhostPaymentRowDTO": {
-        "description": "H: active payment that belongs to a soft-deleted student.",
-        "properties": {
-          "amount": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Amount"
-          },
-          "created_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Created At"
-          },
-          "deleted_student_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Deleted Student Name"
-          },
-          "enrollment_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Enrollment Id"
-          },
-          "paid_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Paid At"
-          },
-          "payment_id": {
-            "title": "Payment Id",
-            "type": "integer"
-          },
-          "receipt_number": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Receipt Number"
-          },
-          "student_deleted_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Student Deleted At"
-          },
-          "student_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Student Id"
-          },
-          "transaction_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Transaction Type"
-          }
-        },
-        "required": [
-          "payment_id",
-          "student_id",
-          "deleted_student_name",
-          "student_deleted_at",
-          "amount",
-          "transaction_type",
-          "enrollment_id",
-          "receipt_number",
-          "paid_at",
-          "created_at"
-        ],
-        "title": "GhostPaymentRowDTO",
-        "type": "object"
-      },
       "GroupAttendanceResponseDTO": {
         "description": "Root response for GET /academics/groups/{id}/attendance",
         "properties": {
@@ -10647,7 +10522,7 @@
         "title": "PaginatedResponse[StudentListingDTO]",
         "type": "object"
       },
-      "PaginatedResponse_Union_ZeroChargeEnrollmentRowDTO__OverpaidEnrollmentRowDTO__OrphanedPaymentRowDTO__DuplicateEnrollmentRowDTO__DeadGroupEnrollmentRowDTO__UnrefundedExitRowDTO__LevelMismatchRowDTO__GhostPaymentRowDTO__OverdiscountedEnrollmentRowDTO__": {
+      "PaginatedResponse_Union_ZeroChargeEnrollmentRowDTO__OverpaidEnrollmentRowDTO__OrphanedPaymentRowDTO__DuplicateEnrollmentRowDTO__DeadGroupEnrollmentRowDTO__UnrefundedExitRowDTO__LevelMismatchRowDTO__OverdiscountedEnrollmentRowDTO__": {
         "properties": {
           "data": {
             "items": {
@@ -10672,9 +10547,6 @@
                 },
                 {
                   "$ref": "#/components/schemas/LevelMismatchRowDTO"
-                },
-                {
-                  "$ref": "#/components/schemas/GhostPaymentRowDTO"
                 },
                 {
                   "$ref": "#/components/schemas/OverdiscountedEnrollmentRowDTO"
@@ -10708,7 +10580,7 @@
           "data",
           "total"
         ],
-        "title": "PaginatedResponse[Union[ZeroChargeEnrollmentRowDTO, OverpaidEnrollmentRowDTO, OrphanedPaymentRowDTO, DuplicateEnrollmentRowDTO, DeadGroupEnrollmentRowDTO, UnrefundedExitRowDTO, LevelMismatchRowDTO, GhostPaymentRowDTO, OverdiscountedEnrollmentRowDTO]]",
+        "title": "PaginatedResponse[Union[ZeroChargeEnrollmentRowDTO, OverpaidEnrollmentRowDTO, OrphanedPaymentRowDTO, DuplicateEnrollmentRowDTO, DeadGroupEnrollmentRowDTO, UnrefundedExitRowDTO, LevelMismatchRowDTO, OverdiscountedEnrollmentRowDTO]]",
         "type": "object"
       },
       "PaginatedResponse_UnpaidEnrollmentItem_": {
@@ -22664,7 +22536,7 @@
     },
     "/api/v1/audit/scenarios": {
       "get": {
-        "description": "Scenarios A\u2013I, errors first, then warnings, then info.",
+        "description": "Scenarios A\u2013G and I, errors first, then warnings, then info.",
         "operationId": "list_audit_scenarios_api_v1_audit_scenarios_get",
         "responses": {
           "200": {
@@ -22722,7 +22594,7 @@
     },
     "/api/v1/audit/scenarios/{code}": {
       "get": {
-        "description": "The rows of one check (A\u2013I); the row shape depends on the check.",
+        "description": "The rows of one check (A\u2013G and I); the row shape depends on the check.",
         "operationId": "list_audit_scenario_rows_api_v1_audit_scenarios__code__get",
         "parameters": [
           {
@@ -22782,7 +22654,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PaginatedResponse_Union_ZeroChargeEnrollmentRowDTO__OverpaidEnrollmentRowDTO__OrphanedPaymentRowDTO__DuplicateEnrollmentRowDTO__DeadGroupEnrollmentRowDTO__UnrefundedExitRowDTO__LevelMismatchRowDTO__GhostPaymentRowDTO__OverdiscountedEnrollmentRowDTO__"
+                  "$ref": "#/components/schemas/PaginatedResponse_Union_ZeroChargeEnrollmentRowDTO__OverpaidEnrollmentRowDTO__OrphanedPaymentRowDTO__DuplicateEnrollmentRowDTO__DeadGroupEnrollmentRowDTO__UnrefundedExitRowDTO__LevelMismatchRowDTO__OverdiscountedEnrollmentRowDTO__"
                 }
               }
             },
@@ -25277,7 +25149,7 @@
     },
     "/api/v1/crm/students/{student_id}": {
       "delete": {
-        "description": "Soft-deletes the student (recoverable via restore). Hard delete is DELETE /students/{student_id}/hard.",
+        "description": "Soft-deletes the student (recoverable via restore) and drops their active enrollments. Hard delete is DELETE /students/{student_id}/hard.",
         "operationId": "delete_student_by_id_api_v1_crm_students__student_id__delete",
         "parameters": [
           {

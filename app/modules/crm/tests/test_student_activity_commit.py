@@ -13,6 +13,7 @@ from app.modules.crm.models.activity_models import StudentActivityLog
 from app.modules.crm.models.student_models import Student
 from app.modules.crm.services.activity_service import StudentActivityService
 from app.modules.crm.services.student_crud_service import StudentCrudService
+from app.modules.enrollments.services.student_deletion_service import StudentDeletionService
 
 
 def _student(uow) -> Student:
@@ -36,7 +37,7 @@ def test_soft_delete_and_restore_activities_are_committed(uow):
     student = _student(uow)
     svc = _svc(uow)
 
-    assert svc.soft_delete_student(student.id, deleted_by=None) is True
+    assert StudentDeletionService(uow).delete_student(student.id, deleted_by=None) is True
     assert _committed_types(uow, student.id) == ["deletion"]
 
     assert svc.restore_student(student.id) is True

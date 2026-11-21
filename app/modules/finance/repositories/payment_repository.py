@@ -180,7 +180,7 @@ class PaymentRepository:
         Returns items and total count for pagination.
         """
         # Build base query - v_unpaid_enrollments already filters for unpaid
-        base_where = "1=1"
+        base_where = "student_id IN (SELECT id FROM students WHERE deleted_at IS NULL)"
         params = {}
 
         if group_id:

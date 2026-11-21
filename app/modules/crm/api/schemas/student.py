@@ -12,6 +12,8 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
+from app.modules.crm.schemas.student_deletion_result import StudentDeletionResult  # noqa: F401  (re-exported)
+
 
 class StudentPublic(BaseModel):
     """
@@ -68,10 +70,3 @@ class WaitingStudentDTO(StudentListingDTO):
     waiting_since: Optional[datetime] = None
     waiting_priority: Optional[int] = None
     waiting_notes: Optional[str] = None
-
-
-class StudentDeletionResult(BaseModel):
-    """Result of a soft/hard delete or restore operation."""
-    student_id: int
-    status: str  # soft_deleted, restored, permanently_deleted
-

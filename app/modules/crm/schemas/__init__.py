@@ -52,7 +52,10 @@ from .student_filter_dto import StudentFilterDTO
 from .student_filter_result_dto import StudentFilterResultDTO, StudentFilterItemDTO
 
 
+from .student_deletion_result import StudentDeletionResult
+
 __all__ = [
+    "StudentDeletionResult",
     # Student DTOs
     "StudentSummaryDTO",
     "StudentGroupedResultDTO",

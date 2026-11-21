@@ -263,6 +263,7 @@ class ReportsRepository:
                 WHERE s.session_date = :target_date
                   AND s.session_number = 3
                   AND s.status IN ('completed', 'scheduled')
+                  AND st.deleted_at IS NULL
                   AND vb.balance < 0
                 ORDER BY amount_owed DESC
             """)
@@ -300,6 +301,7 @@ class ReportsRepository:
                     AND s.level_number = e.level_number
                     AND s.session_date <= :as_of_date
                 WHERE e.status = 'active'
+                  AND st.deleted_at IS NULL
                   AND a.status = 'present'
                   AND vb.balance < 0
                 GROUP BY st.id, st.full_name, g.name, co.name, vb.balance, e.id
@@ -330,6 +332,7 @@ class ReportsRepository:
                        COUNT(DISTINCT e.student_id) AS expected_student_count
                 FROM sessions s
                 JOIN enrollments e ON e.group_id = s.group_id AND e.level_number = s.level_number
+                JOIN students st ON e.student_id = st.id AND st.deleted_at IS NULL
                 WHERE s.session_date = :tomorrow
                   AND s.status = 'scheduled'
             """)
@@ -358,6 +361,7 @@ class ReportsRepository:
                 LEFT JOIN groups g ON e.group_id = g.id
                 WHERE s.session_date = :tomorrow
                   AND s.status = 'scheduled'
+                  AND st.deleted_at IS NULL
                   AND vb.balance < 0
                 ORDER BY amount_owed DESC
             """)
@@ -491,6 +495,7 @@ class ReportsRepository:
                 JOIN students s ON v.student_id = s.id
                 JOIN groups g ON v.group_id = g.id
                 WHERE v.balance < 0
+                  AND s.deleted_at IS NULL
             """)
             debt_rows = session.execute(debtor_stmt).all()
             for r in debt_rows:
@@ -507,6 +512,7 @@ class ReportsRepository:
                 FROM v_enrollment_balance v
                 JOIN students s ON v.student_id = s.id
                 WHERE v.balance < 0
+                  AND s.deleted_at IS NULL
                 GROUP BY s.id, s.full_name
                 ORDER BY amount_owed DESC
                 LIMIT 5

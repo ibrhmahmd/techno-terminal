@@ -164,6 +164,7 @@ class BiRepository:
             JOIN v_enrollment_balance vb ON vb.enrollment_id = en.id
             JOIN v_enrollment_attendance att ON att.enrollment_id = en.id
             WHERE en.status = 'active'
+              AND st.deleted_at IS NULL
               AND vb.balance < 0
               AND att.sessions_missed > 0
             ORDER BY att.sessions_missed DESC, amount_owed DESC

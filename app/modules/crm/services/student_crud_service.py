@@ -275,7 +275,8 @@ class StudentCrudService:
     def soft_delete_student(self, student_id: int, deleted_by: int) -> bool:
         """
         Soft delete a student (marks as deleted without removing from database).
-        Payments stay live (#175).
+        Payments stay live (#175). Does not commit: it is one step of the enrollments
+        use case StudentDeletionService (ADR-0006), which commits once.
         """
         student = self._students.get_by_id(student_id)
         if not student:
@@ -297,7 +298,6 @@ class StudentCrudService:
                         performed_by=deleted_by,
                     )
                 )
-            self._uow.commit()
 
         return success
 

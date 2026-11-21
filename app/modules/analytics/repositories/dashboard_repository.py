@@ -306,6 +306,7 @@ class DashboardRepository:
             WHERE e.group_id = :group_id
                 AND e.level_number = :level_number
                 AND e.status = 'active'
+                AND s.deleted_at IS NULL
             ORDER BY s.full_name
         """)
     

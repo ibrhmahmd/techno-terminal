@@ -1,7 +1,7 @@
 # AGENTS.md — Techno Terminal
 
 FastAPI + SQLModel + PostgreSQL backend for STEM education center management.
-Supabase Auth, 12 business modules, plain-SQL migrations. Python `>=3.11,<3.13` (`.python-version` pins 3.11.9). The `audit` module (ADR-0011) carries a Streamlit demo UI (`audit_dashboard.py` launcher); it is never deployed. Its API (admin-only): `GET /api/v1/audit/scenarios` (checks A–I with counts) and `GET /api/v1/audit/scenarios/{code}` (typed, paginated anomaly rows).
+Supabase Auth, 12 business modules, plain-SQL migrations. Python `>=3.11,<3.13` (`.python-version` pins 3.11.9). The `audit` module (ADR-0011) carries a Streamlit demo UI (`audit_dashboard.py` launcher); it is never deployed. Its API (admin-only): `GET /api/v1/audit/scenarios` (checks A–G and I with counts; H was retired, #275) and `GET /api/v1/audit/scenarios/{code}` (typed, paginated anomaly rows).
 
 ## Entry Points
 

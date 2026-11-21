@@ -70,7 +70,8 @@ class FinancialRepository:
             FROM v_enrollment_balance vb
             JOIN groups g ON vb.group_id = g.id
             JOIN courses c ON g.course_id = c.id
-            WHERE vb.balance < 0 AND g.status = 'active'
+            JOIN students st ON vb.student_id = st.id
+            WHERE vb.balance < 0 AND g.status = 'active' AND st.deleted_at IS NULL
             GROUP BY g.id, g.name, c.name
             ORDER BY total_outstanding DESC
         """)
@@ -92,6 +93,7 @@ class FinancialRepository:
             LEFT JOIN student_parents sg ON sg.student_id = st.id AND sg.is_primary = TRUE
             LEFT JOIN parents g ON g.id = sg.parent_id
             WHERE vb.balance < 0
+              AND st.deleted_at IS NULL
             GROUP BY st.id, st.full_name, g.full_name, g.phone_primary
             ORDER BY total_outstanding DESC
             LIMIT :limit

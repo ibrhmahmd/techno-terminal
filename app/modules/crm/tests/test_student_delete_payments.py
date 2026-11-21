@@ -4,6 +4,7 @@ from datetime import timedelta
 
 from app.modules.crm.models.student_models import Student
 from app.modules.crm.services.student_crud_service import StudentCrudService
+from app.modules.enrollments.services.student_deletion_service import StudentDeletionService
 from app.modules.finance.models import Payment, Receipt
 from app.shared.datetime_utils import utc_now
 
@@ -37,7 +38,7 @@ def test_delete_keeps_payment_live(uow):
     student = _student(uow)
     pay = _payment(uow, student.id)
 
-    assert StudentCrudService(uow).soft_delete_student(student.id, deleted_by=None) is True
+    assert StudentDeletionService(uow).delete_student(student.id, deleted_by=None) is True
 
     assert _payment_deleted_at(uow, pay.id) is None
 
@@ -48,7 +49,7 @@ def test_earlier_void_stays_voided_after_delete_and_restore(uow):
     pay = _payment(uow, student.id, deleted_at=voided_at)
     svc = StudentCrudService(uow)
 
-    svc.soft_delete_student(student.id, deleted_by=None)
+    StudentDeletionService(uow).delete_student(student.id, deleted_by=None)
     svc.restore_student(student.id)
 
     assert _payment_deleted_at(uow, pay.id) == voided_at
