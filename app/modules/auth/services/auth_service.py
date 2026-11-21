@@ -19,6 +19,7 @@ from app.shared.constants import MIN_PASSWORD_LENGTH
 from app.shared.exceptions import AuthError, BusinessRuleError, ConflictError, ForbiddenError, NotFoundError, ValidationError
 from app.modules.auth.models.audit_log import AuditLogEventType
 from app.modules.auth.services.audit_service import AuditService
+from app.modules.auth.services.login_admin import sync_supabase_ban
 from app.modules.auth.services.provisioning import provision_login, _create_supabase_user
 
 logger = logging.getLogger(__name__)
@@ -255,6 +256,8 @@ class AuthService:
             )
         self._uow.commit()
         self._uow.session.refresh(user)
+        if dto.is_active is not None:
+            sync_supabase_ban([user.supabase_uid], banned=not dto.is_active)
         return user
 
     def delete_user(self, target_user_id: int, current_user: User) -> None:

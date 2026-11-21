@@ -136,7 +136,8 @@ class EnrollmentLifecycleService:
 
             total_amount_due += new_amount_due
 
-            discount = enrollment.discount_applied if data.preserve_discounts else 0.0
+            # Capped at the new amount due so the carried discount can't exceed the price (#277).
+            discount = min(enrollment.discount_applied, new_amount_due) if data.preserve_discounts else 0.0
 
             new_enrollment = Enrollment(
                 student_id=enrollment.student_id,

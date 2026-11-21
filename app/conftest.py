@@ -58,6 +58,19 @@ def dispatch_recorder(request, monkeypatch):
     return email, whatsapp
 
 
+@pytest.fixture(autouse=True)
+def supabase_ban_admin(monkeypatch):
+    """Supabase ban/unban on (de)activation (#274) hits a recording fake, never the network.
+
+    Assert on ``supabase_ban_admin.auth.admin.update_user_by_id.call_args_list``.
+    """
+    from unittest.mock import MagicMock
+
+    admin = MagicMock()
+    monkeypatch.setattr("app.modules.auth.services.login_admin.get_supabase_admin", lambda: admin)
+    return admin
+
+
 @pytest.fixture(scope="session")
 def app():
     """FastAPI application instance."""

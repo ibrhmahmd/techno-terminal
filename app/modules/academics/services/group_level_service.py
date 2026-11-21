@@ -135,7 +135,13 @@ class GroupLevelService:
         if level.status == "cancelled":
             raise BusinessRuleError("Level is already cancelled")
 
-        # 3. Cancel it
+        # 3. Refuse while money sits on the level (#280): a cancel would orphan it
+        if repo.level_has_live_payments(session, group_id, level_number):
+            raise BusinessRuleError(
+                f"Cannot cancel level {level_number}: it has payments. Refund them first."
+            )
+
+        # 4. Cancel it
         level.status = "cancelled"
         level.effective_to = utc_now()
         apply_update_audit(level)

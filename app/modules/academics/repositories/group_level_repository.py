@@ -8,6 +8,8 @@ from sqlmodel import Session, select
 from app.shared.datetime_utils import utc_now
 from app.shared.audit_utils import apply_update_audit
 from app.modules.academics.models.group_level_models import GroupLevel
+from app.modules.enrollments.models.enrollment_models import Enrollment
+from app.modules.finance.models.payment import Payment
 from app.modules.academics.constants import (
     LEVEL_STATUS_ACTIVE, LEVEL_STATUS_COMPLETED,
 )
@@ -23,6 +25,19 @@ def get_group_level_by_number(
         .where(GroupLevel.level_number == level_number)
     )
     return session.exec(stmt).first()
+
+
+def level_has_live_payments(session: Session, group_id: int, level_number: int) -> bool:
+    """True if any non-deleted payment (any transaction type) sits on an enrollment of the level."""
+    stmt = (
+        select(Payment.id)
+        .join(Enrollment, Payment.enrollment_id == Enrollment.id)
+        .where(Enrollment.group_id == group_id)
+        .where(Enrollment.level_number == level_number)
+        .where(Payment.deleted_at.is_(None))
+        .limit(1)
+    )
+    return session.exec(stmt).first() is not None
 
 
 def list_group_levels(
