@@ -20,7 +20,7 @@
 --     WHERE enrolled_at >= '2026-07-01';              -- filter migration artifacts
 --
 -- Severity tiers:
---   ERROR   (D, H) — direct financial risk, investigate immediately
+--   ERROR   (D) — direct financial risk, investigate immediately
 --   WARNING (B, C, F, I) — financial discrepancy, review within week
 --   INFO    (A, E, G) — data hygiene, review and document
 -- =============================================================================
@@ -255,32 +255,6 @@ COMMENT ON VIEW v_audit_level_mismatch IS
 'INFO: Enrollments whose (group_id, level_number) has no corresponding group_levels row. Cannot be attributed in Round Cost or analytics. Triggers data_quality_warning in Report 4.';
 
 -- =============================================================================
--- SCENARIO H 🔴 ERROR — Active Payments for Soft-Deleted Students
--- Non-deleted payments referencing soft-deleted students
--- =============================================================================
-CREATE OR REPLACE VIEW v_audit_ghost_payments AS
-SELECT
-    p.id              AS payment_id,
-    p.student_id,
-    s.full_name       AS deleted_student_name,
-    s.deleted_at      AS student_deleted_at,
-    p.amount,
-    p.transaction_type,
-    p.enrollment_id,
-    r.receipt_number,
-    r.paid_at,
-    p.created_at
-FROM payments p
-JOIN students s ON s.id = p.student_id
-JOIN receipts r ON r.id = p.receipt_id
-WHERE p.deleted_at IS NULL
-  AND s.deleted_at IS NOT NULL
-ORDER BY s.deleted_at DESC;
-
-COMMENT ON VIEW v_audit_ghost_payments IS
-'ERROR: Active (non-soft-deleted) payments for soft-deleted students. Ghost money — distorts revenue totals. Should be soft-deleted together with the student record.';
-
--- =============================================================================
 -- SCENARIO I 🟡 WARNING — Full or Over-Discounts (≥ 100% of amount_due)
 -- discount_applied >= amount_due — charge effectively zeroed or negated
 -- =============================================================================
@@ -314,7 +288,7 @@ COMMENT ON VIEW v_audit_overdiscounted_enrollments IS
 -- =============================================================================
 -- SUMMARY VIEW — v_audit_summary
 -- Run this first. Any non-zero count tells you where to look.
--- Returns: code, severity, label, anomaly_count for all 9 scenarios
+-- Returns: code, severity, label, anomaly_count for all 8 scenarios (A-G, I)
 -- =============================================================================
 CREATE OR REPLACE VIEW v_audit_summary AS
 SELECT 'A' AS code, 'INFO'    AS severity, 'Zero-Charge Active Enrollments'            AS label,
@@ -378,12 +352,6 @@ WHERE s.deleted_at IS NULL
 
 UNION ALL
 
-SELECT 'H', 'ERROR', 'Active Payments for Soft-Deleted Students', COUNT(*) FROM payments p
-JOIN students s ON s.id = p.student_id
-WHERE p.deleted_at IS NULL AND s.deleted_at IS NOT NULL
-
-UNION ALL
-
 SELECT 'I', 'WARNING', 'Full or Over-Discounts (>= 100%)', COUNT(*) FROM enrollments e
 JOIN students s ON s.id = e.student_id
 WHERE s.deleted_at IS NULL
@@ -392,7 +360,7 @@ WHERE s.deleted_at IS NULL
 ORDER BY code;
 
 COMMENT ON VIEW v_audit_summary IS
-'Balance integrity audit summary. Run SELECT * FROM v_audit_summary to get anomaly counts for all 9 scenarios. Drill into v_audit_<scenario> for detail rows. ERROR = immediate action; WARNING = review this week; INFO = document and clean.';
+'Balance integrity audit summary. Run SELECT * FROM v_audit_summary to get anomaly counts for all 8 scenarios (A-G, I). Drill into v_audit_<scenario> for detail rows. ERROR = immediate action; WARNING = review this week; INFO = document and clean.';
 
 -- =============================================================================
 -- VERIFICATION

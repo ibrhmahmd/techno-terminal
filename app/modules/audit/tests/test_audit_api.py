@@ -1,4 +1,4 @@
-"""Audit API (#114): the integrity checks A–I, admin-only and read-only."""
+"""Audit API (#114): the integrity checks A–G and I, admin-only and read-only."""
 
 from datetime import date
 
@@ -93,3 +93,10 @@ def test_invalid_query_is_422(client_with_uow, override_auth, mock_admin_headers
 @pytest.mark.parametrize("path", ["/scenarios", "/scenarios/A"])
 def test_requires_auth(client, path):
     assert client.get(f"{API}{path}").status_code == 401
+
+
+def test_retired_scenario_h_is_gone(client_with_uow, override_auth, mock_admin_headers):
+    """H was retired with #275: deleted students keep their payments."""
+    codes = [row["code"] for row in _get(client_with_uow, mock_admin_headers, "/scenarios").json()["data"]]
+    assert "H" not in codes and "I" in codes
+    assert _get(client_with_uow, mock_admin_headers, "/scenarios/H").status_code == 404

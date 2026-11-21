@@ -22,13 +22,12 @@ _PAGE_ORDER = {
     "v_audit_dead_group_enrollments": [("group_status", "asc"), ("group_name", "asc"), ("enrollment_id", "asc")],
     "v_audit_unrefunded_exits": [("net_collected", "desc"), ("enrollment_id", "asc")],
     "v_audit_level_mismatch": [("enrolled_at", "desc"), ("enrollment_id", "asc")],
-    "v_audit_ghost_payments": [("student_deleted_at", "desc"), ("payment_id", "asc")],
     "v_audit_overdiscounted_enrollments": [("discount_pct", "desc"), ("enrollment_id", "asc")],
 }
 
 
 class AuditService:
-    """The integrity checks A–I (ADR-0012: audit verifies). Read-only; never commits."""
+    """The integrity checks A–G and I (ADR-0012: audit verifies). Read-only; never commits."""
 
     def __init__(self, uow: UnitOfWork) -> None:
         self._views = ViewRepository(uow.session)

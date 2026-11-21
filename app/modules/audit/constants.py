@@ -64,14 +64,6 @@ SCENARIOS = [
         "tip": "Run Report 4 after fixing to confirm attribution restores correctly.",
     },
     {
-        "code": "H",
-        "severity": "ERROR",
-        "label": "Active Payments for Soft-Deleted Students",
-        "view": "v_audit_ghost_payments",
-        "description": "Non-deleted payments for soft-deleted students — ghost money distorting revenue.",
-        "tip": "These payments should be soft-deleted together with the student record.",
-    },
-    {
         "code": "I",
         "severity": "WARNING",
         "label": "Full or Over-Discounts (≥ 100%)",
@@ -185,7 +177,6 @@ AUDIT_DATE_COLUMNS = {
     "v_audit_dead_group_enrollments": "enrolled_at",
     "v_audit_unrefunded_exits": None,
     "v_audit_level_mismatch": "enrolled_at",
-    "v_audit_ghost_payments": "paid_at",
     "v_audit_overdiscounted_enrollments": "enrolled_at",
 }
 

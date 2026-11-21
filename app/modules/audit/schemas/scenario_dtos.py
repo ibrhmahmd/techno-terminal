@@ -137,21 +137,6 @@ class LevelMismatchRowDTO(_Row):
     notes: str | None
 
 
-class GhostPaymentRowDTO(_Row):
-    """H: active payment that belongs to a soft-deleted student."""
-
-    payment_id: int
-    student_id: int | None
-    deleted_student_name: str | None
-    student_deleted_at: datetime | None
-    amount: Decimal | None
-    transaction_type: str | None
-    enrollment_id: int | None
-    receipt_number: str | None
-    paid_at: datetime | None
-    created_at: datetime | None
-
-
 class OverdiscountedEnrollmentRowDTO(_Row):
     """I: discount of 100% or more."""
 
@@ -178,7 +163,6 @@ AuditRowDTO = (
     | DeadGroupEnrollmentRowDTO
     | UnrefundedExitRowDTO
     | LevelMismatchRowDTO
-    | GhostPaymentRowDTO
     | OverdiscountedEnrollmentRowDTO
 )
 
@@ -190,7 +174,6 @@ ROW_DTO_BY_VIEW: dict[str, type[_Row]] = {
     "v_audit_dead_group_enrollments": DeadGroupEnrollmentRowDTO,
     "v_audit_unrefunded_exits": UnrefundedExitRowDTO,
     "v_audit_level_mismatch": LevelMismatchRowDTO,
-    "v_audit_ghost_payments": GhostPaymentRowDTO,
     "v_audit_overdiscounted_enrollments": OverdiscountedEnrollmentRowDTO,
 }
 
