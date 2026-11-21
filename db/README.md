@@ -49,14 +49,14 @@ The audit, finance and BI views read by the `audit` module (`v_audit_*`, `v_fina
 
 - `DATABASE_URL` — PostgreSQL connection string.
 - `SUPABASE_URL`, `SUPABASE_ANON_KEY` — app + API JWT validation.
-- `SUPABASE_SERVICE_ROLE_KEY` — staff provisioning, password reset, `app/db/seed.py` (optional for read-only dev).
+- `SUPABASE_SERVICE_ROLE_KEY` — staff provisioning and password reset (optional for read-only dev).
 
 ## Bootstrap paths
 
 ### A. New database (SQL-first)
 
 1. `psql "$DATABASE_URL" -f db/schema.sql`
-2. Run the app once with `python run_ui.py` (or `python -m app.db.seed`) to map the admin user in Supabase to `users.supabase_uid`.
+2. Create the first admin by hand: add the user in Supabase (Authentication → Add user, with a strong password), then insert its `users` row with `role = 'admin'` and `supabase_uid` set to that user's id.
 3. `alembic stamp head` so Alembic matches the baseline (no DDL run by Alembic if revisions are empty/pass-only).
 
 ### B. Existing database (upgrade)

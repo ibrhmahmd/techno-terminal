@@ -27,7 +27,7 @@ def get_supabase_admin() -> Client:
     if not key:
         raise RuntimeError(
             "SUPABASE_SERVICE_ROLE_KEY is not set. Required for admin Supabase operations "
-            "(staff provisioning, password reset, seeding)."
+            "(staff provisioning, password reset)."
         )
     return create_client(
         settings.supabase_url, 
