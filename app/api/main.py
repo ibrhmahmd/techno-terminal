@@ -37,7 +37,6 @@ def configure_logfire() -> None:
     # Note: SQLAlchemy instrumentation requires SQLAlchemy < 2.1, but we use 2.0.x
     # The existing query_logger provides detailed SQL logging with request correlation
     logfire.instrument_httpx()
-    logfire.instrument_system_metrics()
     # Bridge standard logging to Logfire
     logging.getLogger().addHandler(logfire.LogfireLoggingHandler())
 
@@ -97,19 +96,13 @@ def create_app() -> FastAPI:
     configure_logging(settings)
     configure_logfire()
 
-    from app.db.connection import get_engine
-    from sqlmodel import Session
-    from app.observability.scheduler import run_metrics_collector, stop_metrics_collector
-
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         from app.modules.tasks import TaskService, start_task_scheduler
 
         task_spawner_task = asyncio.create_task(start_task_scheduler(TaskService))
-        metrics_task = asyncio.create_task(run_metrics_collector(interval_seconds=60))
         yield
         task_spawner_task.cancel()
-        await stop_metrics_collector()
         try:
             await asyncio.gather(
                 task_spawner_task, return_exceptions=True

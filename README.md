@@ -81,8 +81,7 @@ project_root/
 │   │   ├── connection.py         # Engine & session factory
 │   │   └── uow.py                # UnitOfWork, unit_of_work()
 │   ├── core/                     # Settings, Supabase clients
-│   ├── shared/                   # Cross-module utilities and exceptions
-│   └── observability/            # Logfire setup and business metrics
+│   └── shared/                   # Cross-module utilities and exceptions
 ├── db/
 │   ├── schema.sql                # Base DDL (modular files in db/schema/)
 │   └── migrations/               # Plain SQL, applied by hand in chronological order
