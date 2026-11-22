@@ -181,7 +181,7 @@ def test_enroll_student_checks_out_exactly_one_connection():
     this_thread = threading.get_ident()
 
     def _on_checkout(dbapi_connection, connection_record, connection_proxy):
-        # Background threads (app lifespan metrics collector started by other
+        # Background threads (app lifespan tasks scheduler started by other
         # tests) also check out connections; only count this thread's.
         if threading.get_ident() != this_thread:
             return

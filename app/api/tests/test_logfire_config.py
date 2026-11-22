@@ -1,5 +1,5 @@
 """
-Regression tests for Logfire observability wiring.
+Regression tests for Logfire wiring in app/api/main.py.
 
 Locks in the fix replaced: configure_logging() uses basicConfig(force=True),
 which wipes every root logger handler — including the LogfireLoggingHandler
