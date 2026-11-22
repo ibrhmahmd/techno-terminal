@@ -9,10 +9,12 @@ Works with both the free sandbox and production approved numbers.
 import logging
 from typing import Optional, Tuple
 
+import logfire
 from twilio.rest import Client
 from twilio.base.exceptions import TwilioRestException
 
 from app.core.config import settings
+from app.modules.notifications.dispatchers.allowlist import is_contact_allowed
 from app.modules.notifications.dispatchers.i_dispatcher import IMessageDispatcher
 import os
 
@@ -58,6 +60,11 @@ class TwilioWhatsAppDispatcher(IMessageDispatcher):
         Returns:
             (True, None) on success, (False, error_message) on failure.
         """
+        if not is_contact_allowed(recipient):
+            logger.info("WhatsApp suppressed by NOTIFICATION_ALLOWLIST: %s", recipient)
+            logfire.info("notification_suppressed", channel="WHATSAPP", recipient=recipient)
+            return False, "suppressed: recipient not in NOTIFICATION_ALLOWLIST"
+
         if "TESTING" in os.environ or "PYTEST_CURRENT_TEST" in os.environ:
             logger.info("Test mode: WhatsApp send skipped for %s", recipient)
             return True, None

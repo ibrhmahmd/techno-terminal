@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     # Notifications Configuration
     fallback_email: str = "techno.terminal.notifications@gmail.com"
     internal_trigger_secret: str = ""
+    # Comma-separated emails and/or phone numbers; empty means no restriction; staging sets it to the owner only (#290)
+    notification_allowlist: str = ""
     # Frontend origin for links in emails, e.g. https://app.example.com (#148)
     frontend_base_url: str = ""
 
