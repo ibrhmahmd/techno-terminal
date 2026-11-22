@@ -18,6 +18,7 @@ from typing import List, Optional, Tuple
 import logfire
 
 from app.core.config import settings
+from app.modules.notifications.dispatchers.allowlist import is_contact_allowed
 from app.modules.notifications.dispatchers.i_dispatcher import IMessageDispatcher
 import os
 
@@ -59,6 +60,11 @@ class GmailEmailDispatcher(IMessageDispatcher):
             original_recipient = recipient
             recipient = settings.fallback_email
             subject = f"[TEST] {subject or 'Techno Kids Notification'} (Intended: {original_recipient})"
+
+        if not is_contact_allowed(recipient):
+            logger.info("Email suppressed by NOTIFICATION_ALLOWLIST: %s", recipient)
+            logfire.info("notification_suppressed", channel="EMAIL", recipient=recipient)
+            return False, "suppressed: recipient not in NOTIFICATION_ALLOWLIST"
 
         try:
             # Create message container
